@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>tusq.dev</title>
+    <meta
+      name="description"
+      content="tusq.dev is the open-source capability compiler that turns existing SaaS product logic into governed, AI-callable tools, skills, and MCP surfaces."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="brand">tusq.dev</div>
+        <nav>
+          <a href="#what">What it is</a>
+          <a href="#flow">Workflow</a>
+          <a href="#surface">Output</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <p class="eyebrow">Open-source engine</p>
+          <h1>Turn a SaaS codebase into governed AI-callable capabilities.</h1>
+          <p class="lede">
+            tusq.dev reads the product logic you already own, compiles it into
+            reviewable capabilities, and emits strict tools, domain skills, MCP
+            surfaces, and local AI-native interfaces without demanding a rewrite.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="README.md">Read the README</a>
+            <a class="button secondary" href="VISION.md">Read the vision</a>
+          </div>
+        </section>
+
+        <section class="grid-band" id="what">
+          <article class="card">
+            <h2>What it does</h2>
+            <p>
+              It discovers routes, handlers, schemas, auth models, and runtime
+              behavior, then converts that product logic into a capability
+              manifest your team can review and ship.
+            </p>
+          </article>
+          <article class="card">
+            <h2>What it ships</h2>
+            <p>
+              From the manifest, tusq.dev compiles strict tools, domain skills,
+              local runtimes, MCP servers, and assistant surfaces that stay
+              grounded in the real product rather than prompt glue.
+            </p>
+          </article>
+          <article class="card">
+            <h2>Why it matters</h2>
+            <p>
+              Incumbent SaaS companies should not lose to AI-native competitors
+              just because their product logic is trapped behind old interfaces.
+            </p>
+          </article>
+        </section>
+
+        <section class="split" id="flow">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h2>Codebase in. Capability surface out.</h2>
+          </div>
+          <ol class="steps">
+            <li>Connect a repo or monorepo.</li>
+            <li>Discover product capabilities from code, APIs, and schemas.</li>
+            <li>Review the generated <code>tusq.manifest.json</code>.</li>
+            <li>Compile tools and domain skills.</li>
+            <li>Run locally or expose through MCP.</li>
+          </ol>
+        </section>
+
+        <section class="surface" id="surface">
+          <p class="eyebrow">Transition surface</p>
+          <h2>More than tool generation.</h2>
+          <div class="surface-grid">
+            <div class="surface-item">Capability discovery</div>
+            <div class="surface-item">Auth and permission mapping</div>
+            <div class="surface-item">Schema and sensitivity inference</div>
+            <div class="surface-item">Governed tool compilation</div>
+            <div class="surface-item">Skill and agent composition</div>
+            <div class="surface-item">MCP and interface generation</div>
+            <div class="surface-item">Evals and regressions</div>
+            <div class="surface-item">Migration and rollout tooling</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
