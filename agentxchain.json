@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "template": "cli-tool",
+  "project": {
+    "id": "tusq-dev",
+    "name": "tusq.dev",
+    "goal": "Build tusq.dev as the open-source capability compiler and governed AI-enablement engine for SaaS products.",
+    "default_branch": "main"
+  },
+  "roles": {
+    "pm": {
+      "title": "Product Manager",
+      "mandate": "Protect user value, scope clarity, and acceptance criteria.",
+      "write_authority": "authoritative",
+      "runtime": "local-pm"
+    },
+    "dev": {
+      "title": "Developer",
+      "mandate": "Implement approved work safely and verify behavior.",
+      "write_authority": "authoritative",
+      "runtime": "local-dev"
+    },
+    "qa": {
+      "title": "QA",
+      "mandate": "Challenge correctness, acceptance coverage, and ship readiness.",
+      "write_authority": "authoritative",
+      "runtime": "local-qa"
+    },
+    "eng_director": {
+      "title": "Engineering Director",
+      "mandate": "Resolve tactical deadlocks and enforce technical coherence.",
+      "write_authority": "authoritative",
+      "runtime": "local-director"
+    }
+  },
+  "runtimes": {
+    "local-pm": {
+      "type": "local_cli",
+      "command": [
+        "claude",
+        "--print",
+        "--model",
+        "opus",
+        "--dangerously-skip-permissions"
+      ],
+      "cwd": ".",
+      "prompt_transport": "stdin"
+    },
+    "local-dev": {
+      "type": "local_cli",
+      "command": [
+        "codex",
+        "exec",
+        "--full-auto",
+        "--model",
+        "gpt-5.3-codex"
+      ],
+      "cwd": ".",
+      "prompt_transport": "stdin"
+    },
+    "local-qa": {
+      "type": "local_cli",
+      "command": [
+        "claude",
+        "--print",
+        "--model",
+        "sonnet",
+        "--dangerously-skip-permissions"
+      ],
+      "cwd": ".",
+      "prompt_transport": "stdin"
+    },
+    "local-director": {
+      "type": "local_cli",
+      "command": [
+        "codex",
+        "exec",
+        "--full-auto",
+        "--model",
+        "gpt-5.4"
+      ],
+      "cwd": ".",
+      "prompt_transport": "stdin"
+    }
+  },
+  "routing": {
+    "planning": {
+      "entry_role": "pm",
+      "allowed_next_roles": [
+        "pm",
+        "eng_director",
+        "human"
+      ],
+      "exit_gate": "planning_signoff"
+    },
+    "implementation": {
+      "entry_role": "dev",
+      "allowed_next_roles": [
+        "dev",
+        "qa",
+        "eng_director",
+        "human"
+      ],
+      "exit_gate": "implementation_complete"
+    },
+    "qa": {
+      "entry_role": "qa",
+      "allowed_next_roles": [
+        "dev",
+        "qa",
+        "eng_director",
+        "human"
+      ],
+      "exit_gate": "qa_ship_verdict"
+    }
+  },
+  "gates": {
+    "planning_signoff": {
+      "requires_files": [
+        ".planning/PM_SIGNOFF.md",
+        ".planning/ROADMAP.md",
+        ".planning/SYSTEM_SPEC.md"
+      ],
+      "requires_human_approval": true
+    },
+    "implementation_complete": {
+      "requires_files": [
+        ".planning/IMPLEMENTATION_NOTES.md"
+      ],
+      "requires_verification_pass": true
+    },
+    "qa_ship_verdict": {
+      "requires_files": [
+        ".planning/acceptance-matrix.md",
+        ".planning/ship-verdict.md",
+        ".planning/RELEASE_NOTES.md"
+      ],
+      "requires_human_approval": true
+    }
+  },
+  "budget": {
+    "per_turn_max_usd": 2,
+    "per_run_max_usd": 50,
+    "on_exceed": "pause_and_escalate"
+  },
+  "retention": {
+    "talk_strategy": "append_only",
+    "history_strategy": "jsonl_append_only"
+  },
+  "prompts": {
+    "pm": ".agentxchain/prompts/pm.md",
+    "dev": ".agentxchain/prompts/dev.md",
+    "qa": ".agentxchain/prompts/qa.md",
+    "eng_director": ".agentxchain/prompts/eng_director.md"
+  },
+  "rules": {
+    "challenge_required": true,
+    "max_turn_retries": 2,
+    "max_deadlock_cycles": 2
+  }
+}

@@ -1,0 +1,2 @@
+{"event_id":"evt_c02346d6c44b13d3","event_type":"run_started","timestamp":"2026-04-17T19:53:59.665Z","run_id":"run_b051581c8a050df6","phase":"planning","status":"active","turn":null,"payload":{"provenance":{"trigger":"manual","parent_run_id":null,"trigger_reason":null,"intake_intent_id":null,"created_by":"operator"}}}
+{"event_id":"evt_b30d3616bdf1f7a6","event_type":"turn_dispatched","timestamp":"2026-04-17T19:53:59.973Z","run_id":"run_b051581c8a050df6","phase":"planning","status":"active","turn":{"turn_id":"turn_592254255634d5cf","role_id":"pm"},"payload":{}}
