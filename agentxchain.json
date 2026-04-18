@@ -39,6 +39,8 @@
       "command": [
         "claude",
         "--print",
+        "--permission-mode",
+        "bypassPermissions",
         "--model",
         "opus",
         "--dangerously-skip-permissions"
@@ -51,7 +53,7 @@
       "command": [
         "codex",
         "exec",
-        "--full-auto",
+        "--dangerously-bypass-approvals-and-sandbox",
         "--model",
         "gpt-5.3-codex"
       ],
@@ -63,6 +65,8 @@
       "command": [
         "claude",
         "--print",
+        "--permission-mode",
+        "bypassPermissions",
         "--model",
         "sonnet",
         "--dangerously-skip-permissions"
@@ -75,7 +79,7 @@
       "command": [
         "codex",
         "exec",
-        "--full-auto",
+        "--dangerously-bypass-approvals-and-sandbox",
         "--model",
         "gpt-5.4"
       ],
