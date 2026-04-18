@@ -2,25 +2,14 @@
   "schema_version": "1.1",
   "run_id": "run_b051581c8a050df6",
   "project_id": "tusq-dev",
-  "status": "blocked",
+  "status": "active",
   "phase": "planning",
   "accepted_integration_ref": "git:0ee9d115d1f9abeb0bec75f43b99084d5d4ef163",
   "active_turns": {},
   "turn_sequence": 7,
   "last_completed_turn_id": "turn_9f5d0072027643b4",
-  "blocked_on": "human:Planning gate requires human approval. Review .planning/PM_SIGNOFF.md, .planning/SYSTEM_SPEC.md, and .planning/ROADMAP.md, then set 'Approved: YES' in PM_SIGNOFF.md to unlock the implementation phase.",
-  "blocked_reason": {
-    "category": "needs_human",
-    "recovery": {
-      "typed_reason": "needs_human",
-      "owner": "human",
-      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
-      "turn_retained": false,
-      "detail": "Planning gate requires human approval. Review .planning/PM_SIGNOFF.md, .planning/SYSTEM_SPEC.md, and .planning/ROADMAP.md, then set 'Approved: YES' in PM_SIGNOFF.md to unlock the implementation phase."
-    },
-    "blocked_at": "2026-04-18T01:09:05.100Z",
-    "turn_id": "turn_9f5d0072027643b4"
-  },
+  "blocked_on": null,
+  "blocked_reason": null,
   "escalation": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
