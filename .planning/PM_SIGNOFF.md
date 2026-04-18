@@ -24,6 +24,13 @@ The initial artifacts were filled with concrete scope, acceptance criteria, and 
 3. **Acceptance test for `tools/call` said "returns result"** — ambiguous and inconsistent with describe-only. Fixed: now says "returns tool schema and example payload (describe-only)."
 4. **Open questions in SYSTEM_SPEC duplicated resolved decisions** — converted to "Resolved Decisions" section.
 
+### Attempt 2 Review (this turn — contradictions fixed)
+
+1. **`tusq review` labeled "interactive" in scope and command-surface** — V1 has no TUI. Fixed: scope item 11 and command-surface now say "prints summary to stdout (non-interactive)." Approval is done by editing `tusq.manifest.json` directly.
+2. **`tusq manifest` said "runs scan implicitly"** — implicit scan is hidden complexity. Fixed: manifest now requires explicit prior scan, exits 1 if no scan data.
+3. **No approval mechanism defined** — manifest had `approved: boolean` but no documented way to set it. Fixed: review behavior section now explicitly states users edit manifest JSON directly. Interactive approval TUI deferred to V1.1.
+4. **Missing error case** — "no scan data for manifest" was not in the error table. Added.
+
 ### Key Judgment Calls (unchanged)
 
 1. **Scope narrowed aggressively.** V1 is scoped to just the discovery-manifest-compile-serve pipeline for 3 Node.js frameworks. The vision is the destination, not the first release.

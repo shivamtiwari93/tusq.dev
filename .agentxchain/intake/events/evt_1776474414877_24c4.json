@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776474414877_24c4",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-18T01:06:54.877Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Planning revision still incomplete. Revise PM_SIGNOFF.md, SYSTEM_SPEC.md, and ROADMAP.md to address the actual human feedback, not just internal contradictions. Required changes: (1) V1 must include minimal domain grouping instead of describing V1 as strict 1 route to 1 capability only; keep it narrow, but do not cut skill/domain grouping entirely. (2) Clarify the product claim around tusq serve so the docs are honest about whether V1 proves AI-callable execution or only describe-only MCP exposure; if V1 is still describe-only, say explicitly that V1 proves discovery plus manifest plus MCP exposure, not full executable capability delivery. (3) In PM_SIGNOFF.md explicitly state that runtime learning is a deferred core pillar of the product, not just a normal omitted feature. Make the planning package faithful to VISION.md while keeping V1 disciplined.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Planning revision still incomplete. Revise PM_SIGNOFF.md, SYSTEM_SPEC.md, and ROADMAP.md to address the actual human feedback, not just internal contradictions. Required changes: (1) V1 must include minimal domain grouping instead of describing V1 as strict 1 route to 1 capability only; keep it narrow, but do not cut skill/domain grouping entirely. (2) Clarify the product claim around tusq serve so the docs are honest about whether V1 proves AI-callable execution or only describe-only MCP exposure; if V1 is still describe-only, say explicitly that V1 proves discovery plus manifest plus MCP exposure, not full executable capability delivery. (3) In PM_SIGNOFF.md explicitly state that runtime learning is a deferred core pillar of the product, not just a normal omitted feature. Make the planning package faithful to VISION.md while keeping V1 disciplined."
+    }
+  ],
+  "dedup_key": "manual:86dbcaf143533e44"
+}

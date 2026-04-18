@@ -17,3 +17,13 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn b41e7d88 — pm (planning)
+
+- **Status:** completed
+- **Summary:** Fixed 4 contradictions in planning artifacts: tusq review is non-interactive (not interactive TUI), manifest requires explicit prior scan (no implicit scan), approval mechanism documented (manual JSON edit), and added missing error case for no scan data.
+- **Decision DEC-006:** tusq review is non-interactive in V1 — prints summary to stdout only. Users approve capabilities by editing tusq.manifest.json directly. Interactive TUI deferred to V1.1.
+- **Decision DEC-007:** tusq manifest requires an explicit prior tusq scan — no implicit scan fallback in V1.
+- **Proposed next:** human
+
+---
+

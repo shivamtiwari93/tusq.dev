@@ -24,7 +24,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 8. **Manifest generation** — produce `tusq.manifest.json` with schemas, permissions, side effects, provenance, and review markers
 9. **Tool compilation** — compile manifest entries into strict JSON tool definitions suitable for LLM tool-use
 10. **Local MCP server** — serve compiled tools as a standards-based MCP server on localhost
-11. **Human review flow** — `tusq review` opens the manifest for interactive review/approval of capabilities
+11. **Human review flow** — `tusq review` prints the manifest summary to stdout; users approve capabilities by editing `tusq.manifest.json` directly (set `approved: true`). Interactive TUI deferred to V1.1
 
 ### Out of scope (V2+)
 
@@ -97,7 +97,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 ### `tusq manifest`
 
-- Requires a prior scan (or runs scan implicitly)
+- Requires a prior scan (exits 1 with "No scan data found. Run `tusq scan` first." if missing)
 - Converts internal model to `tusq.manifest.json`
 - Each capability entry includes: name, description, method, path, input schema, output schema, side_effect_class (read/write/destructive), auth_hints, provenance (file + line), confidence score, approved (boolean, default false)
 - Marks uncertain inferences with `confidence < 0.8` and `review_needed: true`
@@ -121,10 +121,11 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 ### `tusq review`
 
-- Prints a human-readable summary of the manifest
+- Prints a human-readable summary of the manifest to stdout (non-interactive)
 - Groups by domain/category
 - Highlights unapproved and low-confidence capabilities
 - In JSON mode, outputs the full manifest
+- To approve capabilities, users edit `tusq.manifest.json` directly and set `approved: true` on desired entries. Interactive approval TUI deferred to V1.1
 
 ## Error Cases
 
@@ -133,6 +134,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 | No `tusq.config.json` found | Error: "No tusq config found. Run `tusq init` first." Exit 1 |
 | Unsupported framework detected | Warning: "Framework X not yet supported. Supported: Express, Fastify, NestJS." Exit 1 |
 | No routes found in scan | Warning: "No API routes found in <path>. Check framework detection." Exit 1 |
+| No scan data found for manifest | Error: "No scan data found. Run `tusq scan` first." Exit 1 |
 | Manifest not found for compile/serve | Error: "No manifest found. Run `tusq manifest` first." Exit 1 |
 | No approved capabilities for compile | Warning: "No approved capabilities. Run `tusq review` to approve." Exit 0 (empty output) |
 | Invalid flag or unknown command | Print help text, exit 1 |
@@ -197,3 +199,5 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 3. **API proxy in serve** — V1 is describe-only (`tools/call` returns schema + examples). Live proxy deferred to V1.1.
 4. **Auth forwarding** — Not applicable in V1 (no live proxy). Will be addressed with proxy in V1.1.
 5. **Monorepo support** — V1 scans a single directory. Multi-root scanning deferred to V1.1.
+6. **Approval flow** — V1 uses manual JSON editing to approve capabilities. Interactive TUI deferred to V1.1.
+7. **Manifest requires explicit scan** — `tusq manifest` does not implicitly run scan. User must run `tusq scan` first.

@@ -9,7 +9,7 @@
 | `tusq manifest` | Generate capability manifest | `--out <path>`, `--format` | Creates/updates `tusq.manifest.json` |
 | `tusq compile` | Compile tools from manifest | `--out <path>`, `--dry-run` | Creates `tusq-tools/` with JSON tool defs |
 | `tusq serve` | Start local MCP server | `--port <n>` | Runs MCP server on localhost |
-| `tusq review` | Review manifest interactively | `--format` | Prints manifest summary to stdout |
+| `tusq review` | Review manifest (print summary) | `--format` | Prints manifest summary to stdout |
 | `tusq version` | Print version | None | Version string to stdout |
 | `tusq help` | Print usage | Optional: command name | Help text to stdout |
 
