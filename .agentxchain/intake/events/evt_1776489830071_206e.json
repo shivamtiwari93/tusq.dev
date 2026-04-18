@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776489830071_206e",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-18T05:23:50.071Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Implement the docs and website platform using Docusaurus with the built-in Docusaurus blog. Migrate the current website/docs/blog surface into the Docusaurus structure, keep product truth aligned with the accepted planning/launch artifacts, and preserve product-marketing ownership of website/docs/blog content.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Implement the docs and website platform using Docusaurus with the built-in Docusaurus blog. Migrate the current website/docs/blog surface into the Docusaurus structure, keep product truth aligned with the accepted planning/launch artifacts, and preserve product-marketing ownership of website/docs/blog content."
+    }
+  ],
+  "dedup_key": "manual:5dce0463c0c1b4de"
+}

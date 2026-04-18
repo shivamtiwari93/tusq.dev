@@ -1,6 +1,6 @@
 {
-  "intent_id": "intent_1776474414878_c28b",
+  "intent_id": "intent_1776489830072_6802",
   "priority": "p0",
-  "description": "Planning revision still incomplete. Revise PM_SIGNOFF.md, SYSTEM_SPEC.md, and ROADMAP.md to address the actual human feedback, not just internal contradictions. Required changes: (1) V1 must include minimal domain grouping instead of describing V1 as strict 1 route to 1 capability only; keep it narrow, but do not cut skill/domain grouping entirely. (2) Clarify the product claim around tusq serve so the docs are honest about whether V1 proves AI-callable execution or only describe-only MCP exposure; if V1 is still describe-only, say explicitly that V1 proves discovery plus manifest plus MCP exposure, not full executable capability delivery. (3) In PM_SIGNOFF.md explicitly state that runtime learning is a deferred core pillar of the product, not just a normal omitted feature. Make the planning package faithful to VISION.md while keeping V1 disciplined.",
-  "injected_at": "2026-04-18T01:06:54.878Z"
+  "description": "Implement the docs and website platform using Docusaurus with the built-in Docusaurus blog. Migrate the current website/docs/blog surface into the Docusaurus structure, keep product truth aligned with the accepted planning/launch artifacts, and preserve product-marketing ownership of website/docs/blog content.",
+  "injected_at": "2026-04-18T05:23:50.073Z"
 }

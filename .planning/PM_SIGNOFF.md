@@ -1,72 +1,61 @@
-# PM Signoff — tusq.dev V1
+# PM Signoff — tusq.dev Docs & Website Platform
 
 Approved: YES
 
-> Planning artifacts reviewed and approved. Human unblocked the escalation on 2026-04-18, signaling review completion.
+> Planning artifacts reviewed and approved for the Docusaurus docs/website/blog platform initiative.
 
 ## Discovery Checklist
 
-- [x] **Target user defined** — SaaS engineering and platform teams with existing Node.js/TypeScript codebases who want to expose product capabilities to AI agents safely.
-- [x] **Core pain point defined** — Product logic is trapped behind UI-oriented APIs. Manual tool authoring is slow, error-prone, and drifts from the codebase. There is no structured path from "working SaaS product" to "AI-callable capability surface."
-- [x] **Core workflow defined** — `tusq init` → `tusq scan` → `tusq manifest` → review/approve → `tusq compile` → `tusq serve`. Developer stays in the terminal. Manifest is the reviewable contract.
-- [x] **MVP scope defined** — CLI tool with 8 commands. Scans Express, Fastify, and NestJS codebases. Produces `tusq.manifest.json` with automatic domain grouping. Compiles approved capabilities into tool definitions. Serves describe-only via local MCP server. No runtime instrumentation, no hosted execution, no live API proxy, no embedded UI, no plugin API.
-- [x] **Out-of-scope list defined** — See SYSTEM_SPEC.md "Out of scope" section. Explicitly excludes: runtime learning (deferred core pillar — see below), eval generation, advanced skill composition, embedded UI, Python/Go/Java, tusq.cloud integration, plugin ecosystem, migration tooling, competitive intelligence, live API proxy execution.
-- [x] **Success metric defined** — A developer can point tusq at a real Express/Fastify/NestJS codebase and get: (1) a reviewed manifest with correct route extraction and domain grouping, (2) compiled tool definitions, and (3) a running local MCP server exposing tool descriptions — all within a single terminal session. V1 proves discovery + manifest + MCP exposure, not full executable capability delivery. Acceptance tests in SYSTEM_SPEC.md are the formal verification.
+- [x] **Target user defined** — Developers and engineering leads evaluating or adopting tusq.dev. They need clear docs, honest product positioning, and a quickstart workflow they can follow in one terminal session.
+- [x] **Core pain point defined** — The current `websites/` static HTML landing page has no documentation, no blog, and no structured content. Developers have to read the README or planning files to understand the product. There is no discoverable docs site.
+- [x] **Core workflow defined** — Docusaurus project in `website/` directory. Homepage migrated from static HTML. Docs pages derived from accepted planning artifacts. Blog posts adapted from launch artifacts. `npm run build` produces a deployable static site.
+- [x] **MVP scope defined** — Docusaurus 3.x site with: custom homepage, 7 docs pages, 2 blog posts, top navbar, docs sidebar, 404 page, SEO metadata, and product truth alignment.
+- [x] **Out-of-scope list defined** — See SYSTEM_SPEC.md. Excludes: hosting/deployment config, search integration, i18n, analytics, interactive demos, API auto-generation, custom plugins.
+- [x] **Success metric defined** — `npm run build` in `website/` produces a static site with zero errors and zero broken links. All content passes a product truth audit against MESSAGING.md.
 
-## PM Challenges to Prior Work
+## PM Challenges to the Intent
 
-### Attempt 1 Review (rejected — baseline invalidated by config commit)
+### Challenge 1: "Migrate docs" — but there are no user-facing docs yet
 
-The initial artifacts were filled with concrete scope, acceptance criteria, and a milestoned roadmap. However, three internal contradictions were found during attempt 2 review:
+The intent says "migrate the current website/docs/blog surface." In reality:
+- **Website:** A single static HTML landing page (`websites/index.html`) — this migrates directly.
+- **Docs:** No user-facing documentation exists. The `.planning/` directory contains internal planning artifacts (SYSTEM_SPEC.md, command-surface.md, etc.) which are not user-facing docs. We need to **create** docs from these sources, not migrate them.
+- **Blog:** No blog exists. We need to **create** a blog and adapt the ANNOUNCEMENT.md and RELEASE_NOTES.md into blog posts.
 
-1. **SYSTEM_SPEC `tusq serve` said "proxied to the actual API"** — directly contradicted the PM decision that V1 is describe-only. Fixed: SYSTEM_SPEC now states `tools/call` returns schema + examples, no live proxy.
-2. **SYSTEM_SPEC in-scope item 7 said "group related routes into higher-level capabilities"** — contradicted the PM decision of 1:1 route-to-capability in V1. Fixed: now says "map each route to a single capability (1:1)."
-3. **Acceptance test for `tools/call` said "returns result"** — ambiguous and inconsistent with describe-only. Fixed: now says "returns tool schema and example payload (describe-only)."
-4. **Open questions in SYSTEM_SPEC duplicated resolved decisions** — converted to "Resolved Decisions" section.
+**Decision:** The scope is correctly framed as "create a docs platform" with content derived from accepted artifacts, not a mechanical migration.
 
-### Attempt 2 Review (this turn — contradictions fixed)
+### Challenge 2: Content must not drift from accepted product truth
 
-1. **`tusq review` labeled "interactive" in scope and command-surface** — V1 has no TUI. Fixed: scope item 11 and command-surface now say "prints summary to stdout (non-interactive)." Approval is done by editing `tusq.manifest.json` directly.
-2. **`tusq manifest` said "runs scan implicitly"** — implicit scan is hidden complexity. Fixed: manifest now requires explicit prior scan, exits 1 if no scan data.
-3. **No approval mechanism defined** — manifest had `approved: boolean` but no documented way to set it. Fixed: review behavior section now explicitly states users edit manifest JSON directly. Interactive approval TUI deferred to V1.1.
-4. **Missing error case** — "no scan data for manifest" was not in the error table. Added.
+The prior run produced carefully scoped MESSAGING.md with explicit "Claims We Can Defend" and "Claims We Must Not Make" sections. The Docusaurus content must stay within these boundaries. The SYSTEM_SPEC includes a dedicated M7 product truth audit milestone to enforce this.
 
-### Attempt 4 Review (this turn — human feedback integration)
+**Decision:** Product truth alignment is a first-class acceptance criterion, not a nice-to-have.
 
-Human injected a p0 planning revision via intent_1776474414878_c28b. Three changes required:
+### Challenge 3: Directory naming — `website/` vs `websites/`
 
-1. **Domain grouping was cut too aggressively** — VISION.md V1 scope includes "basic skill composition: domain grouping for generated tools." Previous PM turns described V1 as pure 1:1 with no grouping. Fixed: V1 now includes automatic domain assignment (routes grouped by resource/controller). Cross-resource merging still deferred to V1.1.
-2. **Product claim about tusq serve was ambiguous** — docs said "describe-only" but didn't clearly state what V1 does and doesn't prove. Fixed: all docs now explicitly state "V1 proves discovery + manifest + MCP exposure, not full executable capability delivery."
-3. **Runtime learning treated as normal out-of-scope** — it was listed alongside minor omissions. Fixed: PM_SIGNOFF.md now has a dedicated judgment call (#6) framing runtime learning as a deferred core pillar tied to the vision, and SYSTEM_SPEC.md out-of-scope section calls it out distinctly.
+The existing static site lives in `websites/`. Docusaurus convention is `website/` (singular). We should use `website/` for the Docusaurus project and leave `websites/` in place until the migration is confirmed working, then remove it.
 
-### Attempt 3 Review (scan persistence gap)
+**Decision:** New Docusaurus project goes in `website/`. Old `websites/` is not deleted during this initiative — that's a cleanup task for after verification.
 
-1. **Scan data location undefined** — SYSTEM_SPEC said scan produces "an internal capability model (not user-facing directly)" but never specified where it's stored. `tusq manifest` requires prior scan data but had no file to read. Fixed: scan writes to `.tusq/scan.json`, manifest reads from there.
-2. **`--format json` on scan contradicted "not user-facing"** — if `--format json` emits the scan result to stdout, it IS user-facing. Fixed: clarified that `--format json` prints scan result to stdout for debugging/scripting.
+### Challenge 4: Scope creep risk — fancy features
 
-### Key Judgment Calls (revised per human feedback)
+Docusaurus supports search, i18n, versioned docs, custom plugins, and many other features. None of these are needed for the initial platform. The spec explicitly excludes them.
 
-1. **Scope narrowed aggressively.** V1 is scoped to the discovery-manifest-compile-serve pipeline for 3 Node.js frameworks. The vision is the destination, not the first release.
+**Decision:** Vanilla Docusaurus 3.x with default plugins only. Homepage swizzling is the only customization.
 
-2. **MCP serve is describe-only in V1.** `tusq serve` will serve tool descriptions and schemas only. V1 proves discovery + manifest + MCP exposure — it does **not** prove full executable capability delivery. Live proxy introduces auth forwarding, error handling, and reliability concerns that belong in V1.1. The product claim is honest: V1 exposes capabilities, V1.1 executes them.
+## Key Judgment Calls
 
-3. **Minimal domain grouping included in V1.** VISION.md mandates "basic skill composition: domain grouping for generated tools" in V1. We include automatic domain assignment based on resource name or controller (e.g., all `/users/*` routes grouped under "users" domain). This keeps the manifest organized without requiring complex cross-resource merging heuristics. Intelligent composite capability creation (merging multiple routes into one higher-level capability) is deferred to V1.1.
+1. **Docs are authored content, not auto-generated.** Each docs page is written in user-facing language derived from planning artifacts. This means a human (product_marketing role) owns the content quality.
 
-4. **No plugin API in V1.** V1 hardcodes support for 3 frameworks. Plugin interfaces are added when we know the right abstractions from real usage.
+2. **Blog uses Docusaurus built-in blog plugin.** No custom blog infrastructure. Posts are Markdown files with frontmatter.
 
-5. **TypeScript only.** V1 targets the Node.js/TypeScript ecosystem. Python, Go, Java support is V2+.
+3. **Brand continuity matters.** The Fraunces + Space Grotesk font pairing and color scheme from the current site carry over. Users should recognize the same visual identity.
 
-6. **Runtime learning is a deferred core pillar, not a normal omission.** Runtime instrumentation and production-signal-driven manifest refinement are foundational to the tusq.dev vision (see VISION.md "Runtime learning" product module). V1 operates purely on static analysis. Runtime learning is the primary mechanism by which the manifest improves over time — it is the bridge from "good enough on first pass" to "continuously accurate." This is explicitly deferred to V2 to keep V1 disciplined, but it is a core pillar of the product, not a nice-to-have.
+4. **`website/` is self-contained.** It has its own `package.json` and does not depend on the CLI `package.json`. This keeps concerns separated.
+
+5. **No hosting decisions in this initiative.** Where to deploy (Vercel, Netlify, GitHub Pages, etc.) is a human decision made after the site builds correctly.
 
 ## Open Decisions for Human
 
-1. **MCP version target** — Should we pin to a specific MCP spec version? Recommendation: yes, pin to latest stable at implementation start.
-2. **Package name** — Is `tusq` available on npm? If not, fallback to `@tusq/cli` or `tusq-dev`.
-3. **Sample test apps** — Should we ship sample Express/Fastify/NestJS apps in-repo for testing, or use external fixtures? Recommendation: in-repo under `test/fixtures/`.
-
-## Notes for Team
-
-- SYSTEM_SPEC.md contains the full system specification with acceptance tests
-- ROADMAP.md contains implementation milestones (M1-M7)
-- command-surface.md contains the CLI command table and flag reference
-- The planning gate requires human approval. Review all three docs and flip `Approved: YES` when ready.
+1. **Deployment target** — Where will the Docusaurus site be hosted? (Recommendation: decide after build works.)
+2. **Custom domain** — Is `tusq.dev` the production domain for the docs site?
+3. **Old `websites/` cleanup** — When should the static HTML site be removed? (Recommendation: after Docusaurus deployment is confirmed.)

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776489830072_6802",
+  "event_id": "evt_1776489830071_206e",
+  "status": "approved",
+  "priority": "p0",
+  "template": "cli-tool",
+  "charter": "Implement the docs and website platform using Docusaurus with the built-in Docusaurus blog. Migrate the current website/docs/blog surface into the Docusaurus structure, keep product truth aligned with the accepted planning/launch artifacts, and preserve product-marketing ownership of website/docs/blog content.",
+  "acceptance_contract": [
+    "Docusaurus app scaffold exists and runs locally",
+    "docs and blog are wired into the repo structure",
+    "current launch/docs messaging is represented inside the new site",
+    "website ownership remains with product_marketing artifacts and workflow"
+  ],
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-18T05:23:50.071Z",
+  "updated_at": "2026-04-18T05:23:50.073Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-18T05:23:50.071Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-18T05:23:50.072Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-18T05:23:50.073Z",
+      "reason": "operator injection",
+      "approver": "human"
+    }
+  ],
+  "approved_by": "human"
+}

@@ -1,208 +1,167 @@
-# System Spec — tusq.dev V1 (Milestone 1: Discovery Foundation)
+# System Spec — tusq.dev Docs & Website Platform
 
 ## Purpose
 
-tusq.dev V1 is a CLI tool that scans an existing SaaS codebase, discovers its API capabilities, and produces a reviewable `tusq.manifest.json`. This first slice proves the core insight: a product's real capabilities can be inferred from code and exposed as governed, AI-callable tools.
+Build the tusq.dev public-facing website, documentation, and blog using Docusaurus. This replaces the current static HTML landing page (`websites/`) with a maintainable, extensible docs platform that serves as the primary entry point for developers evaluating and using tusq.dev.
 
-**What V1 proves:** V1 proves the discovery-to-manifest-to-MCP-exposure pipeline end-to-end. It does **not** prove full executable capability delivery — `tusq serve` exposes tool descriptions and schemas via MCP, but does not proxy live API calls. Full execution (live proxy, auth forwarding, runtime instrumentation) is deferred to V1.1+.
+**What this delivers:** A Docusaurus-powered site with three surfaces — marketing homepage, CLI/usage documentation, and a blog — all aligned with the accepted V1 product truth from the prior planning/launch artifacts.
 
-V1 does **not** attempt runtime instrumentation, hosted execution, or advanced skill composition. It proves discovery, manifest generation, tool compilation, and describe-only MCP exposure for a small number of supported frameworks.
+**What this does NOT deliver:** New product features, CLI changes, or any content that extends beyond the verified V1 boundary. The Docusaurus platform is a content delivery mechanism, not a product change.
 
-### Problem this solves
-
-SaaS engineering teams have years of business logic trapped behind UI-oriented APIs. They want to expose that logic to AI agents but lack a structured, safe way to do so. Manual tool authoring is slow, error-prone, and drifts from the actual codebase. tusq.dev automates the discovery and compilation step.
-
-## Scope — what ships in V1
+## Scope — what ships
 
 ### In scope
 
-1. **CLI skeleton** — `tusq` binary installable via `npm install -g tusq` or local dev install
-2. **Repository scanning** — point at a local directory, detect framework (Express, Fastify, NestJS initially)
-3. **Route extraction** — parse route definitions, extract HTTP method, path, handler references
-4. **Schema inference** — extract request/response shapes from TypeScript types, Zod schemas, or JSDoc where available
-5. **Auth hint extraction** — detect middleware patterns (e.g., `requireAuth`, `isAdmin`, role guards) and tag capabilities with permission hints
-6. **Side-effect classification** — tag routes as read/write/destructive based on HTTP method and naming heuristics
-7. **Capability mapping with minimal domain grouping** — each route maps to one capability, but capabilities are automatically grouped into domains based on resource name or controller (e.g., all `/users/*` routes group under a "users" domain). Intelligent cross-resource grouping (e.g., merging related routes into higher-level composite capabilities) is deferred to V1.1
-8. **Manifest generation** — produce `tusq.manifest.json` with schemas, permissions, side effects, provenance, and review markers
-9. **Tool compilation** — compile manifest entries into strict JSON tool definitions suitable for LLM tool-use
-10. **Local MCP server** — serve compiled tools as a standards-based MCP server on localhost
-11. **Human review flow** — `tusq review` prints the manifest summary to stdout; users approve capabilities by editing `tusq.manifest.json` directly (set `approved: true`). Interactive TUI deferred to V1.1
+1. **Docusaurus project setup** — Initialize a Docusaurus project within the repo (e.g., `website/` directory), configured with TypeScript, custom theme colors, and the tusq.dev brand identity
+2. **Homepage migration** — Migrate the current `websites/index.html` landing page content into a Docusaurus custom homepage component, preserving the hero, feature cards, workflow steps, and V1 surface grid
+3. **Documentation site** — Create user-facing docs pages derived from the accepted planning artifacts:
+   - Getting Started (install, init, scan, manifest, compile, serve workflow)
+   - CLI Reference (all 8 commands with flags, from command-surface.md)
+   - Manifest Format (tusq.manifest.json schema and fields)
+   - Configuration (tusq.config.json reference)
+   - Supported Frameworks (Express, Fastify, NestJS — what works, what doesn't)
+   - MCP Server (describe-only behavior, tools/list, tools/call)
+   - FAQ (sourced from MESSAGING.md claims/non-claims)
+4. **Blog setup** — Configure the built-in Docusaurus blog plugin with:
+   - Launch announcement post (from ANNOUNCEMENT.md)
+   - Release notes post (from RELEASE_NOTES.md)
+   - Blog index and RSS feed
+5. **Navigation and sidebar** — Top nav with Docs, Blog, GitHub link. Docs sidebar with logical grouping
+6. **Product truth alignment** — All content must stay within the claims defined in MESSAGING.md "Product Truth" and "Claims We Can Defend" sections. No overclaiming
+7. **SEO and metadata** — Proper `<title>`, `<meta description>`, Open Graph tags on all pages
+8. **404 page** — Custom 404 page (migrate from `websites/404.html`)
+9. **Build and deploy readiness** — `npm run build` produces a static site suitable for deployment to any static host
 
-### Out of scope (V2+)
+### Out of scope
 
-- **Runtime learning** (deferred core pillar) — runtime instrumentation, payload observation, and production-signal-driven manifest refinement are a foundational pillar of the tusq.dev vision, not a minor omission. V1 operates on static analysis only. Runtime learning is the primary mechanism by which the manifest improves over time and is planned for V2.
-- Eval and regression test generation
-- Multi-step skill composition and domain agents
-- Embedded UI / assistant surfaces beyond MCP
-- Python / Go / Java framework support
-- Remote hosting or tusq.cloud integration
-- Plugin ecosystem and extension API
-- Migration and rollout tooling
-- Competitive transition intelligence
-- Live API proxy execution via `tusq serve` (V1 is describe-only MCP exposure)
+- Hosting/deployment configuration (Vercel, Netlify, GitHub Pages setup) — human decision
+- Custom Docusaurus plugins
+- Search integration (Algolia, etc.) — can be added later
+- i18n / localization
+- Analytics integration
+- Interactive demos or embedded terminals
+- API reference auto-generation from source code
+- Any content about features not shipped in V1 presented as current capabilities
 
-## Interface
+## Content Architecture
 
-### CLI commands
+### Documentation pages
 
-| Command | Purpose |
-|---------|---------|
-| `tusq init` | Initialize a `tusq.config.json` in the target repo |
-| `tusq scan <path>` | Scan a codebase and produce an internal capability model |
-| `tusq manifest` | Generate or update `tusq.manifest.json` from the latest scan |
-| `tusq compile` | Compile approved manifest entries into tool definitions |
-| `tusq serve` | Start a local MCP server exposing compiled tools |
-| `tusq review` | Print manifest summary to stdout for human review |
-| `tusq version` | Print version and exit |
-| `tusq help` | Print usage and exit |
+| Page | Source | Purpose |
+|------|--------|---------|
+| Getting Started | SYSTEM_SPEC.md workflow + README quickstart | First-run developer experience |
+| CLI Reference | command-surface.md | Complete command/flag reference |
+| Manifest Format | SYSTEM_SPEC.md manifest section | Schema documentation for tusq.manifest.json |
+| Configuration | SYSTEM_SPEC.md init section | tusq.config.json reference |
+| Supported Frameworks | SYSTEM_SPEC.md scope + MESSAGING.md | Express, Fastify, NestJS details |
+| MCP Server | SYSTEM_SPEC.md serve section | Describe-only MCP behavior |
+| FAQ | MESSAGING.md claims/non-claims | Common questions and honest answers |
 
-### Key flags
+### Blog posts
 
-| Flag | Commands | Meaning | Default |
-|------|----------|---------|---------|
-| `--format json` | scan, manifest, review | Output as JSON instead of human-readable | human |
-| `--out <path>` | manifest, compile | Write output to specific path | `./tusq.manifest.json` / `./tusq-tools/` |
-| `--port <n>` | serve | MCP server port | 3100 |
-| `--dry-run` | compile | Show what would be generated without writing | false |
-| `--framework <name>` | scan | Force framework detection instead of auto-detect | auto |
-| `--verbose` | all | Verbose output | false |
+| Post | Source | Purpose |
+|------|--------|---------|
+| Announcing tusq.dev v0.1.0 | ANNOUNCEMENT.md | Launch narrative |
+| Release Notes: v0.1.0 | RELEASE_NOTES.md | Changelog and feature list |
 
-### File contracts
+### Homepage sections
 
-- `tusq.config.json` — project configuration (created by `tusq init`)
-- `.tusq/scan.json` — internal scan result (created by `tusq scan`, read by `tusq manifest`). Not a public contract; format may change between versions.
-- `tusq.manifest.json` — the canonical capability manifest (created by `tusq manifest`)
-- `tusq-tools/` — directory of compiled tool definitions (created by `tusq compile`)
+| Section | Source | Content |
+|---------|--------|---------|
+| Hero | websites/index.html + MESSAGING.md | One-line positioning + CTA |
+| What it does / ships / matters | websites/index.html cards | Three feature cards |
+| Workflow | websites/index.html steps | 5-step terminal workflow |
+| V1 Surface | websites/index.html grid | 8 shipped capabilities |
 
-### stdin/stdout/stderr
+## File Structure
 
-- All structured output goes to stdout
-- Progress, warnings, and errors go to stderr
-- JSON mode (`--format json`) emits machine-parseable output on stdout
-- Exit code 0 = success, 1 = user error, 2 = internal error
+```
+website/
+├── docusaurus.config.ts        # Site config, navbar, footer, metadata
+├── sidebars.ts                 # Docs sidebar structure
+├── package.json                # Docusaurus dependencies
+├── tsconfig.json
+├── src/
+│   ├── pages/
+│   │   └── index.tsx           # Custom homepage component
+│   └── css/
+│       └── custom.css          # Brand colors, fonts (from websites/styles.css)
+├── docs/
+│   ├── getting-started.md      # Install + workflow
+│   ├── cli-reference.md        # All 8 commands
+│   ├── manifest-format.md      # tusq.manifest.json schema
+│   ├── configuration.md        # tusq.config.json
+│   ├── frameworks.md           # Supported frameworks
+│   ├── mcp-server.md           # Describe-only MCP
+│   └── faq.md                  # FAQ
+├── blog/
+│   ├── 2026-04-18-announcing-tusq-dev.md
+│   └── 2026-04-18-release-notes-v0.1.0.md
+└── static/
+    └── img/                    # Any images/logos
+```
 
 ## Behavior
 
-### `tusq init`
+### Build
 
-- Creates `tusq.config.json` with sensible defaults
-- Auto-detects framework if possible, prompts if ambiguous
-- Idempotent: re-running does not overwrite existing config (warns instead)
+- `cd website && npm install && npm run build` produces a complete static site in `website/build/`
+- Build must complete with zero errors and zero warnings (Docusaurus broken-link checker must pass)
+- All internal links resolve. No dead links
 
-### `tusq scan`
+### Development
 
-- Reads the target directory recursively
-- Detects framework from package.json dependencies and file patterns
-- Parses route definitions using AST analysis (TypeScript/JavaScript)
-- Extracts: HTTP method, path, handler, middleware chain, type annotations
-- Produces an internal capability model, saved to `.tusq/scan.json`
-- With `--format json`, prints the scan result to stdout for debugging/scripting (same data as `.tusq/scan.json`)
-- Warns on ambiguous or unsupported patterns (does not fail silently)
-- Exit 0 if scan completes (even with warnings), exit 1 if no routes found
+- `cd website && npm start` runs local dev server with hot reload
+- Default port: 3000 (Docusaurus default)
 
-### `tusq manifest`
+### Content ownership
 
-- Reads `.tusq/scan.json` (exits 1 with "No scan data found. Run `tusq scan` first." if missing)
-- Converts internal model to `tusq.manifest.json`
-- Each capability entry includes: name, description, method, path, input schema, output schema, side_effect_class (read/write/destructive), auth_hints, provenance (file + line), confidence score, approved (boolean, default false), domain (auto-assigned from resource/controller name)
-- Marks uncertain inferences with `confidence < 0.8` and `review_needed: true`
-- Preserves existing approvals on re-generation (merge, don't replace)
-
-### `tusq compile`
-
-- Reads `tusq.manifest.json`
-- Only compiles capabilities where `approved: true`
-- Generates one JSON tool definition per capability
-- Tool definition includes: name, description, parameters (JSON Schema), returns schema
-- `--dry-run` lists what would be compiled without writing files
-
-### `tusq serve`
-
-- Reads compiled tools from `tusq-tools/`
-- Starts an MCP-compliant server on localhost
-- Supports `tools/list` MCP method (returns compiled tool inventory with schemas)
-- `tools/call` returns the tool's schema and example payloads (describe-only in V1; live API proxy deferred to V1.1)
-- Logs all calls to stderr in development mode
-
-### `tusq review`
-
-- Prints a human-readable summary of the manifest to stdout (non-interactive)
-- Groups capabilities by their auto-assigned domain
-- Highlights unapproved and low-confidence capabilities
-- In JSON mode, outputs the full manifest
-- To approve capabilities, users edit `tusq.manifest.json` directly and set `approved: true` on desired entries. Interactive approval TUI deferred to V1.1
-
-## Error Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| No `tusq.config.json` found | Error: "No tusq config found. Run `tusq init` first." Exit 1 |
-| Unsupported framework detected | Warning: "Framework X not yet supported. Supported: Express, Fastify, NestJS." Exit 1 |
-| No routes found in scan | Warning: "No API routes found in <path>. Check framework detection." Exit 1 |
-| No scan data found for manifest | Error: "No scan data found. Run `tusq scan` first." Exit 1 |
-| Manifest not found for compile/serve | Error: "No manifest found. Run `tusq manifest` first." Exit 1 |
-| No approved capabilities for compile | Warning: "No approved capabilities. Run `tusq review` to approve." Exit 0 (empty output) |
-| Invalid flag or unknown command | Print help text, exit 1 |
-| Port already in use for serve | Error: "Port <n> already in use." Exit 1 |
-| File permission error | Error with specific path. Exit 2 |
+- Product-marketing owns all website, docs, and blog content
+- Docs content is derived from accepted planning artifacts but written in user-facing language (not internal planning jargon)
+- Blog posts are adapted from launch artifacts, not copy-pasted
 
 ## Acceptance Tests
 
-### CLI skeleton
-- [ ] `tusq version` prints version string and exits 0
-- [ ] `tusq help` prints usage for all commands and exits 0
-- [ ] Unknown command prints help and exits 1
-- [ ] Invalid flags print help and exit 1
+### Setup
+- [ ] `website/` directory exists with a valid Docusaurus project
+- [ ] `cd website && npm install` succeeds
+- [ ] `cd website && npm run build` succeeds with zero errors
 
-### Init
-- [ ] `tusq init` creates `tusq.config.json` with detected framework
-- [ ] Re-running `tusq init` warns but does not overwrite
+### Homepage
+- [ ] Homepage renders with hero, feature cards, workflow steps, and V1 surface grid
+- [ ] Homepage content matches MESSAGING.md product truth — no overclaiming
+- [ ] Homepage links to docs and blog
 
-### Scan (Express)
-- [ ] Scanning an Express app extracts routes with method, path, handler
-- [ ] Middleware chains are detected and auth hints extracted
-- [ ] TypeScript type annotations are extracted as schema hints
-- [ ] Scan with `--format json` outputs machine-parseable result
-- [ ] Scan of empty/non-Node directory exits 1 with clear message
+### Documentation
+- [ ] All 7 docs pages exist and render without errors
+- [ ] Getting Started page contains the full 6-command workflow
+- [ ] CLI Reference page documents all 8 commands with flags
+- [ ] Manifest Format page describes all capability fields
+- [ ] MCP Server page explicitly states describe-only behavior
+- [ ] FAQ page addresses "Does it execute tools?" and "Which frameworks?"
+- [ ] Docs sidebar navigation works correctly
 
-### Scan (Fastify)
-- [ ] Scanning a Fastify app extracts routes with schema validation
-- [ ] Fastify schema definitions are used for input/output inference
+### Blog
+- [ ] Blog index page lists all posts
+- [ ] Launch announcement post renders correctly
+- [ ] Release notes post renders correctly
+- [ ] Blog RSS feed is generated
 
-### Scan (NestJS)
-- [ ] Scanning a NestJS app extracts controller decorators
-- [ ] Guards and interceptors are detected as auth hints
+### Navigation
+- [ ] Top navbar has Docs, Blog, and GitHub links
+- [ ] All internal links resolve (no broken links)
+- [ ] 404 page renders for unknown routes
 
-### Manifest
-- [ ] `tusq manifest` produces valid `tusq.manifest.json`
-- [ ] Each capability has: name, method, path, schemas, side_effect_class, auth_hints, provenance, confidence, approved, domain
-- [ ] Re-running manifest preserves existing approvals
-- [ ] Low-confidence capabilities are flagged with `review_needed: true`
-- [ ] Side-effect classification: GET→read, POST/PUT/PATCH→write, DELETE→destructive
+### Product truth
+- [ ] No page claims tusq.dev executes live API calls in V1
+- [ ] No page claims support for Python, Go, Java, or frameworks beyond Express/Fastify/NestJS
+- [ ] No page presents runtime learning, plugin API, or hosted execution as current features
+- [ ] Framework support is visible on homepage and in docs
 
-### Compile
-- [ ] `tusq compile` generates tool definitions only for approved capabilities
-- [ ] Each tool definition has: name, description, parameters (JSON Schema), returns
-- [ ] `--dry-run` lists tools without writing files
-- [ ] No approved capabilities → empty output, exit 0
+## Constraints
 
-### Serve
-- [ ] `tusq serve` starts MCP server on configured port
-- [ ] `tools/list` returns all compiled tools
-- [ ] `tools/call` with valid tool name returns tool schema and example payload (describe-only)
-- [ ] Server stops cleanly on SIGINT
-
-### Review
-- [ ] `tusq review` prints grouped capability summary
-- [ ] Unapproved capabilities are highlighted
-- [ ] `--format json` outputs full manifest
-
-## Resolved Decisions
-
-1. **Capability grouping** — V1 uses 1:1 route-to-capability mapping with automatic domain grouping based on resource name or controller. Each route is one capability, but capabilities are organized into domains (e.g., "users", "billing"). Intelligent cross-resource grouping (merging routes into composite capabilities) deferred to V1.1.
-2. **MCP protocol version** — Pin to latest stable MCP spec at implementation start.
-3. **API proxy in serve** — V1 is describe-only (`tools/call` returns schema + examples). Live proxy deferred to V1.1.
-4. **Auth forwarding** — Not applicable in V1 (no live proxy). Will be addressed with proxy in V1.1.
-5. **Monorepo support** — V1 scans a single directory. Multi-root scanning deferred to V1.1.
-6. **Approval flow** — V1 uses manual JSON editing to approve capabilities. Interactive TUI deferred to V1.1.
-7. **Manifest requires explicit scan** — `tusq manifest` does not implicitly run scan. User must run `tusq scan` first.
+1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
+2. **No ejecting** — Use swizzling only if needed for the homepage; prefer the plugin/theme API
+3. **Monorepo-friendly** — The `website/` directory is self-contained with its own `package.json`
+4. **Brand continuity** — Preserve the Fraunces + Space Grotesk font pairing and color scheme from the current site
+5. **Content fidelity** — All user-facing content must be traceable to an accepted planning or launch artifact. Do not invent new product claims

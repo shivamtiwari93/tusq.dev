@@ -1,96 +1,71 @@
-# Roadmap — tusq.dev
+# Roadmap — tusq.dev Docs & Website Platform
 
 ## Phases
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| Planning | Define MVP scope, acceptance criteria, and system spec | In progress |
-| Implementation | Build CLI, scanner, manifest generator, compiler, and MCP server | Pending |
-| QA | Validate acceptance tests, error handling, and MCP compliance | Pending |
+| Planning | Define Docusaurus platform scope, content architecture, and acceptance criteria | In progress |
+| Implementation | Build Docusaurus site, migrate content, create docs and blog | Pending |
+| QA | Validate build, links, content accuracy, and product truth alignment | Pending |
 
-## V1 Implementation Milestones
+## Implementation Milestones
 
-V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation with domain grouping + tool compilation + describe-only local MCP server. V1 proves the discovery-to-manifest-to-MCP-exposure pipeline. It does **not** prove live executable capability delivery (no API proxy, no runtime instrumentation).
+### M1: Docusaurus Project Setup (~0.5 day)
+- [ ] Initialize Docusaurus 3.x project in `website/` directory
+- [ ] Configure `docusaurus.config.ts` with site metadata, navbar, footer
+- [ ] Set up `package.json` with required dependencies
+- [ ] Configure TypeScript support
+- [ ] Verify `npm run build` and `npm start` work with default content
 
-### M1: CLI Skeleton & Project Init (Est. ~1 day)
-- [ ] Set up TypeScript project with build toolchain
-- [ ] Implement `tusq` CLI entry point with commander/yargs
-- [ ] `tusq version`, `tusq help`
-- [ ] `tusq init` — create `tusq.config.json` with framework auto-detection
-- [ ] Exit code contracts (0/1/2)
-- [ ] npm package.json with `bin` field
+### M2: Brand & Theme (~0.5 day)
+- [ ] Migrate brand colors and fonts from `websites/styles.css` to `website/src/css/custom.css`
+- [ ] Configure Fraunces + Space Grotesk font loading
+- [ ] Set up custom color palette in Docusaurus theme config
+- [ ] Create or migrate any logo/favicon assets to `website/static/img/`
 
-### M2: Route Extraction & Framework Detection (Est. ~2 days)
-- [ ] Framework detector: inspect `package.json` deps for Express, Fastify, NestJS
-- [ ] Express scanner: AST-based extraction of `app.get/post/put/delete/use` and `Router` patterns
-- [ ] Fastify scanner: extract route registrations with inline schemas
-- [ ] NestJS scanner: extract `@Controller`, `@Get/@Post/@Put/@Delete` decorators, `@UseGuards`
-- [ ] Extract handler file + line number for provenance
-- [ ] `tusq scan` command wiring
+### M3: Homepage Component (~0.5 day)
+- [ ] Create custom homepage component at `website/src/pages/index.tsx`
+- [ ] Migrate hero section (eyebrow, headline, lede, CTA)
+- [ ] Migrate feature cards (What it does / ships / matters)
+- [ ] Migrate workflow steps section
+- [ ] Migrate V1 surface grid
+- [ ] Update CTAs to point to docs (Getting Started) instead of README.md
 
-### M3: Schema & Auth Inference (Est. ~2 days)
-- [ ] TypeScript type extraction from handler parameters and return types
-- [ ] Zod schema detection and extraction
-- [ ] Fastify JSON Schema extraction
-- [ ] Auth middleware detection heuristics (pattern matching on common names)
-- [ ] Side-effect classification (method-based + naming heuristics)
-- [ ] Confidence scoring for each inference
+### M4: Documentation Pages (~1 day)
+- [ ] Create docs sidebar structure in `sidebars.ts`
+- [ ] Write Getting Started page (install + 6-command workflow)
+- [ ] Write CLI Reference page (all 8 commands, flags, exit codes)
+- [ ] Write Manifest Format page (capability fields, schema, examples)
+- [ ] Write Configuration page (tusq.config.json reference)
+- [ ] Write Supported Frameworks page (Express, Fastify, NestJS)
+- [ ] Write MCP Server page (describe-only behavior, tools/list, tools/call)
+- [ ] Write FAQ page (from MESSAGING.md claims/non-claims)
 
-### M4: Manifest Generation (Est. ~1 day)
-- [ ] Define `tusq.manifest.json` schema (JSON Schema for the manifest itself)
-- [ ] Capability mapping logic (1 route = 1 capability, with automatic domain grouping by resource/controller)
-- [ ] Merge logic: preserve approvals on re-generation
-- [ ] `tusq manifest` command wiring
-- [ ] `tusq review` command (stdout summary, JSON mode)
+### M5: Blog Setup (~0.5 day)
+- [ ] Configure Docusaurus blog plugin (already built-in)
+- [ ] Adapt ANNOUNCEMENT.md into a blog post with proper frontmatter
+- [ ] Adapt RELEASE_NOTES.md into a blog post with proper frontmatter
+- [ ] Verify blog index and RSS feed generation
 
-### M5: Tool Compilation (Est. ~1 day)
-- [ ] Tool definition format (JSON Schema-based tool descriptions)
-- [ ] Compile only approved capabilities
-- [ ] `tusq compile` and `--dry-run` support
-- [ ] Output to `tusq-tools/` directory
+### M6: Navigation, 404, and Polish (~0.5 day)
+- [ ] Configure top navbar: Docs, Blog, GitHub
+- [ ] Verify docs sidebar ordering and grouping
+- [ ] Create custom 404 page (adapt from `websites/404.html`)
+- [ ] Add SEO metadata (Open Graph, descriptions) to all pages
+- [ ] Run broken-link checker (built into Docusaurus build)
 
-### M6: Local MCP Server (Est. ~1-2 days)
-- [ ] MCP server using `@modelcontextprotocol/sdk` or equivalent
-- [ ] `tools/list` — return compiled tool inventory
-- [ ] `tools/call` — describe-only in V1 (returns tool schema + example payload; live API proxy deferred to V1.1)
-- [ ] `tusq serve` command wiring with `--port`
-- [ ] Clean shutdown on SIGINT
-
-### M7: Integration Testing & Polish (Est. ~1-2 days)
-- [ ] Test against a sample Express app
-- [ ] Test against a sample Fastify app
-- [ ] Test against a sample NestJS app
-- [ ] Error message quality pass
-- [ ] Help text accuracy for all commands
-- [ ] README update with quickstart
-
-## Post-V1 Roadmap (Reference Only)
-
-### V1.1 — Fast Follows
-- Live API proxy mode in `tusq serve` (forward tool calls to running API — proves executable capability delivery)
-- Monorepo support (multiple scan roots)
-- Intelligent cross-resource capability merging (composite capabilities from multiple routes)
-- Interactive approval TUI for `tusq review`
-- Zod-to-JSON-Schema improvements
-
-### V2 — Adoption & Migration (includes deferred core pillar: Runtime Learning)
-- **Runtime learning** (core pillar) — runtime instrumentation middleware, payload observation, production signal capture. This is the mechanism by which the manifest improves over time based on real usage, not just static analysis. It is a foundational pillar of the tusq.dev vision, deferred from V1 to keep the first release disciplined.
-- Eval/regression test generation
-- Migration and rollout tooling
-- Python framework support (FastAPI, Django)
-- Plugin API for custom framework detectors
-
-### V3 — Moat
-- Advanced runtime learning loop (refine schemas, tool boundaries, and skills from production observations)
-- Competitive transition intelligence
-- Automated manifest improvement proposals
-- Advanced governance workflows
+### M7: Product Truth Audit (~0.5 day)
+- [ ] Review every page against MESSAGING.md "Product Truth" section
+- [ ] Review every page against MESSAGING.md "Claims We Must Not Make"
+- [ ] Verify framework support is mentioned on homepage and in docs
+- [ ] Verify MCP describe-only is clearly stated wherever serve is mentioned
+- [ ] Verify no deferred features (runtime learning, plugin API, etc.) are presented as current
 
 ## Key Risks
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| AST parsing fragility across JS/TS variants | Scanner misses routes or crashes | Use established parsers (ts-morph); test against real-world codebases |
-| MCP spec instability | Server incompatible with clients | Pin to specific MCP version; abstract protocol layer |
-| Scope creep into V2 features | V1 never ships | PM signoff gates scope; out-of-scope list is explicit |
-| Framework detection false positives | Wrong scanner runs, garbage output | Auto-detect with manual override (`--framework`) |
+| Content drift from product truth | Overclaiming damages credibility | M7 audit against MESSAGING.md; PM review before merge |
+| Docusaurus version/config issues | Build failures | Pin to latest stable 3.x; use default plugins only |
+| Brand inconsistency with current site | Jarring visual transition | Migrate exact colors/fonts from existing CSS |
+| Docs become stale as CLI evolves | User confusion | Docs are derived from spec; updating spec triggers doc update |
