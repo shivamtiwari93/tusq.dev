@@ -76,3 +76,14 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn d5889123 — product_marketing (launch)
+
+- **Status:** completed
+- **Summary:** Replaced placeholder launch artifacts with V1-accurate messaging and aligned README/homepage copy to the verified tusq.dev v0.1.0 story.
+- **Decision DEC-017:** Rejected the assumption implied by the prior QA ship verdict that launch readiness followed automatically; the required launch artifacts were still placeholders and public-facing entry points overstated V1.
+- **Decision DEC-018:** Positioned tusq.dev v0.1.0 as an open-source capability compiler CLI for Express, Fastify, and NestJS that delivers scan, manifest, approval, compile, review, and describe-only MCP serve.
+- **Decision DEC-019:** Aligned the four required launch artifacts plus the README and homepage around explicit defendable claims and non-claims.
+- **Proposed next:** human
+
+---
+

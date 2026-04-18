@@ -4,6 +4,24 @@ tusq.dev is the open-source engine that turns an existing SaaS codebase into gov
 
 It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want to expose that product through AI-native interfaces without rebuilding the entire stack.
 
+## Current shipped surface in v0.1.0
+
+`tusq.dev v0.1.0` currently ships a narrow, verified CLI workflow for supported Node.js backends:
+
+- `tusq init`
+- `tusq scan`
+- `tusq manifest`
+- `tusq compile`
+- `tusq review`
+- `tusq serve`
+
+Current V1 boundaries:
+
+- Supported frameworks: Express, Fastify, NestJS
+- Approval flow: edit `tusq.manifest.json` directly and set `approved: true`
+- MCP behavior: describe-only in V1; `tools/call` returns schema and example payloads, not live API execution
+- Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
+
 At its core, tusq.dev discovers what a product can actually do, models those capabilities in a reviewable manifest, compiles them into tools and higher-level skills or domain agents, and exposes them through self-hostable runtimes such as MCP and embedded assistants.
 
 ## Why tusq.dev exists

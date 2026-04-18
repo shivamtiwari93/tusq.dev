@@ -2,12 +2,12 @@
   "schema_version": "1.1",
   "run_id": "run_b051581c8a050df6",
   "project_id": "tusq-dev",
-  "status": "active",
+  "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:d2673e9e0babf7569dc7b2c324f2dacafc2708b1",
+  "accepted_integration_ref": "git:9f60448d87dadbf1d0f4f86d03d12ae5890e953a",
   "active_turns": {},
-  "turn_sequence": 15,
-  "last_completed_turn_id": "turn_043d08d995070cfa",
+  "turn_sequence": 17,
+  "last_completed_turn_id": "turn_d5889123010de953",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -17,7 +17,8 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed"
+    "qa_ship_verdict": "passed",
+    "launch_ready": "passed"
   },
   "budget_reservations": {},
   "budget_status": {
@@ -38,5 +39,6 @@
   "delegation_queue": [],
   "next_recommended_role": null,
   "pending_delegation_review": null,
-  "pending_phase_transition": null
+  "pending_phase_transition": null,
+  "completed_at": "2026-04-18T05:06:10.054Z"
 }

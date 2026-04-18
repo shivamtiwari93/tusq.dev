@@ -6,7 +6,7 @@
     <title>tusq.dev</title>
     <meta
       name="description"
-      content="tusq.dev is the open-source capability compiler that turns existing SaaS product logic into governed, AI-callable tools, skills, and MCP surfaces."
+      content="tusq.dev v0.1.0 is the open-source capability compiler CLI that turns supported Node.js SaaS routes into reviewable manifests, approved tool definitions, and a local describe-only MCP surface."
     >
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,12 +29,13 @@
 
       <main>
         <section class="hero">
-          <p class="eyebrow">Open-source engine</p>
-          <h1>Turn a SaaS codebase into governed AI-callable capabilities.</h1>
+          <p class="eyebrow">Open-source CLI</p>
+          <h1>Turn a supported Node.js SaaS backend into a reviewed MCP-ready capability surface.</h1>
           <p class="lede">
-            tusq.dev reads the product logic you already own, compiles it into
-            reviewable capabilities, and emits strict tools, domain skills, MCP
-            surfaces, and local AI-native interfaces without demanding a rewrite.
+            tusq.dev v0.1.0 scans Express, Fastify, and NestJS codebases,
+            generates a reviewable <code>tusq.manifest.json</code>, compiles
+            approved capabilities into strict JSON tool definitions, and serves
+            them through a local describe-only MCP endpoint.
           </p>
           <div class="hero-actions">
             <a class="button primary" href="../README.md">Read the README</a>
@@ -45,17 +46,17 @@
           <article class="card">
             <h2>What it does</h2>
             <p>
-              It discovers routes, handlers, schemas, auth models, and runtime
-              behavior, then converts that product logic into a capability
-              manifest your team can review and ship.
+              It discovers supported API routes and auth hints from code, then
+              converts that output into a capability manifest your team can
+              inspect before exposing anything.
             </p>
           </article>
           <article class="card">
             <h2>What it ships</h2>
             <p>
-              From the manifest, tusq.dev compiles strict tools, domain skills,
-              local runtimes, MCP servers, and assistant surfaces that stay
-              grounded in the real product rather than prompt glue.
+              From the manifest, tusq.dev compiles approved capabilities into
+              JSON tool definitions and serves them through a local MCP surface.
+              V1 is describe-only, not live execution.
             </p>
           </article>
           <article class="card">
@@ -73,26 +74,26 @@
             <h2>Codebase in. Capability surface out.</h2>
           </div>
           <ol class="steps">
-            <li>Connect a repo or monorepo.</li>
-            <li>Discover product capabilities from code, APIs, and schemas.</li>
+            <li>Run <code>tusq init</code> in a supported repo.</li>
+            <li>Scan routes with <code>tusq scan .</code>.</li>
             <li>Review the generated <code>tusq.manifest.json</code>.</li>
-            <li>Compile tools and domain skills.</li>
-            <li>Run locally or expose through MCP.</li>
+            <li>Approve capabilities in the manifest, then compile.</li>
+            <li>Serve compiled tools over a local describe-only MCP endpoint.</li>
           </ol>
         </section>
 
         <section class="surface" id="surface">
-          <p class="eyebrow">Transition surface</p>
-          <h2>More than tool generation.</h2>
+          <p class="eyebrow">Current V1 surface</p>
+          <h2>What ships in v0.1.0.</h2>
           <div class="surface-grid">
-            <div class="surface-item">Capability discovery</div>
-            <div class="surface-item">Auth and permission mapping</div>
-            <div class="surface-item">Schema and sensitivity inference</div>
-            <div class="surface-item">Governed tool compilation</div>
-            <div class="surface-item">Skill and agent composition</div>
-            <div class="surface-item">MCP and interface generation</div>
-            <div class="surface-item">Evals and regressions</div>
-            <div class="surface-item">Migration and rollout tooling</div>
+            <div class="surface-item">Express support</div>
+            <div class="surface-item">Fastify support</div>
+            <div class="surface-item">NestJS support</div>
+            <div class="surface-item">Route discovery</div>
+            <div class="surface-item">Manifest generation</div>
+            <div class="surface-item">Manual approval flow</div>
+            <div class="surface-item">Approved tool compilation</div>
+            <div class="surface-item">Describe-only MCP serve</div>
           </div>
         </section>
       </main>
