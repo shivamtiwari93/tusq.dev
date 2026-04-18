@@ -4,10 +4,10 @@
   "project_id": "tusq-dev",
   "status": "active",
   "phase": "implementation",
-  "accepted_integration_ref": "git:c94f8162713ff79901f13fcd9f4b09c4ec9ec5d1",
+  "accepted_integration_ref": "git:50c2846d04a172eab9a5fda997d35c7bd3dc6ebe",
   "active_turns": {},
-  "turn_sequence": 6,
-  "last_completed_turn_id": "turn_dcf6dfa2bc4a256b",
+  "turn_sequence": 12,
+  "last_completed_turn_id": "turn_f0eb39bc36682efb",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -15,10 +15,24 @@
   "pending_run_completion": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
-  "last_gate_failure": null,
+  "last_gate_failure": {
+    "gate_type": "phase_transition",
+    "gate_id": "implementation_complete",
+    "phase": "implementation",
+    "from_phase": "implementation",
+    "to_phase": "qa",
+    "requested_by_turn": "turn_f0eb39bc36682efb",
+    "failed_at": "2026-04-18T17:51:36.090Z",
+    "queued_request": false,
+    "reasons": [
+      ".planning/IMPLEMENTATION_NOTES.md must define ## Changes before implementation can exit."
+    ],
+    "missing_files": [],
+    "missing_verification": false
+  },
   "phase_gate_status": {
     "planning_signoff": "passed",
-    "implementation_complete": "pending",
+    "implementation_complete": "failed",
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
@@ -39,14 +53,14 @@
   "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": null,
+  "next_recommended_role": "qa",
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_dcf6dfa2bc4a256b",
-    "role": "pm",
-    "phase": "planning",
-    "checkpoint_sha": "5fba2d93431cc2bf9e84b8dc55105d553ffd721e",
-    "checkpointed_at": "2026-04-18T17:39:15.409Z",
+    "turn_id": "turn_3dbd2dc89d05c899",
+    "role": "dev",
+    "phase": "implementation",
+    "checkpoint_sha": "50c2846d04a172eab9a5fda997d35c7bd3dc6ebe",
+    "checkpointed_at": "2026-04-18T17:47:56.468Z",
     "intent_id": null
   }
 }

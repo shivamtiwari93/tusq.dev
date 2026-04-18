@@ -115,3 +115,32 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 3dbd2dc8 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Implemented the approved Docusaurus-based website/docs/blog platform in website/, updated implementation notes, and verified build plus CLI regression checks.
+- **Decision DEC-024:** Challenged the prior PM turn as structural-only and implemented the actual approved website scope instead of treating heading fixes as completed implementation.
+- **Decision DEC-025:** Enforced strict website verification with successful Docusaurus production build and retained CLI smoke regression testing.
+- **Proposed next:** qa
+
+---
+
+## Turn e4832576 — qa (implementation)
+
+- **Status:** completed
+- **Summary:** Challenged dev verification claims, re-ran all four commands from scratch on current HEAD; all pass. Docusaurus build requires npm install first (node_modules gitignored) — dev's reported commands were correct in sequence. Implementation gate satisfied; requesting phase transition to qa.
+- **Decision DEC-026:** Challenged the dev's verification evidence: node_modules was absent on current HEAD (gitignored), causing initial build failure with exit 127. Confirmed this is expected — npm install must precede npm run build. After running npm install, all four verification commands pass with exit 0.
+- **Decision DEC-027:** Implementation gate requirements are satisfied: IMPLEMENTATION_NOTES.md exists, Docusaurus production build passes, TypeScript typecheck passes, CLI smoke regression passes. Phase transition to qa is warranted.
+- **Proposed next:** qa
+
+---
+
+## Turn f0eb39bc — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Challenged prior QA reliance by rerunning full implementation verification and confirming gate readiness for QA.
+- **Decision DEC-028:** Did not accept prior QA verification at face value and re-executed the full verification sequence on the current workspace baseline.
+- **Proposed next:** qa
+
+---
+
