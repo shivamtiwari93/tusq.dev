@@ -1,0 +1,14 @@
+{
+  "name": "tusq",
+  "version": "0.1.0",
+  "description": "tusq.dev capability compiler CLI",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "bin": {
+    "tusq": "bin/tusq.js"
+  },
+  "scripts": {
+    "test": "node tests/smoke.mjs"
+  }
+}

@@ -56,3 +56,13 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn e542ec95 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Revalidated implementation on the updated baseline, closed CLI flag-surface gaps, and passed smoke verification.
+- **Decision DEC-013:** Rejected prior attempt assumptions and revalidated against current HEAD after operator baseline drift before claiming readiness.
+- **Decision DEC-014:** Aligned CLI behavior with planned command surface by accepting `--verbose` across commands and printing command help on invalid flags.
+- **Proposed next:** qa
+
+---
+

@@ -2,66 +2,30 @@
   "schema_version": "1.1",
   "run_id": "run_b051581c8a050df6",
   "project_id": "tusq-dev",
-  "status": "blocked",
-  "phase": "implementation",
-  "accepted_integration_ref": "git:c012dcef2ed5d56837919a58f6915f36305c0fa9",
-  "active_turns": {
-    "turn_e542ec950f690160": {
-      "turn_id": "turn_e542ec950f690160",
-      "assigned_role": "dev",
-      "status": "running",
-      "attempt": 1,
-      "started_at": "2026-04-18T04:28:28.596Z",
-      "deadline_at": "2026-04-18T04:48:28.596Z",
-      "runtime_id": "local-dev",
-      "baseline": {
-        "kind": "git_worktree",
-        "head_ref": "dab525820137f42cce5a4786dd6140a5c47b40d6",
-        "clean": true,
-        "captured_at": "2026-04-18T04:28:28.476Z",
-        "dirty_snapshot": {}
-      },
-      "assigned_sequence": 12,
-      "concurrent_with": []
-    }
-  },
-  "turn_sequence": 12,
-  "last_completed_turn_id": "turn_5008de0a50936226",
-  "blocked_on": "dispatch:subprocess_failed",
-  "blocked_reason": {
-    "category": "dispatch_error",
-    "recovery": {
-      "typed_reason": "dispatch_error",
-      "owner": "human",
-      "recovery_action": "Resolve the dispatch issue, then run agentxchain step --resume",
-      "turn_retained": true,
-      "detail": "Subprocess error: spawn codex ENOENT"
-    },
-    "blocked_at": "2026-04-18T04:28:28.660Z",
-    "turn_id": "turn_e542ec950f690160"
-  },
+  "status": "active",
+  "phase": "qa",
+  "accepted_integration_ref": "git:ca9b022ae12923de0506962c828a3e6b24c20160",
+  "active_turns": {},
+  "turn_sequence": 13,
+  "last_completed_turn_id": "turn_e542ec950f690160",
+  "blocked_on": null,
+  "blocked_reason": null,
   "escalation": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
     "planning_signoff": "passed",
-    "implementation_complete": "pending",
+    "implementation_complete": "passed",
     "qa_ship_verdict": "pending"
   },
-  "budget_reservations": {
-    "turn_e542ec950f690160": {
-      "reserved_usd": 2,
-      "role_id": "dev",
-      "created_at": "2026-04-18T04:28:28.392Z"
-    }
-  },
+  "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
   "created_at": "2026-04-17T19:53:59.663Z",
-  "phase_entered_at": "2026-04-18T04:27:45.324Z",
+  "phase_entered_at": "2026-04-18T04:46:02.558Z",
   "provenance": {
     "trigger": "manual",
     "parent_run_id": null,
@@ -72,7 +36,7 @@
   "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": null,
+  "next_recommended_role": "qa",
   "pending_delegation_review": null,
   "pending_phase_transition": null
 }
