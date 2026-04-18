@@ -1,0 +1,6 @@
+{
+  "intent_id": "intent_1776473633943_0543",
+  "priority": "p0",
+  "description": "Revise planning docs to align more tightly with VISION.md. Keep V1 narrow, but change the plan so V1 includes minimal domain grouping instead of cutting skill composition entirely. Clarify whether tusq serve proves callable execution or only describe-only MCP, and make that wording explicit and honest. Add explicit language that runtime learning is a deferred core pillar, not just a normal omitted feature.",
+  "injected_at": "2026-04-18T00:53:53.943Z"
+}

@@ -4,10 +4,10 @@
   "project_id": "tusq-dev",
   "status": "active",
   "phase": "planning",
-  "accepted_integration_ref": null,
+  "accepted_integration_ref": "git:d7310af308a37f888375feaa8731cde6e7b6ef47",
   "active_turns": {},
-  "turn_sequence": 1,
-  "last_completed_turn_id": null,
+  "turn_sequence": 3,
+  "last_completed_turn_id": "turn_5bcc56d876e10a47",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -35,5 +35,7 @@
   },
   "inherited_context": null,
   "repo_decisions": null,
-  "delegation_queue": []
+  "delegation_queue": [],
+  "next_recommended_role": null,
+  "pending_delegation_review": null
 }
