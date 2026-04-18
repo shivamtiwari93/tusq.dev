@@ -4,34 +4,10 @@
   "project_id": "tusq-dev",
   "status": "active",
   "phase": "planning",
-  "accepted_integration_ref": null,
-  "active_turns": {
-    "turn_dea70b614c984d30": {
-      "turn_id": "turn_dea70b614c984d30",
-      "assigned_role": "pm",
-      "status": "failed_acceptance",
-      "attempt": 1,
-      "started_at": "2026-04-18T05:25:09.618Z",
-      "deadline_at": "2026-04-18T05:45:09.618Z",
-      "runtime_id": "local-pm",
-      "baseline": {
-        "kind": "git_worktree",
-        "head_ref": "8f465c13d50a9839914bf384a327615b25ab3d47",
-        "clean": true,
-        "captured_at": "2026-04-18T05:25:09.464Z",
-        "dirty_snapshot": {
-          ".agentxchain/reports/export-run_c8a4701ce0d4952d.json": "sha256:2b16e35023b02ce693baa9db04975bb9416da161ac85ce571e4d50f9b01d48db",
-          ".agentxchain/reports/report-run_c8a4701ce0d4952d.md": "sha256:39886b2cebc6796db53e955a98ccbfed21af8ce99434c8eec9d33d778ad50bd9"
-        }
-      },
-      "assigned_sequence": 1,
-      "concurrent_with": [],
-      "failed_at": "2026-04-18T06:08:09.749Z",
-      "failure_reason": "Validation failed at stage protocol: proposed_next_role \"dev\" is not in the allowed_next_roles for phase \"planning\": [pm, product_marketing, eng_director, human]."
-    }
-  },
-  "turn_sequence": 1,
-  "last_completed_turn_id": null,
+  "accepted_integration_ref": "git:dbe612dcb274d5d4a3e7c2c7a4732ea97f250ec9",
+  "active_turns": {},
+  "turn_sequence": 2,
+  "last_completed_turn_id": "turn_dea70b614c984d30",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -46,13 +22,7 @@
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
-  "budget_reservations": {
-    "turn_dea70b614c984d30": {
-      "reserved_usd": 2,
-      "role_id": "pm",
-      "created_at": "2026-04-18T05:25:09.381Z"
-    }
-  },
+  "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
@@ -68,5 +38,7 @@
   },
   "inherited_context": null,
   "repo_decisions": null,
-  "delegation_queue": []
+  "delegation_queue": [],
+  "next_recommended_role": null,
+  "pending_delegation_review": null
 }

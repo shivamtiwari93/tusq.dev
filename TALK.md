@@ -87,3 +87,13 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn dea70b61 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Reviewed all 4 planning artifacts for Docusaurus docs/website platform. PM_SIGNOFF is Approved: YES. Scope, acceptance criteria, and content architecture are sound. Requesting human approval to pass planning_signoff gate and transition to implementation.
+- **Decision DEC-020:** Planning artifacts are complete and internally consistent. Phase transition to implementation requires human approval per the planning_signoff gate.
+- **Decision DEC-021:** Fixed routing from attempt 1: proposed_next_role must be from allowed set [pm, product_marketing, eng_director, human]. Using 'human' since planning_signoff gate requires human approval.
+- **Proposed next:** human
+
+---
+
