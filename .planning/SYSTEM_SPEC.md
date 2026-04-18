@@ -120,6 +120,40 @@ website/
 - Docs content is derived from accepted planning artifacts but written in user-facing language (not internal planning jargon)
 - Blog posts are adapted from launch artifacts, not copy-pasted
 
+## Interface
+
+The tusq.dev docs platform exposes three user-facing interfaces:
+
+### CLI Interface (Build Commands)
+
+Developers interact with the Docusaurus site through standard npm scripts in the `website/` directory:
+
+| Command | Description | Output |
+|---------|-------------|--------|
+| `npm install` | Install all Docusaurus dependencies | `node_modules/` |
+| `npm start` | Launch local dev server with hot reload | Dev server on `http://localhost:3000` |
+| `npm run build` | Build static site for production | Static files in `website/build/` |
+| `npm run serve` | Serve the production build locally | Local server on `http://localhost:3000` |
+
+All commands run from the `website/` working directory. No global CLI is required.
+
+### Web Interface (Site Navigation)
+
+Users navigate the site through:
+
+- **Top navbar:** tusq.dev brand (→ homepage), Docs (→ `/docs/getting-started`), Blog (→ `/blog`), GitHub (→ external repo)
+- **Docs sidebar:** Grouped by Getting Started, Reference (CLI Reference, Manifest Format, Configuration), Guides (Supported Frameworks, MCP Server), Help (FAQ)
+- **Blog index:** Chronological list of posts with RSS feed
+
+### Content Interface (Authoring)
+
+Content authors interact with Docusaurus via:
+
+- **Docs:** Markdown files in `website/docs/` with YAML frontmatter (`title`, `sidebar_label`, `sidebar_position`)
+- **Blog:** Markdown files in `website/blog/` with date-prefixed filenames and author frontmatter
+- **Homepage:** React component in `website/src/pages/index.tsx`
+- **Config:** `docusaurus.config.ts` for site metadata, navbar, footer, and plugin settings
+
 ## Acceptance Tests
 
 ### Setup

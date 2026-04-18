@@ -1,5 +1,78 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+## Primary Commands
+
+All commands execute from the `website/` working directory.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `npm install` | Install Docusaurus and all dependencies | Dependencies resolved, `node_modules/` populated |
+| `npm start` | Start local dev server with hot reload on port 3000 | Server running, site accessible at `http://localhost:3000` |
+| `npm run build` | Produce static site in `website/build/` | All pages rendered, no broken links, zero errors |
+| `npm run serve` | Serve the production build locally for verification | Built site accessible at `http://localhost:3000` |
+
+### Content authoring commands
+
+| Command | Purpose |
+|---------|---------|
+| Create `.md` file in `docs/` | Add a new documentation page |
+| Create date-prefixed `.md` file in `blog/` | Add a new blog post |
+| Edit `docusaurus.config.ts` | Modify site metadata, navbar, footer |
+| Edit `sidebars.ts` | Modify docs sidebar structure |
+
+## Flags And Options
+
+### `npm run build`
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--locale` | Build for a specific locale | `en` (only locale in V1) |
+| `--out-dir` | Override output directory | `build/` |
+
+### `npm start`
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--port` | Dev server port | `3000` |
+| `--host` | Dev server host binding | `localhost` |
+| `--no-open` | Don't auto-open browser | Opens by default |
+
+### `docusaurus.config.ts` key options
+
+| Field | Purpose | V1 Value |
+|-------|---------|----------|
+| `title` | Site title in `<title>` and navbar | `tusq.dev` |
+| `tagline` | Subtitle used in homepage meta | From MESSAGING.md one-liner |
+| `url` | Production URL | TBD (human decision) |
+| `baseUrl` | Base path | `/` |
+| `onBrokenLinks` | Behavior on broken links | `throw` (fail build) |
+| `onBrokenMarkdownLinks` | Behavior on broken MD links | `throw` |
+
+## Failure UX
+
+### Build failures
+
+| Failure | Cause | User sees |
+|---------|-------|-----------|
+| Broken link | Internal link target does not exist | `npm run build` exits non-zero with error listing the broken link path and source file |
+| Missing frontmatter | Doc page missing required `title` field | Build error with file path and missing field name |
+| Syntax error in config | Invalid `docusaurus.config.ts` | Node.js error with stack trace pointing to config file |
+| Missing dependency | `npm install` not run or failed | Module-not-found error with package name |
+
+### Dev server failures
+
+| Failure | Cause | User sees |
+|---------|-------|-----------|
+| Port conflict | Port 3000 already in use | Error message suggesting `--port` flag |
+| Invalid MDX | Malformed JSX in `.md` file | Hot-reload error overlay in browser with file path and line number |
+
+### Content failures
+
+| Failure | Cause | User sees |
+|---------|-------|-----------|
+| 404 page | Unknown route | Custom 404 page with link back to homepage |
+| Missing sidebar entry | Doc exists but not in `sidebars.ts` | Page accessible by direct URL but not in sidebar navigation |
+
 ## Navigation Structure
 
 ### Top Navbar
