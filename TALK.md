@@ -106,3 +106,12 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn dcf6dfa2 — pm (planning)
+
+- **Status:** completed
+- **Summary:** Fixed planning gate failure by adding required ## Interface section to SYSTEM_SPEC.md and ## Primary Commands, ## Flags And Options, ## Failure UX sections to command-surface.md. All 4 planning artifacts now satisfy structural gate requirements.
+- **Decision DEC-023:** Added missing gate-required sections to SYSTEM_SPEC.md and command-surface.md to satisfy the planning_signoff structural checks.
+- **Proposed next:** human
+
+---
+

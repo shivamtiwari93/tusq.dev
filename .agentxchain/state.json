@@ -3,11 +3,11 @@
   "run_id": "run_c8a4701ce0d4952d",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "planning",
-  "accepted_integration_ref": "git:78661208627aa08f6918b731c81ff2ef4c113faa",
+  "phase": "implementation",
+  "accepted_integration_ref": "git:c94f8162713ff79901f13fcd9f4b09c4ec9ec5d1",
   "active_turns": {},
-  "turn_sequence": 4,
-  "last_completed_turn_id": "turn_54dfd5b29c7e1950",
+  "turn_sequence": 6,
+  "last_completed_turn_id": "turn_dcf6dfa2bc4a256b",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -15,24 +15,9 @@
   "pending_run_completion": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
-  "last_gate_failure": {
-    "gate_type": "phase_transition",
-    "gate_id": "planning_signoff",
-    "phase": "planning",
-    "from_phase": "planning",
-    "to_phase": "implementation",
-    "requested_by_turn": "turn_54dfd5b29c7e1950",
-    "failed_at": "2026-04-18T10:27:49.784Z",
-    "queued_request": false,
-    "reasons": [
-      ".planning/SYSTEM_SPEC.md must define ## Interface before planning can exit.",
-      ".planning/command-surface.md: Document must contain sections: ## Primary Commands, ## Flags And Options, ## Failure UX"
-    ],
-    "missing_files": [],
-    "missing_verification": false
-  },
+  "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "failed",
+    "planning_signoff": "passed",
     "implementation_complete": "pending",
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
@@ -43,7 +28,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-18T05:23:50.880Z",
-  "phase_entered_at": "2026-04-18T05:23:50.880Z",
+  "phase_entered_at": "2026-04-18T17:39:15.743Z",
   "provenance": {
     "trigger": "manual",
     "parent_run_id": null,
@@ -55,5 +40,13 @@
   "repo_decisions": null,
   "delegation_queue": [],
   "next_recommended_role": null,
-  "pending_delegation_review": null
+  "pending_delegation_review": null,
+  "last_completed_turn": {
+    "turn_id": "turn_dcf6dfa2bc4a256b",
+    "role": "pm",
+    "phase": "planning",
+    "checkpoint_sha": "5fba2d93431cc2bf9e84b8dc55105d553ffd721e",
+    "checkpointed_at": "2026-04-18T17:39:15.409Z",
+    "intent_id": null
+  }
 }
