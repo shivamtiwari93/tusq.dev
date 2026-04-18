@@ -110,6 +110,7 @@
       "entry_role": "pm",
       "allowed_next_roles": [
         "pm",
+        "dev",
         "product_marketing",
         "eng_director",
         "human"
