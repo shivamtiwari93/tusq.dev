@@ -67,6 +67,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 ### File contracts
 
 - `tusq.config.json` — project configuration (created by `tusq init`)
+- `.tusq/scan.json` — internal scan result (created by `tusq scan`, read by `tusq manifest`). Not a public contract; format may change between versions.
 - `tusq.manifest.json` — the canonical capability manifest (created by `tusq manifest`)
 - `tusq-tools/` — directory of compiled tool definitions (created by `tusq compile`)
 
@@ -91,13 +92,14 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 - Detects framework from package.json dependencies and file patterns
 - Parses route definitions using AST analysis (TypeScript/JavaScript)
 - Extracts: HTTP method, path, handler, middleware chain, type annotations
-- Produces an internal capability model (not user-facing directly)
+- Produces an internal capability model, saved to `.tusq/scan.json`
+- With `--format json`, prints the scan result to stdout for debugging/scripting (same data as `.tusq/scan.json`)
 - Warns on ambiguous or unsupported patterns (does not fail silently)
 - Exit 0 if scan completes (even with warnings), exit 1 if no routes found
 
 ### `tusq manifest`
 
-- Requires a prior scan (exits 1 with "No scan data found. Run `tusq scan` first." if missing)
+- Reads `.tusq/scan.json` (exits 1 with "No scan data found. Run `tusq scan` first." if missing)
 - Converts internal model to `tusq.manifest.json`
 - Each capability entry includes: name, description, method, path, input schema, output schema, side_effect_class (read/write/destructive), auth_hints, provenance (file + line), confidence score, approved (boolean, default false)
 - Marks uncertain inferences with `confidence < 0.8` and `review_needed: true`

@@ -27,3 +27,12 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 9f5d0072 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Fixed scan data persistence gap (added .tusq/scan.json file contract) and clarified --format json on scan. All planning artifacts are internally consistent and ready for human signoff.
+- **Decision DEC-008:** Scan data persists to .tusq/scan.json as an internal file contract between tusq scan and tusq manifest.
+- **Proposed next:** human
+
+---
+

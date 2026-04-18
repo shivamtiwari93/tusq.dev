@@ -31,6 +31,11 @@ The initial artifacts were filled with concrete scope, acceptance criteria, and 
 3. **No approval mechanism defined** — manifest had `approved: boolean` but no documented way to set it. Fixed: review behavior section now explicitly states users edit manifest JSON directly. Interactive approval TUI deferred to V1.1.
 4. **Missing error case** — "no scan data for manifest" was not in the error table. Added.
 
+### Attempt 3 Review (this turn — scan persistence gap)
+
+1. **Scan data location undefined** — SYSTEM_SPEC said scan produces "an internal capability model (not user-facing directly)" but never specified where it's stored. `tusq manifest` requires prior scan data but had no file to read. Fixed: scan writes to `.tusq/scan.json`, manifest reads from there.
+2. **`--format json` on scan contradicted "not user-facing"** — if `--format json` emits the scan result to stdout, it IS user-facing. Fixed: clarified that `--format json` prints scan result to stdout for debugging/scripting.
+
 ### Key Judgment Calls (unchanged)
 
 1. **Scope narrowed aggressively.** V1 is scoped to just the discovery-manifest-compile-serve pipeline for 3 Node.js frameworks. The vision is the destination, not the first release.
