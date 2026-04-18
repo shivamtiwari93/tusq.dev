@@ -26,6 +26,12 @@
       "write_authority": "authoritative",
       "runtime": "local-qa"
     },
+    "product_marketing": {
+      "title": "Staff Product Marketing Manager",
+      "mandate": "Sharpen positioning, launch clarity, and market-facing narrative without drifting from product truth.",
+      "write_authority": "authoritative",
+      "runtime": "local-product-marketing"
+    },
     "eng_director": {
       "title": "Engineering Director",
       "mandate": "Resolve tactical deadlocks and enforce technical coherence.",
@@ -74,6 +80,18 @@
       "cwd": ".",
       "prompt_transport": "stdin"
     },
+    "local-product-marketing": {
+      "type": "local_cli",
+      "command": [
+        "codex",
+        "exec",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--model",
+        "gpt-5.4"
+      ],
+      "cwd": ".",
+      "prompt_transport": "stdin"
+    },
     "local-director": {
       "type": "local_cli",
       "command": [
@@ -92,6 +110,7 @@
       "entry_role": "pm",
       "allowed_next_roles": [
         "pm",
+        "product_marketing",
         "eng_director",
         "human"
       ],
@@ -102,6 +121,7 @@
       "allowed_next_roles": [
         "dev",
         "qa",
+        "product_marketing",
         "eng_director",
         "human"
       ],
@@ -112,10 +132,23 @@
       "allowed_next_roles": [
         "dev",
         "qa",
+        "product_marketing",
         "eng_director",
         "human"
       ],
       "exit_gate": "qa_ship_verdict"
+    },
+    "launch": {
+      "entry_role": "product_marketing",
+      "allowed_next_roles": [
+        "product_marketing",
+        "dev",
+        "qa",
+        "pm",
+        "eng_director",
+        "human"
+      ],
+      "exit_gate": "launch_ready"
     }
   },
   "gates": {
@@ -140,6 +173,145 @@
         ".planning/RELEASE_NOTES.md"
       ],
       "requires_human_approval": true
+    },
+    "launch_ready": {
+      "requires_files": [
+        ".planning/MESSAGING.md",
+        ".planning/LAUNCH_PLAN.md",
+        ".planning/CONTENT_CALENDAR.md",
+        ".planning/ANNOUNCEMENT.md"
+      ]
+    }
+  },
+  "workflow_kit": {
+    "phases": {
+      "planning": {
+        "artifacts": [
+          {
+            "path": ".planning/PM_SIGNOFF.md",
+            "semantics": "pm_signoff",
+            "required": true,
+            "owned_by": "pm"
+          },
+          {
+            "path": ".planning/ROADMAP.md",
+            "semantics": null,
+            "required": true,
+            "owned_by": "pm"
+          },
+          {
+            "path": ".planning/SYSTEM_SPEC.md",
+            "semantics": "system_spec",
+            "required": true,
+            "owned_by": "pm"
+          },
+          {
+            "path": ".planning/command-surface.md",
+            "semantics": "section_check",
+            "required": true,
+            "owned_by": "pm",
+            "semantics_config": {
+              "required_sections": [
+                "## Primary Commands",
+                "## Flags And Options",
+                "## Failure UX"
+              ]
+            }
+          }
+        ]
+      },
+      "implementation": {
+        "artifacts": [
+          {
+            "path": ".planning/IMPLEMENTATION_NOTES.md",
+            "semantics": "implementation_notes",
+            "required": true,
+            "owned_by": "dev"
+          }
+        ]
+      },
+      "qa": {
+        "artifacts": [
+          {
+            "path": ".planning/acceptance-matrix.md",
+            "semantics": "acceptance_matrix",
+            "required": true,
+            "owned_by": "qa"
+          },
+          {
+            "path": ".planning/ship-verdict.md",
+            "semantics": "ship_verdict",
+            "required": true,
+            "owned_by": "qa"
+          },
+          {
+            "path": ".planning/RELEASE_NOTES.md",
+            "semantics": "release_notes",
+            "required": true,
+            "owned_by": "qa"
+          }
+        ]
+      },
+      "launch": {
+        "artifacts": [
+          {
+            "path": ".planning/MESSAGING.md",
+            "semantics": "section_check",
+            "required": true,
+            "owned_by": "product_marketing",
+            "semantics_config": {
+              "required_sections": [
+                "## Audience",
+                "## Positioning",
+                "## Product Truth",
+                "## Claims We Can Defend",
+                "## Claims We Must Not Make"
+              ]
+            }
+          },
+          {
+            "path": ".planning/LAUNCH_PLAN.md",
+            "semantics": "section_check",
+            "required": true,
+            "owned_by": "product_marketing",
+            "semantics_config": {
+              "required_sections": [
+                "## Launch Goals",
+                "## Required Assets",
+                "## Dependencies",
+                "## Risks"
+              ]
+            }
+          },
+          {
+            "path": ".planning/CONTENT_CALENDAR.md",
+            "semantics": "section_check",
+            "required": true,
+            "owned_by": "product_marketing",
+            "semantics_config": {
+              "required_sections": [
+                "## Launch Day",
+                "## Week 1",
+                "## Follow-ups"
+              ]
+            }
+          },
+          {
+            "path": ".planning/ANNOUNCEMENT.md",
+            "semantics": "section_check",
+            "required": true,
+            "owned_by": "product_marketing",
+            "semantics_config": {
+              "required_sections": [
+                "## Headline",
+                "## Product Summary",
+                "## Blog Draft",
+                "## Social Copy"
+              ]
+            }
+          }
+        ]
+      }
     }
   },
   "budget": {
@@ -155,6 +327,7 @@
     "pm": ".agentxchain/prompts/pm.md",
     "dev": ".agentxchain/prompts/dev.md",
     "qa": ".agentxchain/prompts/qa.md",
+    "product_marketing": ".agentxchain/prompts/product_marketing.md",
     "eng_director": ".agentxchain/prompts/eng_director.md"
   },
   "rules": {
