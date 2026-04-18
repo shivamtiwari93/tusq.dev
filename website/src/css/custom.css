@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+  --tusq-bg: #f5efe3;
+  --tusq-paper: rgba(255, 252, 245, 0.84);
+  --tusq-ink: #1e1b18;
+  --tusq-muted: #665a4a;
+  --tusq-line: rgba(30, 27, 24, 0.14);
+  --tusq-accent: #cb4f2d;
+  --tusq-accent-deep: #8f2d16;
+  --tusq-forest: #2a4d45;
+
+  --ifm-color-primary: #cb4f2d;
+  --ifm-color-primary-dark: #b34729;
+  --ifm-color-primary-darker: #a84226;
+  --ifm-color-primary-darkest: #8b371f;
+  --ifm-color-primary-light: #d75d3d;
+  --ifm-color-primary-lighter: #db6649;
+  --ifm-color-primary-lightest: #e07a61;
+  --ifm-background-color: var(--tusq-bg);
+  --ifm-font-family-base: 'Space Grotesk', sans-serif;
+  --ifm-font-family-monospace: 'Space Grotesk', sans-serif;
+  --ifm-heading-font-family: 'Fraunces', serif;
+  --ifm-code-font-size: 95%;
+  --ifm-navbar-background-color: rgba(255, 252, 245, 0.9);
+  --ifm-footer-background-color: #1f1915;
+  --ifm-link-color: #8f2d16;
+  --ifm-menu-color-active: #8f2d16;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--tusq-ink);
+  background:
+    radial-gradient(circle at top left, rgba(203, 79, 45, 0.18), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(42, 77, 69, 0.18), transparent 32%),
+    linear-gradient(135deg, #f8f2e7 0%, #efe5d4 48%, #e7d8c0 100%);
+}
+
+a {
+  text-underline-offset: 2px;
+}
+
+code {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(42, 77, 69, 0.1);
+  color: var(--tusq-forest);
+  border: 1px solid rgba(42, 77, 69, 0.2);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--tusq-line);
+  backdrop-filter: blur(10px);
+}
+
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.theme-doc-markdown,
+.container {
+  max-width: 1100px;
+}
+
+.theme-doc-markdown h1,
+.theme-doc-markdown h2,
+.theme-doc-markdown h3 {
+  font-family: 'Fraunces', serif;
+}

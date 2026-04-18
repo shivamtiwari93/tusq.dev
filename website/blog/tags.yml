@@ -1,0 +1,24 @@
+launch:
+  label: Launch
+  permalink: /launch
+  description: Launch announcements and release communication.
+
+oss:
+  label: Open Source
+  permalink: /open-source
+  description: Notes about open-source development and governance.
+
+mcp:
+  label: MCP
+  permalink: /mcp
+  description: MCP server and capability surface updates.
+
+release-notes:
+  label: Release Notes
+  permalink: /release-notes
+  description: Version-specific product updates.
+
+v0-1-0:
+  label: v0.1.0
+  permalink: /v0-1-0
+  description: The first public tusq.dev release.

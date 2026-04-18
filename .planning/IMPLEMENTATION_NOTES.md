@@ -1,65 +1,52 @@
-# Implementation Notes — tusq.dev
+# Implementation Notes — tusq.dev Docs & Website Platform
 
-## Changes
+## Challenge To Prior Turn
 
-- Challenged prior attempt as incomplete for this baseline: it did not account for post-dispatch operator drift (`agentxchain.json` runtime path fix and HUMAN_TASKS updates), so this attempt re-validated against current HEAD before verification.
-- Challenged prior command-surface compliance: `--verbose` was documented for all commands but only accepted on `init` and `scan`.
-- Implemented V1 Node CLI scaffold with executable `tusq` binary and commands:
-  - `init`, `scan`, `manifest`, `compile`, `serve`, `review`, `version`, `help`
-- Implemented framework detection for Express, Fastify, NestJS from `package.json` dependencies.
-- Implemented recursive static scanner that writes `.tusq/scan.json` and extracts route metadata with provenance:
-  - Express route patterns (`app/router.<method>`)
-  - Fastify route patterns (`fastify.<method>`, `fastify.route({ ... })`)
-  - NestJS controller/decorator patterns (`@Controller`, `@Get/@Post/...`, `@UseGuards`)
-- Implemented route-level inference outputs:
-  - auth hints
-  - schema hint presence
-  - confidence score
-  - domain grouping
-  - side-effect classification support for manifest generation
-- Implemented manifest generation (`tusq manifest`) with:
-  - explicit scan prerequisite (`No scan data found. Run \`tusq scan\` first.`)
-  - canonical capability fields per V1 spec
-  - approval merge behavior preserving existing `approved` decisions
-  - `review_needed` when confidence `< 0.8`
-- Implemented tool compilation (`tusq compile`) with:
-  - compile-only approved capabilities
-  - `--dry-run` preview mode
-  - tool JSON outputs in `tusq-tools/`
-- Implemented describe-only local server (`tusq serve`) with:
-  - port support via `--port`
-  - JSON-RPC style `tools/list` and `tools/call`
-  - schema/description/example return for `tools/call`
-  - SIGINT clean shutdown
-  - port-in-use handling
-- Implemented review flow (`tusq review`) with domain-grouped stdout summary and JSON mode.
-- Added command-level argument wrapper so invalid flag usage prints command help text before exiting.
-- Extended `--verbose` flag acceptance to `manifest`, `compile`, `serve`, and `review` to match planned surface.
-- Added fixture projects and automated smoke test harness covering init/scan/manifest/compile/review/serve and error-path checks.
-- Expanded smoke tests with invalid-flag help assertion and verbose-flag coverage across commands.
+- Rejected any assumption that the previous PM turn completed implementation: it only patched planning-doc section headers for gate shape (`## Interface`, command-surface headings) and did not deliver the approved Docusaurus platform itself.
+- Revalidated current HEAD and treated this as net-new implementation work for the accepted website/docs/blog scope.
+
+## What Was Implemented
+
+- Scaffolded a real Docusaurus 3.x project at `website/` using the classic TypeScript template.
+- Replaced template config with tusq.dev production settings:
+  - strict link policy (`onBrokenLinks: throw`, `onBrokenMarkdownLinks: throw`)
+  - navbar with Docs, Blog, GitHub
+  - docs sidebar wiring
+  - blog RSS/Atom feeds
+  - light-mode-first branding and metadata
+- Replaced default homepage with migrated product sections from `websites/index.html`:
+  - hero and value proposition
+  - three-card explanation band
+  - workflow steps
+  - V1 shipped surface grid
+- Added a custom 404 page in Docusaurus (`website/src/pages/404.tsx`).
+- Applied tusq visual identity in `website/src/css/custom.css`:
+  - Fraunces + Space Grotesk fonts
+  - warm gradient background and paper cards
+  - tusq accent palette
+- Implemented docs IA and authored required pages:
+  - `getting-started.md`
+  - `cli-reference.md`
+  - `manifest-format.md`
+  - `configuration.md`
+  - `frameworks.md`
+  - `mcp-server.md`
+  - `faq.md`
+- Implemented dated blog content adapted from launch artifacts:
+  - `2026-04-18-announcing-tusq-dev.md`
+  - `2026-04-18-release-notes-v0-1-0.md`
+- Removed scaffold placeholders that conflicted with production scope (default tutorial docs, example blog posts, sample components).
+- Left legacy static site (`websites/`) intact per PM decision; migration is additive with cleanup deferred.
 
 ## Verification
 
-- Ran end-to-end smoke verification:
+- Built the new website stack from scratch:
+  - `cd website && npm install`
+  - `cd website && npm run build`
+- Ran existing CLI regression smoke suite to ensure website work did not regress shipped CLI behavior:
   - `node tests/smoke.mjs`
-- Ran focused invalid-flag behavior check:
-  - `node bin/tusq.js scan --bad-flag`
-- Coverage in smoke run includes:
-  - help/version command behavior
-  - unknown command failure contract
-  - invalid flag contract with command help text
-  - missing-config failure for `scan`
-  - `init` idempotency
-  - Express scan JSON output and route count
-  - manifest generation + approval persistence path
-  - compile dry-run + real compile
-  - review summary path
-  - verbose flag acceptance for `scan`, `manifest`, `compile`, and `review`
-  - Fastify and NestJS scan paths
-  - live `serve` startup + `tools/list` + `tools/call` + SIGINT shutdown
 
-## Unresolved Follow-ups
+## Notes / Follow-ups
 
-- Scanner is currently heuristic regex/decorator parsing, not full AST analysis with rich type extraction.
-- MCP endpoint is describe-only by design for V1; live API proxy execution remains deferred to V1.1.
-- Schema inference currently returns conservative object schemas; richer type-to-JSON-schema conversion is future work.
+- Deployment target/domain mapping remains a human launch decision.
+- Legacy `websites/` directory can be removed in a later cleanup once deployment is confirmed.
