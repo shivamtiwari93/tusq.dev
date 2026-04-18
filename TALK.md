@@ -36,3 +36,14 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn c81c316e — pm (planning)
+
+- **Status:** completed
+- **Summary:** Addressed injected planning revision intent: added minimal domain grouping to V1 scope, clarified tusq serve proves MCP exposure not executable delivery, and framed runtime learning as a deferred core pillar across all planning artifacts.
+- **Decision DEC-009:** V1 includes automatic domain grouping — capabilities are grouped by resource name or controller (e.g., /users/* routes → 'users' domain). Cross-resource merging deferred to V1.1.
+- **Decision DEC-010:** All planning docs now explicitly state V1 proves discovery + manifest + MCP exposure, not full executable capability delivery. tusq serve is describe-only.
+- **Decision DEC-011:** Runtime learning is documented as a deferred core pillar of the tusq.dev vision, not a normal omitted feature. It is planned for V2.
+- **Proposed next:** human
+
+---
+

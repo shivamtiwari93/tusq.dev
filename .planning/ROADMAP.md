@@ -10,7 +10,7 @@
 
 ## V1 Implementation Milestones
 
-V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation + tool compilation + local MCP server.
+V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation with domain grouping + tool compilation + describe-only local MCP server. V1 proves the discovery-to-manifest-to-MCP-exposure pipeline. It does **not** prove live executable capability delivery (no API proxy, no runtime instrumentation).
 
 ### M1: CLI Skeleton & Project Init (Est. ~1 day)
 - [ ] Set up TypeScript project with build toolchain
@@ -38,7 +38,7 @@ V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation + t
 
 ### M4: Manifest Generation (Est. ~1 day)
 - [ ] Define `tusq.manifest.json` schema (JSON Schema for the manifest itself)
-- [ ] Capability mapping logic (1 route = 1 capability, no grouping in V1)
+- [ ] Capability mapping logic (1 route = 1 capability, with automatic domain grouping by resource/controller)
 - [ ] Merge logic: preserve approvals on re-generation
 - [ ] `tusq manifest` command wiring
 - [ ] `tusq review` command (stdout summary, JSON mode)
@@ -52,7 +52,7 @@ V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation + t
 ### M6: Local MCP Server (Est. ~1-2 days)
 - [ ] MCP server using `@modelcontextprotocol/sdk` or equivalent
 - [ ] `tools/list` — return compiled tool inventory
-- [ ] `tools/call` — describe-only in V1 (returns tool schema + example payload, no live proxy)
+- [ ] `tools/call` — describe-only in V1 (returns tool schema + example payload; live API proxy deferred to V1.1)
 - [ ] `tusq serve` command wiring with `--port`
 - [ ] Clean shutdown on SIGINT
 
@@ -67,20 +67,21 @@ V1 is scoped to: CLI + Express/Fastify/NestJS scanning + manifest generation + t
 ## Post-V1 Roadmap (Reference Only)
 
 ### V1.1 — Fast Follows
+- Live API proxy mode in `tusq serve` (forward tool calls to running API — proves executable capability delivery)
 - Monorepo support (multiple scan roots)
-- API proxy mode in `tusq serve` (forward tool calls to running API)
-- Capability merging UI (merge related routes into single capabilities)
+- Intelligent cross-resource capability merging (composite capabilities from multiple routes)
+- Interactive approval TUI for `tusq review`
 - Zod-to-JSON-Schema improvements
 
-### V2 — Adoption & Migration
-- Runtime instrumentation middleware
+### V2 — Adoption & Migration (includes deferred core pillar: Runtime Learning)
+- **Runtime learning** (core pillar) — runtime instrumentation middleware, payload observation, production signal capture. This is the mechanism by which the manifest improves over time based on real usage, not just static analysis. It is a foundational pillar of the tusq.dev vision, deferred from V1 to keep the first release disciplined.
 - Eval/regression test generation
 - Migration and rollout tooling
 - Python framework support (FastAPI, Django)
 - Plugin API for custom framework detectors
 
 ### V3 — Moat
-- Runtime learning loop
+- Advanced runtime learning loop (refine schemas, tool boundaries, and skills from production observations)
 - Competitive transition intelligence
 - Automated manifest improvement proposals
 - Advanced governance workflows

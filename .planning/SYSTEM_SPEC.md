@@ -4,7 +4,9 @@
 
 tusq.dev V1 is a CLI tool that scans an existing SaaS codebase, discovers its API capabilities, and produces a reviewable `tusq.manifest.json`. This first slice proves the core insight: a product's real capabilities can be inferred from code and exposed as governed, AI-callable tools.
 
-V1 does **not** attempt runtime instrumentation, hosted execution, or advanced skill composition. It proves the discovery-to-manifest pipeline end-to-end for a small number of supported frameworks, then compiles the manifest into strict tool definitions and serves them via a local MCP server.
+**What V1 proves:** V1 proves the discovery-to-manifest-to-MCP-exposure pipeline end-to-end. It does **not** prove full executable capability delivery — `tusq serve` exposes tool descriptions and schemas via MCP, but does not proxy live API calls. Full execution (live proxy, auth forwarding, runtime instrumentation) is deferred to V1.1+.
+
+V1 does **not** attempt runtime instrumentation, hosted execution, or advanced skill composition. It proves discovery, manifest generation, tool compilation, and describe-only MCP exposure for a small number of supported frameworks.
 
 ### Problem this solves
 
@@ -20,7 +22,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 4. **Schema inference** — extract request/response shapes from TypeScript types, Zod schemas, or JSDoc where available
 5. **Auth hint extraction** — detect middleware patterns (e.g., `requireAuth`, `isAdmin`, role guards) and tag capabilities with permission hints
 6. **Side-effect classification** — tag routes as read/write/destructive based on HTTP method and naming heuristics
-7. **Capability mapping** — map each route to a single capability (1:1); intelligent grouping of related routes deferred to V1.1
+7. **Capability mapping with minimal domain grouping** — each route maps to one capability, but capabilities are automatically grouped into domains based on resource name or controller (e.g., all `/users/*` routes group under a "users" domain). Intelligent cross-resource grouping (e.g., merging related routes into higher-level composite capabilities) is deferred to V1.1
 8. **Manifest generation** — produce `tusq.manifest.json` with schemas, permissions, side effects, provenance, and review markers
 9. **Tool compilation** — compile manifest entries into strict JSON tool definitions suitable for LLM tool-use
 10. **Local MCP server** — serve compiled tools as a standards-based MCP server on localhost
@@ -28,7 +30,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 ### Out of scope (V2+)
 
-- Runtime instrumentation / payload observation
+- **Runtime learning** (deferred core pillar) — runtime instrumentation, payload observation, and production-signal-driven manifest refinement are a foundational pillar of the tusq.dev vision, not a minor omission. V1 operates on static analysis only. Runtime learning is the primary mechanism by which the manifest improves over time and is planned for V2.
 - Eval and regression test generation
 - Multi-step skill composition and domain agents
 - Embedded UI / assistant surfaces beyond MCP
@@ -37,6 +39,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 - Plugin ecosystem and extension API
 - Migration and rollout tooling
 - Competitive transition intelligence
+- Live API proxy execution via `tusq serve` (V1 is describe-only MCP exposure)
 
 ## Interface
 
@@ -101,7 +104,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 - Reads `.tusq/scan.json` (exits 1 with "No scan data found. Run `tusq scan` first." if missing)
 - Converts internal model to `tusq.manifest.json`
-- Each capability entry includes: name, description, method, path, input schema, output schema, side_effect_class (read/write/destructive), auth_hints, provenance (file + line), confidence score, approved (boolean, default false)
+- Each capability entry includes: name, description, method, path, input schema, output schema, side_effect_class (read/write/destructive), auth_hints, provenance (file + line), confidence score, approved (boolean, default false), domain (auto-assigned from resource/controller name)
 - Marks uncertain inferences with `confidence < 0.8` and `review_needed: true`
 - Preserves existing approvals on re-generation (merge, don't replace)
 
@@ -124,7 +127,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 ### `tusq review`
 
 - Prints a human-readable summary of the manifest to stdout (non-interactive)
-- Groups by domain/category
+- Groups capabilities by their auto-assigned domain
 - Highlights unapproved and low-confidence capabilities
 - In JSON mode, outputs the full manifest
 - To approve capabilities, users edit `tusq.manifest.json` directly and set `approved: true` on desired entries. Interactive approval TUI deferred to V1.1
@@ -172,7 +175,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 ### Manifest
 - [ ] `tusq manifest` produces valid `tusq.manifest.json`
-- [ ] Each capability has: name, method, path, schemas, side_effect_class, auth_hints, provenance, confidence, approved
+- [ ] Each capability has: name, method, path, schemas, side_effect_class, auth_hints, provenance, confidence, approved, domain
 - [ ] Re-running manifest preserves existing approvals
 - [ ] Low-confidence capabilities are flagged with `review_needed: true`
 - [ ] Side-effect classification: GET→read, POST/PUT/PATCH→write, DELETE→destructive
@@ -196,7 +199,7 @@ SaaS engineering teams have years of business logic trapped behind UI-oriented A
 
 ## Resolved Decisions
 
-1. **Capability grouping** — V1 uses 1:1 route-to-capability mapping. Intelligent grouping deferred to V1.1.
+1. **Capability grouping** — V1 uses 1:1 route-to-capability mapping with automatic domain grouping based on resource name or controller. Each route is one capability, but capabilities are organized into domains (e.g., "users", "billing"). Intelligent cross-resource grouping (merging routes into composite capabilities) deferred to V1.1.
 2. **MCP protocol version** — Pin to latest stable MCP spec at implementation start.
 3. **API proxy in serve** — V1 is describe-only (`tools/call` returns schema + examples). Live proxy deferred to V1.1.
 4. **Auth forwarding** — Not applicable in V1 (no live proxy). Will be addressed with proxy in V1.1.
