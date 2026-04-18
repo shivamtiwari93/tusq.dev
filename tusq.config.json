@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "framework": "unknown",
+  "scan": {
+    "include": [
+      "**/*.js",
+      "**/*.ts"
+    ],
+    "exclude": [
+      "node_modules",
+      ".git",
+      ".tusq",
+      "dist",
+      "build",
+      "coverage"
+    ]
+  },
+  "output": {
+    "scan_file": ".tusq/scan.json",
+    "manifest_file": "tusq.manifest.json",
+    "tools_dir": "tusq-tools"
+  }
+}

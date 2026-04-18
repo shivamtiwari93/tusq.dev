@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-04-18T04:48:44.226Z",
+  "target_path": "/Users/shivamtiwari.highlevel/VS Code/1008apps/tusq.cloud/tusq.dev/tests/fixtures/express-sample",
+  "framework": "express",
+  "warnings": [],
+  "route_count": 2,
+  "routes": [
+    {
+      "framework": "express",
+      "method": "GET",
+      "path": "/users",
+      "handler": "listUsers",
+      "domain": "users",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 12
+      },
+      "confidence": 0.86,
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Schema inference unavailable; review required."
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Response schema not confidently inferred."
+      }
+    },
+    {
+      "framework": "express",
+      "method": "POST",
+      "path": "/users",
+      "handler": "createUser",
+      "domain": "users",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 13
+      },
+      "confidence": 0.86,
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Schema inference unavailable; review required."
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Response schema not confidently inferred."
+      }
+    }
+  ]
+}

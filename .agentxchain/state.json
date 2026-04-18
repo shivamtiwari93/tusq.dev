@@ -5,8 +5,29 @@
   "status": "active",
   "phase": "qa",
   "accepted_integration_ref": "git:ca9b022ae12923de0506962c828a3e6b24c20160",
-  "active_turns": {},
-  "turn_sequence": 13,
+  "active_turns": {
+    "turn_043d08d995070cfa": {
+      "turn_id": "turn_043d08d995070cfa",
+      "assigned_role": "qa",
+      "status": "failed_acceptance",
+      "attempt": 1,
+      "started_at": "2026-04-18T04:47:55.130Z",
+      "deadline_at": "2026-04-18T05:07:55.130Z",
+      "runtime_id": "local-qa",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "3bb980c55cf9372f815fa763cd37e4bc8fad26ce",
+        "clean": true,
+        "captured_at": "2026-04-18T04:47:55.032Z",
+        "dirty_snapshot": {}
+      },
+      "assigned_sequence": 14,
+      "concurrent_with": [],
+      "failed_at": "2026-04-18T04:50:20.399Z",
+      "failure_reason": "Observed artifact mismatch: Undeclared file changes detected (observed but not in files_changed): tests/fixtures/express-sample/.tusq/scan.json, tests/fixtures/express-sample/tusq.config.json, tusq.config.json. If these files were changed by the operator (not the turn), add them to the dispatch baseline by committing or stashing them before dispatch."
+    }
+  },
+  "turn_sequence": 14,
   "last_completed_turn_id": "turn_e542ec950f690160",
   "blocked_on": null,
   "blocked_reason": null,
@@ -19,7 +40,13 @@
     "implementation_complete": "passed",
     "qa_ship_verdict": "pending"
   },
-  "budget_reservations": {},
+  "budget_reservations": {
+    "turn_043d08d995070cfa": {
+      "reserved_usd": 2,
+      "role_id": "qa",
+      "created_at": "2026-04-18T04:47:54.948Z"
+    }
+  },
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
