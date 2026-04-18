@@ -4,10 +4,10 @@
   "project_id": "tusq-dev",
   "status": "active",
   "phase": "planning",
-  "accepted_integration_ref": "git:dbe612dcb274d5d4a3e7c2c7a4732ea97f250ec9",
+  "accepted_integration_ref": "git:78661208627aa08f6918b731c81ff2ef4c113faa",
   "active_turns": {},
-  "turn_sequence": 2,
-  "last_completed_turn_id": "turn_dea70b614c984d30",
+  "turn_sequence": 4,
+  "last_completed_turn_id": "turn_54dfd5b29c7e1950",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -15,9 +15,24 @@
   "pending_run_completion": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
-  "last_gate_failure": null,
+  "last_gate_failure": {
+    "gate_type": "phase_transition",
+    "gate_id": "planning_signoff",
+    "phase": "planning",
+    "from_phase": "planning",
+    "to_phase": "implementation",
+    "requested_by_turn": "turn_54dfd5b29c7e1950",
+    "failed_at": "2026-04-18T10:27:49.784Z",
+    "queued_request": false,
+    "reasons": [
+      ".planning/SYSTEM_SPEC.md must define ## Interface before planning can exit.",
+      ".planning/command-surface.md: Document must contain sections: ## Primary Commands, ## Flags And Options, ## Failure UX"
+    ],
+    "missing_files": [],
+    "missing_verification": false
+  },
   "phase_gate_status": {
-    "planning_signoff": "pending",
+    "planning_signoff": "failed",
     "implementation_complete": "pending",
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
