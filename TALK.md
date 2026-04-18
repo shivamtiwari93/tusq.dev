@@ -66,3 +66,13 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 043d08d9 — qa (qa)
+
+- **Status:** completed
+- **Summary:** Re-baselined QA from scratch against post-checkpoint HEAD (attempt 2); all 22 acceptance criteria and smoke suite verified passing; ship verdict updated and all gate artifacts confirmed.
+- **Decision DEC-015:** Rejected attempt-1 QA artifacts as stale and re-ran all verification from scratch against current HEAD to close the baseline drift that caused attempt-1 rejection.
+- **Decision DEC-016:** Ship verdict remains SHIP. No new issues were found in the re-verification pass; the implementation matches the V1 contract (DEC-001 through DEC-011) and all 22 acceptance criteria pass.
+- **Proposed next:** human
+
+---
+

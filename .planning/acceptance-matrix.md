@@ -30,5 +30,5 @@
 - [x] Command help audited for every user-facing command (init, scan, manifest, compile, serve, review, version, help)
 - [x] Invocation path checked: `node bin/tusq.js` works from repo root
 - [x] Failure-mode UX reviewed for invalid flags and missing inputs (REQ-003, REQ-004, REQ-006, REQ-010, REQ-015)
-- [x] Full smoke test suite executed and passed (`node tests/smoke.mjs` → exit 0)
+- [x] Full smoke test suite executed and passed (`node tests/smoke.mjs` → exit 0) — re-verified on attempt 2 against post-checkpoint HEAD
 - [x] Framework coverage verified: Express, Fastify, NestJS all scanned successfully

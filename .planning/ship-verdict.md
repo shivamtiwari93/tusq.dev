@@ -4,7 +4,14 @@
 
 ## QA Summary
 
-All 22 acceptance criteria verified. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently by QA. Manual spot-checks confirmed correct CLI UX: help text, version, invalid-command and invalid-flag handling, and per-command `--help` output. All three framework scanners (Express, Fastify, NestJS) returned routes. The MCP serve path started, responded to `tools/list` and `tools/call` RPC calls, and shut down cleanly on SIGINT.
+All 22 acceptance criteria re-verified by QA turn `turn_043d08d995070cfa` (2026-04-18, attempt 2). This attempt re-baselines QA from scratch against HEAD after the implementation checkpoint commit that invalidated attempt 1. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+
+- `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
+- `tusq version` / `--version` prints `0.1.0` and exits 0.
+- Unknown command (`tusq does-not-exist`) exits 1 with usage block and `Unknown command:` error.
+- Invalid flag (`tusq scan --bad-flag`) exits 1 and prints `Usage: tusq scan` to stdout.
+- All three framework scanners (Express, Fastify, NestJS) returned routes from fixtures.
+- The MCP serve path started, responded to `tools/list` and `tools/call` RPC calls, and shut down cleanly on SIGINT.
 
 The implementation is scoped to the agreed V1 contract (DEC-001 through DEC-011):
 - Discovery → manifest → compile → describe-only MCP serve pipeline

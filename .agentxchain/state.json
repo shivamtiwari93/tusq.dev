@@ -3,32 +3,11 @@
   "run_id": "run_b051581c8a050df6",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "qa",
-  "accepted_integration_ref": "git:ca9b022ae12923de0506962c828a3e6b24c20160",
-  "active_turns": {
-    "turn_043d08d995070cfa": {
-      "turn_id": "turn_043d08d995070cfa",
-      "assigned_role": "qa",
-      "status": "failed_acceptance",
-      "attempt": 1,
-      "started_at": "2026-04-18T04:47:55.130Z",
-      "deadline_at": "2026-04-18T05:07:55.130Z",
-      "runtime_id": "local-qa",
-      "baseline": {
-        "kind": "git_worktree",
-        "head_ref": "3bb980c55cf9372f815fa763cd37e4bc8fad26ce",
-        "clean": true,
-        "captured_at": "2026-04-18T04:47:55.032Z",
-        "dirty_snapshot": {}
-      },
-      "assigned_sequence": 14,
-      "concurrent_with": [],
-      "failed_at": "2026-04-18T04:50:20.399Z",
-      "failure_reason": "Observed artifact mismatch: Undeclared file changes detected (observed but not in files_changed): tests/fixtures/express-sample/.tusq/scan.json, tests/fixtures/express-sample/tusq.config.json, tusq.config.json. If these files were changed by the operator (not the turn), add them to the dispatch baseline by committing or stashing them before dispatch."
-    }
-  },
-  "turn_sequence": 14,
-  "last_completed_turn_id": "turn_e542ec950f690160",
+  "phase": "launch",
+  "accepted_integration_ref": "git:d2673e9e0babf7569dc7b2c324f2dacafc2708b1",
+  "active_turns": {},
+  "turn_sequence": 15,
+  "last_completed_turn_id": "turn_043d08d995070cfa",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -38,21 +17,15 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "pending"
+    "qa_ship_verdict": "passed"
   },
-  "budget_reservations": {
-    "turn_043d08d995070cfa": {
-      "reserved_usd": 2,
-      "role_id": "qa",
-      "created_at": "2026-04-18T04:47:54.948Z"
-    }
-  },
+  "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
   "created_at": "2026-04-17T19:53:59.663Z",
-  "phase_entered_at": "2026-04-18T04:46:02.558Z",
+  "phase_entered_at": "2026-04-18T05:00:45.986Z",
   "provenance": {
     "trigger": "manual",
     "parent_run_id": null,
@@ -63,7 +36,7 @@
   "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": "qa",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "pending_phase_transition": null
 }
