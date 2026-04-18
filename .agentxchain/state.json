@@ -3,33 +3,19 @@
   "run_id": "run_b051581c8a050df6",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "planning",
-  "accepted_integration_ref": "git:1cc10d208667c801aca615516483ce176a4a82f1",
+  "phase": "implementation",
+  "accepted_integration_ref": "git:c012dcef2ed5d56837919a58f6915f36305c0fa9",
   "active_turns": {},
-  "turn_sequence": 9,
-  "last_completed_turn_id": "turn_c81c316e2f04f6b2",
+  "turn_sequence": 11,
+  "last_completed_turn_id": "turn_5008de0a50936226",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
   "queued_phase_transition": null,
   "queued_run_completion": null,
-  "last_gate_failure": {
-    "gate_type": "phase_transition",
-    "gate_id": "planning_signoff",
-    "phase": "planning",
-    "from_phase": "planning",
-    "to_phase": "implementation",
-    "requested_by_turn": "turn_b41e7d88b660a748",
-    "failed_at": "2026-04-18T01:03:08.188Z",
-    "queued_request": false,
-    "reasons": [
-      "PM signoff is not approved. Found \"Approved: NO\" in .planning/PM_SIGNOFF.md; set it to \"Approved: YES\"."
-    ],
-    "missing_files": [],
-    "missing_verification": false
-  },
+  "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "failed",
+    "planning_signoff": "passed",
     "implementation_complete": "pending",
     "qa_ship_verdict": "pending"
   },
@@ -39,7 +25,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-17T19:53:59.663Z",
-  "phase_entered_at": "2026-04-17T19:53:59.663Z",
+  "phase_entered_at": "2026-04-18T04:27:45.324Z",
   "provenance": {
     "trigger": "manual",
     "parent_run_id": null,
@@ -51,5 +37,6 @@
   "repo_decisions": null,
   "delegation_queue": [],
   "next_recommended_role": null,
-  "pending_delegation_review": null
+  "pending_delegation_review": null,
+  "pending_phase_transition": null
 }
