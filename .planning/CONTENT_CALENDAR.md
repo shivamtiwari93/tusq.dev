@@ -13,14 +13,15 @@
 
 - GitHub release or repo post: canonical shipping note with changelog and install/workflow guidance
 - Founder or company LinkedIn post: position the product as an AI-enablement path for incumbent SaaS teams and emphasize governed review over hype
-- X post/thread: short technical framing plus CLI workflow, supported frameworks, and the explicit describe-only limit
-- Developer community post: emphasize OSS, self-hosted workflow, provenance, and honest V1 boundaries
+- X post/thread: short technical framing plus CLI workflow, supported frameworks, explicit describe-only limit, and a clear "best fit" qualifier
+- Developer community post: emphasize OSS, self-hosted workflow, provenance, honest V1 boundaries, and the fact that this is for teams with real existing backends rather than greenfield demos
 
 ## Week 1
 
 ### Day 1-2
 
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
+- Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
 - Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, confidence, domain grouping, and provenance
 
 ### Day 3-4

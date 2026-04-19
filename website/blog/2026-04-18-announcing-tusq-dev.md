@@ -13,6 +13,8 @@ Most SaaS teams already have the logic they need for AI workflows, but that logi
 
 That is the focus of tusq.dev.
 
+This launch is best suited to teams already running a supported Express, Fastify, or NestJS service and looking for a reviewable path from product code to AI-visible capability definitions. It is not aimed at teams that need hosted execution, broader framework coverage, or an end-user chat interface on day one.
+
 In `v0.1.0`, tusq.dev provides a narrow, explicit workflow for supported Node.js backends:
 
 ```bash
@@ -36,5 +38,7 @@ The V1 boundary is explicit:
 - `tools/call` returns schema and examples, not live execution
 - capability approval is manual by editing the manifest
 - early adopters should try it locally from the repo rather than assume a public package-manager install is already live
+
+The best first proof is simple: run tusq.dev on a supported service you already own, inspect `tusq.manifest.json`, approve one or two capabilities, and verify that `tools/list` and `tools/call` reflect exactly what you intended.
 
 This release proves the core loop from repo to governed capability surface without pretending to solve every hard problem on day one.

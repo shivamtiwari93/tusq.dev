@@ -32,6 +32,18 @@ Turn a supported Node.js API codebase into a reviewable manifest and describe-on
 
 For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
 
+### Qualification Filter
+
+- Best fit: a team already shipping a supported Node.js service, feeling pressure to make product functionality AI-visible, and unwilling to hand-author or blindly auto-generate tool catalogs
+- Strongest launch hook: "You already have product logic. tusq.dev gives you a governed way to inspect and package it for AI systems."
+- Disqualifier to say early: if a buyer needs hosted execution, a chat UI, or non-Node support on day one, this release is not for them
+
+### Problem Framing
+
+- The launch problem is not "how do we invent AI behavior from scratch?"
+- The launch problem is "how do we expose existing product behavior to AI systems without losing reviewability, provenance, and operator control?"
+- That framing keeps the message anchored on incumbent SaaS teams, not generic AI curiosity traffic
+
 ### Messaging Pillars
 
 1. **Start from the product you already have**
@@ -56,6 +68,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Primary ask for launch: try tusq.dev locally on a supported Node.js repo and inspect the generated manifest before approving anything
 - Preferred early-adopter promise: "clone the repo, run the CLI locally, and tell us where scanner or manifest edge cases appear"
 - Exact CTA language to repeat: "Try tusq.dev locally from the repo on an Express, Fastify, or NestJS codebase."
+- Exact qualification line to repeat near the CTA: "Best fit: an existing Express, Fastify, or NestJS service you already run, not a greenfield prototype or a hosted-agent evaluation."
 - Do not promise a public package-manager install path until distribution is actually confirmed
 - README, homepage, docs, and announcement should all use the same repo-local CTA so the first skim does not imply a published installer
 

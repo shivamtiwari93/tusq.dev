@@ -18,8 +18,16 @@
 ### First user action
 
 - Direct early adopters to run tusq.dev locally against a real Express, Fastify, or NestJS repo
-- Ask them to inspect `tusq.manifest.json`, approve one or two capabilities, compile, and confirm the MCP surface matches expectations
+- Ask them to inspect `tusq.manifest.json` first, approve one or two capabilities, compile, and then confirm the MCP surface matches expectations
 - Treat scanner misses, low-confidence routes, and awkward manifest edits as feedback fuel for the next release
+- Do not optimize the launch flow around `tusq serve` alone; the key product moment is seeing existing product behavior become a reviewable manifest before exposure
+
+## Message Hierarchy
+
+1. Lead with the audience filter: existing Express, Fastify, or NestJS SaaS teams with real product logic already in production or active development.
+2. State the proof sequence in one line: repo scan -> reviewed manifest -> approved tool JSON -> describe-only MCP.
+3. State the boundary immediately after the proof: no live execution, no hosted control plane, no non-Node support in V1.
+4. End with the repo-local CTA and an explicit ask for edge-case feedback.
 
 ## Required Assets
 
@@ -45,6 +53,7 @@
 - Do not rely on `npm install -g tusq` in launch copy until package distribution is confirmed; the in-repo `package.json` is currently marked `private: true`
 - Treat the top of `README.md` as a launch asset, not just internal documentation; many early users will meet the product there before they reach the website
 - Ensure the README, homepage, announcement, and release notes all describe the same V1 boundary
+- Ensure every primary asset answers "who is this for?" before it answers "what commands do I run?"
 - Use a demo flow that stays inside verified product behavior: local CLI, local MCP, describe-only `tools/call`
 - Have one reproducible sample project or fixture ready for screenshots and terminal capture
 
