@@ -4,7 +4,7 @@
 
 ## Challenge To Prior Turn
 
-The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: the approval packet said the launch story was aligned, while the site metadata still pointed at Docusaurus's default social share image. That creates avoidable ambiguity at the first off-site touchpoint. This turn closes that gap by aligning the social preview asset and the planning artifacts to the same narrow promise: repo to reviewed manifest to approved tool definitions to a local describe-only MCP endpoint that clients can inspect.
+The previous QA turn correctly re-proved the implementation gate, CLI regression status, provenance chain, and social-card alignment. I did not accept its broader “launch framing is consistent” conclusion at face value, because one homepage body card still summarized the shipped surface as a generic “local MCP surface” before clarifying the V1 limit. That is directionally right but too loose for a skimmable launch page. This turn closes that gap by tightening the homepage copy and keeping the approval packet anchored to the same narrow promise: repo to reviewed manifest to approved tool definitions to an inspectable describe-only MCP endpoint.
 
 ## Vision Goal — Capabilities With Provenance Back to Source
 
@@ -34,7 +34,7 @@ For this ship decision, the truthful public scope is limited to what the impleme
 
 It does not include live tool execution, hosted delivery, plugin APIs, non-Node ecosystems, runtime learning, or higher-level skill/agent generation as shipped features. The human approver should treat `.planning/*` and the current `website/` launch copy as the release truth source for v0.1.0, with the README read as broader project vision.
 
-The launch package now uses the same concise framing across homepage metadata, the branded social preview, release notes, and ship verdict: reviewed manifest, approved tool definitions, and inspectable describe-only MCP. That is easier to approve because it maps directly to observed behavior instead of category-level aspiration.
+The launch package now uses the same concise framing across homepage hero/body copy, homepage metadata, the branded social preview, release notes, and ship verdict: reviewed manifest, approved tool definitions, and inspectable describe-only MCP. That is easier to approve because it maps directly to observed behavior instead of category-level aspiration.
 
 ## Implementation Intent Coverage — Explicit Attestation
 
@@ -47,7 +47,7 @@ The acceptance item "implementation_complete gate can advance to qa once verific
 
 ## QA Summary
 
-All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds the missing evidence standard for launch-facing truth: direct inspection of the legacy `websites/` files against the Docusaurus implementation in `website/`, plus explicit review that the release package does not collapse roadmap language into shipped claims. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds one more launch-facing truth check: the homepage body copy now matches the same describe-only framing already used in metadata, release notes, and the ship verdict. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.

@@ -61,8 +61,8 @@ export default function Home(): ReactNode {
             <h2>What it ships</h2>
             <p>
               From the manifest, tusq.dev compiles approved capabilities into JSON tool definitions
-              and serves them through a local MCP surface. V1 returns schemas and example payloads,
-              not live execution.
+              and serves them through a local describe-only MCP surface. V1 returns schemas and
+              example payloads for inspection, not live execution.
             </p>
           </article>
           <article className={styles.card}>

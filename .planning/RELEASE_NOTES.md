@@ -26,6 +26,8 @@ The defendable v0.1.0 position is:
 
 The shortest accurate launch story is: repo to reviewed manifest to approved tool definitions to inspectable describe-only MCP.
 
+Homepage hero copy, homepage shipped-surface copy, site metadata, and these release notes now all use that same describe-only framing so the first skim and the detailed read make the same promise.
+
 This release should not be described as a live execution engine, hosted platform, plugin ecosystem, runtime learning system, or shipped skill/agent generator.
 
 ## Website Consolidation
