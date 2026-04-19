@@ -22,6 +22,24 @@ const surfaceItems = [
   'Describe-only MCP serve',
 ];
 
+const postV010Items = [
+  {
+    title: 'Execution mode with policy gates',
+    detail:
+      'Add an opt-in execution path for approved tools with explicit policy controls and audit traces.',
+  },
+  {
+    title: 'Broader framework adapters',
+    detail:
+      'Expand route and schema extraction beyond Express, Fastify, and NestJS while preserving manifest review quality.',
+  },
+  {
+    title: 'Approval ergonomics',
+    detail:
+      'Reduce manual manifest editing with stronger review UX while keeping explicit human approval in the loop.',
+  },
+];
+
 export default function Home(): ReactNode {
   return (
     <Layout
@@ -42,6 +60,9 @@ export default function Home(): ReactNode {
           <div className={styles.heroActions}>
             <Link className={styles.buttonPrimary} to="/docs/getting-started">
               Open Docs
+            </Link>
+            <Link className={styles.buttonGhost} to="/docs/roadmap">
+              View Post-v0.1.0 Roadmap
             </Link>
             <Link className={styles.buttonGhost} to="/blog">
               Read Launch Posts
@@ -96,6 +117,19 @@ export default function Home(): ReactNode {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className={styles.gridBand}>
+          <article className={styles.card}>
+            <h2>Post-v0.1.0 improvements</h2>
+            <p>These are roadmap targets, not currently shipped behavior.</p>
+          </article>
+          {postV010Items.map((item) => (
+            <article className={styles.card} key={item.title}>
+              <h2>{item.title}</h2>
+              <p>{item.detail}</p>
+            </article>
+          ))}
         </section>
       </main>
     </Layout>

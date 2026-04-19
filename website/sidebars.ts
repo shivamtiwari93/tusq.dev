@@ -20,7 +20,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Help',
-      items: ['faq'],
+      items: ['faq', 'roadmap'],
     },
   ],
 };

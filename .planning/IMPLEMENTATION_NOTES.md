@@ -2,8 +2,32 @@
 
 ## Challenge To Prior Turn
 
-- Rejected any assumption that the previous PM turn completed implementation: it only patched planning-doc section headers for gate shape (`## Interface`, command-surface headings) and did not deliver the approved Docusaurus platform itself.
-- Revalidated current HEAD and treated this as net-new implementation work for the accepted website/docs/blog scope.
+- Rejected the prior failed dev attempt as incomplete for this continuation run: it only re-ran build/smoke checks and did not record or deliver concrete post-v0.1.0 improvements in this artifact.
+- Rejected any assumption that "no implementation work remains." This run adds follow-on product clarity improvements to the shipped site while preserving v0.1.0 truth boundaries.
+
+## Baseline (Completed In Parent Run)
+
+- Docusaurus 3.x site scaffolded in `website/` with strict broken-link policy.
+- Custom homepage migrated from `websites/index.html`.
+- Seven docs pages authored: getting started, CLI reference, manifest format, configuration, frameworks, MCP server, FAQ.
+- Two launch blog posts added.
+- Custom 404 page added.
+- `website/` established as canonical site surface; `websites/` retained as legacy reference only.
+
+## Continuation Changes In This Run (Post-v0.1.0 Improvements)
+
+- Added a dedicated roadmap documentation page: `website/docs/roadmap.md`.
+  - Explicitly frames next-stage priorities as not shipped in v0.1.0.
+  - Documents four concrete post-v0.1.0 tracks:
+    - opt-in execution mode with policy controls
+    - broader framework adapter coverage
+    - stronger approval ergonomics
+    - scanner-learning loop from misses/low-confidence routes
+- Wired roadmap into docs navigation by updating `website/sidebars.ts` (`Help` now includes `roadmap`).
+- Updated homepage (`website/src/pages/index.tsx`) with explicit post-v0.1.0 signaling:
+  - new CTA button to `/docs/roadmap`
+  - new "Post-v0.1.0 improvements" section listing roadmap tracks
+  - clear non-overclaim statement that these items are roadmap targets, not shipped behavior
 
 ## Changes
 
