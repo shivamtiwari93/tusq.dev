@@ -5,7 +5,7 @@
 - Rejected any assumption that the previous PM turn completed implementation: it only patched planning-doc section headers for gate shape (`## Interface`, command-surface headings) and did not deliver the approved Docusaurus platform itself.
 - Revalidated current HEAD and treated this as net-new implementation work for the accepted website/docs/blog scope.
 
-## What Was Implemented
+## Changes
 
 - Scaffolded a real Docusaurus 3.x project at `website/` using the classic TypeScript template.
 - Replaced template config with tusq.dev production settings:
