@@ -8,6 +8,8 @@ Approved: YES
 > Updated in run_7c529def79b94f51 (turn_449d52ce8856b875) to address vision goal "The canonical artifact: input and output shapes." Added formal shape specifications for all 5 artifacts in the tusq.dev pipeline (tusq.config.json, scan.json, tusq.manifest.json, tusq-tools/*.json, MCP server responses) to SYSTEM_SPEC.md. These shapes were derived from the actual CLI implementation in src/cli.js and verified against test fixtures. ROADMAP updated with M8 milestone.
 >
 > Updated in run_aeca336174864081 (turn_d50a72d77645f27f) to address vision goal "The canonical artifact: side effects and sensitivity class." Formally specified `side_effect_class` classification rules (already implemented in V1) and introduced `sensitivity_class` as a new canonical artifact field. The sensitivity field follows the same conservative-default pattern as input/output schemas: present in V1 with `"unknown"` default, inference planned for V2. ROADMAP updated with M9 milestone. SYSTEM_SPEC updated with both classification rule tables, V1 limitations, and V2 inference signals.
+>
+> Updated in run_100292687c7b6b6e (turn_79fe98fb459a70cc) to address vision goal "The canonical artifact: auth and permission expectations." Challenged prior turns for leaving `auth_hints` under-specified — the field was shipped in V1 code but never formally documented with detection rules, agent implications, or limitations. SYSTEM_SPEC now includes a complete Auth and Permission Expectations section covering: detection regex and framework-specific extraction, agent behavior recommendations, V1 limitations (identifier-only, no role/scope extraction), and V2 structured `auth_requirements` shape. ROADMAP updated with M10 milestone. The three-field governance model (side_effect_class + sensitivity_class + auth_hints) is now fully specified.
 
 ## Discovery Checklist
 
@@ -63,6 +65,18 @@ The vision (VISION.md line 57) lists "side effects and sensitivity class" as par
 The vision (VISION.md line 160) mentions "financial" as a separate category: "read, write, destructive, financial, or security-sensitive." The current V1 implementation uses only three values: `read`, `write`, `destructive`.
 
 **Decision:** Keep three values for `side_effect_class`. Financial and security-sensitive are **sensitivity concerns**, not side-effect concerns. A `POST /payments` is a `write` (side effect) that is `confidential` or `restricted` (sensitivity). Conflating mutation type with data sensitivity in one field would create ambiguity. The two-field model (`side_effect_class` + `sensitivity_class`) is cleaner and matches how agent runtimes actually make decisions: "can I call this without confirmation?" (side effect) vs. "what audit/redaction rules apply?" (sensitivity).
+
+### Challenge 7: Auth hints shipped but never formally specified
+
+The `auth_hints` field has been present in V1 since the initial implementation. It appears in scan output, manifest, compiled tools, and MCP responses. But it was never formally specified in SYSTEM_SPEC.md — only a single-line mention in the field tables. Meanwhile, the VISION (line 58) explicitly lists "auth and permission expectations" as a core piece of the canonical artifact, alongside input/output shapes and side effects/sensitivity.
+
+Prior turns (DEC-143 through DEC-158) completed formal specifications for input/output shapes and side effects/sensitivity, but left auth as a gap. This is not just a documentation issue — without a formal spec, consumers of the manifest don't know:
+- What patterns trigger detection
+- How to interpret an empty vs non-empty array
+- What auth_hints mean for agent invocation decisions
+- What the V1 limitations are (identifier-only, no role extraction)
+
+**Decision:** Formally specify auth_hints detection rules, agent implications, V1 limitations, and the planned V2 `auth_requirements` structured shape. This completes the three-field governance model that the vision requires: side effects (mutation), sensitivity (data classification), and auth (access requirements).
 
 ## Key Judgment Calls
 

@@ -400,6 +400,108 @@ The `sensitivity_class` field classifies what kind of data a capability touches.
 | Path or handler matches `/(admin|role|permission|apikey|secret|audit|compliance)/i` | `restricted` |
 | `auth_hints` contain admin/superadmin patterns | `restricted` |
 
+#### Auth and Permission Expectations
+
+The `auth_hints` field captures authentication and authorization signals detected in the source code. This is the third governance dimension in the canonical artifact, alongside `side_effect_class` (mutation type) and `sensitivity_class` (data sensitivity). Together, these three fields answer the core agent-safety questions:
+
+| Field | Question it answers | Agent decision it drives |
+|-------|-------------------|------------------------|
+| `side_effect_class` | Does this mutate state? | Can the agent call this without confirmation? |
+| `sensitivity_class` | What kind of data does this touch? | What audit/redaction rules apply? |
+| `auth_hints` | What authentication/authorization is required? | Does the agent have sufficient credentials to attempt this? |
+
+**V1 auth_hints detection rules:**
+
+The `inferAuthHints(chunks)` function in `src/cli.js` extracts auth-related identifiers from handler expressions and nearby code (3-line radius). Detection uses pattern matching against the following regex:
+
+```
+/auth|guard|role|permission|admin|jwt|acl|rbac/i
+```
+
+| Pattern | What it catches | Examples |
+|---------|----------------|----------|
+| `auth` | General auth middleware | `requireAuth`, `isAuthenticated`, `authMiddleware` |
+| `guard` | NestJS-style guards and route guards | `AuthGuard`, `RolesGuard`, `AdminGuard` |
+| `role` | Role-based access control decorators | `@Roles('admin')`, `checkRole`, `roleMiddleware` |
+| `permission` | Permission checks | `hasPermission`, `checkPermissions`, `PermissionGuard` |
+| `admin` | Admin-only access | `isAdmin`, `adminOnly`, `AdminGuard` |
+| `jwt` | JWT token validation | `jwtAuth`, `verifyJwt`, `JwtAuthGuard` |
+| `acl` | Access control lists | `aclCheck`, `aclMiddleware` |
+| `rbac` | Role-based access control | `rbacMiddleware`, `RbacGuard` |
+
+**Framework-specific extraction:**
+
+| Framework | Where auth hints are extracted from |
+|-----------|-----------------------------------|
+| Express | Handler expression + 3-line radius around route definition |
+| Fastify | Inline handler expression + `fastify.route()` block options |
+| NestJS | Class-level `@UseGuards()` decorators + method-level decorators + controller metadata |
+
+**Auth hints shape:**
+
+```json
+{
+  "auth_hints": ["requireAuth", "AdminGuard"]
+}
+```
+
+The field is a `string[]` — an ordered, deduplicated list of identifier names that matched the auth pattern. The array is:
+- **Empty (`[]`)** when no auth-related identifiers are detected. This does NOT mean the endpoint is unauthenticated — it means the scanner found no recognizable auth signal.
+- **Non-empty** when one or more auth identifiers are found. The values are raw identifier names, not normalized roles or scopes.
+
+**Agent implications of auth_hints:**
+
+| Auth hints state | Agent interpretation | Recommended behavior |
+|-----------------|---------------------|---------------------|
+| Empty `[]` | No auth signal detected | Agent should treat as potentially unprotected; consult `sensitivity_class` before invoking |
+| Contains general auth (e.g., `requireAuth`) | Endpoint requires authentication | Agent must present valid credentials; confirm identity context before invocation |
+| Contains role/admin patterns (e.g., `AdminGuard`, `isAdmin`) | Endpoint requires elevated privileges | Agent must verify it holds the required role; require explicit human approval for admin operations |
+| Contains multiple hints | Multiple auth layers detected | Agent must satisfy all detected requirements; treat as highest-privilege among detected hints |
+
+**Confidence impact:** Each detected auth hint adds `+0.08` to the capability confidence score. Auth-protected endpoints are more likely to be intentional, well-defined capabilities.
+
+**V1 auth limitations:**
+
+1. **Detection is identifier-based, not semantic.** The scanner matches identifier names, not runtime behavior. A middleware named `authLogger` would match even though it only logs, not gates. False positives are acceptable; false negatives are not.
+2. **No role or scope extraction.** V1 captures the *name* of the guard/middleware but not the *role or scope it requires*. `@Roles('admin', 'superadmin')` produces `auth_hints: ["Roles"]`, not `auth_hints: [{ role: "admin" }, { role: "superadmin" }]`.
+3. **No tenant boundary detection.** Multi-tenant isolation (e.g., `tenantId` scoping) is not inferred.
+4. **No least-privilege recommendations.** V1 does not generate minimum-required-permissions for each capability.
+5. **Empty hints ≠ public.** An empty `auth_hints` array means no signal was found, not that the endpoint is unauthenticated. The scanner may miss auth applied at the router level, in middleware chains, or via framework conventions not covered by the regex.
+
+**V2 auth and permission mapping (planned):**
+
+Future versions will move from identifier matching to structured permission modeling:
+
+| V2 capability | Description |
+|--------------|-------------|
+| Role extraction | Parse `@Roles()`, `@UseGuards(RolesGuard)`, and Express `role: ['admin']` to extract actual role names |
+| Scope mapping | Extract OAuth scopes from `@Scopes()` decorators and `passport` configurations |
+| Tenant boundary detection | Identify `tenantId`, `orgId`, or similar path/query parameters that indicate multi-tenant isolation |
+| Least-privilege hints | Generate minimum required permissions per capability: `{ roles: ["admin"], scopes: ["users:write"] }` |
+| Impersonation path detection | Flag capabilities where one user can act on behalf of another (e.g., admin impersonation endpoints) |
+| Auth inheritance resolution | Resolve controller-level auth that applies to all methods, not just method-level decorators |
+
+**V2 auth_hints shape (planned):**
+
+```json
+{
+  "auth_hints": ["requireAuth", "AdminGuard"],
+  "auth_requirements": {
+    "authenticated": true,
+    "roles": ["admin"],
+    "scopes": ["users:read", "users:write"],
+    "tenant_isolated": true,
+    "impersonation_capable": false,
+    "least_privilege": {
+      "minimum_role": "admin",
+      "minimum_scopes": ["users:read"]
+    }
+  }
+}
+```
+
+The V2 shape adds `auth_requirements` as a structured companion to the existing `auth_hints` array. The `auth_hints` field remains for backward compatibility. The `auth_requirements` object is absent in V1 (not emitted), present with inferred values in V2.
+
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
 Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.

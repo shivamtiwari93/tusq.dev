@@ -81,6 +81,14 @@
 - [x] Update test fixtures to include `sensitivity_class` field
 - [x] Verify `npm run build` in `website/` still passes with updated docs
 
+### M10: Auth and Permission Expectations Specification (~0.5 day)
+- [x] Formally specify `auth_hints` detection rules in SYSTEM_SPEC.md (regex pattern, framework-specific extraction)
+- [x] Document agent implications of auth_hints (empty vs non-empty, role patterns, multi-hint)
+- [x] Document V1 auth limitations (identifier-based only, no role extraction, no tenant boundaries)
+- [x] Specify V2 auth and permission mapping roadmap (role extraction, scope mapping, tenant detection, least-privilege hints)
+- [x] Specify V2 `auth_requirements` structured shape alongside existing `auth_hints` array
+- [x] Document the three-field governance model: side_effect_class + sensitivity_class + auth_hints
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
