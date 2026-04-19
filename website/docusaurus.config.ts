@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'tusq.dev',
   tagline:
-    'Open-source capability compiler CLI for turning supported Node.js APIs into reviewed, MCP-visible surfaces.',
+    'Open-source capability compiler CLI for turning supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -119,7 +119,7 @@ const config: Config = {
   } satisfies Preset.ThemeConfig,
   customFields: {
     description:
-      'tusq.dev v0.1.0 docs and blog for the open-source capability compiler CLI for Express, Fastify, and NestJS.',
+      'tusq.dev v0.1.0 docs and blog for the open-source capability compiler CLI for Express, Fastify, and NestJS with a describe-only MCP surface.',
   },
 };
 

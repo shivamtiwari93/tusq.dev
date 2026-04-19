@@ -4,7 +4,7 @@
 
 ## Challenge To Prior Turn
 
-The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: a human approver could read the repository's broader README vision as if it were the shipped v0.1.0 product. That would blur the launch story beyond what the implementation actually supports. This turn closes that gap by separating launch truth from roadmap vision and confirming that the gate artifacts plus `website/` copy stay anchored to the defendable V1 surface.
+The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: a human approver could read the repository's broader README vision, or the homepage's softer "MCP-ready" phrasing, as if they described the shipped v0.1.0 product. That blurs the launch story beyond what the implementation actually supports. This turn closes that gap by tightening the source-of-truth copy to one specific promise: repo to reviewed manifest to approved tool definitions to a local describe-only MCP endpoint that clients can inspect.
 
 ## Vision Goal — Capabilities With Provenance Back to Source
 
@@ -30,9 +30,11 @@ For this ship decision, the truthful public scope is limited to what the impleme
 - reviewable manifest generation with confidence, domain, approval, and provenance metadata
 - compilation of approved capabilities into JSON tool definitions
 - grouped stdout review output
-- a local describe-only MCP HTTP surface
+- a local describe-only MCP HTTP surface that supports `tools/list` plus schema/example responses from `tools/call`
 
 It does not include live tool execution, hosted delivery, plugin APIs, non-Node ecosystems, runtime learning, or higher-level skill/agent generation as shipped features. The human approver should treat `.planning/*` and the current `website/` launch copy as the release truth source for v0.1.0, with the README read as broader project vision.
+
+The launch package now uses the same concise framing across homepage metadata, release notes, and ship verdict: reviewed manifest, approved tool definitions, and inspectable describe-only MCP. That is easier to approve because it maps directly to observed behavior instead of category-level aspiration.
 
 ## Implementation Intent Coverage — Explicit Attestation
 

@@ -26,17 +26,18 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title="tusq.dev"
-      description="Open-source capability compiler CLI for turning supported Node.js SaaS routes into reviewed manifests and describe-only MCP tools.">
+      description="Open-source capability compiler CLI for turning supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.">
       <main className={styles.pageShell}>
         <section className={styles.hero}>
           <p className={styles.eyebrow}>Open-source CLI</p>
           <h1 className={styles.heroTitle}>
-            Turn a supported Node.js SaaS backend into a reviewed MCP-ready capability surface.
+            Turn a supported Node.js SaaS backend into a reviewed, inspectable capability surface.
           </h1>
           <p className={styles.lede}>
             tusq.dev v0.1.0 scans Express, Fastify, and NestJS codebases, generates a reviewable{' '}
             <code>tusq.manifest.json</code>, compiles approved capabilities into strict JSON tool
-            definitions, and serves them through a local describe-only MCP endpoint.
+            definitions, and serves them through a local describe-only MCP endpoint that clients
+            can inspect.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.buttonPrimary} to="/docs/getting-started">
@@ -52,15 +53,16 @@ export default function Home(): ReactNode {
           <article className={styles.card}>
             <h2>What it does</h2>
             <p>
-              It discovers supported API routes and auth hints from code, then converts that output
-              into a capability manifest your team can inspect before exposing anything.
+              It discovers supported API routes and inferred auth hints from code, then converts
+              that output into a capability manifest your team can inspect before exposing anything.
             </p>
           </article>
           <article className={styles.card}>
             <h2>What it ships</h2>
             <p>
               From the manifest, tusq.dev compiles approved capabilities into JSON tool definitions
-              and serves them through a local MCP surface. V1 is describe-only, not live execution.
+              and serves them through a local MCP surface. V1 returns schemas and example payloads,
+              not live execution.
             </p>
           </article>
           <article className={styles.card}>

@@ -7,7 +7,7 @@ tusq v0.1.0 is the first public release of the tusq capability compiler CLI. It 
 1. **Scan** their Express, Fastify, or NestJS codebase and extract API routes automatically.
 2. **Generate a manifest** (`tusq.manifest.json`) that lists discovered capabilities with confidence scores and domain grouping.
 3. **Approve capabilities** by editing the manifest directly, then **compile** them into structured tool-definition JSON files.
-4. **Expose** those tools over a describe-only MCP HTTP endpoint (`tusq serve`) that MCP-compatible clients can inspect.
+4. **Expose** those tools over a describe-only MCP HTTP endpoint (`tusq serve`) that clients can inspect through `tools/list` and describe-only `tools/call`.
 5. **Review** the current manifest summary at any time without re-scanning.
 
 This release is intentionally narrow: it gives SaaS teams a governed, review-first way to expose a supported slice of their backend capability surface to MCP-aware tooling without claiming live execution, runtime learning, or broad framework coverage.
@@ -23,6 +23,8 @@ The defendable v0.1.0 position is:
 - manual review and approval through `tusq.manifest.json`
 - compile approved capabilities into JSON tool definitions
 - expose those definitions through a local describe-only MCP endpoint
+
+The shortest accurate launch story is: repo to reviewed manifest to approved tool definitions to inspectable describe-only MCP.
 
 This release should not be described as a live execution engine, hosted platform, plugin ecosystem, runtime learning system, or shipped skill/agent generator.
 
