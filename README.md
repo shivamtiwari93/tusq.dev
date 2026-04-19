@@ -1,8 +1,8 @@
 # tusq.dev
 
-tusq.dev is the open-source engine that turns an existing SaaS codebase into governed, AI-callable capabilities.
+tusq.dev is the open-source capability compiler CLI for supported Node.js SaaS backends.
 
-It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want to expose that product through AI-native interfaces without rebuilding the entire stack.
+It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a governed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface.
 
 ## Current shipped surface in v0.1.0
 
@@ -22,7 +22,7 @@ Current V1 boundaries:
 - MCP behavior: describe-only in V1; `tools/call` returns schema and example payloads, not live API execution
 - Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
 
-At its core, tusq.dev discovers what a product can actually do, models those capabilities in a reviewable manifest, compiles them into tools and higher-level skills or domain agents, and exposes them through self-hostable runtimes such as MCP and embedded assistants.
+At its core, `v0.1.0` discovers supported product routes, models them in a reviewable manifest, compiles approved capabilities into strict JSON tool definitions, and exposes those definitions through a local describe-only MCP endpoint.
 
 ## Why tusq.dev exists
 
@@ -43,22 +43,21 @@ tusq.dev exists to bridge that gap.
 
 ## One-line description
 
-tusq.dev is an open-source capability compiler and execution engine that converts SaaS product logic into safe, versioned, AI-callable tools, skills, and interface surfaces.
+tusq.dev is an open-source capability compiler CLI that turns supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.
 
-## What tusq.dev does
+## What tusq.dev does in v0.1.0
 
-tusq.dev should help a team:
+The shipped workflow today is:
 
-1. connect one or more repositories
-2. inspect API routes, handlers, schemas, and auth patterns
-3. infer business capabilities from real code and interfaces
-4. generate a reviewable `tusq.manifest.json`
-5. compile approved capabilities into tools
-6. group tools into domain skills or agents
-7. run those tools locally or self-host them
-8. expose them through MCP and basic embedded interfaces
+1. run `tusq init` in a supported repo
+2. scan routes with `tusq scan`
+3. generate a reviewable `tusq.manifest.json` with `tusq manifest`
+4. manually approve capabilities by editing the manifest
+5. compile approved capabilities into JSON tool definitions with `tusq compile`
+6. inspect grouped output with `tusq review`
+7. expose compiled tools through a local describe-only MCP endpoint with `tusq serve`
 
-The key point is that the product does not start from prompts. It starts from product behavior.
+The key point is the same: the product does not start from prompts. It starts from product behavior already encoded in code.
 
 ## Core principle
 
@@ -78,36 +77,40 @@ tusq.dev should discover, model, and compile the second thing, not just expose t
 
 ## Product boundary
 
-tusq.dev is the self-hostable and extensible engine.
+Shipped in `v0.1.0`:
 
-It should include:
+- repository-local discovery for Express, Fastify, and NestJS
+- manifest generation with provenance and manual approval
+- approved tool-definition compilation
+- non-interactive review output
+- local describe-only MCP serve
 
-- repository ingestion and discovery
-- capability modeling
-- manifest generation
-- tool compilation
-- skill or agent grouping
-- local or self-hosted execution runtime
-- local MCP server generation
-- basic widget or interface primitives
-- plugin and extension points
+Deferred beyond `v0.1.0`:
+
+- live tool execution or API proxying
+- embedded UI or interface primitives
+- plugin extension points
+- non-Node ecosystems
+- hosted governance and delivery
 
 The managed operational layer belongs to `tusq.cloud`.
 
 ## Core workflow
 
-The intended workflow for tusq.dev is:
+The accurate launch workflow is:
 
-1. install it with a familiar developer channel such as npm or Homebrew
-2. point it at a repository or set of repositories
-3. run discovery against code, APIs, schemas, and optional runtime hints
-4. generate a capability manifest
-5. review and refine the manifest
-6. compile manifest entries into tools and domain skills
-7. run locally with MCP and interface surfaces
-8. optionally connect the output to tusq.cloud for hosted governance and delivery
+1. clone the repo and run the CLI locally on a supported codebase
+2. run `tusq scan .` to discover routes
+3. run `tusq manifest` to generate `tusq.manifest.json`
+4. review the manifest and set `approved: true` on capabilities to expose
+5. run `tusq compile` to emit JSON tool definitions for approved capabilities
+6. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
 
-This workflow should feel like a developer toolchain, not like manual chatbot assembly.
+Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
+
+## Beyond v0.1.0 vision
+
+The sections below describe the broader product direction and roadmap. They are not a claim that all of those surfaces ship in `v0.1.0`.
 
 ## What the engine should discover
 
@@ -561,14 +564,14 @@ tusq.dev is not:
 
 tusq.dev is:
 
-- a capability discovery engine
+- a capability discovery CLI
 - a manifest compiler
-- a tool and skill compiler
-- a self-hostable execution engine
-- a bridge from conventional SaaS logic to AI-native interfaces
+- a tool-definition compiler
+- a local describe-only MCP bridge
+- a bridge from conventional SaaS logic to governed AI-visible capability surfaces
 
 ## Status
 
-This directory should become the home of the open-source project, its CLI, compiler modules, plugin system, self-hosted runtime, MCP output, and local interface primitives.
+This directory is the home of the open-source CLI, docs, and launch assets for `tusq.dev v0.1.0`.
 
-The goal is to make the OSS engine valuable, extensible, and credible on its own while keeping a clean product boundary with tusq.cloud.
+The goal is to keep the OSS product valuable, credible, and accurately scoped on its own while preserving a clean product boundary with `tusq.cloud`.

@@ -43,6 +43,7 @@
 ### Launch blockers to confirm before broad promotion
 
 - Do not rely on `npm install -g tusq` in launch copy until package distribution is confirmed; the in-repo `package.json` is currently marked `private: true`
+- Treat the top of `README.md` as a launch asset, not just internal documentation; many early users will meet the product there before they reach the website
 - Ensure the README, homepage, announcement, and release notes all describe the same V1 boundary
 - Use a demo flow that stays inside verified product behavior: local CLI, local MCP, describe-only `tools/call`
 - Have one reproducible sample project or fixture ready for screenshots and terminal capture
@@ -69,6 +70,6 @@
 ## Channel Guardrails
 
 - Website and announcement: lead with the workflow proof and V1 boundary in the first screenful
-- GitHub and docs: tell users how to try the product today without implying a public package is already published
+- GitHub README and docs: tell users how to try the product today without implying a public package is already published
 - Social posts: frame the release as a governed path from repo to reviewed manifest to describe-only MCP, not as a general AI agent platform
 - Community posts: invite supported-stack users with real repos, not broad curiosity traffic from unsupported ecosystems
