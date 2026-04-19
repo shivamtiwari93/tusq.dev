@@ -37,7 +37,7 @@
 - [x] Invocation path checked: `node bin/tusq.js` works from repo root
 - [x] Failure-mode UX reviewed for invalid flags and missing inputs (REQ-003, REQ-004, REQ-006, REQ-010, REQ-015)
 - [x] Full smoke test suite executed and passed (`node tests/smoke.mjs` → exit 0) — re-verified on attempt 2 against post-checkpoint HEAD
-- [x] Framework coverage verified: Express, Fastify, NestJS all scanned successfully
+- [x] Framework coverage verified: Express, Fastify, and NestJS all scanned successfully (local describe-only MCP endpoint verified via `tusq serve` smoke tests)
 - [x] Live-site consolidation explicitly covered in QA evidence: direct file inspection confirms the legacy `websites/` hero structure, recovery path, and styling cues now live in `website/`, and REQ-023 through REQ-025 record canonical `website/` ownership
 - [x] Acceptance contract explicitly closed: `website/` is the canonical website surface, `.planning/IMPLEMENTATION_NOTES.md` includes a literal `## Changes` heading, and no ship decision depends on `websites/` remaining active
 - [x] Vision goal "capabilities with provenance back to source" verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` tracing each capability to its originating source declaration (REQ-026 through REQ-028)
