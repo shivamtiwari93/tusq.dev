@@ -19,20 +19,18 @@ Supported frameworks in V1:
 - Node.js 18+
 - A repository with one of the supported frameworks
 
-## Install
+## Try It Locally
 
-Use your preferred workflow:
-
-```bash
-npm install -g tusq
-```
-
-Or for local development from this repo:
+Use the repo-local workflow until a public package-manager install path is explicitly confirmed:
 
 ```bash
+git clone https://github.com/shivamtiwari93/tusq.dev
+cd tusq.dev
 npm install
 npm link
 ```
+
+This gives you a local `tusq` command without assuming a public global install path is already live.
 
 ## End-to-end workflow
 

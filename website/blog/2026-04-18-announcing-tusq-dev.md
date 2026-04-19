@@ -35,5 +35,6 @@ The V1 boundary is explicit:
 - MCP is describe-only in this release
 - `tools/call` returns schema and examples, not live execution
 - capability approval is manual by editing the manifest
+- early adopters should try it locally from the repo rather than assume a public package-manager install is already live
 
 This release proves the core loop from repo to governed capability surface without pretending to solve every hard problem on day one.

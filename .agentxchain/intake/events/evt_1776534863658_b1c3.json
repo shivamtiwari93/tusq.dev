@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776534863658_b1c3",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-18T17:54:23.657Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "In the current implementation run, make .planning/IMPLEMENTATION_NOTES.md satisfy the implementation_notes semantic by adding a literal '## Changes' section while preserving the existing implemented-content summary. Do not redo broader website work; this is a narrow artifact-semantic repair so implementation can exit to QA.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "In the current implementation run, make .planning/IMPLEMENTATION_NOTES.md satisfy the implementation_notes semantic by adding a literal '## Changes' section while preserving the existing implemented-content summary. Do not redo broader website work; this is a narrow artifact-semantic repair so implementation can exit to QA."
+    }
+  ],
+  "dedup_key": "manual:33af67848acbe70c"
+}

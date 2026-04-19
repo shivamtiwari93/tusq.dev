@@ -30,3 +30,4 @@ tags: [release-notes, v0-1-0]
 - MCP `tools/call` is describe-only and does not proxy live product actions.
 - Plugin API and non-Node ecosystems are deferred beyond V1.
 - No interactive approval UI in this release.
+- Launch CTA should be repo-local evaluation until public package distribution is confirmed.

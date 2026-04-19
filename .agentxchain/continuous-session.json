@@ -1,0 +1,16 @@
+{
+  "session_id": "cont-6a3af659",
+  "started_at": "2026-04-19T06:44:09.466Z",
+  "vision_path": ".planning/VISION.md",
+  "runs_completed": 0,
+  "max_runs": 5,
+  "idle_cycles": 0,
+  "max_idle_cycles": 3,
+  "current_run_id": "run_c8a4701ce0d4952d",
+  "current_vision_objective": "The canonical artifact: capabilities with provenance back to source",
+  "status": "paused",
+  "per_session_max_usd": null,
+  "cumulative_spent_usd": 0,
+  "budget_exhausted": false,
+  "startup_reconciled_run_id": "run_c8a4701ce0d4952d"
+}

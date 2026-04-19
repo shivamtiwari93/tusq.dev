@@ -7,6 +7,20 @@
 3. Prevent category confusion by separating the shipped OSS CLI from the broader tusq.dev vision and tusq.cloud roadmap.
 4. Create enough clarity that early users know exactly what to try first, what to trust, and what is intentionally deferred.
 
+## Launch Narrative
+
+### Core story
+
+- tusq.dev v0.1.0 is for incumbent SaaS teams that already have product logic in a supported Node.js backend and need a governed way to make that logic inspectable by AI systems
+- The defensible proof is concrete: scan the repo, generate a reviewable manifest, approve capabilities manually, compile approved tool JSON, and inspect the resulting describe-only MCP surface
+- The launch should sell the control model as much as the automation model: reviewed manifest, explicit approval, preserved provenance, inspectable output
+
+### First user action
+
+- Direct early adopters to run tusq.dev locally against a real Express, Fastify, or NestJS repo
+- Ask them to inspect `tusq.manifest.json`, approve one or two capabilities, compile, and confirm the MCP surface matches expectations
+- Treat scanner misses, low-confidence routes, and awkward manifest edits as feedback fuel for the next release
+
 ## Required Assets
 
 ### Must publish at launch
@@ -28,7 +42,7 @@
 
 ### Launch blockers to confirm before broad promotion
 
-- Confirm the public install path and package naming before external posts rely on `npm install -g tusq`
+- Do not rely on `npm install -g tusq` in launch copy until package distribution is confirmed; the in-repo `package.json` is currently marked `private: true`
 - Ensure the README, homepage, announcement, and release notes all describe the same V1 boundary
 - Use a demo flow that stays inside verified product behavior: local CLI, local MCP, describe-only `tools/call`
 - Have one reproducible sample project or fixture ready for screenshots and terminal capture
@@ -50,4 +64,11 @@
 4. **Heuristic scanner perception**
    The scanner is useful but not exhaustive. We should frame the manifest as reviewable output, not perfect autonomous understanding.
 5. **Install-path ambiguity**
-   Until the package/distribution path is finalized, avoid copy that implies a public package is already available everywhere.
+   Until the package/distribution path is finalized, the launch CTA should be "try it locally from the repo" rather than "install it from npm."
+
+## Channel Guardrails
+
+- Website and announcement: lead with the workflow proof and V1 boundary in the first screenful
+- GitHub and docs: tell users how to try the product today without implying a public package is already published
+- Social posts: frame the release as a governed path from repo to reviewed manifest to describe-only MCP, not as a general AI agent platform
+- Community posts: invite supported-stack users with real repos, not broad curiosity traffic from unsupported ecosystems

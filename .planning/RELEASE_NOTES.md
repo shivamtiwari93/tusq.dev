@@ -30,6 +30,8 @@ Homepage hero copy, homepage shipped-surface copy, site metadata, and these rele
 
 This release should not be described as a live execution engine, hosted platform, plugin ecosystem, runtime learning system, or shipped skill/agent generator.
 
+The prior QA pass proved build and behavior, but it did not by itself validate every launch CTA. One important messaging correction for launch is install-path discipline: until package distribution is confirmed, external copy should not promise a public global install command.
+
 ## Website Consolidation
 
 The public tusq.dev surface is now consolidated onto the Docusaurus app in `website/`. This was a migration of the existing live website into the canonical docs/blog app, not the introduction of a parallel third site. The legacy live-site structure from `websites/` was migrated over rather than replaced with template content:
@@ -70,7 +72,11 @@ This is an initial release. No migration required.
 **Prerequisites:**
 - Node.js ≥ 18
 - Run from your project root (the directory containing `package.json`)
-- Install: `npm install -g tusq` (or `npm link` from the repo for local development)
+
+**Current try path:**
+- Clone the repo and run the CLI locally against a supported project
+- If you want a shell command during local evaluation, use the repo-local Node workflow rather than assuming a published package exists
+- Publish a public package-manager install step only after distribution is confirmed
 
 **Typical workflow:**
 ```
@@ -89,3 +95,4 @@ tusq serve
 - **No plugin API:** Framework support (Express, Fastify, NestJS) is hardcoded. Community framework plugins are deferred to V2.
 - **JavaScript/TypeScript only:** Python, Go, Java, and other ecosystems are not supported in V1.
 - **Non-interactive review:** `tusq review` prints to stdout only. An interactive TUI for in-terminal approval is planned for V1.1.
+- **Distribution still needs explicit confirmation:** the launch narrative should drive repo-local evaluation until a public package channel is actually available

@@ -30,7 +30,7 @@ Turn a supported Node.js API codebase into a reviewable manifest and describe-on
 
 ### Positioning Statement
 
-For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, and serves them over a local MCP endpoint. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
+For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
 
 ### Messaging Pillars
 
@@ -42,6 +42,20 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
    V1 gets teams from repo to manifest to compiled tools to a local describe-only MCP endpoint in one terminal workflow.
 4. **Be explicit about the V1 boundary**
    This release proves discovery, manifest generation, compile, review, and MCP exposure. It does not yet execute live product actions.
+
+## Proof Stack
+
+- Supported framework scope is narrow and explicit: Express, Fastify, and NestJS only
+- Generated outputs are inspectable: `.tusq/scan.json`, `tusq.manifest.json`, and compiled `tusq-tools/*.json`
+- Provenance survives the pipeline: compiled tool definitions can point back to the source file and line where a route was discovered
+- MCP is real but intentionally constrained: `tools/list` works, and `tools/call` returns schema/example data instead of executing live actions
+- The operator remains in control: approval is manual, compilation is explicit, and review output is non-interactive stdout
+
+## Primary CTA
+
+- Primary ask for launch: try tusq.dev locally on a supported Node.js repo and inspect the generated manifest before approving anything
+- Preferred early-adopter promise: "clone the repo, run the CLI locally, and tell us where scanner or manifest edge cases appear"
+- Do not promise a public package-manager install path until distribution is actually confirmed
 
 ## Product Truth
 
@@ -63,6 +77,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - tusq.dev can scan supported Node.js frameworks and extract route-level capability candidates from a real codebase
 - tusq.dev can generate a reviewable `tusq.manifest.json` from scan data and preserve manual approvals across regeneration
 - tusq.dev can compile approved capabilities into structured JSON tool definitions
+- tusq.dev can preserve provenance from discovered routes into compiled tool definitions
 - tusq.dev can expose compiled tools through a local, describe-only MCP server
 - tusq.dev gives teams a governed path from existing SaaS code to AI-visible capability definitions without starting from prompts
 - V1 is self-hosted and terminal-native; teams can run the workflow locally
@@ -74,3 +89,4 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Do not say tusq.dev supports Python, Go, Java, or arbitrary backend frameworks in v0.1.0
 - Do not say tusq.dev includes an interactive approval UI, embedded chat experience, or hosted cloud control plane in v0.1.0
 - Do not say tusq.dev replaces human review; V1 depends on manifest review and manual approval
+- Do not publish `npm install -g tusq` as a launch CTA until package distribution is confirmed

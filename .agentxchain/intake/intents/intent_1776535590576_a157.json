@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776535590576_a157",
+  "event_id": "evt_1776535590575_c136",
+  "status": "completed",
+  "priority": "p0",
+  "template": "generic",
+  "charter": "In the current implementation run, consolidate the legacy live site in websites/ into the Docusaurus site in website/. Treat websites/ as the current live website surface that must be migrated, not ignored. Merge over homepage structure, 404 behavior, styling cues, and any required static assets from websites/ into website/ so Docusaurus becomes the single canonical website/docs/blog surface. Update .planning/IMPLEMENTATION_NOTES.md with a literal ## Changes section that describes the consolidation work so the implementation_complete gate can exit to QA. Do not create a parallel third site; converge onto website/ and leave clear follow-up notes if websites/ can only be retired in a later cleanup.",
+  "acceptance_contract": [
+    "website/ reflects the current live website content and assets from websites/ instead of diverging from it",
+    ".planning/IMPLEMENTATION_NOTES.md contains a literal ## Changes heading describing the consolidation work",
+    "implementation can advance to qa after verification without depending on websites/ as a separate active site"
+  ],
+  "requires_human_start": true,
+  "target_run": "run_c8a4701ce0d4952d",
+  "created_at": "2026-04-18T18:06:30.574Z",
+  "updated_at": "2026-04-19T05:38:27Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-18T18:06:30.574Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-18T18:06:30.577Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-18T18:06:30.577Z",
+      "reason": "operator injection",
+      "approver": "human"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-19T04:35:03.989Z",
+      "reason": "generated 0 planning artifact(s) from template \"generic\"",
+      "artifacts": []
+    },
+    {
+      "from": "planned",
+      "to": "executing",
+      "at": "2026-04-19T04:35:17.151Z",
+      "run_id": "run_c8a4701ce0d4952d",
+      "turn_id": "turn_1e8cabbfdda98f5d",
+      "role": "product_marketing",
+      "reason": "governed execution started"
+    },
+    {
+      "from": "executing",
+      "to": "completed",
+      "at": "2026-04-19T05:38:27Z",
+      "turn_id": "turn_1e8cabbfdda98f5d",
+      "role": "product_marketing",
+      "run_id": "run_c8a4701ce0d4952d",
+      "reason": "operator workaround — acceptance contract satisfied by current workspace and retained turn result"
+    }
+  ],
+  "approved_by": "human",
+  "approved_run_id": "run_c8a4701ce0d4952d",
+  "planning_artifacts": [],
+  "target_turn": "turn_1e8cabbfdda98f5d",
+  "started_at": "2026-04-19T04:35:17.151Z",
+  "completed_at": "2026-04-19T05:38:27Z",
+  "run_completed_at": "2026-04-19T05:38:27Z",
+  "run_final_turn": "turn_1e8cabbfdda98f5d",
+  "satisfying_turn": "turn_1e8cabbfdda98f5d"
+}

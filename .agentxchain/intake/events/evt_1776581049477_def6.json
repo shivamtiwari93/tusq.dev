@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776581049477_def6",
+  "source": "vision_scan",
+  "category": "vision_derived",
+  "created_at": "2026-04-19T06:44:09.477Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "capabilities with provenance back to source",
+    "vision_section": "The canonical artifact",
+    "derived": true
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Vision section: The canonical artifact — Goal: capabilities with provenance back to source"
+    }
+  ],
+  "dedup_key": "vision_scan:8542e14ceab8e98c"
+}
