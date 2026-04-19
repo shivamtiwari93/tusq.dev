@@ -3,6 +3,7 @@
 Approved: YES
 
 > Planning artifacts reviewed and approved for the Docusaurus docs/website/blog platform initiative.
+> Re-confirmed in run_a47f1dd6629dba75 after parent run (run_c8a4701ce0d4952d) completed implementation but stalled in a QA routing loop. All planning artifacts verified against the built website/ directory.
 
 ## Discovery Checklist
 
