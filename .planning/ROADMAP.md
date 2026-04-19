@@ -61,6 +61,16 @@
 - [x] Verify MCP describe-only is clearly stated wherever serve is mentioned
 - [x] Verify no deferred features (runtime learning, plugin API, etc.) are presented as current
 
+### M8: Canonical Artifact Shape Specification (~0.5 day)
+- [x] Document tusq.config.json input shape with all fields
+- [x] Document .tusq/scan.json output shape including Route object
+- [x] Document tusq.manifest.json canonical artifact shape including Capability object
+- [x] Document tusq-tools/*.json compiled tool output shape
+- [x] Document MCP server response shapes (tools/list, tools/call, errors)
+- [x] Document confidence scoring formula
+- [x] Document shape lineage (config → scan → manifest → tools → MCP)
+- [x] Document V1 input/output schema limitations
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

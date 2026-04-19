@@ -192,6 +192,316 @@ Content authors interact with Docusaurus via:
 - [ ] No page presents runtime learning, plugin API, or hosted execution as current features
 - [ ] Framework support is visible on homepage and in docs
 
+## The Canonical Artifact: Input and Output Shapes
+
+This section formally specifies the shapes of every artifact that tusq.dev produces. These shapes are the contract between the CLI, the manifest, the compiled tools, and the MCP server. All downstream consumers (docs, agents, CI checks) depend on these shapes being stable and versioned.
+
+### 1. `tusq.config.json` — Project Configuration (Input)
+
+The configuration file that `tusq init` creates. It governs all subsequent CLI commands.
+
+```json
+{
+  "version": 1,
+  "framework": "express | fastify | nestjs | unknown",
+  "scan": {
+    "include": ["**/*.js", "**/*.ts"],
+    "exclude": ["node_modules", ".git", ".tusq", "dist", "build", "coverage"]
+  },
+  "output": {
+    "scan_file": ".tusq/scan.json",
+    "manifest_file": "tusq.manifest.json",
+    "tools_dir": "tusq-tools"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `version` | integer | yes | Schema version; always `1` in V1 |
+| `framework` | string | yes | Detected or user-specified framework |
+| `scan.include` | string[] | yes | Glob patterns for source files to scan |
+| `scan.exclude` | string[] | yes | Directory names to skip |
+| `output.scan_file` | string | yes | Path for scan output relative to project root |
+| `output.manifest_file` | string | yes | Path for manifest output relative to project root |
+| `output.tools_dir` | string | yes | Directory for compiled tool definitions |
+
+### 2. `.tusq/scan.json` — Scan Output
+
+Produced by `tusq scan <path>`. Contains raw route discovery results before human review.
+
+```json
+{
+  "generated_at": "<ISO 8601 timestamp>",
+  "target_path": "<absolute path to scanned project>",
+  "framework": "express | fastify | nestjs",
+  "warnings": ["<string>"],
+  "route_count": 2,
+  "routes": [ "<Route object — see below>" ]
+}
+```
+
+**Route object shape:**
+
+```json
+{
+  "framework": "express | fastify | nestjs",
+  "method": "GET | POST | PUT | PATCH | DELETE | OPTIONS | HEAD",
+  "path": "/users/:id",
+  "handler": "listUsers | inline_handler | unknown_handler",
+  "domain": "users",
+  "auth_hints": ["requireAuth", "AdminGuard"],
+  "provenance": {
+    "file": "src/app.ts",
+    "line": 12
+  },
+  "confidence": 0.86,
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<inference status message>"
+  },
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<inference status message>"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `framework` | string | Which framework detector matched this route |
+| `method` | string | HTTP method (uppercased) |
+| `path` | string | Route path, always starts with `/` |
+| `handler` | string | Function name or `inline_handler` / `unknown_handler` |
+| `domain` | string | Inferred from first path segment or controller prefix |
+| `auth_hints` | string[] | Middleware/decorator names matching auth patterns |
+| `provenance.file` | string | Relative path to source file |
+| `provenance.line` | integer | 1-based line number |
+| `confidence` | number | 0.0–0.95 score based on handler quality, auth hints, schema hints, path specificity |
+| `input_schema` | object | JSON Schema for expected input; conservative (`additionalProperties: true`) in V1 |
+| `output_schema` | object | JSON Schema for expected output; conservative in V1 |
+
+**Confidence scoring (V1):**
+
+| Signal | Score delta |
+|--------|------------|
+| Base score | +0.62 |
+| Named handler (not inline/unknown) | +0.12 |
+| Auth hints present | +0.08 |
+| Schema hint detected (zod, joi, DTO) | +0.14 |
+| Non-root path | +0.04 |
+| **Cap** | **0.95** |
+
+### 3. `tusq.manifest.json` — The Canonical Artifact
+
+Produced by `tusq manifest`. This is the reviewable contract between code and agents — the central product of tusq.dev.
+
+```json
+{
+  "schema_version": "1.0",
+  "generated_at": "<ISO 8601 timestamp>",
+  "source_scan": ".tusq/scan.json",
+  "capabilities": [ "<Capability object — see below>" ]
+}
+```
+
+**Capability object shape:**
+
+```json
+{
+  "name": "get_users_users",
+  "description": "GET /users capability in users domain",
+  "method": "GET",
+  "path": "/users",
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<inference status>"
+  },
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<inference status>"
+  },
+  "side_effect_class": "read | write | destructive",
+  "auth_hints": ["requireAuth"],
+  "provenance": {
+    "file": "src/app.ts",
+    "line": 12
+  },
+  "confidence": 0.86,
+  "review_needed": false,
+  "approved": true,
+  "domain": "users"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | `{method}_{domain}_{path_slug}` — unique identifier |
+| `description` | string | Human-readable summary |
+| `method` | string | HTTP method (uppercased) |
+| `path` | string | Route path |
+| `input_schema` | object | JSON Schema describing expected input parameters |
+| `output_schema` | object | JSON Schema describing expected response shape |
+| `side_effect_class` | string | `read` (GET/HEAD/OPTIONS), `write` (POST/PUT/PATCH), or `destructive` (DELETE or destructive handler names) |
+| `auth_hints` | string[] | Auth-related middleware/decorators detected |
+| `provenance` | object | Source file and line number |
+| `confidence` | number | 0.0–0.95 |
+| `review_needed` | boolean | `true` when `confidence < 0.8` |
+| `approved` | boolean | Human-set gate; only `approved: true` capabilities compile into tools |
+| `domain` | string | Logical grouping (inferred from route prefix) |
+
+**V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
+
+### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
+
+Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.
+
+**Individual tool shape (`tusq-tools/{name}.json`):**
+
+```json
+{
+  "name": "get_users_users",
+  "description": "GET /users capability in users domain",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<input inference status>"
+  },
+  "returns": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "<output inference status>"
+  },
+  "side_effect_class": "read",
+  "auth_hints": ["requireAuth"],
+  "examples": [
+    {
+      "input": {},
+      "output": {
+        "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+      }
+    }
+  ],
+  "provenance": {
+    "file": "src/app.ts",
+    "line": 12
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Matches the capability name from the manifest |
+| `description` | string | Human-readable summary |
+| `parameters` | object | JSON Schema for tool input (from `input_schema`) |
+| `returns` | object | JSON Schema for tool output (from `output_schema`) |
+| `side_effect_class` | string | Same classification as manifest |
+| `auth_hints` | string[] | Auth requirements |
+| `examples` | array | Static examples; in V1 always contain a describe-only note |
+| `provenance` | object | Source traceability |
+
+**Tool index shape (`tusq-tools/index.json`):**
+
+```json
+{
+  "generated_at": "<ISO 8601 timestamp>",
+  "tool_count": 2,
+  "tools": ["get_users_users", "post_users_users"]
+}
+```
+
+### 5. MCP Server Responses (Output)
+
+The `tusq serve` command exposes compiled tools via an HTTP JSON-RPC endpoint.
+
+**`tools/list` response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "get_users_users",
+        "description": "GET /users capability in users domain",
+        "parameters": { "type": "object", "additionalProperties": true },
+        "returns": { "type": "object", "additionalProperties": true }
+      }
+    ]
+  }
+}
+```
+
+**`tools/call` response (describe-only in V1):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "name": "get_users_users",
+    "description": "GET /users capability in users domain",
+    "schema": {
+      "parameters": { "type": "object", "additionalProperties": true },
+      "returns": { "type": "object", "additionalProperties": true }
+    },
+    "examples": [
+      {
+        "input": {},
+        "output": { "note": "Describe-only mode in V1. Live execution is deferred to V1.1." }
+      }
+    ]
+  }
+}
+```
+
+**MCP error response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "error": {
+    "code": -32602,
+    "message": "Unknown tool: nonexistent_tool"
+  }
+}
+```
+
+| Error code | Meaning |
+|------------|---------|
+| `-32601` | Method not found (unsupported RPC method) |
+| `-32602` | Invalid params (unknown tool name) |
+
+### Shape Lineage
+
+The data flows through a strict pipeline where each stage narrows and enriches:
+
+```
+tusq.config.json          (user input — framework, paths, exclusions)
+       │
+       ▼
+.tusq/scan.json            (discovered routes with inferred schemas)
+       │
+       ▼
+tusq.manifest.json         (capabilities with approval gates + provenance)
+       │  ▲
+       │  │ human edits approved=true
+       │  │
+       ▼
+tusq-tools/*.json          (compiled tools for approved capabilities only)
+       │
+       ▼
+MCP server responses       (tools/list and tools/call over JSON-RPC)
+```
+
+Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)

@@ -4,6 +4,8 @@ Approved: YES
 
 > Planning artifacts reviewed and approved for the Docusaurus docs/website/blog platform initiative.
 > Re-confirmed in run_a47f1dd6629dba75 (turn_160ed0ff8cedc45e) after parent run (run_c8a4701ce0d4952d) completed all phases but stalled awaiting human approval. Fresh PM review challenged two issues: (1) ROADMAP milestones were shown as unchecked despite implementation being complete — fixed by marking all milestones done; (2) SYSTEM_SPEC file tree listed incorrect blog filename (dots vs hyphens) — fixed to match actual file. Build re-verified: `npm run build` exits 0 with no errors.
+>
+> Updated in run_7c529def79b94f51 (turn_449d52ce8856b875) to address vision goal "The canonical artifact: input and output shapes." Added formal shape specifications for all 5 artifacts in the tusq.dev pipeline (tusq.config.json, scan.json, tusq.manifest.json, tusq-tools/*.json, MCP server responses) to SYSTEM_SPEC.md. These shapes were derived from the actual CLI implementation in src/cli.js and verified against test fixtures. ROADMAP updated with M8 milestone.
 
 ## Discovery Checklist
 
