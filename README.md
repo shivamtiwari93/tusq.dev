@@ -108,6 +108,19 @@ The accurate launch workflow is:
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
 
+## Launch CTA
+
+Try `v0.1.0` locally from the repo:
+
+```bash
+git clone https://github.com/shivamtiwari93/tusq.dev
+cd tusq.dev
+npm install
+npm link
+```
+
+Then run the CLI against a supported Express, Fastify, or NestJS codebase and inspect the generated manifest before approving anything.
+
 ## Beyond v0.1.0 vision
 
 The sections below describe the broader product direction and roadmap. They are not a claim that all of those surfaces ship in `v0.1.0`.
@@ -165,7 +178,7 @@ It should be a reviewable, versionable contract that describes:
 
 The manifest is how an organization reviews and ships agentic behavior as software rather than hand-written prompts.
 
-## Main product modules
+## Long-range product modules
 
 ### 1. Ingestion and discovery
 
@@ -233,6 +246,8 @@ This module should:
 - remain intentionally lighter than the hosted commercial delivery layer
 
 ## Full AI transition scope
+
+This section is roadmap direction, not a description of the currently shipped `v0.1.0` surface.
 
 Tusq.dev should not stop at "generate tools from APIs." If it is going to help a conventional SaaS company move into the AI era, it needs to automate the broader transition from API-first product architecture to capability-first AI-native product architecture.
 
@@ -481,7 +496,9 @@ tusq.dev should be easy to install through common developer channels:
 
 The installation path should make the product feel like a real developer infrastructure tool, not a hosted-only product with a token CLI.
 
-## What success looks like
+## Long-range success state
+
+This section describes the broader target state over time, not the complete output of `v0.1.0`.
 
 A team should be able to use tusq.dev and end up with:
 
@@ -510,6 +527,8 @@ But it should also have a clean upgrade path into tusq.cloud when a team wants:
 The open-source engine should be complete enough that this upgrade feels optional and logical, not mandatory.
 
 ## Early roadmap
+
+These milestones describe post-launch expansion beyond the narrow `v0.1.0` workflow documented above.
 
 ### Milestone 1: discovery foundation
 

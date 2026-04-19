@@ -52,7 +52,16 @@ If you’re working on AI enablement inside an existing SaaS product, tusq.dev i
 
 ## How To Try It Today
 
-- Clone the repo and run the CLI locally against a supported Express, Fastify, or NestJS codebase
+- Use the repo-local trial path on a supported Express, Fastify, or NestJS codebase:
+
+```bash
+git clone https://github.com/shivamtiwari93/tusq.dev
+cd tusq.dev
+npm install
+npm link
+```
+
+- Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → approve in the manifest → `tusq compile` → `tusq serve`
 - Review `tusq.manifest.json` before approving any capability
 - Treat the first run as an inspection workflow: check confidence, domain grouping, provenance, and the describe-only MCP output
 - Wait to publish a public package-manager install step until distribution is confirmed
@@ -67,6 +76,8 @@ It scans supported Node.js SaaS backends (`Express`, `Fastify`, `NestJS`), gener
 
 This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, not live execution.
 
+Try it locally from the repo on a supported service.
+
 ### LinkedIn
 
 Most SaaS companies already have the product logic they need for AI workflows. The problem is that the logic is trapped behind APIs and internal code paths that are not packaged for agent use.
@@ -74,6 +85,8 @@ Most SaaS companies already have the product logic they need for AI workflows. T
 `tusq.dev v0.1.0` is our first open-source step at fixing that. It gives Express, Fastify, and NestJS teams a CLI to scan a codebase, generate a reviewable capability manifest, approve what should be exposed, compile approved capabilities into tool definitions, preserve provenance, and serve them through a local describe-only MCP endpoint.
 
 The release is intentionally narrow and honest. No live proxying yet. No interactive TUI yet. Just a concrete path from existing product code to a governed AI-visible surface.
+
+The right first step is repo-local evaluation on a supported service, not assuming a public package install is already live.
 
 ### Community post
 
@@ -85,6 +98,7 @@ Current V1 scope:
 - reviewed `tusq.manifest.json`
 - approved capability compilation
 - local describe-only MCP server
+- repo-local evaluation path for launch
 
 Explicitly not in V1:
 - live API execution

@@ -55,6 +55,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 
 - Primary ask for launch: try tusq.dev locally on a supported Node.js repo and inspect the generated manifest before approving anything
 - Preferred early-adopter promise: "clone the repo, run the CLI locally, and tell us where scanner or manifest edge cases appear"
+- Exact CTA language to repeat: "Try tusq.dev locally from the repo on an Express, Fastify, or NestJS codebase."
 - Do not promise a public package-manager install path until distribution is actually confirmed
 - README, homepage, docs, and announcement should all use the same repo-local CTA so the first skim does not imply a published installer
 

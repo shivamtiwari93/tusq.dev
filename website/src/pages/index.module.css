@@ -47,6 +47,17 @@ h2 {
   line-height: 1.7;
 }
 
+.launchNote {
+  max-width: 760px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--tusq-line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--tusq-ink);
+  line-height: 1.65;
+}
+
 .heroActions {
   display: flex;
   flex-wrap: wrap;

@@ -57,9 +57,14 @@ export default function Home(): ReactNode {
             definitions, and serves them through a local describe-only MCP endpoint that clients
             can inspect.
           </p>
+          <p className={styles.launchNote}>
+            Try it locally from the repo on a supported codebase. Current launch flow: clone the
+            repo, install locally, run <code>tusq scan</code>, review the manifest, approve what
+            you want exposed, then compile and serve.
+          </p>
           <div className={styles.heroActions}>
             <Link className={styles.buttonPrimary} to="/docs/getting-started">
-              Open Docs
+              Try It Locally
             </Link>
             <Link className={styles.buttonGhost} to="/docs/roadmap">
               View Post-v0.1.0 Roadmap
