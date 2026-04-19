@@ -326,6 +326,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
     "description": "<inference status>"
   },
   "side_effect_class": "read | write | destructive",
+  "sensitivity_class": "unknown | public | internal | confidential | restricted",
   "auth_hints": ["requireAuth"],
   "provenance": {
     "file": "src/app.ts",
@@ -347,6 +348,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `input_schema` | object | JSON Schema describing expected input parameters |
 | `output_schema` | object | JSON Schema describing expected response shape |
 | `side_effect_class` | string | `read` (GET/HEAD/OPTIONS), `write` (POST/PUT/PATCH), or `destructive` (DELETE or destructive handler names) |
+| `sensitivity_class` | string | `unknown` (default in V1), `public`, `internal`, `confidential`, or `restricted` — see classification rules below |
 | `auth_hints` | string[] | Auth-related middleware/decorators detected |
 | `provenance` | object | Source file and line number |
 | `confidence` | number | 0.0–0.95 |
@@ -355,6 +357,48 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `domain` | string | Logical grouping (inferred from route prefix) |
 
 **V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
+
+#### Side Effect Classification Rules
+
+The `side_effect_class` field classifies whether invoking a capability mutates state. This classification drives agent safety decisions: an agent runtime can freely invoke `read` capabilities, require confirmation for `write`, and require explicit human approval for `destructive`.
+
+| Class | Assigned when | Agent implication |
+|-------|--------------|-------------------|
+| `read` | HTTP method is GET, HEAD, or OPTIONS | Safe to invoke without confirmation |
+| `write` | HTTP method is POST, PUT, or PATCH (and no destructive signals) | Requires confirmation before invocation |
+| `destructive` | HTTP method is DELETE, **or** route path or handler name matches `/(delete\|destroy\|remove\|revoke)/i` | Requires explicit human approval |
+
+**V1 implementation:** The `classifySideEffect(method, routePath, handler)` function in `src/cli.js` applies these rules deterministically. The classification is assigned during `tusq manifest` and propagated unchanged through `tusq compile` and `tusq serve`.
+
+**Key design decision:** Handler/path name matching catches destructive operations that use non-DELETE methods (e.g., `POST /users/:id/deactivate` with handler `destroyUser`). This is intentionally conservative — false positives (flagging a non-destructive operation as destructive) are acceptable; false negatives (missing a destructive operation) are not.
+
+#### Sensitivity Classification Rules
+
+The `sensitivity_class` field classifies what kind of data a capability touches. This drives redaction, audit, and access-control decisions downstream. An agent runtime or governance layer uses sensitivity class to determine logging verbosity, payload redaction, and whether additional authorization is required.
+
+| Class | Definition | Examples |
+|-------|-----------|----------|
+| `unknown` | No inference performed or insufficient signal | Default for all capabilities in V1 |
+| `public` | Unauthenticated endpoint serving non-sensitive data | Health checks, public product catalog, documentation endpoints |
+| `internal` | Authenticated endpoint with no sensitive data patterns | Internal dashboards, feature flags, non-PII settings |
+| `confidential` | Handles PII, user data, or financial information | User profiles, email addresses, payment history, billing |
+| `restricted` | Admin-only, security-critical, or regulated operations | Role/permission changes, API key management, audit logs, compliance exports |
+
+**V1 sensitivity limitations:** In V1, `sensitivity_class` is always `"unknown"`. The field is present in the manifest shape to establish the contract, but no inference is performed. This mirrors the conservative approach used for `input_schema` and `output_schema`. The field exists so that:
+
+1. Human reviewers can manually set sensitivity during manifest review (`tusq manifest` produces the field; humans edit it before `tusq compile`)
+2. Downstream consumers (agent runtimes, governance tools) can rely on the field being present
+3. V2 inference logic can populate it without changing the artifact shape
+
+**V2 sensitivity inference (planned):** Future versions will infer sensitivity from:
+
+| Signal | Inferred class |
+|--------|---------------|
+| No `auth_hints` + `side_effect_class: read` | `public` |
+| `auth_hints` present + no sensitive path/handler patterns | `internal` |
+| Path or handler matches `/(user|profile|email|password|payment|billing|invoice|card|ssn|pii)/i` | `confidential` |
+| Path or handler matches `/(admin|role|permission|apikey|secret|audit|compliance)/i` | `restricted` |
+| `auth_hints` contain admin/superadmin patterns | `restricted` |
 
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
@@ -377,6 +421,7 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
     "description": "<output inference status>"
   },
   "side_effect_class": "read",
+  "sensitivity_class": "unknown",
   "auth_hints": ["requireAuth"],
   "examples": [
     {
@@ -400,6 +445,7 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
 | `parameters` | object | JSON Schema for tool input (from `input_schema`) |
 | `returns` | object | JSON Schema for tool output (from `output_schema`) |
 | `side_effect_class` | string | Same classification as manifest |
+| `sensitivity_class` | string | Same classification as manifest |
 | `auth_hints` | string[] | Auth requirements |
 | `examples` | array | Static examples; in V1 always contain a describe-only note |
 | `provenance` | object | Source traceability |

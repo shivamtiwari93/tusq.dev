@@ -6,6 +6,8 @@ Approved: YES
 > Re-confirmed in run_a47f1dd6629dba75 (turn_160ed0ff8cedc45e) after parent run (run_c8a4701ce0d4952d) completed all phases but stalled awaiting human approval. Fresh PM review challenged two issues: (1) ROADMAP milestones were shown as unchecked despite implementation being complete — fixed by marking all milestones done; (2) SYSTEM_SPEC file tree listed incorrect blog filename (dots vs hyphens) — fixed to match actual file. Build re-verified: `npm run build` exits 0 with no errors.
 >
 > Updated in run_7c529def79b94f51 (turn_449d52ce8856b875) to address vision goal "The canonical artifact: input and output shapes." Added formal shape specifications for all 5 artifacts in the tusq.dev pipeline (tusq.config.json, scan.json, tusq.manifest.json, tusq-tools/*.json, MCP server responses) to SYSTEM_SPEC.md. These shapes were derived from the actual CLI implementation in src/cli.js and verified against test fixtures. ROADMAP updated with M8 milestone.
+>
+> Updated in run_aeca336174864081 (turn_d50a72d77645f27f) to address vision goal "The canonical artifact: side effects and sensitivity class." Formally specified `side_effect_class` classification rules (already implemented in V1) and introduced `sensitivity_class` as a new canonical artifact field. The sensitivity field follows the same conservative-default pattern as input/output schemas: present in V1 with `"unknown"` default, inference planned for V2. ROADMAP updated with M9 milestone. SYSTEM_SPEC updated with both classification rule tables, V1 limitations, and V2 inference signals.
 
 ## Discovery Checklist
 
@@ -44,6 +46,23 @@ The existing static site lives in `websites/`. Docusaurus convention is `website
 Docusaurus supports search, i18n, versioned docs, custom plugins, and many other features. None of these are needed for the initial platform. The spec explicitly excludes them.
 
 **Decision:** Vanilla Docusaurus 3.x with default plugins only. Homepage swizzling is the only customization.
+
+### Challenge 5: Sensitivity class — ship the field or defer entirely?
+
+The vision (VISION.md line 57) lists "side effects and sensitivity class" as part of the canonical artifact. Side effects are implemented in V1 with `classifySideEffect()`. Sensitivity is not implemented at all — no code, no field, no inference.
+
+**Options considered:**
+- **A) Defer entirely to V2.** No field in V1 manifest. Simpler, but changes the artifact shape later, breaking consumers.
+- **B) Add field with `"unknown"` default.** Field exists, no inference. Mirrors the `input_schema`/`output_schema` pattern. Consumers can rely on the field being present. Humans can manually edit it during manifest review.
+- **C) Add field with basic inference from auth_hints.** More useful but adds implementation complexity and risk of false classification.
+
+**Decision:** Option B. The `sensitivity_class` field ships in V1 as `"unknown"` for all capabilities. This establishes the contract without overclaiming inference accuracy. It follows the exact same pattern as V1 schemas: structurally present, intentionally conservative, manually editable, with real inference deferred to V2.
+
+### Challenge 6: Side effect classification — should `financial` be a separate class?
+
+The vision (VISION.md line 160) mentions "financial" as a separate category: "read, write, destructive, financial, or security-sensitive." The current V1 implementation uses only three values: `read`, `write`, `destructive`.
+
+**Decision:** Keep three values for `side_effect_class`. Financial and security-sensitive are **sensitivity concerns**, not side-effect concerns. A `POST /payments` is a `write` (side effect) that is `confidential` or `restricted` (sensitivity). Conflating mutation type with data sensitivity in one field would create ambiguity. The two-field model (`side_effect_class` + `sensitivity_class`) is cleaner and matches how agent runtimes actually make decisions: "can I call this without confirmation?" (side effect) vs. "what audit/redaction rules apply?" (sensitivity).
 
 ## Key Judgment Calls
 
