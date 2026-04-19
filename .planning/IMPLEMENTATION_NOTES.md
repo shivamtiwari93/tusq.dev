@@ -5,6 +5,22 @@
 - Rejected the prior failed dev attempt as incomplete for this continuation run: it only re-ran build/smoke checks and did not record or deliver concrete post-v0.1.0 improvements in this artifact.
 - Rejected any assumption that "no implementation work remains." This run adds follow-on product clarity improvements to the shipped site while preserving v0.1.0 truth boundaries.
 - Rejected the immediately previous stale implementation reissue as insufficient: it produced no turn artifact and did not validate whether approved planning decisions (artifact-shape clarity) were reflected in user-facing docs.
+- Rejected the assumption that sensitivity classification had already shipped because planning (M9) and spec artifacts defined `sensitivity_class`, but runtime outputs (`tusq manifest`, `tusq compile`, `tusq serve`) still omitted it.
+
+## Continuation Changes In This Turn (M9 Classification Closure)
+
+- Implemented `sensitivity_class` on manifest capabilities in `src/cli.js`.
+  - New capabilities default to `"unknown"` in V1.
+  - Existing manifest values are preserved on regeneration when manually set to a valid class.
+- Propagated `sensitivity_class` to compiled tools in `tusq compile`.
+- Propagated both classification metadata fields (`side_effect_class`, `sensitivity_class`) to MCP responses in `tusq serve` for both `tools/list` and `tools/call`.
+- Updated public docs:
+  - `website/docs/manifest-format.md` now documents `sensitivity_class` plus explicit side-effect and sensitivity rule sections.
+  - `website/docs/mcp-server.md` now states classification metadata is returned by MCP methods.
+- Updated fixtures and smoke coverage:
+  - Added `sensitivity_class` to express fixture manifest and compiled tool JSON.
+  - Added smoke assertions that manifest, compiled tools, `tools/list`, and `tools/call` surface `sensitivity_class: "unknown"` in V1.
+- Updated `.planning/ROADMAP.md` M9 checklist to fully complete milestone M9, including post-docs build verification.
 
 ## Baseline (Completed In Parent Run)
 

@@ -127,11 +127,19 @@ async function run() {
   runCli(['manifest', '--verbose'], { cwd: expressProject });
   const manifestPath = path.join(expressProject, 'tusq.manifest.json');
   const manifest = await readJson(manifestPath);
+  if (!manifest.capabilities.every((capability) => capability.sensitivity_class === 'unknown')) {
+    throw new Error('Expected manifest capabilities to include sensitivity_class=unknown in V1');
+  }
   manifest.capabilities[0].approved = true;
   await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   runCli(['compile', '--dry-run', '--verbose'], { cwd: expressProject });
   runCli(['compile', '--verbose'], { cwd: expressProject });
+  const compiledToolPath = path.join(expressProject, 'tusq-tools', `${manifest.capabilities[0].name}.json`);
+  const compiledTool = await readJson(compiledToolPath);
+  if (compiledTool.sensitivity_class !== 'unknown') {
+    throw new Error('Expected compiled tool to include sensitivity_class=unknown');
+  }
   runCli(['review', '--verbose'], { cwd: expressProject });
 
   runCli(['init'], { cwd: fastifyProject });
@@ -159,6 +167,9 @@ async function run() {
   }
 
   const firstTool = listResponse.result.tools[0];
+  if (firstTool.sensitivity_class !== 'unknown') {
+    throw new Error(`Expected tools/list sensitivity_class=unknown: ${JSON.stringify(firstTool)}`);
+  }
   const callResponse = await requestRpc(port, {
     jsonrpc: '2.0',
     id: 2,
@@ -170,6 +181,9 @@ async function run() {
 
   if (!callResponse.result || !callResponse.result.schema) {
     throw new Error(`tools/call did not return schema: ${JSON.stringify(callResponse)}`);
+  }
+  if (callResponse.result.sensitivity_class !== 'unknown') {
+    throw new Error(`Expected tools/call sensitivity_class=unknown: ${JSON.stringify(callResponse)}`);
   }
 
   const stop = new Promise((resolve, reject) => {

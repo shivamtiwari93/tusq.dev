@@ -4,6 +4,7 @@ const path = require('path');
 
 const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
+const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted'];
 
 class CliError extends Error {
   constructor(message, exitCode) {
@@ -321,10 +322,12 @@ function cmdManifest(args) {
   }
 
   const approvalMap = new Map();
+  const sensitivityMap = new Map();
   if (existing && Array.isArray(existing.capabilities)) {
     for (const capability of existing.capabilities) {
       const key = capabilityKey(capability.method, capability.path);
       approvalMap.set(key, Boolean(capability.approved));
+      sensitivityMap.set(key, normalizeSensitivityClass(capability.sensitivity_class));
     }
   }
 
@@ -340,6 +343,7 @@ function cmdManifest(args) {
       input_schema: route.input_schema,
       output_schema: route.output_schema,
       side_effect_class: classifySideEffect(method, route.path, route.handler),
+      sensitivity_class: sensitivityMap.get(key) || classifySensitivity(method, route.path, route.handler, route.auth_hints),
       auth_hints: route.auth_hints,
       provenance: route.provenance,
       confidence,
@@ -415,6 +419,7 @@ function cmdCompile(args) {
     parameters: capability.input_schema || { type: 'object', additionalProperties: true },
     returns: capability.output_schema || { type: 'object', additionalProperties: true },
     side_effect_class: capability.side_effect_class,
+    sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
     auth_hints: capability.auth_hints || [],
     examples: [
       {
@@ -526,7 +531,9 @@ function cmdServe(args) {
             name: tool.name,
             description: tool.description,
             parameters: tool.parameters,
-            returns: tool.returns
+            returns: tool.returns,
+            side_effect_class: tool.side_effect_class,
+            sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class)
           }))
         };
         respondRpcJson(res, id, result);
@@ -550,6 +557,8 @@ function cmdServe(args) {
             parameters: tool.parameters,
             returns: tool.returns
           },
+          side_effect_class: tool.side_effect_class,
+          sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
           examples: tool.examples || []
         };
         respondRpcJson(res, id, result);
@@ -1003,6 +1012,19 @@ function classifySideEffect(method, routePath, handler) {
   }
 
   return 'write';
+}
+
+function classifySensitivity(_method, _routePath, _handler, _authHints) {
+  return 'unknown';
+}
+
+function normalizeSensitivityClass(value) {
+  if (typeof value !== 'string') {
+    return 'unknown';
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return SENSITIVITY_CLASSES.includes(normalized) ? normalized : 'unknown';
 }
 
 function inferDomain(routePath, controllerHint) {

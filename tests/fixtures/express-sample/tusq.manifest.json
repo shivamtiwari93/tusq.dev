@@ -19,6 +19,7 @@
         "description": "Response schema not confidently inferred."
       },
       "side_effect_class": "read",
+      "sensitivity_class": "unknown",
       "auth_hints": [
         "requireAuth"
       ],
@@ -47,6 +48,7 @@
         "description": "Response schema not confidently inferred."
       },
       "side_effect_class": "write",
+      "sensitivity_class": "unknown",
       "auth_hints": [
         "requireAuth"
       ],

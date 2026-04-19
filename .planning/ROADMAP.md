@@ -72,14 +72,14 @@
 - [x] Document V1 input/output schema limitations
 
 ### M9: Side Effects and Sensitivity Classification (~0.5 day)
-- [ ] Add `sensitivity_class` field to manifest capability object in `src/cli.js`
-- [ ] Default `sensitivity_class` to `"unknown"` for all capabilities in V1
-- [ ] Propagate `sensitivity_class` through `tusq compile` to compiled tool definitions
-- [ ] Propagate `sensitivity_class` through `tusq serve` to MCP server responses
-- [ ] Update `website/docs/manifest-format.md` to document both classification fields
-- [ ] Add side effect and sensitivity classification rules to docs
-- [ ] Update test fixtures to include `sensitivity_class` field
-- [ ] Verify `npm run build` in `website/` still passes with updated docs
+- [x] Add `sensitivity_class` field to manifest capability object in `src/cli.js`
+- [x] Default `sensitivity_class` to `"unknown"` for all capabilities in V1
+- [x] Propagate `sensitivity_class` through `tusq compile` to compiled tool definitions
+- [x] Propagate `sensitivity_class` through `tusq serve` to MCP server responses
+- [x] Update `website/docs/manifest-format.md` to document both classification fields
+- [x] Add side effect and sensitivity classification rules to docs
+- [x] Update test fixtures to include `sensitivity_class` field
+- [x] Verify `npm run build` in `website/` still passes with updated docs
 
 ## Key Risks
 
