@@ -42,3 +42,4 @@
 - [x] Acceptance contract explicitly closed: `website/` is the canonical website surface, `.planning/IMPLEMENTATION_NOTES.md` includes a literal `## Changes` heading, and no ship decision depends on `websites/` remaining active
 - [x] Vision goal "capabilities with provenance back to source" verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` tracing each capability to its originating source declaration (REQ-026 through REQ-028)
 - [x] Human approval package reviewed for market-facing truthfulness: `.planning/*` and `website/` launch copy stay anchored to the defendable v0.1.0 surface and do not treat broader README roadmap items as shipped scope
+- [x] Off-site launch metadata aligned: `website/docusaurus.config.ts` now uses a tusq-specific social share card so social previews no longer undercut the v0.1.0 launch framing with default Docusaurus branding

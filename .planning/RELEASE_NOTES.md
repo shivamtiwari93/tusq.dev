@@ -35,6 +35,7 @@ The public tusq.dev surface is now consolidated onto the Docusaurus app in `webs
 1. The homepage keeps the same hero proposition, three-card explanation band, workflow steps, and V1 shipped-surface grid from the former live site.
 2. The not-found experience preserves the legacy recovery pattern by sending users back to the homepage instead of dropping them onto a default Docusaurus error state.
 3. The warm gradient, editorial typography, and paper-card styling cues were carried into the Docusaurus theme so docs, blog, and homepage read as one canonical product surface.
+4. Site metadata now points to a tusq-specific social share card instead of the Docusaurus default asset, so off-site previews carry the same v0.1.0 positioning as the homepage and release notes.
 
 `websites/` may remain in-repo temporarily for cleanup, but it is no longer the active website that release messaging or deployment readiness depends on.
 

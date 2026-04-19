@@ -4,7 +4,7 @@
 
 ## Challenge To Prior Turn
 
-The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: a human approver could read the repository's broader README vision, or the homepage's softer "MCP-ready" phrasing, as if they described the shipped v0.1.0 product. That blurs the launch story beyond what the implementation actually supports. This turn closes that gap by tightening the source-of-truth copy to one specific promise: repo to reviewed manifest to approved tool definitions to a local describe-only MCP endpoint that clients can inspect.
+The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: the approval packet said the launch story was aligned, while the site metadata still pointed at Docusaurus's default social share image. That creates avoidable ambiguity at the first off-site touchpoint. This turn closes that gap by aligning the social preview asset and the planning artifacts to the same narrow promise: repo to reviewed manifest to approved tool definitions to a local describe-only MCP endpoint that clients can inspect.
 
 ## Vision Goal — Capabilities With Provenance Back to Source
 
@@ -34,7 +34,7 @@ For this ship decision, the truthful public scope is limited to what the impleme
 
 It does not include live tool execution, hosted delivery, plugin APIs, non-Node ecosystems, runtime learning, or higher-level skill/agent generation as shipped features. The human approver should treat `.planning/*` and the current `website/` launch copy as the release truth source for v0.1.0, with the README read as broader project vision.
 
-The launch package now uses the same concise framing across homepage metadata, release notes, and ship verdict: reviewed manifest, approved tool definitions, and inspectable describe-only MCP. That is easier to approve because it maps directly to observed behavior instead of category-level aspiration.
+The launch package now uses the same concise framing across homepage metadata, the branded social preview, release notes, and ship verdict: reviewed manifest, approved tool definitions, and inspectable describe-only MCP. That is easier to approve because it maps directly to observed behavior instead of category-level aspiration.
 
 ## Implementation Intent Coverage — Explicit Attestation
 

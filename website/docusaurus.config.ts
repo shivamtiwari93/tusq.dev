@@ -58,7 +58,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/tusq-social-card.svg',
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,

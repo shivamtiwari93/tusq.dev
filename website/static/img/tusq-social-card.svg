@@ -1,0 +1,43 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>tusq.dev v0.1.0 social card</title>
+  <desc>Open-source capability compiler for Node.js SaaS with reviewed manifest flow and describe-only MCP.</desc>
+  <rect width="1200" height="630" rx="36" fill="#F5EFE3"/>
+  <rect width="1200" height="630" rx="36" fill="url(#bgGlow)"/>
+  <circle cx="128" cy="116" r="168" fill="#CB4F2D" fill-opacity="0.16"/>
+  <circle cx="1080" cy="560" r="220" fill="#2A4D45" fill-opacity="0.16"/>
+  <rect x="46" y="46" width="1108" height="538" rx="32" fill="#FFFCF5" fill-opacity="0.82" stroke="#1E1B18" stroke-opacity="0.14"/>
+  <rect x="82" y="84" width="172" height="40" rx="20" fill="#F3E1D7"/>
+  <text x="108" y="110" fill="#8F2D16" font-family="Space Grotesk, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="0.14em">tusq.dev v0.1.0</text>
+  <text x="82" y="214" fill="#1E1B18" font-family="Fraunces, Georgia, serif" font-size="68" font-weight="700">
+    <tspan x="82" dy="0">Open-source capability</tspan>
+    <tspan x="82" dy="82">compiler for Node.js SaaS.</tspan>
+  </text>
+  <text x="84" y="372" fill="#665A4A" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="500">
+    <tspan x="84" dy="0">Scan supported APIs. Review the manifest. Approve capabilities.</tspan>
+    <tspan x="84" dy="44">Compile strict tool definitions. Serve an inspectable describe-only MCP surface.</tspan>
+  </text>
+  <rect x="84" y="462" width="242" height="54" rx="27" fill="#FFF7EF" stroke="#D8C7B7"/>
+  <rect x="344" y="462" width="282" height="54" rx="27" fill="#FFF7EF" stroke="#D8C7B7"/>
+  <rect x="644" y="462" width="316" height="54" rx="27" fill="#FFF7EF" stroke="#D8C7B7"/>
+  <text x="118" y="496" fill="#2A4D45" font-family="Space Grotesk, Arial, sans-serif" font-size="24" font-weight="700">Express / Fastify / NestJS</text>
+  <text x="384" y="496" fill="#2A4D45" font-family="Space Grotesk, Arial, sans-serif" font-size="24" font-weight="700">Reviewed manifest flow</text>
+  <text x="680" y="496" fill="#2A4D45" font-family="Space Grotesk, Arial, sans-serif" font-size="24" font-weight="700">Describe-only MCP surface</text>
+  <path d="M884 140C884 126.745 894.745 116 908 116H1048C1061.25 116 1072 126.745 1072 140V324C1072 337.255 1061.25 348 1048 348H908C894.745 348 884 337.255 884 324V140Z" fill="#1F1915"/>
+  <rect x="912" y="152" width="132" height="28" rx="14" fill="#2A4D45"/>
+  <text x="939" y="171" fill="#FFFCF5" font-family="Space Grotesk, Arial, sans-serif" font-size="16" font-weight="700">pipeline</text>
+  <rect x="920" y="206" width="116" height="58" rx="16" fill="#CB4F2D"/>
+  <rect x="920" y="286" width="116" height="58" rx="16" fill="#FFF7EF"/>
+  <rect x="952" y="246" width="52" height="58" rx="16" fill="#2A4D45"/>
+  <path d="M978 264V286" stroke="#FFFCF5" stroke-width="6" stroke-linecap="round"/>
+  <path d="M978 304V326" stroke="#1E1B18" stroke-width="6" stroke-linecap="round"/>
+  <text x="942" y="242" fill="#FFFCF5" font-family="Space Grotesk, Arial, sans-serif" font-size="18" font-weight="700">scan</text>
+  <text x="936" y="322" fill="#1E1B18" font-family="Space Grotesk, Arial, sans-serif" font-size="18" font-weight="700">compile</text>
+  <path d="M108 560H1092" stroke="#D8C7B7"/>
+  <text x="84" y="556" fill="#8F2D16" font-family="Space Grotesk, Arial, sans-serif" font-size="22" font-weight="700">repo -&gt; reviewed manifest -&gt; approved tools -&gt; inspectable MCP</text>
+  <defs>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(180 64) rotate(32.7352) scale(1123.61 848.355)">
+      <stop stop-color="#FFF9F2"/>
+      <stop offset="1" stop-color="#EFE5D4"/>
+    </radialGradient>
+  </defs>
+</svg>
