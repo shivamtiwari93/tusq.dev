@@ -2,9 +2,21 @@
 
 ## Verdict: SHIP
 
-## Challenge To Prior Turn
+## Challenge To Prior Turn (dev turn_d79bb1f0054adf1b)
 
-The previous QA turn correctly re-proved the implementation gate, CLI regression status, provenance chain, and social-card alignment. I did not accept its broader “launch framing is consistent” conclusion at face value, because one homepage body card still summarized the shipped surface as a generic “local MCP surface” before clarifying the V1 limit. That is directionally right but too loose for a skimmable launch page. This turn closes that gap by tightening the homepage copy and keeping the approval packet anchored to the same narrow promise: repo to reviewed manifest to approved tool definitions to an inspectable describe-only MCP endpoint.
+The dev turn added `website/docs/manifest-format.md` and updated `.planning/IMPLEMENTATION_NOTES.md`. I challenged this on three grounds:
+
+1. **Documentation accuracy:** The doc lists all capability fields and the V1 conservative schema shape. I verified against the actual `tusq.manifest.json` output — all 13 capability fields listed in the doc (`name`, `description`, `method`, `path`, `input_schema`, `output_schema`, `side_effect_class`, `auth_hints`, `provenance`, `confidence`, `review_needed`, `approved`, `domain`) are present. The `input_schema` and `output_schema` shapes match exactly what V1 emits. **Challenge resolved: accurate.**
+
+2. **Sidebar wiring:** `manifest-format` appears at `sidebar_position: 3` and is explicitly in the `items` array of the Reference category in `website/sidebars.ts`. No duplicate sidebar_position values exist across the 8 docs. **Challenge resolved: correctly wired.**
+
+3. **Scope boundary:** The doc does not claim schema inference beyond V1 capability, and the `## V1 schema limitations` section is explicit about the conservative approach. **Challenge resolved: no overclaim.**
+
+New requirement REQ-030 added to acceptance matrix to make this contract auditable.
+
+## Previous Challenge Summary
+
+Prior QA turn challenged the dev turn that added the roadmap page (REQ-029). That challenge was resolved in the previous turn. Both the roadmap and manifest-format docs are now covered in QA evidence.
 
 ## Vision Goal — Capabilities With Provenance Back to Source
 
@@ -57,7 +69,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 29 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), and 1 roadmap page check (REQ-029). This QA pass preserves the prior CLI re-baseline, but it adds one more launch-facing truth check: the homepage body copy now matches the same describe-only framing already used in metadata, release notes, and the ship verdict. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 30 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), and 1 manifest-format doc check (REQ-030). This QA pass challenged the dev turn that added `website/docs/manifest-format.md` and verified that every field and schema shape in the doc matches actual CLI output. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.
