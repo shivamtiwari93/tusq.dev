@@ -12,6 +12,20 @@ tusq v0.1.0 is the first public release of the tusq capability compiler CLI. It 
 
 This release is intentionally narrow: it gives SaaS teams a governed, review-first way to expose a supported slice of their backend capability surface to MCP-aware tooling without claiming live execution, runtime learning, or broad framework coverage.
 
+## Launch Framing
+
+The broader repository narrative describes where tusq.dev is headed over time. The shipped v0.1.0 product is narrower. For launch messaging, the source of truth is the current `website/` experience plus these release notes, not the longer-horizon README roadmap.
+
+The defendable v0.1.0 position is:
+
+- open-source capability compiler CLI
+- Node.js SaaS backends using Express, Fastify, or NestJS
+- manual review and approval through `tusq.manifest.json`
+- compile approved capabilities into JSON tool definitions
+- expose those definitions through a local describe-only MCP endpoint
+
+This release should not be described as a live execution engine, hosted platform, plugin ecosystem, runtime learning system, or shipped skill/agent generator.
+
 ## Website Consolidation
 
 The public tusq.dev surface is now consolidated onto the Docusaurus app in `website/`. This was a migration of the existing live website into the canonical docs/blog app, not the introduction of a parallel third site. The legacy live-site structure from `websites/` was migrated over rather than replaced with template content:
@@ -63,7 +77,7 @@ tusq compile
 tusq serve
 ```
 
-## Known Issues
+## Known V1 Limits And Non-Claims
 
 - **Heuristic scanner:** Route extraction uses regex-based static analysis, not a full AST. Complex dynamic route registration patterns may be missed or produce low-confidence results. Users should review the manifest before compiling.
 - **Describe-only MCP:** `tusq serve` returns capability schemas but does not proxy or execute live API calls. Full execution support is planned for V2.

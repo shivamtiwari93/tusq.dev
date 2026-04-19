@@ -41,3 +41,4 @@
 - [x] Live-site consolidation explicitly covered in QA evidence: direct file inspection confirms the legacy `websites/` hero structure, recovery path, and styling cues now live in `website/`, and REQ-023 through REQ-025 record canonical `website/` ownership
 - [x] Acceptance contract explicitly closed: `website/` is the canonical website surface, `.planning/IMPLEMENTATION_NOTES.md` includes a literal `## Changes` heading, and no ship decision depends on `websites/` remaining active
 - [x] Vision goal "capabilities with provenance back to source" verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` tracing each capability to its originating source declaration (REQ-026 through REQ-028)
+- [x] Human approval package reviewed for market-facing truthfulness: `.planning/*` and `website/` launch copy stay anchored to the defendable v0.1.0 surface and do not treat broader README roadmap items as shipped scope

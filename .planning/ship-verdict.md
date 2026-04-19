@@ -4,7 +4,7 @@
 
 ## Challenge To Prior Turn
 
-The previous QA turn correctly re-proved the implementation gate and CLI regression status. However, it did not address the active injected vision intent: **"The canonical artifact: capabilities with provenance back to source."** That acceptance contract requires explicit evidence that every compiled tool definition traces back to its originating source file and line — not merely that the CLI commands work end-to-end. This turn closes that gap by directly inspecting the scan → manifest → compile provenance chain.
+The previous QA turn correctly re-proved the implementation gate, CLI regression status, and provenance chain. However, it still left one launch-readiness risk under-challenged: a human approver could read the repository's broader README vision as if it were the shipped v0.1.0 product. That would blur the launch story beyond what the implementation actually supports. This turn closes that gap by separating launch truth from roadmap vision and confirming that the gate artifacts plus `website/` copy stay anchored to the defendable V1 surface.
 
 ## Vision Goal — Capabilities With Provenance Back to Source
 
@@ -20,6 +20,20 @@ The compiled artifact is therefore the canonical source-of-truth for which capab
 
 Three new acceptance requirements (REQ-026, REQ-027, REQ-028) have been added to the acceptance matrix to make this contract explicit and auditable.
 
+## Launch Messaging Boundary
+
+The repository README contains longer-horizon product language about execution, higher-level skills or agents, broader runtime surfaces, and runtime learning. That material is valid roadmap context, but it is not the launch source of truth for `tusq.dev v0.1.0`.
+
+For this ship decision, the truthful public scope is limited to what the implementation and website currently support:
+
+- a local CLI for Express, Fastify, and NestJS discovery
+- reviewable manifest generation with confidence, domain, approval, and provenance metadata
+- compilation of approved capabilities into JSON tool definitions
+- grouped stdout review output
+- a local describe-only MCP HTTP surface
+
+It does not include live tool execution, hosted delivery, plugin APIs, non-Node ecosystems, runtime learning, or higher-level skill/agent generation as shipped features. The human approver should treat `.planning/*` and the current `website/` launch copy as the release truth source for v0.1.0, with the README read as broader project vision.
+
 ## Implementation Intent Coverage — Explicit Attestation
 
 The acceptance item "implementation_complete gate can advance to qa once verification passes" is **satisfied**:
@@ -31,7 +45,7 @@ The acceptance item "implementation_complete gate can advance to qa once verific
 
 ## QA Summary
 
-All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds the missing evidence standard for launch-facing truth: direct inspection of the legacy `websites/` files against the Docusaurus implementation in `website/`. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds the missing evidence standard for launch-facing truth: direct inspection of the legacy `websites/` files against the Docusaurus implementation in `website/`, plus explicit review that the release package does not collapse roadmap language into shipped claims. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.
