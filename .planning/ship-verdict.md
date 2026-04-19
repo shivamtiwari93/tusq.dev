@@ -45,9 +45,19 @@ The acceptance item "implementation_complete gate can advance to qa once verific
 3. Verification passed: website build, typecheck, and CLI smoke tests all exit 0 on current HEAD.
 4. The run has already advanced to `qa` with `implementation_complete` passed — the gate was satisfied before this QA turn began.
 
+## Challenge To Dev Turn (turn_ddc0f0c213477934)
+
+The dev turn added `website/docs/roadmap.md`, updated `website/sidebars.ts`, extended the homepage with a roadmap CTA section, and updated `.planning/IMPLEMENTATION_NOTES.md`. I challenged these on three grounds:
+
+1. **Scope creep risk:** Adding post-v0.1.0 content to the launch homepage could dilute v0.1.0 signal. On inspection, the roadmap CTA is a secondary action and the roadmap page opens with an explicit disclaimer "None of the items below are shipped behavior in `v0.1.0`" — acceptable.
+2. **Sidebar classification:** Roadmap is placed under `Help` alongside `faq`. That placement is correct: it is forward-looking context rather than a how-to doc.
+3. **v0.1.0 truth boundary:** The non-shipped disclaimer is literal and unambiguous. No overclaim found.
+
+Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke tests re-verified at exit 0 on post-dev HEAD.
+
 ## QA Summary
 
-All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds one more launch-facing truth check: the homepage body copy now matches the same describe-only framing already used in metadata, release notes, and the ship verdict. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 29 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), and 1 roadmap page check (REQ-029). This QA pass preserves the prior CLI re-baseline, but it adds one more launch-facing truth check: the homepage body copy now matches the same describe-only framing already used in metadata, release notes, and the ship verdict. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.

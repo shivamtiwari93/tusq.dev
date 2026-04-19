@@ -30,6 +30,7 @@
 | REQ-026 | Scan output carries provenance back to source (file + line) for each discovered capability | Each route in `.tusq/scan.json` contains `provenance.file` and `provenance.line` fields pointing to the originating source file | PASS | 2026-04-19 | PASS |
 | REQ-027 | Manifest preserves capability provenance from scan | Each capability in `tusq.manifest.json` retains `provenance.file` and `provenance.line` from the originating scan | PASS | 2026-04-19 | PASS |
 | REQ-028 | Compiled tool definitions carry provenance to the canonical artifact | Each `tusq-tools/<name>.json` file includes `provenance.file` and `provenance.line` linking the tool back to its source route declaration | PASS | 2026-04-19 | PASS |
+| REQ-029 | Post-v0.1.0 roadmap page exists and explicitly marks items as non-shipped | `website/docs/roadmap.md` exists, sidebar_position is 8, and file contains the literal string "None of the items below are shipped behavior in `v0.1.0`" | PASS | 2026-04-19 | PASS |
 
 ## Checklist
 
@@ -43,3 +44,4 @@
 - [x] Vision goal "capabilities with provenance back to source" verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` tracing each capability to its originating source declaration (REQ-026 through REQ-028)
 - [x] Human approval package reviewed for market-facing truthfulness: `.planning/*` and `website/` launch copy stay anchored to the defendable v0.1.0 surface and do not treat broader README roadmap items as shipped scope
 - [x] Off-site launch metadata aligned: `website/docusaurus.config.ts` now uses a tusq-specific social share card so social previews no longer undercut the v0.1.0 launch framing with default Docusaurus branding
+- [x] Post-v0.1.0 roadmap page added with explicit non-shipped boundary statement (REQ-029); roadmap is wired into `Help` group in `website/sidebars.ts` and linked from homepage CTA
