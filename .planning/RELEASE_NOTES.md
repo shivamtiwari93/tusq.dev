@@ -22,12 +22,27 @@ The public tusq.dev surface is now consolidated onto the Docusaurus app in `webs
 
 `websites/` may remain in-repo temporarily for cleanup, but it is no longer the active website that release messaging or deployment readiness depends on.
 
+## Capability Provenance
+
+Each compiled tool definition in `tusq-tools/` carries a `provenance` field that links back to the originating source file and line number where the route was declared:
+
+```json
+{
+  "name": "get_users_users",
+  "provenance": { "file": "src/app.ts", "line": 12 },
+  ...
+}
+```
+
+This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/scan.json`, `tusq manifest` carries it into `tusq.manifest.json`, and `tusq compile` writes it into the final tool definition files. The canonical artifact (the compiled tool) is therefore traceable back to the exact line of source code that defines the capability.
+
 ## Verification Summary
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: 20 scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC, and SIGINT shutdown.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 25 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS.
+- All 28 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026 through REQ-028).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
+- Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 
 ## Upgrade Notes
 

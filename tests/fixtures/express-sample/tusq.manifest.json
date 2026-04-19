@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-19T06:45:12.399Z",
+  "source_scan": ".tusq/scan.json",
+  "capabilities": [
+    {
+      "name": "get_users_users",
+      "description": "GET /users capability in users domain",
+      "method": "GET",
+      "path": "/users",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Schema inference unavailable; review required."
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Response schema not confidently inferred."
+      },
+      "side_effect_class": "read",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 12
+      },
+      "confidence": 0.86,
+      "review_needed": false,
+      "approved": true,
+      "domain": "users"
+    },
+    {
+      "name": "post_users_users",
+      "description": "POST /users capability in users domain",
+      "method": "POST",
+      "path": "/users",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Schema inference unavailable; review required."
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Response schema not confidently inferred."
+      },
+      "side_effect_class": "write",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 13
+      },
+      "confidence": 0.86,
+      "review_needed": false,
+      "approved": true,
+      "domain": "users"
+    }
+  ]
+}

@@ -27,6 +27,9 @@
 | REQ-023 | `website/` reflects the migrated live homepage from `websites/` | Docusaurus homepage preserves the legacy hero, three-card explanation band, workflow steps, and V1 surface grid in `website/src/pages/index.tsx` | PASS | 2026-04-19 | PASS |
 | REQ-024 | Docusaurus preserves the legacy site's not-found recovery behavior and styling cues | `website/src/pages/404.tsx`, `website/src/pages/index.module.css`, and `website/src/css/custom.css` retain the warm gradient, Fraunces/Space Grotesk typography, paper-card styling, and a path back to home | PASS | 2026-04-19 | PASS |
 | REQ-025 | Implementation notes explicitly record website consolidation and gate-unblocking changes | `.planning/IMPLEMENTATION_NOTES.md` contains a literal `## Changes` heading and states that `website/` is canonical while `websites/` is legacy-only cleanup residue | PASS | 2026-04-19 | PASS |
+| REQ-026 | Scan output carries provenance back to source (file + line) for each discovered capability | Each route in `.tusq/scan.json` contains `provenance.file` and `provenance.line` fields pointing to the originating source file | PASS | 2026-04-19 | PASS |
+| REQ-027 | Manifest preserves capability provenance from scan | Each capability in `tusq.manifest.json` retains `provenance.file` and `provenance.line` from the originating scan | PASS | 2026-04-19 | PASS |
+| REQ-028 | Compiled tool definitions carry provenance to the canonical artifact | Each `tusq-tools/<name>.json` file includes `provenance.file` and `provenance.line` linking the tool back to its source route declaration | PASS | 2026-04-19 | PASS |
 
 ## Checklist
 
@@ -37,3 +40,4 @@
 - [x] Framework coverage verified: Express, Fastify, NestJS all scanned successfully
 - [x] Live-site consolidation explicitly covered in QA evidence: direct file inspection confirms the legacy `websites/` hero structure, recovery path, and styling cues now live in `website/`, and REQ-023 through REQ-025 record canonical `website/` ownership
 - [x] Acceptance contract explicitly closed: `website/` is the canonical website surface, `.planning/IMPLEMENTATION_NOTES.md` includes a literal `## Changes` heading, and no ship decision depends on `websites/` remaining active
+- [x] Vision goal "capabilities with provenance back to source" verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` tracing each capability to its originating source declaration (REQ-026 through REQ-028)

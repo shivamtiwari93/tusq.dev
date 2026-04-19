@@ -1,0 +1,30 @@
+{
+  "name": "get_users_users",
+  "description": "GET /users capability in users domain",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "Schema inference unavailable; review required."
+  },
+  "returns": {
+    "type": "object",
+    "additionalProperties": true,
+    "description": "Response schema not confidently inferred."
+  },
+  "side_effect_class": "read",
+  "auth_hints": [
+    "requireAuth"
+  ],
+  "examples": [
+    {
+      "input": {},
+      "output": {
+        "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+      }
+    }
+  ],
+  "provenance": {
+    "file": "src/app.ts",
+    "line": 12
+  }
+}

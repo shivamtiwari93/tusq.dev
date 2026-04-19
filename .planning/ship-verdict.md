@@ -4,9 +4,23 @@
 
 ## Challenge To Prior Turn
 
-The previous QA turn correctly re-proved the implementation gate and CLI regression status, but its SHIP framing still leaned on planning-document attestation more than direct public-site parity checks. That mattered because the injected charter was not merely "build a Docusaurus site"; it required `website/` to absorb the live `websites/` homepage structure, 404 recovery behavior, styling cues, and active-site ownership.
+The previous QA turn correctly re-proved the implementation gate and CLI regression status. However, it did not address the active injected vision intent: **"The canonical artifact: capabilities with provenance back to source."** That acceptance contract requires explicit evidence that every compiled tool definition traces back to its originating source file and line — not merely that the CLI commands work end-to-end. This turn closes that gap by directly inspecting the scan → manifest → compile provenance chain.
 
-## Implementation Intent Coverage — Explicit Attestation (Attempt 2)
+## Vision Goal — Capabilities With Provenance Back to Source
+
+The active injected intent requires that the canonical artifact (compiled tool definitions) carry provenance tracing each capability back to the source where it was discovered. This is verified end-to-end:
+
+1. **scan → scan.json:** Every route in `.tusq/scan.json` contains a `provenance` object with `file` (relative source path) and `line` (line number where the route is declared). Verified against `tests/fixtures/express-sample/.tusq/scan.json` — both routes carry `"provenance": {"file": "src/app.ts", "line": 12}` and `{"file": "src/app.ts", "line": 13}`.
+
+2. **manifest → tusq.manifest.json:** `tusq manifest` preserves the provenance fields from scan into every capability entry. Verified by running manifest on the express fixture — each capability in `tusq.manifest.json` retains `"provenance": {"file": "src/app.ts", "line": N}`.
+
+3. **compile → tusq-tools/*.json:** `tusq compile` carries provenance into each final tool definition JSON. Verified by running compile on approved capabilities — `get_users_users.json` and `post_users_users.json` both include `"provenance": {"file": "src/app.ts", "line": N}`.
+
+The compiled artifact is therefore the canonical source-of-truth for which capabilities exist **and** where in the codebase each capability originates. This satisfies the vision acceptance contract without any code change required — the implementation already supports full provenance chaining.
+
+Three new acceptance requirements (REQ-026, REQ-027, REQ-028) have been added to the acceptance matrix to make this contract explicit and auditable.
+
+## Implementation Intent Coverage — Explicit Attestation
 
 The acceptance item "implementation_complete gate can advance to qa once verification passes" is **satisfied**:
 
@@ -17,7 +31,7 @@ The acceptance item "implementation_complete gate can advance to qa once verific
 
 ## QA Summary
 
-All 25 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks and the 3 live-site consolidation checks. This QA pass preserves the prior CLI re-baseline, but it adds the missing evidence standard for launch-facing truth: direct inspection of the legacy `websites/` files against the Docusaurus implementation in `website/`. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 28 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, and 3 new provenance-chain checks (REQ-026 through REQ-028). This QA pass preserves the prior CLI re-baseline, but it adds the missing evidence standard for launch-facing truth: direct inspection of the legacy `websites/` files against the Docusaurus implementation in `website/`. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.
