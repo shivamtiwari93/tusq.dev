@@ -2,6 +2,18 @@
 
 ## Verdict: SHIP
 
+## Challenge To Dev Turn (turn_b872581d85a8ec3b) — sensitivity_class
+
+The dev turn added `sensitivity_class` to `src/cli.js` (manifest, compile, MCP serve pipelines) and updated `tests/smoke.mjs` with four explicit assertions. I challenged this on three grounds:
+
+1. **Field completeness:** Does `sensitivity_class` appear at all four pipeline stages (manifest, compile, tools/list, tools/call)? Verified by running `tusq manifest` and `tusq compile` on the express fixture — both emitted `"sensitivity_class": "unknown"`. MCP assertions in smoke tests confirm tools/list and tools/call. **Challenge resolved: complete.**
+
+2. **Preservation of existing values:** DEC-161 claims existing manual sensitivity values are preserved on regeneration. Verified: `normalizeSensitivityClass()` passes through any valid existing value and only falls back to `unknown` for invalid/missing. **Challenge resolved: correct.**
+
+3. **Documentation accuracy:** `website/docs/manifest-format.md` documents all 5 levels (`unknown`, `public`, `internal`, `confidential`, `restricted`) and explicitly states V1 always emits `unknown`. Field count for `sensitivity_class` in the doc is 7 references. **Challenge resolved: accurate.**
+
+New requirement REQ-031 added to acceptance matrix covering all four pipeline stages plus documentation. Acceptance matrix now covers 31 criteria.
+
 ## Challenge To Prior Turn (dev turn_d79bb1f0054adf1b)
 
 The dev turn added `website/docs/manifest-format.md` and updated `.planning/IMPLEMENTATION_NOTES.md`. I challenged this on three grounds:
@@ -69,7 +81,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 30 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), and 1 manifest-format doc check (REQ-030). This QA pass challenged the dev turn that added `website/docs/manifest-format.md` and verified that every field and schema shape in the doc matches actual CLI output. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
+All 31 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), and 1 sensitivity_class pipeline check (REQ-031). This QA pass challenged the dev turn (turn_b872581d85a8ec3b) that added `sensitivity_class` to the manifest/compile/MCP-serve pipeline and verified that the field is emitted at all four stages, existing values are preserved, and the documentation is accurate. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.

@@ -32,6 +32,7 @@
 | REQ-028 | Compiled tool definitions carry provenance to the canonical artifact | Each `tusq-tools/<name>.json` file includes `provenance.file` and `provenance.line` linking the tool back to its source route declaration | PASS | 2026-04-19 | PASS |
 | REQ-029 | Post-v0.1.0 roadmap page exists and explicitly marks items as non-shipped | `website/docs/roadmap.md` exists, sidebar_position is 8, and file contains the literal string "None of the items below are shipped behavior in `v0.1.0`" | PASS | 2026-04-19 | PASS |
 | REQ-030 | Manifest format doc exists, is sidebar-wired, and accurately documents V1 schema limitations | `website/docs/manifest-format.md` exists at sidebar_position 3, is listed in `website/sidebars.ts` items, and contains `## V1 schema limitations` section with the conservative schema shape | PASS | 2026-04-19 | PASS |
+| REQ-031 | `sensitivity_class` field is emitted at every pipeline stage and defaults to `unknown` in V1 | `tusq.manifest.json` capabilities each have `sensitivity_class: "unknown"`; compiled `tusq-tools/*.json` files include `sensitivity_class: "unknown"`; MCP `tools/list` and `tools/call` responses include `sensitivity_class: "unknown"`; `website/docs/manifest-format.md` documents all 5 levels and V1 default | PASS | 2026-04-19 | PASS |
 
 ## Checklist
 
@@ -47,3 +48,4 @@
 - [x] Off-site launch metadata aligned: `website/docusaurus.config.ts` now uses a tusq-specific social share card so social previews no longer undercut the v0.1.0 launch framing with default Docusaurus branding
 - [x] Post-v0.1.0 roadmap page added with explicit non-shipped boundary statement (REQ-029); roadmap is wired into `Help` group in `website/sidebars.ts` and linked from homepage CTA
 - [x] Manifest format doc added (REQ-030): `website/docs/manifest-format.md` accurately documents all V1 capability fields, the conservative schema shape, and the approval flow; wired in sidebars.ts Reference group at position 3 with no conflicts
+- [x] `sensitivity_class` field verified end-to-end (REQ-031): `classifySensitivity()` and `normalizeSensitivityClass()` implemented in `src/cli.js`; field present in manifest, compiled tools, MCP `tools/list`, and MCP `tools/call`; all four smoke-test assertions pass (`node tests/smoke.mjs` → exit 0); documented with 5 levels and V1-always-unknown note in `website/docs/manifest-format.md`
