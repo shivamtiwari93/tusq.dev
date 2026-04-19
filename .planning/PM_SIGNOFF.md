@@ -3,7 +3,7 @@
 Approved: YES
 
 > Planning artifacts reviewed and approved for the Docusaurus docs/website/blog platform initiative.
-> Re-confirmed in run_a47f1dd6629dba75 after parent run (run_c8a4701ce0d4952d) completed implementation but stalled in a QA routing loop. All planning artifacts verified against the built website/ directory.
+> Re-confirmed in run_a47f1dd6629dba75 (turn_160ed0ff8cedc45e) after parent run (run_c8a4701ce0d4952d) completed all phases but stalled awaiting human approval. Fresh PM review challenged two issues: (1) ROADMAP milestones were shown as unchecked despite implementation being complete — fixed by marking all milestones done; (2) SYSTEM_SPEC file tree listed incorrect blog filename (dots vs hyphens) — fixed to match actual file. Build re-verified: `npm run build` exits 0 with no errors.
 
 ## Discovery Checklist
 

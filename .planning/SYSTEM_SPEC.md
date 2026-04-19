@@ -96,7 +96,7 @@ website/
 │   └── faq.md                  # FAQ
 ├── blog/
 │   ├── 2026-04-18-announcing-tusq-dev.md
-│   └── 2026-04-18-release-notes-v0.1.0.md
+│   └── 2026-04-18-release-notes-v0-1-0.md
 └── static/
     └── img/                    # Any images/logos
 ```
