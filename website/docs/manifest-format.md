@@ -33,6 +33,21 @@ Each capability includes:
 - `approved`: manual approval flag
 - `domain`: domain grouping label
 
+## V1 schema limitations
+
+In `v0.1.0`, both `input_schema` and `output_schema` are intentionally conservative JSON Schema objects.
+
+```json
+{
+  "type": "object",
+  "additionalProperties": true,
+  "description": "<inference status message>"
+}
+```
+
+The `description` varies by route confidence and available hints, but the structural shape above is fixed in V1.
+Full property-level schema inference is planned beyond `v0.1.0`.
+
 ## Approval flow
 
 V1 approval is explicit and manual.

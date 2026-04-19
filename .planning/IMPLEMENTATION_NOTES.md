@@ -4,6 +4,7 @@
 
 - Rejected the prior failed dev attempt as incomplete for this continuation run: it only re-ran build/smoke checks and did not record or deliver concrete post-v0.1.0 improvements in this artifact.
 - Rejected any assumption that "no implementation work remains." This run adds follow-on product clarity improvements to the shipped site while preserving v0.1.0 truth boundaries.
+- Rejected the immediately previous stale implementation reissue as insufficient: it produced no turn artifact and did not validate whether approved planning decisions (artifact-shape clarity) were reflected in user-facing docs.
 
 ## Baseline (Completed In Parent Run)
 
@@ -28,6 +29,13 @@
   - new CTA button to `/docs/roadmap`
   - new "Post-v0.1.0 improvements" section listing roadmap tracks
   - clear non-overclaim statement that these items are roadmap targets, not shipped behavior
+- Tightened Manifest Format documentation in `website/docs/manifest-format.md` so V1 schema behavior is explicit and testable:
+  - added a dedicated “V1 schema limitations” section
+  - documents the exact fixed V1 shape for both `input_schema` and `output_schema`:
+    - `type: object`
+    - `additionalProperties: true`
+    - route-specific inference status `description`
+  - states that full property-level schema inference is beyond `v0.1.0`
 
 ## Changes
 
