@@ -19,11 +19,12 @@
   - three-card explanation band
   - workflow steps
   - V1 shipped surface grid
-- Added a custom 404 page in Docusaurus (`website/src/pages/404.tsx`).
+- Added a custom 404 page in Docusaurus (`website/src/pages/404.tsx`) that preserves the legacy site's recovery path back to home.
 - Applied tusq visual identity in `website/src/css/custom.css`:
   - Fraunces + Space Grotesk fonts
   - warm gradient background and paper cards
   - tusq accent palette
+- Converged the live website surface onto `website/` as the canonical homepage/docs/blog destination; `websites/` is retained only as a legacy reference directory pending later cleanup, not as a separate active site or deployment dependency.
 - Implemented docs IA and authored required pages:
   - `getting-started.md`
   - `cli-reference.md`
@@ -49,4 +50,5 @@
 ## Notes / Follow-ups
 
 - Deployment target/domain mapping remains a human launch decision.
-- Legacy `websites/` directory can be removed in a later cleanup once deployment is confirmed.
+- Legacy `websites/` directory can be removed in a later cleanup once deployment is confirmed, but the implementation no longer depends on it as a parallel live website.
+- Retiring `websites/` is now cleanup-only work: the shipped Docusaurus surface already contains the migrated homepage structure, 404 recovery behavior, styling cues, and required content.

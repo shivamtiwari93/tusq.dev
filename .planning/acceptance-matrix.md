@@ -24,6 +24,9 @@
 | REQ-020 | SIGINT shuts down serve cleanly | exit code 0 after SIGINT | PASS | 2026-04-18 (smoke) | PASS |
 | REQ-021 | All commands accept `--verbose` flag | no error on --verbose; extra output produced | PASS | 2026-04-18 (smoke) | PASS |
 | REQ-022 | Per-command `--help` prints usage | exit code 0; usage line for each sub-command | PASS | 2026-04-18 | PASS |
+| REQ-023 | `website/` reflects the migrated live homepage from `websites/` | Docusaurus homepage preserves the legacy hero, three-card explanation band, workflow steps, and V1 surface grid in `website/src/pages/index.tsx` | PASS | 2026-04-19 | PASS |
+| REQ-024 | Docusaurus preserves the legacy site's not-found recovery behavior and styling cues | `website/src/pages/404.tsx`, `website/src/pages/index.module.css`, and `website/src/css/custom.css` retain the warm gradient, Fraunces/Space Grotesk typography, paper-card styling, and a path back to home | PASS | 2026-04-19 | PASS |
+| REQ-025 | Implementation notes explicitly record website consolidation and gate-unblocking changes | `.planning/IMPLEMENTATION_NOTES.md` contains a literal `## Changes` heading and states that `website/` is canonical while `websites/` is legacy-only cleanup residue | PASS | 2026-04-19 | PASS |
 
 ## Checklist
 
@@ -32,3 +35,5 @@
 - [x] Failure-mode UX reviewed for invalid flags and missing inputs (REQ-003, REQ-004, REQ-006, REQ-010, REQ-015)
 - [x] Full smoke test suite executed and passed (`node tests/smoke.mjs` → exit 0) — re-verified on attempt 2 against post-checkpoint HEAD
 - [x] Framework coverage verified: Express, Fastify, NestJS all scanned successfully
+- [x] Live-site consolidation explicitly covered in QA evidence: direct file inspection confirms the legacy `websites/` hero structure, recovery path, and styling cues now live in `website/`, and REQ-023 through REQ-025 record canonical `website/` ownership
+- [x] Acceptance contract explicitly closed: `website/` is the canonical website surface, `.planning/IMPLEMENTATION_NOTES.md` includes a literal `## Changes` heading, and no ship decision depends on `websites/` remaining active
