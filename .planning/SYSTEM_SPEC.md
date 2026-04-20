@@ -301,6 +301,8 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 ```json
 {
   "schema_version": "1.0",
+  "manifest_version": 1,
+  "previous_manifest_hash": null,
   "generated_at": "<ISO 8601 timestamp>",
   "source_scan": ".tusq/scan.json",
   "capabilities": [ "<Capability object — see below>" ]
@@ -358,6 +360,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
   "approved": true,
   "approved_by": null,
   "approved_at": null,
+  "capability_digest": "a1b2c3d4e5f6...",
   "domain": "users"
 }
 ```
@@ -382,6 +385,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `approved` | boolean | Human-set gate; only `approved: true` capabilities compile into tools — see Redaction and Approval Metadata below |
 | `approved_by` | string \| null | Identity of the human who approved this capability. `null` until explicitly set |
 | `approved_at` | string \| null | ISO 8601 timestamp of when approval was granted. `null` until explicitly set |
+| `capability_digest` | string | SHA-256 hex digest of content fields (excluding approval/review metadata and the digest itself). Enables change detection between manifest versions — see Version History and Diffs section |
 | `domain` | string | Logical grouping (inferred from route prefix) |
 
 **V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
@@ -897,6 +901,181 @@ MCP server responses    — no approval fields (only approved tools served)
 
 The V2 shape adds `approval_history` for audit trail completeness. The V1 fields remain with the same semantics — new fields are additive.
 
+#### Version History and Diffs
+
+The `manifest_version`, `previous_manifest_hash`, and per-capability `capability_digest` fields form the seventh and final governance dimension in the canonical artifact. VISION.md line 61 explicitly lists "version history and diffs" as a core component of the manifest. Line 218 requires the system to "produce manifest diffs and review queues." These fields answer a distinct question from the other six dimensions:
+
+| Field group | Question it answers | Who acts on it |
+|-------------|-------------------|----------------|
+| `manifest_version` + `previous_manifest_hash` | How has the manifest evolved? Which generation is this? | CI/CD pipelines, audit systems, diff tooling |
+| `capability_digest` | Has this specific capability changed since the last manifest generation? | Re-approval workflows, review queues, diff consumers |
+
+Together with the six previously specified dimensions, the governance model is now seven fields:
+
+| # | Field | Question |
+|---|-------|----------|
+| 1 | `side_effect_class` | Does this mutate state? |
+| 2 | `sensitivity_class` | What kind of data does this touch? |
+| 3 | `auth_hints` | What authentication/authorization is required? |
+| 4 | `examples` | What does correct usage look like? |
+| 5 | `constraints` | What operational limits apply? |
+| 6 | `redaction` + approval metadata | What must be masked, and who approved this? |
+| 7 | `manifest_version` + `previous_manifest_hash` + `capability_digest` | How has the manifest evolved, and what changed? |
+
+##### Manifest-Level Version Fields
+
+Two fields are added to the manifest root (alongside `schema_version`, `generated_at`, and `source_scan`):
+
+**Updated manifest root shape:**
+
+```json
+{
+  "schema_version": "1.0",
+  "manifest_version": 1,
+  "previous_manifest_hash": null,
+  "generated_at": "<ISO 8601 timestamp>",
+  "source_scan": ".tusq/scan.json",
+  "capabilities": [ "..." ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `manifest_version` | integer | yes | Monotonically increasing counter, starting at `1`. Incremented each time `tusq manifest` is run and produces a new manifest. If the manifest file already exists on disk and contains a valid `manifest_version`, the new value is `previous + 1`. If no prior manifest exists, the value is `1`. |
+| `previous_manifest_hash` | string \| null | yes | SHA-256 hex digest of the entire previous `tusq.manifest.json` file content (byte-for-byte). `null` on first generation (no prior manifest exists). This creates a hash chain linking each manifest to its predecessor, enabling tamper detection and lineage verification. |
+
+**Manifest version rules:**
+
+| Scenario | `manifest_version` | `previous_manifest_hash` |
+|----------|-------------------|-------------------------|
+| First `tusq manifest` run (no prior manifest) | `1` | `null` |
+| Subsequent `tusq manifest` run (prior manifest exists) | `previous + 1` | SHA-256 of prior manifest file |
+| Manual edit of manifest (e.g., setting `approved: true`) | Unchanged (edits do not increment) | Unchanged |
+| `tusq manifest` after manual edits | `previous + 1` | SHA-256 of prior (manually edited) manifest |
+
+**Agent implications of manifest version fields:**
+
+| Field state | Agent interpretation | Recommended behavior |
+|-------------|---------------------|---------------------|
+| `manifest_version: 1` | First-ever manifest for this project | All capabilities are new; no prior state to compare against |
+| `manifest_version: N` (N > 1) | Manifest has been regenerated N times | Check `previous_manifest_hash` to verify lineage; compare with previous version if available |
+| `previous_manifest_hash: null` | No predecessor exists | This is the initial manifest; no diff is possible |
+| `previous_manifest_hash: "<hex>"` | Prior manifest hash recorded | Can verify integrity of prior manifest; enables diff computation |
+
+##### Per-Capability Digest
+
+Each capability gains a `capability_digest` field: a SHA-256 hex digest of the capability's content-addressable fields. This enables quick change detection without full object comparison.
+
+**Digest computation:** The digest is computed over a deterministic JSON serialization of the capability's *content fields* — specifically, all fields **except**:
+- `capability_digest` itself (circular)
+- `approved` (human gate state, not content)
+- `approved_by` (audit metadata, not content)
+- `approved_at` (audit metadata, not content)
+- `review_needed` (derived from confidence, not independent content)
+
+The remaining fields are serialized as a JSON object with keys sorted alphabetically, no whitespace, and the resulting string is hashed with SHA-256.
+
+**Capability digest shape (added to Capability object):**
+
+```json
+{
+  "name": "get_users_users",
+  "capability_digest": "a1b2c3d4e5f6...64-char-hex-string",
+  "...": "other capability fields"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `capability_digest` | string | yes | SHA-256 hex digest of the capability's content fields (sorted-key JSON serialization, excluding approval/review metadata and the digest itself). 64-character lowercase hex string. |
+
+**Agent implications of capability_digest:**
+
+| Digest state | Agent interpretation | Recommended behavior |
+|-------------|---------------------|---------------------|
+| Same digest across manifest versions | Capability content unchanged | No re-review needed; approval state remains valid |
+| Different digest across manifest versions | Capability content changed | Flag for re-review; consider resetting `approved: false` (V2 automation) |
+| Digest present | Content is addressable | Can be used as cache key, deduplication signal, or change detection trigger |
+
+**V1 version history limitations:**
+
+1. **No `tusq diff` command.** V1 produces the fields that enable diffing but does not ship a CLI command to compute or display diffs. Users can compare manifests using standard JSON diff tools (e.g., `diff`, `jq`, `json-diff`).
+2. **No history file.** V1 does not maintain a `.tusq/manifest-history.jsonl` or similar append-only log. The `previous_manifest_hash` field creates a single-step hash chain, not a full history. Users who need full history should use git (which already tracks `tusq.manifest.json`).
+3. **No automatic re-approval on change.** V1 does not automatically set `approved: false` when a capability's `capability_digest` changes between manifest versions. This is a V2 feature (diff-aware re-approval).
+4. **No diff format specification.** V1 establishes the fields but does not define a structured diff output format. The diff format is specified below as a V2 deliverable.
+5. **Hash chain is advisory.** The `previous_manifest_hash` is not cryptographically verified by any V1 command. It exists for downstream consumers and future tooling.
+
+**Pipeline propagation:** The version history fields live at different levels:
+
+```
+.tusq/scan.json         — no version fields (scan is stateless)
+tusq.manifest.json      — manifest_version, previous_manifest_hash (root level)
+                        — capability_digest (per capability)
+tusq-tools/*.json       — no version fields (compiled tools are snapshots)
+MCP server responses    — no version fields (runtime serves current state)
+```
+
+Version history is a manifest-only concern. Compiled tools and MCP responses are point-in-time snapshots of approved capabilities — they do not carry lineage information. The manifest is the single source of truth for version evolution.
+
+**V2 version history and diff tooling (planned):**
+
+Future versions will build on V1's fields to provide active diff and review capabilities:
+
+| V2 capability | Description |
+|--------------|-------------|
+| `tusq diff` command | Compare current manifest to previous version (from git or a supplied file path); output added, removed, and changed capabilities with field-level detail |
+| Structured diff format | JSON diff output with summary counts and per-capability change records (see format below) |
+| Diff-aware re-approval | When `tusq manifest` regeneration changes a capability's `capability_digest`, automatically set `approved: false` and add to the review queue |
+| `.tusq/manifest-history.jsonl` | Append-only log of manifest snapshots (version, hash, timestamp, summary of changes) for projects that want history beyond git |
+| Git integration | `tusq diff --git HEAD~1` to compare manifest at current commit vs. previous commit |
+| Review queue generation | `tusq review --changed` to list only capabilities whose digest changed since last approved version |
+| CI/CD diff gate | `tusq diff --fail-on-unapproved-changes` exits non-zero if any changed capabilities lack re-approval |
+
+**V2 diff output format (planned):**
+
+```json
+{
+  "from_version": 3,
+  "to_version": 4,
+  "from_hash": "abc123...",
+  "to_hash": "def456...",
+  "generated_at": "2026-04-20T12:00:00.000Z",
+  "summary": {
+    "added": 1,
+    "removed": 0,
+    "changed": 2,
+    "unchanged": 5
+  },
+  "changes": [
+    {
+      "type": "added",
+      "capability": "post_billing_invoices",
+      "digest": "new-digest-hex"
+    },
+    {
+      "type": "changed",
+      "capability": "get_users_users",
+      "previous_digest": "old-digest-hex",
+      "current_digest": "new-digest-hex",
+      "fields_changed": ["path", "input_schema", "auth_hints"],
+      "approval_invalidated": true
+    },
+    {
+      "type": "removed",
+      "capability": "delete_legacy_cleanup",
+      "previous_digest": "old-digest-hex"
+    },
+    {
+      "type": "unchanged",
+      "capability": "get_health_health",
+      "digest": "same-digest-hex"
+    }
+  ]
+}
+```
+
+The V2 diff format is additive — it introduces a new output artifact (`tusq diff` result) without changing existing shapes. The V1 manifest fields (`manifest_version`, `previous_manifest_hash`, `capability_digest`) remain with the same semantics.
+
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
 Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.
@@ -1071,7 +1250,7 @@ tusq-tools/*.json          (compiled tools for approved capabilities only)
 MCP server responses       (tools/list and tools/call over JSON-RPC)
 ```
 
-Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval. The `redaction` field propagates from manifest through compile to MCP `tools/call`, enabling agent runtimes to enforce data masking at every stage. Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) lives only in the manifest — downstream artifacts exist only for approved capabilities.
+Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval. The `redaction` field propagates from manifest through compile to MCP `tools/call`, enabling agent runtimes to enforce data masking at every stage. Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) lives only in the manifest — downstream artifacts exist only for approved capabilities. Version history fields (`manifest_version`, `previous_manifest_hash`, `capability_digest`) also live only in the manifest — they track evolution of the canonical artifact itself and do not propagate to compiled tools or MCP responses.
 
 ## Constraints
 

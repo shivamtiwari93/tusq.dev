@@ -107,6 +107,14 @@
 - [x] Update MCP `tools/call` response shape to include `redaction` field
 - [x] Document the six-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints + redaction/approval metadata
 
+### M13: Version History and Diffs Specification (~0.5 day)
+- [ ] Add `manifest_version` (integer, auto-incrementing) and `previous_manifest_hash` (SHA-256 hex | null) to manifest root shape in SYSTEM_SPEC.md
+- [ ] Add `capability_digest` (SHA-256 hex of content fields) to manifest Capability object shape in SYSTEM_SPEC.md
+- [ ] Formally specify Version History and Diffs: manifest-level version fields, per-capability digest computation rules, agent implications, V1 limitations (no diff CLI, no history file, no auto re-approval), pipeline propagation (manifest-only)
+- [ ] Specify V2 diff tooling roadmap: `tusq diff` command, structured diff output format, diff-aware re-approval, manifest history file, git integration, CI/CD diff gate
+- [ ] Update manifest root shape to include new fields alongside existing `schema_version`, `generated_at`, `source_scan`
+- [ ] Document the seven-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints + redaction/approval metadata + version history/diffs
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

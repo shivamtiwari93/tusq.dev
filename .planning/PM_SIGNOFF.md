@@ -14,6 +14,8 @@ Approved: YES
 > Updated in run_eef8e3a64fda1b0f (turn_85f68d6ffa429813) to address vision goal "The canonical artifact: examples and constraints." Challenged prior turns for leaving these two VISION.md dimensions (line 59) entirely unspecified. `examples` existed in compiled tools and MCP responses but was absent from the manifest Capability shape and had no formal spec. `constraints` did not exist anywhere in the pipeline. SYSTEM_SPEC now includes: (1) Examples specification with shape, agent implications, V1 static-placeholder limitations, pipeline propagation, and V2 inference from tests/JSDoc/OpenAPI/runtime; (2) Constraints specification with 5-field shape (rate_limit, max_payload_bytes, required_headers, idempotent, cacheable), agent implications, V1 null-default limitations, and V2 middleware-based inference. Both fields added to manifest, compiled tool, and MCP response shapes. ROADMAP updated with M11 milestone. The governance model is now five fields: side_effect_class + sensitivity_class + auth_hints + examples + constraints.
 >
 > Updated in run_fbc688008b70c5d1 (turn_bcbee07f789e05c9) to address vision goal "The canonical artifact: redaction and approval metadata." Challenged prior turns for leaving this VISION.md dimension (line 60) entirely unspecified. The `approved` and `review_needed` fields existed in V1 code but were never formally specified with agent implications, V1 limitations, or V2 plans. Redaction metadata did not exist anywhere in the pipeline despite VISION.md explicitly listing it. SYSTEM_SPEC now includes: (1) Redaction specification with 4-field shape (pii_fields, log_level, mask_in_traces, retention_days), agent implications, relationship to sensitivity_class, V1 permissive-default limitations, and V2 PII detection/regulatory inference; (2) Approval Metadata specification with shape (approved, approved_by, approved_at, review_needed), pipeline flow, agent implications, V1 limitations (no approval CLI), and V2 plans (tusq approve command, approval history, multi-party review). Added `approved_by` and `approved_at` to the manifest capability shape for audit trail. ROADMAP updated with M12 milestone. The governance model is now six dimensions covering all items listed in VISION.md lines 55-60.
+>
+> Updated in run_78133e963b912f46 (turn_360905c7f7c8ac1a) to address vision goal "The canonical artifact: version history and diffs." Challenged prior turns for leaving this VISION.md dimension (line 61) — the seventh and final canonical artifact dimension — entirely unspecified. No version tracking, content hashing, or diff mechanism existed anywhere in the pipeline. SYSTEM_SPEC now includes: (1) Manifest-level version fields (`manifest_version` integer counter, `previous_manifest_hash` SHA-256 hash chain) added to manifest root shape; (2) Per-capability `capability_digest` (SHA-256 of content fields excluding approval metadata) for change detection; (3) Full specification with agent implications, V1 limitations (no diff CLI, no history file, no auto re-approval), pipeline propagation (manifest-only), and V2 plans (`tusq diff` command, structured diff output format, diff-aware re-approval, manifest history file, git integration, CI/CD diff gate). ROADMAP updated with M13 milestone. The governance model is now seven dimensions, completing ALL items listed in VISION.md lines 55-61.
 
 ## Discovery Checklist
 
@@ -105,6 +107,30 @@ VISION.md line 60 explicitly lists "redaction and approval metadata" as a core d
 With `sensitivity_class` already classifying data types (public/internal/confidential/restricted) and `redaction` specifying masking rules, there is a question of whether these overlap.
 
 **Decision:** They are complementary, not redundant. Sensitivity is the *classification* (what kind of data); redaction is the *operational response* (what to do about it). A capability can be `confidential` (touches PII) but the team may choose different redaction policies: one team masks emails but logs everything else, another team goes fully silent. Sensitivity drives access decisions; redaction drives logging/audit decisions. Keeping them separate preserves policy flexibility.
+
+### Challenge 11: Version history and diffs — the last unspecified VISION dimension
+
+VISION.md line 61 explicitly lists "version history and diffs" as the seventh canonical artifact dimension. All prior milestones (M8–M12, DEC-143 through DEC-201) completed the first six dimensions but left version history entirely unaddressed. The manifest had `schema_version: "1.0"` and `generated_at`, but no mechanism to:
+- Track how many times the manifest has been regenerated
+- Link a manifest to its predecessor
+- Detect which capabilities changed between generations
+- Enable downstream diff tooling or re-approval workflows
+
+VISION.md line 218 requires "produce manifest diffs and review queues" and line 274 lists "better diffs, review queues, version review" as V2 goals. Without V1 fields establishing the contract, V2 tooling would require a breaking schema change.
+
+**Decision:** Add three fields following the established conservative-default V1 pattern: `manifest_version` (integer counter at manifest root), `previous_manifest_hash` (SHA-256 hash chain at manifest root), and `capability_digest` (per-capability SHA-256 of content fields). V1 produces the fields but ships no diff CLI or history file. V2 builds `tusq diff`, diff-aware re-approval, and CI/CD gates on top of these fields without changing the manifest shape. The governance model is now seven dimensions, completing every item in VISION.md lines 55–61.
+
+### Challenge 12: Version history scope — manifest-only or full pipeline?
+
+Should version tracking propagate through compiled tools and MCP responses, like `redaction` does? Or should it stay manifest-only, like approval metadata?
+
+**Decision:** Manifest-only. Version history tracks the *evolution of the canonical artifact itself*. Compiled tools (`tusq-tools/*.json`) are point-in-time snapshots of approved capabilities — they don't need lineage. MCP responses serve current state — agents consuming `tools/list` or `tools/call` don't need to know which manifest generation produced the tool. This matches the approval metadata pattern: the manifest is where governance decisions live; downstream artifacts are the result of those decisions.
+
+### Challenge 13: Capability digest — what fields to include?
+
+The `capability_digest` must exclude some fields to be useful for change detection. If it included `approved` and `approved_by`, every human approval would change the digest and create a false "capability changed" signal.
+
+**Decision:** Exclude `capability_digest` (circular), `approved`, `approved_by`, `approved_at`, and `review_needed` (human gate state, not capability content). Include everything else: name, description, method, path, schemas, side_effect_class, sensitivity_class, auth_hints, examples, constraints, redaction, provenance, confidence, domain. This means the digest answers "did the *capability itself* change?" not "did someone approve it?"
 
 ## Key Judgment Calls
 
