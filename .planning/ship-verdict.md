@@ -2,6 +2,20 @@
 
 ## Verdict: SHIP
 
+## Challenge To Dev Turn (turn_9a6c87406474f433) — redaction + approved_by/approved_at (DEC-196)
+
+The dev turn implemented the final VISION.md canonical artifact dimension: redaction and approval audit metadata. I challenged this on four grounds:
+
+1. **Pipeline coverage and intentional asymmetry for `redaction`:** redaction must appear at manifest and compile (two writeable stages) and MCP `tools/call`, but NOT `tools/list` (which is the lightweight listing surface). Verified in `src/cli.js`: manifest preservation at lines 340 and 362, compile propagation at line 443, `tools/call` inclusion at line 578, and `tools/list` exclusion confirmed by smoke test assertion at line 241-242 (`'redaction' in firstTool` → throws). **Challenge resolved: intentional and correctly enforced.**
+
+2. **manifest-only boundary for `approved_by`/`approved_at`:** DEC-196 claims approval audit fields are manifest-only. Smoke test line 205 asserts `approved_by`, `approved_at`, `approved`, and `review_needed` are all absent from compiled tools. Smoke test line 271 asserts the same absence from `tools/call` response. Verified `normalizeApprovedBy()` and `normalizeApprovedAt()` are not invoked anywhere in the compile or serve pipelines — only in the manifest generation preservation maps (lines 341-342, 367-368). **Challenge resolved: boundary correctly enforced at all three non-manifest stages.**
+
+3. **Smoke test completeness (7 assertions):** Verified 7 distinct assertions covering the full boundary surface: (a) default `redaction` 4-field shape on new manifest (smoke line 172-173); (b) default `approved_by`/`approved_at` null (line 178); (c) custom redaction preserved through compile (line 202-203); (d) approval metadata absent from compiled tools (line 205); (e) `tools/list` excludes redaction (line 241-242); (f) tools/call redaction preserved from manifest (line 268-269); (g) approval metadata absent from tools/call (line 271). All 7 pass (`node tests/smoke.mjs` → exit 0). **Challenge resolved: assertions valid, complete, and passing.**
+
+4. **Documentation accuracy:** `website/docs/manifest-format.md` lists `redaction` (line 33) and `approved_by`/`approved_at` (lines 38-39) in the capability field inventory; the `## Approval and redaction` section (lines 99-112) correctly describes default shapes, V1 behavior, and the propagation boundary. `website/docs/mcp-server.md` lines 23-24 correctly state tools/call includes `redaction` and that approval metadata is manifest-only. **Challenge resolved: accurate and no overclaim.**
+
+New requirement REQ-034 added to acceptance matrix covering redaction propagation, approval manifest-only boundary, 7 smoke-test assertion points, and documentation accuracy. Acceptance matrix now covers 34 criteria.
+
 ## Challenge To Dev Turn (turn_79938a12a7f2e441) — examples/constraints end-to-end
 
 The dev turn added `examples` and `constraints` fields across the full pipeline: manifest preservation maps, compile propagation, MCP `tools/call` response, smoke-test assertions, and doc updates. I challenged this on three grounds:
@@ -107,7 +121,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 33 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), 1 auth_hints MCP runtime check (REQ-032), and 1 examples/constraints pipeline check (REQ-033). This QA pass challenged the dev turn (turn_79938a12a7f2e441) that added examples/constraints end-to-end and verified that: (a) the `tools/list` exclusion of examples/constraints is intentional per SYSTEM_SPEC.md lines 564-571, not a bug; (b) smoke-test assertions cover all three required pipeline stages; and (c) manifest-format.md accurately documents both fields. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
+All 34 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), 1 auth_hints MCP runtime check (REQ-032), 1 examples/constraints pipeline check (REQ-033), and 1 redaction/approval-audit pipeline check (REQ-034). This QA pass independently challenged the dev turn (turn_9a6c87406474f433) that implemented redaction and approved_by/approved_at on four grounds: pipeline coverage and intentional asymmetry, manifest-only boundary enforcement, smoke-test completeness (7 distinct assertions), and documentation accuracy. All four challenges resolved. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.
