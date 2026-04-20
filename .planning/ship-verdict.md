@@ -2,6 +2,20 @@
 
 ## Verdict: SHIP
 
+## Challenge To Dev Turn (turn_c976f258) — version history fields (DEC-207)
+
+The dev turn implemented M13: manifest-level version history via `manifest_version`, `previous_manifest_hash`, and `capability_digest`. I challenged this on four grounds:
+
+1. **Pipeline coverage and strict non-propagation:** Version history fields must appear in `tusq.manifest.json` only — they must be absent from compiled `tusq-tools/*.json`, MCP `tools/list`, and MCP `tools/call`. Verified in `src/cli.js`: `manifest_version` and `previous_manifest_hash` are written at manifest root (lines 384-385), `capability_digest` is computed per-capability (line 374). Compile pipeline (`tusq-tools/*.json`) has no version-history output; `tools/list` and `tools/call` responses have no version-history output. Smoke test line 319 asserts `'capability_digest' in compiledTool || 'manifest_version' in compiledTool` → throws; smoke test line 388-389 asserts same for `tools/call`. **Challenge resolved: intentional manifest-only boundary correctly enforced.**
+
+2. **Deterministic digest computation:** `capability_digest` uses stable sorted-key JSON (`stableStringify` → `sortKeysDeep`) plus SHA-256. The digest excludes `approved`, `approved_by`, `approved_at`, `review_needed`, and `capability_digest` itself — only content fields change the digest. Smoke test lines 263-274 verify digest invariance for approval-only edits; lines 284-285 verify digest changes on content edits; lines 288-291 verify re-computed expected digest matches implementation output. **Challenge resolved: deterministic and correctly scoped to content fields only.**
+
+3. **Smoke test completeness (8 assertions):** Eight distinct checks: (a) `manifest_version` increments from prior file or starts at 1 (lines 239-244); (b) `previous_manifest_hash` matches SHA-256 of prior bytes or null on first run (lines 246-249); (c) per-capability `capability_digest` is a 64-char lowercase hex string (lines 252-254); (d) `capability_digest` matches independently computed expected value (lines 256-259); (e) digest stable across approval-only edits (lines 272-274); (f) digest changes on content edit (lines 284-285); (g) version-history absent from compiled tools (line 319); (h) version-history absent from MCP `tools/call` (lines 388-389). All 8 pass (`node tests/smoke.mjs` → exit 0). **Challenge resolved: assertions valid, complete, and passing.**
+
+4. **Documentation accuracy:** `website/docs/manifest-format.md` lists `manifest_version` and `previous_manifest_hash` as manifest root fields with correct types and null-on-first-run semantics. `capability_digest` is listed as a capability field with explicit exclusions (`approved`, `approved_by`, `approved_at`, `review_needed`). `website/docs/mcp-server.md` explicitly states version history fields are manifest-only and absent from MCP responses. No overclaim found. **Challenge resolved: accurate.**
+
+New requirement REQ-035 added to acceptance matrix covering version-history field completeness, digest determinism, strict non-propagation to compile and MCP, and documentation accuracy. Acceptance matrix now covers 35 criteria.
+
 ## Challenge To Dev Turn (turn_9a6c87406474f433) — redaction + approved_by/approved_at (DEC-196)
 
 The dev turn implemented the final VISION.md canonical artifact dimension: redaction and approval audit metadata. I challenged this on four grounds:
@@ -121,7 +135,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 34 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), 1 auth_hints MCP runtime check (REQ-032), 1 examples/constraints pipeline check (REQ-033), and 1 redaction/approval-audit pipeline check (REQ-034). This QA pass independently challenged the dev turn (turn_9a6c87406474f433) that implemented redaction and approved_by/approved_at on four grounds: pipeline coverage and intentional asymmetry, manifest-only boundary enforcement, smoke-test completeness (7 distinct assertions), and documentation accuracy. All four challenges resolved. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
+All 35 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), 1 auth_hints MCP runtime check (REQ-032), 1 examples/constraints pipeline check (REQ-033), 1 redaction/approval-audit pipeline check (REQ-034), and 1 version-history/digest pipeline check (REQ-035). This QA pass independently challenged the dev turn (turn_c976f258) that implemented manifest_version, previous_manifest_hash, and capability_digest on four grounds: pipeline coverage and strict non-propagation to compile and MCP, digest determinism and correct content-field scope, smoke-test completeness (8 distinct assertions), and documentation accuracy. All four challenges resolved. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.

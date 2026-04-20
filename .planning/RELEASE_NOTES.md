@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 34 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline).
+- All 35 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 
@@ -102,6 +102,16 @@ Every compiled capability carries five governance fields through the pipeline (m
 `side_effect_class`, `sensitivity_class`, and `auth_hints` appear in both `tools/list` and `tools/call` MCP responses. `examples`, `constraints`, and `redaction` appear in `tools/call` only (by design — they are per-capability operational detail, not listing metadata).
 
 Approval audit fields (`approved_by`, `approved_at`) are manifest-only. They are preserved across manifest regeneration and provide a human-readable audit trail for the approval gate, but they are intentionally excluded from compiled tool definitions and all MCP responses.
+
+## Version History and Capability Digest
+
+`tusq.manifest.json` now carries three manifest-only version-history fields that enable change tracking across regenerations:
+
+- **`manifest_version`** (manifest root, integer): starts at 1 and increments by 1 each time `tusq manifest` runs. Provides a monotonic counter for manifest lineage.
+- **`previous_manifest_hash`** (manifest root, SHA-256 hex or null): SHA-256 hash of the entire prior manifest file bytes. `null` on first generation. Enables byte-level comparison between manifest generations without storing the full history.
+- **`capability_digest`** (per capability, SHA-256 hex): deterministic SHA-256 of the capability's content fields only — name, description, method, path, schemas, all governance fields, provenance, confidence, domain. Explicitly excludes `approved`, `approved_by`, `approved_at`, `review_needed`, and `capability_digest` itself so approval-only edits do not change the digest. Stable key ordering (recursive alphabetical sort) makes the hash deterministic across runs.
+
+These fields are manifest-only. They are not propagated to compiled tool definitions (`tusq-tools/*.json`) or MCP responses (`tools/list`, `tools/call`). They are V1 groundwork for a V2 diff CLI and history store.
 
 ## Known V1 Limits And Non-Claims
 
