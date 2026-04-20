@@ -870,6 +870,33 @@ function extractFastifyRoutes(content, filePath) {
     });
   }
 
+  // 3-argument inline form: fastify.verb(path, {options...}, handler)
+  const inlineWithOptionsPattern = /\bfastify\.(get|post|put|patch|delete|options|head)\s*\(\s*(['"`])([^'"`]+)\2\s*,\s*\{([\s\S]*?)\}\s*,\s*([^)]+)\)/g;
+  let optMatch;
+  while ((optMatch = inlineWithOptionsPattern.exec(content)) !== null) {
+    const method = optMatch[1].toUpperCase();
+    const routePath = normalizeRoutePath(optMatch[3]);
+    const optionsBlock = optMatch[4];
+    const handlerExpr = optMatch[5].trim();
+    const tokens = extractIdentifiers(handlerExpr);
+    const isInline = /=>|function\s*\(/.test(handlerExpr);
+    const handler = isInline ? 'inline_handler' : (tokens[tokens.length - 1] || 'unknown_handler');
+    routes.push({
+      framework: 'fastify',
+      method,
+      path: routePath,
+      handler,
+      domain: inferDomain(routePath),
+      auth_hints: inferAuthHints([handlerExpr]),
+      provenance: {
+        file: filePath,
+        line: lineFromIndex(content, optMatch.index)
+      },
+      schema_hint: /\bschema\s*:/i.test(optionsBlock),
+      middleware: tokens
+    });
+  }
+
   const routePattern = /fastify\.route\s*\(\s*\{([\s\S]*?)\}\s*\)/g;
   let match;
   while ((match = routePattern.exec(content)) !== null) {

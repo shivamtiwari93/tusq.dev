@@ -321,11 +321,51 @@ async function run() {
   }
   runCli(['review', '--verbose'], { cwd: expressProject });
 
+  // REQ-036: Framework-specific deep extraction assertions
   runCli(['init'], { cwd: fastifyProject });
-  runCli(['scan', '.', '--verbose'], { cwd: fastifyProject });
+  const fastifyScanResult = runCli(['scan', '.', '--format', 'json'], { cwd: fastifyProject });
+  const fastifyScan = JSON.parse(fastifyScanResult.stdout);
+  if (fastifyScan.route_count !== 2) {
+    throw new Error(`Expected 2 Fastify routes (inline GET + route-object POST), got ${fastifyScan.route_count}`);
+  }
+  const fastifyGet = fastifyScan.routes.find((r) => r.method === 'GET' && r.path === '/orders');
+  if (!fastifyGet) {
+    throw new Error('Expected Fastify GET /orders from 3-argument inline fastify.get(path, options, handler) form');
+  }
+  if (fastifyGet.handler !== 'listOrders') {
+    throw new Error(`Expected Fastify GET /orders handler=listOrders, got ${fastifyGet.handler}`);
+  }
+  if (!fastifyGet.input_schema || !fastifyGet.input_schema.description.includes('schema hints')) {
+    throw new Error('Expected Fastify GET /orders input_schema to reflect schema hints from options block schema: property');
+  }
+  const fastifyPost = fastifyScan.routes.find((r) => r.method === 'POST' && r.path === '/orders');
+  if (!fastifyPost) {
+    throw new Error('Expected Fastify POST /orders from fastify.route({}) form');
+  }
+  if (!fastifyPost.auth_hints.includes('requireAuth')) {
+    throw new Error(`Expected Fastify POST /orders auth_hints to include requireAuth, got ${JSON.stringify(fastifyPost.auth_hints)}`);
+  }
 
   runCli(['init'], { cwd: nestProject });
-  runCli(['scan', '.', '--verbose'], { cwd: nestProject });
+  const nestScanResult = runCli(['scan', '.', '--format', 'json'], { cwd: nestProject });
+  const nestScan = JSON.parse(nestScanResult.stdout);
+  if (nestScan.route_count !== 2) {
+    throw new Error(`Expected 2 NestJS routes, got ${nestScan.route_count}`);
+  }
+  const nestGet = nestScan.routes.find((r) => r.method === 'GET' && r.path === '/users');
+  if (!nestGet) {
+    throw new Error('Expected NestJS GET /users with controller prefix composition');
+  }
+  if (!nestGet.auth_hints.includes('AuthGuard')) {
+    throw new Error(`Expected NestJS GET /users to inherit class-level AuthGuard, got ${JSON.stringify(nestGet.auth_hints)}`);
+  }
+  const nestPost = nestScan.routes.find((r) => r.method === 'POST' && r.path === '/users/:id/disable');
+  if (!nestPost) {
+    throw new Error('Expected NestJS POST /users/:id/disable with composed path (controller prefix + method decorator)');
+  }
+  if (!nestPost.auth_hints.includes('AuthGuard') || !nestPost.auth_hints.includes('AdminGuard')) {
+    throw new Error(`Expected NestJS POST to have both AuthGuard (inherited) and AdminGuard (method-level), got ${JSON.stringify(nestPost.auth_hints)}`);
+  }
 
   const port = 32155;
   const serveProc = spawn('node', [cli, 'serve', '--port', String(port)], {
