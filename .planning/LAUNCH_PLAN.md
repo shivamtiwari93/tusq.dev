@@ -13,12 +13,12 @@
 
 - tusq.dev v0.1.0 is for incumbent SaaS teams that already have product logic in a supported Node.js backend and need a governed way to make that logic inspectable by AI systems
 - The defensible proof is concrete: scan the repo, generate a reviewable manifest, approve capabilities manually, compile approved tool JSON, and inspect the resulting describe-only MCP surface
-- The launch should sell the control model as much as the automation model: reviewed manifest, explicit approval, preserved provenance, inspectable output
+- The launch should sell the control model as much as the automation model: reviewed manifest, explicit approval, preserved provenance, inspectable governance metadata, and inspectable output
 
 ### First user action
 
 - Direct early adopters to run tusq.dev locally against a real Express, Fastify, or NestJS repo
-- Ask them to inspect `tusq.manifest.json` first, approve one or two capabilities, compile, and then confirm the MCP surface matches expectations
+- Ask them to inspect `tusq.manifest.json` first, with special attention to provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`, then approve one or two capabilities, compile, and confirm the MCP surface matches expectations
 - Treat scanner misses, low-confidence routes, and awkward manifest edits as feedback fuel for the next release
 - Do not optimize the launch flow around `tusq serve` alone; the key product moment is seeing existing product behavior become a reviewable manifest before exposure
 
@@ -39,11 +39,12 @@
   `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
 - Release notes that spell out supported frameworks and deferred items
 - Website or landing-page copy that reflects the actual V1 surface instead of the full long-term vision
+- One sentence in every primary asset that explains what "governed" means in practice: inspect provenance, mutation class, auth hints, and sensitivity markers before exposure
 
 ### Strongly recommended supporting assets
 
 - A short terminal demo or GIF using one of the fixture apps
-- One annotated manifest example showing approvals and domain grouping
+- One annotated manifest example showing approvals, provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`
 - A concise FAQ covering "Does it execute tools?" and "Which frameworks are supported?"
 
 ## Dependencies
@@ -79,6 +80,7 @@
 ## Channel Guardrails
 
 - Website and announcement: lead with the workflow proof and V1 boundary in the first screenful
+- Website and announcement: show at least one concrete example of the review surface, not just the word "governance"
 - GitHub README and docs: tell users how to try the product today without implying a public package is already published
 - Social posts: frame the release as a governed path from repo to reviewed manifest to describe-only MCP, not as a general AI agent platform
 - Community posts: invite supported-stack users with real repos, not broad curiosity traffic from unsupported ecosystems

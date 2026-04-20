@@ -39,6 +39,8 @@ The V1 boundary is explicit:
 - capability approval is manual by editing the manifest
 - early adopters should try it locally from the repo rather than assume a public package-manager install is already live
 
+What makes the workflow governable is visible in the artifacts themselves. Reviewers can inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest and see the same metadata survive into the compiled tool and MCP surfaces.
+
 The best first proof is simple: run tusq.dev on a supported service you already own, inspect `tusq.manifest.json`, approve one or two capabilities, and verify that `tools/list` and `tools/call` reflect exactly what you intended.
 
 This release proves the core loop from repo to governed capability surface without pretending to solve every hard problem on day one.

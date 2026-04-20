@@ -17,6 +17,7 @@ const surfaceItems = [
   'NestJS support',
   'Route discovery',
   'Manifest generation',
+  'Visible governance metadata',
   'Manual approval flow',
   'Approved tool compilation',
   'Describe-only MCP serve',
@@ -55,7 +56,8 @@ export default function Home(): ReactNode {
             tusq.dev v0.1.0 scans Express, Fastify, and NestJS codebases, generates a reviewable{' '}
             <code>tusq.manifest.json</code>, compiles approved capabilities into strict JSON tool
             definitions, and serves them through a local describe-only MCP endpoint that clients
-            can inspect.
+            can inspect. The review chain keeps provenance, <code>side_effect_class</code>,{' '}
+            <code>sensitivity_class</code>, and <code>auth_hints</code> visible before exposure.
           </p>
           <p className={styles.launchNote}>
             Try it locally from the repo on a supported codebase. Current launch flow: clone the
@@ -81,6 +83,7 @@ export default function Home(): ReactNode {
             <p>
               It discovers supported API routes and inferred auth hints from code, then converts
               that output into a capability manifest your team can inspect before exposing anything.
+              Reviewers get concrete metadata, not just a generic governance claim.
             </p>
           </article>
           <article className={styles.card}>
