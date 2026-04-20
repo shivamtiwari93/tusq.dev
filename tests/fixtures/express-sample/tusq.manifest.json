@@ -38,6 +38,12 @@
         "idempotent": null,
         "cacheable": null
       },
+      "redaction": {
+        "pii_fields": [],
+        "log_level": "full",
+        "mask_in_traces": false,
+        "retention_days": null
+      },
       "provenance": {
         "file": "src/app.ts",
         "line": 12
@@ -45,6 +51,8 @@
       "confidence": 0.86,
       "review_needed": false,
       "approved": true,
+      "approved_by": null,
+      "approved_at": null,
       "domain": "users"
     },
     {
@@ -82,6 +90,12 @@
         "idempotent": null,
         "cacheable": null
       },
+      "redaction": {
+        "pii_fields": [],
+        "log_level": "full",
+        "mask_in_traces": false,
+        "retention_days": null
+      },
       "provenance": {
         "file": "src/app.ts",
         "line": 13
@@ -89,6 +103,8 @@
       "confidence": 0.86,
       "review_needed": false,
       "approved": true,
+      "approved_by": null,
+      "approved_at": null,
       "domain": "users"
     }
   ]

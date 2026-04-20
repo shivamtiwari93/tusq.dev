@@ -134,6 +134,12 @@ async function run() {
     idempotent: null,
     cacheable: null
   };
+  const defaultRedaction = {
+    pii_fields: [],
+    log_level: 'full',
+    mask_in_traces: false,
+    retention_days: null
+  };
   const customExamples = [
     {
       input: {
@@ -151,18 +157,33 @@ async function run() {
     idempotent: true,
     cacheable: true
   };
+  const customRedaction = {
+    pii_fields: ['email', 'ssn'],
+    log_level: 'redacted',
+    mask_in_traces: true,
+    retention_days: 30
+  };
   if (!manifest.capabilities.every((capability) => capability.sensitivity_class === 'unknown')) {
     throw new Error('Expected manifest capabilities to include sensitivity_class=unknown in V1');
   }
   if (!manifest.capabilities.every((capability) => JSON.stringify(capability.constraints) === JSON.stringify(defaultConstraints))) {
     throw new Error('Expected manifest capabilities to include default constraints in V1');
   }
+  if (!manifest.capabilities.every((capability) => JSON.stringify(capability.redaction) === JSON.stringify(defaultRedaction))) {
+    throw new Error('Expected manifest capabilities to include default redaction settings in V1');
+  }
   if (!manifest.capabilities.every((capability) => Array.isArray(capability.examples) && capability.examples.length > 0)) {
     throw new Error('Expected manifest capabilities to include examples array in V1');
   }
+  if (!manifest.capabilities.every((capability) => capability.approved_by === null && capability.approved_at === null)) {
+    throw new Error('Expected manifest capabilities to include null approval metadata in V1');
+  }
   manifest.capabilities[0].approved = true;
+  manifest.capabilities[0].approved_by = 'alice@company.com';
+  manifest.capabilities[0].approved_at = '2026-04-19T10:30:00.000Z';
   manifest.capabilities[0].examples = customExamples;
   manifest.capabilities[0].constraints = customConstraints;
+  manifest.capabilities[0].redaction = customRedaction;
   await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   runCli(['compile', '--dry-run', '--verbose'], { cwd: expressProject });
@@ -177,6 +198,12 @@ async function run() {
   }
   if (JSON.stringify(compiledTool.constraints) !== JSON.stringify(customConstraints)) {
     throw new Error('Expected compiled tool constraints to preserve manifest values');
+  }
+  if (JSON.stringify(compiledTool.redaction) !== JSON.stringify(customRedaction)) {
+    throw new Error('Expected compiled tool redaction to preserve manifest values');
+  }
+  if ('approved_by' in compiledTool || 'approved_at' in compiledTool || 'approved' in compiledTool || 'review_needed' in compiledTool) {
+    throw new Error('Expected compiled tool to exclude approval metadata fields');
   }
   runCli(['review', '--verbose'], { cwd: expressProject });
 
@@ -211,6 +238,9 @@ async function run() {
   if (!Array.isArray(firstTool.auth_hints)) {
     throw new Error(`Expected tools/list auth_hints array: ${JSON.stringify(firstTool)}`);
   }
+  if ('redaction' in firstTool) {
+    throw new Error(`Expected tools/list to exclude redaction metadata: ${JSON.stringify(firstTool)}`);
+  }
   const callResponse = await requestRpc(port, {
     jsonrpc: '2.0',
     id: 2,
@@ -234,6 +264,12 @@ async function run() {
   }
   if (JSON.stringify(callResponse.result.constraints) !== JSON.stringify(customConstraints)) {
     throw new Error(`Expected tools/call constraints to preserve manifest values: ${JSON.stringify(callResponse)}`);
+  }
+  if (JSON.stringify(callResponse.result.redaction) !== JSON.stringify(customRedaction)) {
+    throw new Error(`Expected tools/call redaction to preserve manifest values: ${JSON.stringify(callResponse)}`);
+  }
+  if ('approved_by' in callResponse.result || 'approved_at' in callResponse.result || 'approved' in callResponse.result || 'review_needed' in callResponse.result) {
+    throw new Error(`Expected tools/call to exclude approval metadata fields: ${JSON.stringify(callResponse)}`);
   }
 
   const stop = new Promise((resolve, reject) => {

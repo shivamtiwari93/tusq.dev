@@ -2,12 +2,42 @@
 
 ## Challenge To Prior Turn
 
+- Rejected the previous implementation reissue (`turn_7220d0e20cbbbadd`) as stale and non-actionable: it delivered no runtime changes for approved M12 work (`redaction`, `approved_by`, `approved_at`) and therefore did not satisfy implementation completeness.
+- Rejected any assumption that planning completion implied runtime completion: M12 was specified in planning artifacts, but `src/cli.js` still omitted redaction propagation and approval audit fields in manifest generation.
 - Rejected the prior failed dev attempt as incomplete for this continuation run: it only re-ran build/smoke checks and did not record or deliver concrete post-v0.1.0 improvements in this artifact.
 - Rejected any assumption that "no implementation work remains." This run adds follow-on product clarity improvements to the shipped site while preserving v0.1.0 truth boundaries.
 - Rejected the immediately previous stale implementation reissue as insufficient: it produced no turn artifact and did not validate whether approved planning decisions (artifact-shape clarity) were reflected in user-facing docs.
 - Rejected the assumption that sensitivity classification had already shipped because planning (M9) and spec artifacts defined `sensitivity_class`, but runtime outputs (`tusq manifest`, `tusq compile`, `tusq serve`) still omitted it.
 - Rejected the assumption that governance metadata was fully surfaced at runtime: `auth_hints` existed in compiled tools but was omitted from MCP `tools/list` and `tools/call` responses.
 - Rejected the assumption that examples/constraints were already implemented because planning (M11) approved both fields in the canonical artifact, while implementation still omitted `constraints` and generated `examples` inside `compile` instead of propagating manifest-authored values.
+
+## Continuation Changes In This Turn (M12 Redaction + Approval Metadata Closure)
+
+- Implemented redaction defaults/normalization in `src/cli.js`:
+  - Added `defaultRedaction()` and `normalizeRedaction()` with V1 defaults:
+    - `pii_fields: []`
+    - `log_level: "full"`
+    - `mask_in_traces: false`
+    - `retention_days: null`
+  - Added `REDACTION_LOG_LEVELS` guard (`full`, `redacted`, `silent`).
+- Implemented approval audit metadata normalization in `src/cli.js`:
+  - Added `normalizeApprovedBy()` and `normalizeApprovedAt()`.
+  - `tusq manifest` now emits `approved_by` and `approved_at` (default `null`) and preserves existing values by method+path key on regeneration.
+- Updated pipeline propagation rules in `src/cli.js`:
+  - `tusq manifest` now emits `redaction`, `approved_by`, and `approved_at` on every capability.
+  - `tusq compile` now includes normalized `redaction` in compiled tool JSON.
+  - `tusq serve` `tools/call` now returns normalized `redaction`.
+  - `tusq serve` `tools/list` intentionally still excludes `redaction` (summary view).
+  - Approval metadata remains manifest-only (not emitted in compiled tools or MCP responses).
+- Expanded smoke coverage in `tests/smoke.mjs`:
+  - Asserts manifest defaults for `redaction` and `approved_by`/`approved_at`.
+  - Asserts manifest-authored custom `redaction` propagates to compiled tools and MCP `tools/call`.
+  - Asserts `tools/list` excludes `redaction`.
+  - Asserts compiled tools and MCP responses exclude approval metadata fields.
+- Updated docs and fixtures:
+  - `website/docs/manifest-format.md` documents `redaction`, `approved_by`, `approved_at`, defaults, and manifest-only approval metadata behavior.
+  - `website/docs/mcp-server.md` documents `tools/list` vs `tools/call` metadata boundaries and approval-field omission.
+  - Updated express fixture manifest/tool JSON to include `redaction` and approval audit fields for shape parity with current V1 contract.
 
 ## Continuation Changes In This Turn (M11 Examples + Constraints Closure)
 

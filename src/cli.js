@@ -5,6 +5,7 @@ const path = require('path');
 const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
 const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted'];
+const REDACTION_LOG_LEVELS = ['full', 'redacted', 'silent'];
 const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
 
 class CliError extends Error {
@@ -326,6 +327,9 @@ function cmdManifest(args) {
   const sensitivityMap = new Map();
   const examplesMap = new Map();
   const constraintsMap = new Map();
+  const redactionMap = new Map();
+  const approvedByMap = new Map();
+  const approvedAtMap = new Map();
   if (existing && Array.isArray(existing.capabilities)) {
     for (const capability of existing.capabilities) {
       const key = capabilityKey(capability.method, capability.path);
@@ -333,6 +337,9 @@ function cmdManifest(args) {
       sensitivityMap.set(key, normalizeSensitivityClass(capability.sensitivity_class));
       examplesMap.set(key, normalizeExamples(capability.examples));
       constraintsMap.set(key, normalizeConstraints(capability.constraints));
+      redactionMap.set(key, normalizeRedaction(capability.redaction));
+      approvedByMap.set(key, normalizeApprovedBy(capability.approved_by));
+      approvedAtMap.set(key, normalizeApprovedAt(capability.approved_at));
     }
   }
 
@@ -352,10 +359,13 @@ function cmdManifest(args) {
       auth_hints: route.auth_hints,
       examples: examplesMap.has(key) ? examplesMap.get(key) : defaultExamples(),
       constraints: constraintsMap.has(key) ? constraintsMap.get(key) : defaultConstraints(),
+      redaction: redactionMap.has(key) ? redactionMap.get(key) : defaultRedaction(),
       provenance: route.provenance,
       confidence,
       review_needed: confidence < 0.8,
       approved: approvalMap.get(key) || false,
+      approved_by: approvedByMap.has(key) ? approvedByMap.get(key) : null,
+      approved_at: approvedAtMap.has(key) ? approvedAtMap.get(key) : null,
       domain: route.domain
     };
   });
@@ -430,6 +440,7 @@ function cmdCompile(args) {
     auth_hints: capability.auth_hints || [],
     examples: normalizeExamples(capability.examples),
     constraints: normalizeConstraints(capability.constraints),
+    redaction: normalizeRedaction(capability.redaction),
     provenance: capability.provenance
   }));
 
@@ -563,7 +574,8 @@ function cmdServe(args) {
           sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
           auth_hints: tool.auth_hints || [],
           examples: normalizeExamples(tool.examples),
-          constraints: normalizeConstraints(tool.constraints)
+          constraints: normalizeConstraints(tool.constraints),
+          redaction: normalizeRedaction(tool.redaction)
         };
         respondRpcJson(res, id, result);
         return;
@@ -1100,6 +1112,77 @@ function normalizeConstraints(value) {
   }
 
   return out;
+}
+
+function defaultRedaction() {
+  return {
+    pii_fields: [],
+    log_level: 'full',
+    mask_in_traces: false,
+    retention_days: null
+  };
+}
+
+function normalizeRedaction(value) {
+  const defaults = defaultRedaction();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaults;
+  }
+
+  const out = defaultRedaction();
+
+  if (Array.isArray(value.pii_fields)) {
+    out.pii_fields = dedupe(
+      value.pii_fields
+        .filter((entry) => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    );
+  }
+
+  if (typeof value.log_level === 'string') {
+    const normalizedLogLevel = value.log_level.trim().toLowerCase();
+    if (REDACTION_LOG_LEVELS.includes(normalizedLogLevel)) {
+      out.log_level = normalizedLogLevel;
+    }
+  }
+
+  if (typeof value.mask_in_traces === 'boolean') {
+    out.mask_in_traces = value.mask_in_traces;
+  }
+
+  if (Number.isInteger(value.retention_days) && value.retention_days >= 0) {
+    out.retention_days = value.retention_days;
+  }
+
+  return out;
+}
+
+function normalizeApprovedBy(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+function normalizeApprovedAt(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Date.parse(normalized);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function cloneJson(value, fallback) {

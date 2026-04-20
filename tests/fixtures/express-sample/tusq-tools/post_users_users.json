@@ -31,6 +31,12 @@
     "idempotent": null,
     "cacheable": null
   },
+  "redaction": {
+    "pii_fields": [],
+    "log_level": "full",
+    "mask_in_traces": false,
+    "retention_days": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 13

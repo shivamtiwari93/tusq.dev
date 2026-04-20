@@ -19,7 +19,9 @@ This starts a local HTTP endpoint that exposes compiled tools in MCP-style JSON-
 - `tools/list`: returns available tools with schema metadata
 - `tools/call`: returns describe-only schema/example/constraints information for a selected tool
 
-Both methods include capability governance metadata when available (`side_effect_class`, `sensitivity_class`, and `auth_hints`). `tools/call` also includes `examples` and `constraints`.
+- `tools/list` includes summary governance metadata: `side_effect_class`, `sensitivity_class`, and `auth_hints`.
+- `tools/call` includes the same fields plus `examples`, `constraints`, and `redaction`.
+- Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) remains manifest-only and is not returned by MCP responses.
 
 ## V1 execution model
 

@@ -30,10 +30,13 @@ Each capability includes:
 - `auth_hints`: inferred auth/middleware hints
 - `examples`: usage examples (V1 defaults to a describe-only placeholder)
 - `constraints`: operational limits object (`rate_limit`, `max_payload_bytes`, `required_headers`, `idempotent`, `cacheable`)
+- `redaction`: operational masking/retention policy (`pii_fields`, `log_level`, `mask_in_traces`, `retention_days`)
 - `provenance`: source file and line metadata
 - `confidence`: inference confidence score
 - `review_needed`: true when confidence is below threshold
 - `approved`: manual approval flag
+- `approved_by`: approval identity string or `null`
+- `approved_at`: approval timestamp string (ISO 8601) or `null`
 - `domain`: domain grouping label
 
 ## V1 schema limitations
@@ -91,13 +94,30 @@ In `v0.1.0`, `sensitivity_class` is always emitted as `unknown` by default. The 
 
 Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` preserves those values into `tusq-tools/*.json` and MCP `tools/call`.
 
+## Redaction and approval metadata (V1)
+
+- `redaction` defaults to:
+
+```json
+{
+  "pii_fields": [],
+  "log_level": "full",
+  "mask_in_traces": false,
+  "retention_days": null
+}
+```
+
+- `approved_by` and `approved_at` default to `null`.
+- `tusq compile` gates only on `approved: true`; approval metadata remains manifest-only audit context.
+- `redaction` propagates to compiled tools and MCP `tools/call` so runtime consumers can apply masking/retention policy.
+
 ## Approval flow
 
 V1 approval is explicit and manual.
 
 1. Run `tusq manifest`.
 2. Edit `tusq.manifest.json`.
-3. Set `approved: true` for capabilities you want exposed.
+3. Set `approved: true` for capabilities you want exposed (optionally also set `approved_by` and `approved_at`).
 4. Run `tusq compile` to emit only approved capabilities.
 
 ## Regeneration behavior
