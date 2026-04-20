@@ -11,6 +11,18 @@
 - Rejected the assumption that sensitivity classification had already shipped because planning (M9) and spec artifacts defined `sensitivity_class`, but runtime outputs (`tusq manifest`, `tusq compile`, `tusq serve`) still omitted it.
 - Rejected the assumption that governance metadata was fully surfaced at runtime: `auth_hints` existed in compiled tools but was omitted from MCP `tools/list` and `tools/call` responses.
 - Rejected the assumption that examples/constraints were already implemented because planning (M11) approved both fields in the canonical artifact, while implementation still omitted `constraints` and generated `examples` inside `compile` instead of propagating manifest-authored values.
+- Rejected the immediately previous ghost implementation turn (`turn_21be8394ad263a0d` summary: "Turn reissued: ghost") as insufficient because it provided no implementation artifact, no verification evidence, and did not progress the M13 roadmap closure.
+
+## Continuation Changes In This Turn (M13 Roadmap Closure Verification)
+
+- Re-verified M13 implementation behavior on current HEAD before changing planning state:
+  - `npm test`
+  - `node tests/smoke.mjs`
+  - `cd website && npm run build`
+- Updated `.planning/ROADMAP.md` to mark all M13 checklist items complete now that implementation and verification were re-confirmed in this run.
+- Preserved existing runtime behavior and scope:
+  - No code-path changes were introduced in `src/cli.js`.
+  - This turn closes stale roadmap bookkeeping rather than adding new feature semantics.
 
 ## Continuation Changes In This Turn (M12 Redaction + Approval Metadata Closure)
 
