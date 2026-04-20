@@ -2,6 +2,7 @@
 
 ## Challenge To Prior Turn
 
+- Rejected the prior implementation state as incomplete for M13: planning approved manifest version history (`manifest_version`, `previous_manifest_hash`, `capability_digest`), but runtime code and smoke tests had no implementation or verification of those fields.
 - Rejected the previous implementation reissue (`turn_7220d0e20cbbbadd`) as stale and non-actionable: it delivered no runtime changes for approved M12 work (`redaction`, `approved_by`, `approved_at`) and therefore did not satisfy implementation completeness.
 - Rejected any assumption that planning completion implied runtime completion: M12 was specified in planning artifacts, but `src/cli.js` still omitted redaction propagation and approval audit fields in manifest generation.
 - Rejected the prior failed dev attempt as incomplete for this continuation run: it only re-ran build/smoke checks and did not record or deliver concrete post-v0.1.0 improvements in this artifact.
@@ -38,6 +39,30 @@
   - `website/docs/manifest-format.md` documents `redaction`, `approved_by`, `approved_at`, defaults, and manifest-only approval metadata behavior.
   - `website/docs/mcp-server.md` documents `tools/list` vs `tools/call` metadata boundaries and approval-field omission.
   - Updated express fixture manifest/tool JSON to include `redaction` and approval audit fields for shape parity with current V1 contract.
+
+## Continuation Changes In This Turn (M13 Version History + Diffs Fields Closure)
+
+- Implemented manifest version-chain fields in `src/cli.js`:
+  - `manifest_version` now emits at the manifest root and increments from prior valid `manifest_version` (`1` on first/legacy generation).
+  - `previous_manifest_hash` now emits at the manifest root as SHA-256 of the full prior manifest file bytes (or `null` if no prior manifest exists).
+- Implemented per-capability content digest in `src/cli.js`:
+  - Added `capability_digest` to each manifest capability.
+  - Digest uses stable sorted-key JSON serialization and SHA-256.
+  - Digest excludes approval/review metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) and excludes `capability_digest` itself.
+  - Digest includes all capability content fields, including governance fields (`side_effect_class`, `sensitivity_class`, `auth_hints`, `examples`, `constraints`, `redaction`) plus schemas, provenance, confidence, and domain.
+- Kept version-history fields manifest-only:
+  - No propagation to `tusq-tools/*.json`.
+  - No propagation to MCP `tools/list` or `tools/call`.
+- Expanded smoke coverage in `tests/smoke.mjs`:
+  - Asserts `manifest_version` increment semantics from prior manifest state.
+  - Asserts `previous_manifest_hash` matches SHA-256 of prior manifest content.
+  - Asserts each `capability_digest` is present, valid SHA-256 hex, and deterministic from content fields.
+  - Asserts digest stability when only approval metadata changes.
+  - Asserts digest mutation when content fields (`examples`, `constraints`, `redaction`) change.
+  - Asserts compile output and MCP `tools/call` exclude version-history metadata.
+- Updated docs:
+  - `website/docs/manifest-format.md` now documents `manifest_version`, `previous_manifest_hash`, and `capability_digest` semantics and manifest-only boundary.
+  - `website/docs/mcp-server.md` now states version-history fields are manifest-only and excluded from MCP responses.
 
 ## Continuation Changes In This Turn (M11 Examples + Constraints Closure)
 

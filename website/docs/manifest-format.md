@@ -11,6 +11,8 @@ sidebar_position: 3
 ## Top-level fields
 
 - `schema_version` (string)
+- `manifest_version` (integer counter; starts at `1`)
+- `previous_manifest_hash` (SHA-256 hash of previous manifest content, or `null` on first generation)
 - `generated_at` (ISO timestamp)
 - `source_scan` (path to `.tusq/scan.json`)
 - `capabilities` (array)
@@ -38,6 +40,7 @@ Each capability includes:
 - `approved_by`: approval identity string or `null`
 - `approved_at`: approval timestamp string (ISO 8601) or `null`
 - `domain`: domain grouping label
+- `capability_digest`: SHA-256 digest of capability content fields (excludes approval/review metadata)
 
 ## V1 schema limitations
 
@@ -110,6 +113,14 @@ Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` p
 - `approved_by` and `approved_at` default to `null`.
 - `tusq compile` gates only on `approved: true`; approval metadata remains manifest-only audit context.
 - `redaction` propagates to compiled tools and MCP `tools/call` so runtime consumers can apply masking/retention policy.
+
+## Version history and digests (V1)
+
+- `manifest_version` increments each time `tusq manifest` regenerates the file.
+- `previous_manifest_hash` stores the SHA-256 hash of the full previous manifest bytes.
+- `capability_digest` is a per-capability SHA-256 digest over content fields.
+- `capability_digest` excludes `approved`, `approved_by`, `approved_at`, `review_needed`, and the digest field itself.
+- Version-history fields are manifest-only metadata. They do not propagate to compiled tools or MCP `tools/list` / `tools/call`.
 
 ## Approval flow
 

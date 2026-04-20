@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -35,6 +36,52 @@ async function copyFixture(name, destination) {
 async function readJson(filePath) {
   const content = await fs.readFile(filePath, 'utf8');
   return JSON.parse(content);
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function sortKeysDeep(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortKeysDeep(item));
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value).sort()) {
+      out[key] = sortKeysDeep(value[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+function stableStringify(value) {
+  return JSON.stringify(sortKeysDeep(value));
+}
+
+function capabilityDigestPayload(capability) {
+  return {
+    name: capability.name,
+    description: capability.description,
+    method: capability.method,
+    path: capability.path,
+    input_schema: capability.input_schema,
+    output_schema: capability.output_schema,
+    side_effect_class: capability.side_effect_class,
+    sensitivity_class: capability.sensitivity_class,
+    auth_hints: capability.auth_hints || [],
+    examples: capability.examples,
+    constraints: capability.constraints,
+    redaction: capability.redaction,
+    provenance: capability.provenance,
+    confidence: capability.confidence,
+    domain: capability.domain
+  };
+}
+
+function computeExpectedCapabilityDigest(capability) {
+  return sha256Hex(stableStringify(capabilityDigestPayload(capability)));
 }
 
 function requestRpc(port, payload) {
@@ -124,8 +171,19 @@ async function run() {
     throw new Error('Expected at least two routes in express scan output');
   }
 
-  runCli(['manifest', '--verbose'], { cwd: expressProject });
   const manifestPath = path.join(expressProject, 'tusq.manifest.json');
+  let previousManifestRaw = null;
+  let previousManifestJson = null;
+  try {
+    previousManifestRaw = await fs.readFile(manifestPath, 'utf8');
+    previousManifestJson = JSON.parse(previousManifestRaw);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
+  runCli(['manifest', '--verbose'], { cwd: expressProject });
   const manifest = await readJson(manifestPath);
   const defaultConstraints = {
     rate_limit: null,
@@ -178,17 +236,70 @@ async function run() {
   if (!manifest.capabilities.every((capability) => capability.approved_by === null && capability.approved_at === null)) {
     throw new Error('Expected manifest capabilities to include null approval metadata in V1');
   }
+  const expectedManifestVersion = Number.isInteger(previousManifestJson && previousManifestJson.manifest_version)
+    && previousManifestJson.manifest_version >= 1
+    ? previousManifestJson.manifest_version + 1
+    : 1;
+  if (manifest.manifest_version !== expectedManifestVersion) {
+    throw new Error(`Expected manifest_version=${expectedManifestVersion}, got ${manifest.manifest_version}`);
+  }
+  const expectedPreviousManifestHash = previousManifestRaw === null ? null : sha256Hex(previousManifestRaw);
+  if (manifest.previous_manifest_hash !== expectedPreviousManifestHash) {
+    throw new Error(
+      `Expected previous_manifest_hash=${expectedPreviousManifestHash}, got ${manifest.previous_manifest_hash}`
+    );
+  }
+  for (const capability of manifest.capabilities) {
+    if (!/^[a-f0-9]{64}$/.test(String(capability.capability_digest || ''))) {
+      throw new Error(`Expected capability_digest to be a 64-char lowercase SHA-256 hex string: ${JSON.stringify(capability)}`);
+    }
+    const expectedDigest = computeExpectedCapabilityDigest(capability);
+    if (capability.capability_digest !== expectedDigest) {
+      throw new Error(
+        `Expected capability_digest=${expectedDigest}, got ${capability.capability_digest} for ${capability.name}`
+      );
+    }
+  }
+  const baselineDigest = manifest.capabilities[0].capability_digest;
+
   manifest.capabilities[0].approved = true;
   manifest.capabilities[0].approved_by = 'alice@company.com';
   manifest.capabilities[0].approved_at = '2026-04-19T10:30:00.000Z';
-  manifest.capabilities[0].examples = customExamples;
-  manifest.capabilities[0].constraints = customConstraints;
-  manifest.capabilities[0].redaction = customRedaction;
   await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+  runCli(['manifest', '--verbose'], { cwd: expressProject });
+  const manifestAfterApprovalEdit = await readJson(manifestPath);
+  const digestAfterApprovalEdit = manifestAfterApprovalEdit.capabilities[0].capability_digest;
+  if (digestAfterApprovalEdit !== baselineDigest) {
+    throw new Error('Expected capability_digest to ignore approval metadata fields');
+  }
+
+  manifestAfterApprovalEdit.capabilities[0].examples = customExamples;
+  manifestAfterApprovalEdit.capabilities[0].constraints = customConstraints;
+  manifestAfterApprovalEdit.capabilities[0].redaction = customRedaction;
+  await fs.writeFile(manifestPath, `${JSON.stringify(manifestAfterApprovalEdit, null, 2)}\n`, 'utf8');
+
+  runCli(['manifest', '--verbose'], { cwd: expressProject });
+  const manifestWithCustomFields = await readJson(manifestPath);
+  if (manifestWithCustomFields.capabilities[0].capability_digest === baselineDigest) {
+    throw new Error('Expected capability_digest to change when capability content fields change');
+  }
+  for (const capability of manifestWithCustomFields.capabilities) {
+    const expectedDigest = computeExpectedCapabilityDigest(capability);
+    if (capability.capability_digest !== expectedDigest) {
+      throw new Error(
+        `Expected capability_digest=${expectedDigest}, got ${capability.capability_digest} after regeneration`
+      );
+    }
+  }
 
   runCli(['compile', '--dry-run', '--verbose'], { cwd: expressProject });
   runCli(['compile', '--verbose'], { cwd: expressProject });
-  const compiledToolPath = path.join(expressProject, 'tusq-tools', `${manifest.capabilities[0].name}.json`);
+  const compiledToolPath = path.join(
+    expressProject,
+    'tusq-tools',
+    `${manifestWithCustomFields.capabilities[0].name}.json`
+  );
   const compiledTool = await readJson(compiledToolPath);
   if (compiledTool.sensitivity_class !== 'unknown') {
     throw new Error('Expected compiled tool to include sensitivity_class=unknown');
@@ -204,6 +315,9 @@ async function run() {
   }
   if ('approved_by' in compiledTool || 'approved_at' in compiledTool || 'approved' in compiledTool || 'review_needed' in compiledTool) {
     throw new Error('Expected compiled tool to exclude approval metadata fields');
+  }
+  if ('capability_digest' in compiledTool || 'manifest_version' in compiledTool || 'previous_manifest_hash' in compiledTool) {
+    throw new Error('Expected compiled tool to exclude manifest version history metadata');
   }
   runCli(['review', '--verbose'], { cwd: expressProject });
 
@@ -270,6 +384,9 @@ async function run() {
   }
   if ('approved_by' in callResponse.result || 'approved_at' in callResponse.result || 'approved' in callResponse.result || 'review_needed' in callResponse.result) {
     throw new Error(`Expected tools/call to exclude approval metadata fields: ${JSON.stringify(callResponse)}`);
+  }
+  if ('capability_digest' in callResponse.result || 'manifest_version' in callResponse.result || 'previous_manifest_hash' in callResponse.result) {
+    throw new Error(`Expected tools/call to exclude manifest version history metadata: ${JSON.stringify(callResponse)}`);
   }
 
   const stop = new Promise((resolve, reject) => {

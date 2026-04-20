@@ -1,6 +1,7 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 
 const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
@@ -319,7 +320,9 @@ function cmdManifest(args) {
   );
 
   let existing = null;
+  let previousManifestRaw = null;
   if (fs.existsSync(outPath)) {
+    previousManifestRaw = fs.readFileSync(outPath, 'utf8');
     existing = readJson(outPath);
   }
 
@@ -347,7 +350,7 @@ function cmdManifest(args) {
     const method = route.method.toUpperCase();
     const key = capabilityKey(method, route.path);
     const confidence = route.confidence;
-    return {
+    const capability = {
       name: capabilityName(route),
       description: describeCapability(route),
       method,
@@ -368,10 +371,18 @@ function cmdManifest(args) {
       approved_at: approvedAtMap.has(key) ? approvedAtMap.get(key) : null,
       domain: route.domain
     };
+    capability.capability_digest = computeCapabilityDigest(capability);
+    return capability;
   });
+
+  const previousManifestVersion = normalizeManifestVersion(existing && existing.manifest_version);
+  const manifestVersion = previousManifestVersion === null ? 1 : previousManifestVersion + 1;
+  const previousManifestHash = previousManifestRaw === null ? null : sha256Hex(previousManifestRaw);
 
   const manifest = {
     schema_version: '1.0',
+    manifest_version: manifestVersion,
+    previous_manifest_hash: previousManifestHash,
     generated_at: new Date().toISOString(),
     source_scan: path.relative(root, scanPath),
     capabilities
@@ -1191,6 +1202,60 @@ function cloneJson(value, fallback) {
   } catch (_error) {
     return fallback;
   }
+}
+
+function normalizeManifestVersion(value) {
+  if (!Number.isInteger(value) || value < 1) {
+    return null;
+  }
+  return value;
+}
+
+function computeCapabilityDigest(capability) {
+  const payload = {
+    name: capability.name,
+    description: capability.description,
+    method: capability.method,
+    path: capability.path,
+    input_schema: capability.input_schema,
+    output_schema: capability.output_schema,
+    side_effect_class: capability.side_effect_class,
+    sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
+    auth_hints: dedupe(capability.auth_hints || []),
+    examples: normalizeExamples(capability.examples),
+    constraints: normalizeConstraints(capability.constraints),
+    redaction: normalizeRedaction(capability.redaction),
+    provenance: capability.provenance,
+    confidence: capability.confidence,
+    domain: capability.domain
+  };
+
+  return sha256Hex(stableStringify(payload));
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function stableStringify(value) {
+  return JSON.stringify(sortKeysDeep(value));
+}
+
+function sortKeysDeep(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortKeysDeep(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const out = {};
+    const keys = Object.keys(value).sort();
+    for (const key of keys) {
+      out[key] = sortKeysDeep(value[key]);
+    }
+    return out;
+  }
+
+  return value;
 }
 
 function inferDomain(routePath, controllerHint) {

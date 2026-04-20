@@ -22,6 +22,7 @@ This starts a local HTTP endpoint that exposes compiled tools in MCP-style JSON-
 - `tools/list` includes summary governance metadata: `side_effect_class`, `sensitivity_class`, and `auth_hints`.
 - `tools/call` includes the same fields plus `examples`, `constraints`, and `redaction`.
 - Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) remains manifest-only and is not returned by MCP responses.
+- Version-history metadata (`manifest_version`, `previous_manifest_hash`, `capability_digest`) is also manifest-only and is not returned by MCP responses.
 
 ## V1 execution model
 

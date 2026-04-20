@@ -1,6 +1,8 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-04-19T06:45:12.399Z",
+  "manifest_version": 1,
+  "previous_manifest_hash": "4c3c49fcc2050481fdc76b8a3d990743e7bf5188762caf3498635cd08b3c675c",
+  "generated_at": "2026-04-20T09:53:21.919Z",
   "source_scan": ".tusq/scan.json",
   "capabilities": [
     {
@@ -53,7 +55,8 @@
       "approved": true,
       "approved_by": null,
       "approved_at": null,
-      "domain": "users"
+      "domain": "users",
+      "capability_digest": "1061d59d61dfc98330de808898dff80cd370d6e55797e41380918275475b7149"
     },
     {
       "name": "post_users_users",
@@ -105,7 +108,8 @@
       "approved": true,
       "approved_by": null,
       "approved_at": null,
-      "domain": "users"
+      "domain": "users",
+      "capability_digest": "00ba4f3f239a01d566085579e0f728801f854befeb8ebd956ab2b5960e80c511"
     }
   ]
 }
