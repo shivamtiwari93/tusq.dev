@@ -127,10 +127,42 @@ async function run() {
   runCli(['manifest', '--verbose'], { cwd: expressProject });
   const manifestPath = path.join(expressProject, 'tusq.manifest.json');
   const manifest = await readJson(manifestPath);
+  const defaultConstraints = {
+    rate_limit: null,
+    max_payload_bytes: null,
+    required_headers: [],
+    idempotent: null,
+    cacheable: null
+  };
+  const customExamples = [
+    {
+      input: {
+        limit: 25
+      },
+      output: {
+        users: []
+      }
+    }
+  ];
+  const customConstraints = {
+    rate_limit: '60/minute',
+    max_payload_bytes: 2048,
+    required_headers: ['X-Request-Id'],
+    idempotent: true,
+    cacheable: true
+  };
   if (!manifest.capabilities.every((capability) => capability.sensitivity_class === 'unknown')) {
     throw new Error('Expected manifest capabilities to include sensitivity_class=unknown in V1');
   }
+  if (!manifest.capabilities.every((capability) => JSON.stringify(capability.constraints) === JSON.stringify(defaultConstraints))) {
+    throw new Error('Expected manifest capabilities to include default constraints in V1');
+  }
+  if (!manifest.capabilities.every((capability) => Array.isArray(capability.examples) && capability.examples.length > 0)) {
+    throw new Error('Expected manifest capabilities to include examples array in V1');
+  }
   manifest.capabilities[0].approved = true;
+  manifest.capabilities[0].examples = customExamples;
+  manifest.capabilities[0].constraints = customConstraints;
   await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   runCli(['compile', '--dry-run', '--verbose'], { cwd: expressProject });
@@ -139,6 +171,12 @@ async function run() {
   const compiledTool = await readJson(compiledToolPath);
   if (compiledTool.sensitivity_class !== 'unknown') {
     throw new Error('Expected compiled tool to include sensitivity_class=unknown');
+  }
+  if (JSON.stringify(compiledTool.examples) !== JSON.stringify(customExamples)) {
+    throw new Error('Expected compiled tool examples to preserve manifest values');
+  }
+  if (JSON.stringify(compiledTool.constraints) !== JSON.stringify(customConstraints)) {
+    throw new Error('Expected compiled tool constraints to preserve manifest values');
   }
   runCli(['review', '--verbose'], { cwd: expressProject });
 
@@ -190,6 +228,12 @@ async function run() {
   }
   if (!Array.isArray(callResponse.result.auth_hints)) {
     throw new Error(`Expected tools/call auth_hints array: ${JSON.stringify(callResponse)}`);
+  }
+  if (JSON.stringify(callResponse.result.examples) !== JSON.stringify(customExamples)) {
+    throw new Error(`Expected tools/call examples to preserve manifest values: ${JSON.stringify(callResponse)}`);
+  }
+  if (JSON.stringify(callResponse.result.constraints) !== JSON.stringify(customConstraints)) {
+    throw new Error(`Expected tools/call constraints to preserve manifest values: ${JSON.stringify(callResponse)}`);
   }
 
   const stop = new Promise((resolve, reject) => {

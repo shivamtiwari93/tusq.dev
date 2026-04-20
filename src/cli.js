@@ -5,6 +5,7 @@ const path = require('path');
 const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
 const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted'];
+const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
 
 class CliError extends Error {
   constructor(message, exitCode) {
@@ -323,11 +324,15 @@ function cmdManifest(args) {
 
   const approvalMap = new Map();
   const sensitivityMap = new Map();
+  const examplesMap = new Map();
+  const constraintsMap = new Map();
   if (existing && Array.isArray(existing.capabilities)) {
     for (const capability of existing.capabilities) {
       const key = capabilityKey(capability.method, capability.path);
       approvalMap.set(key, Boolean(capability.approved));
       sensitivityMap.set(key, normalizeSensitivityClass(capability.sensitivity_class));
+      examplesMap.set(key, normalizeExamples(capability.examples));
+      constraintsMap.set(key, normalizeConstraints(capability.constraints));
     }
   }
 
@@ -345,6 +350,8 @@ function cmdManifest(args) {
       side_effect_class: classifySideEffect(method, route.path, route.handler),
       sensitivity_class: sensitivityMap.get(key) || classifySensitivity(method, route.path, route.handler, route.auth_hints),
       auth_hints: route.auth_hints,
+      examples: examplesMap.has(key) ? examplesMap.get(key) : defaultExamples(),
+      constraints: constraintsMap.has(key) ? constraintsMap.get(key) : defaultConstraints(),
       provenance: route.provenance,
       confidence,
       review_needed: confidence < 0.8,
@@ -421,14 +428,8 @@ function cmdCompile(args) {
     side_effect_class: capability.side_effect_class,
     sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
     auth_hints: capability.auth_hints || [],
-    examples: [
-      {
-        input: {},
-        output: {
-          note: 'Describe-only mode in V1. Live execution is deferred to V1.1.'
-        }
-      }
-    ],
+    examples: normalizeExamples(capability.examples),
+    constraints: normalizeConstraints(capability.constraints),
     provenance: capability.provenance
   }));
 
@@ -561,7 +562,8 @@ function cmdServe(args) {
           side_effect_class: tool.side_effect_class,
           sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
           auth_hints: tool.auth_hints || [],
-          examples: tool.examples || []
+          examples: normalizeExamples(tool.examples),
+          constraints: normalizeConstraints(tool.constraints)
         };
         respondRpcJson(res, id, result);
         return;
@@ -1027,6 +1029,85 @@ function normalizeSensitivityClass(value) {
 
   const normalized = value.trim().toLowerCase();
   return SENSITIVITY_CLASSES.includes(normalized) ? normalized : 'unknown';
+}
+
+function defaultExamples() {
+  return [
+    {
+      input: {},
+      output: {
+        note: V1_DESCRIBE_ONLY_NOTE
+      }
+    }
+  ];
+}
+
+function normalizeExamples(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return defaultExamples();
+  }
+
+  return cloneJson(value, defaultExamples());
+}
+
+function defaultConstraints() {
+  return {
+    rate_limit: null,
+    max_payload_bytes: null,
+    required_headers: [],
+    idempotent: null,
+    cacheable: null
+  };
+}
+
+function normalizeConstraints(value) {
+  const defaults = defaultConstraints();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaults;
+  }
+
+  const out = {
+    rate_limit: null,
+    max_payload_bytes: null,
+    required_headers: [],
+    idempotent: null,
+    cacheable: null
+  };
+
+  if (typeof value.rate_limit === 'string' && value.rate_limit.trim()) {
+    out.rate_limit = value.rate_limit.trim();
+  }
+
+  if (Number.isInteger(value.max_payload_bytes) && value.max_payload_bytes >= 0) {
+    out.max_payload_bytes = value.max_payload_bytes;
+  }
+
+  if (Array.isArray(value.required_headers)) {
+    out.required_headers = dedupe(
+      value.required_headers
+        .filter((entry) => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    );
+  }
+
+  if (typeof value.idempotent === 'boolean') {
+    out.idempotent = value.idempotent;
+  }
+
+  if (typeof value.cacheable === 'boolean') {
+    out.cacheable = value.cacheable;
+  }
+
+  return out;
+}
+
+function cloneJson(value, fallback) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (_error) {
+    return fallback;
+  }
 }
 
 function inferDomain(routePath, controllerHint) {

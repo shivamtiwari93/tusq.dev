@@ -24,6 +24,13 @@
       }
     }
   ],
+  "constraints": {
+    "rate_limit": null,
+    "max_payload_bytes": null,
+    "required_headers": [],
+    "idempotent": null,
+    "cacheable": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 12

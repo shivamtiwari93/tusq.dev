@@ -17,9 +17,9 @@ This starts a local HTTP endpoint that exposes compiled tools in MCP-style JSON-
 ## Implemented methods
 
 - `tools/list`: returns available tools with schema metadata
-- `tools/call`: returns describe-only schema/example information for a selected tool
+- `tools/call`: returns describe-only schema/example/constraints information for a selected tool
 
-Both methods include capability governance metadata when available (`side_effect_class`, `sensitivity_class`, and `auth_hints`).
+Both methods include capability governance metadata when available (`side_effect_class`, `sensitivity_class`, and `auth_hints`). `tools/call` also includes `examples` and `constraints`.
 
 ## V1 execution model
 
@@ -30,6 +30,7 @@ It returns:
 - tool name and description
 - parameter and return schema
 - example payloads
+- constraints payload (`rate_limit`, `max_payload_bytes`, `required_headers`, `idempotent`, `cacheable`)
 
 ## Operational details
 

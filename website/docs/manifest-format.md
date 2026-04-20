@@ -28,6 +28,8 @@ Each capability includes:
 - `side_effect_class`: `read`, `write`, or `destructive`
 - `sensitivity_class`: `unknown`, `public`, `internal`, `confidential`, or `restricted`
 - `auth_hints`: inferred auth/middleware hints
+- `examples`: usage examples (V1 defaults to a describe-only placeholder)
+- `constraints`: operational limits object (`rate_limit`, `max_payload_bytes`, `required_headers`, `idempotent`, `cacheable`)
 - `provenance`: source file and line metadata
 - `confidence`: inference confidence score
 - `review_needed`: true when confidence is below threshold
@@ -69,6 +71,25 @@ In `v0.1.0`, `sensitivity_class` is always emitted as `unknown` by default. The 
 1. Human reviewers can manually set sensitivity in `tusq.manifest.json` before compile.
 2. Compiled tool files and MCP metadata keep sensitivity available downstream.
 3. Future inference can populate this field without changing the manifest shape.
+
+## Examples and constraints (V1)
+
+`examples` and `constraints` are part of the manifest in `v0.1.0` so downstream tooling can keep governance and usage context stable.
+
+- `examples` defaults to a single placeholder entry with a describe-only note.
+- `constraints` defaults to:
+
+```json
+{
+  "rate_limit": null,
+  "max_payload_bytes": null,
+  "required_headers": [],
+  "idempotent": null,
+  "cacheable": null
+}
+```
+
+Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` preserves those values into `tusq-tools/*.json` and MCP `tools/call`.
 
 ## Approval flow
 

@@ -7,6 +7,23 @@
 - Rejected the immediately previous stale implementation reissue as insufficient: it produced no turn artifact and did not validate whether approved planning decisions (artifact-shape clarity) were reflected in user-facing docs.
 - Rejected the assumption that sensitivity classification had already shipped because planning (M9) and spec artifacts defined `sensitivity_class`, but runtime outputs (`tusq manifest`, `tusq compile`, `tusq serve`) still omitted it.
 - Rejected the assumption that governance metadata was fully surfaced at runtime: `auth_hints` existed in compiled tools but was omitted from MCP `tools/list` and `tools/call` responses.
+- Rejected the assumption that examples/constraints were already implemented because planning (M11) approved both fields in the canonical artifact, while implementation still omitted `constraints` and generated `examples` inside `compile` instead of propagating manifest-authored values.
+
+## Continuation Changes In This Turn (M11 Examples + Constraints Closure)
+
+- Implemented manifest-level `examples` and `constraints` fields in `src/cli.js`:
+  - `tusq manifest` now emits both fields on every capability.
+  - Regeneration preserves previously edited `examples` and `constraints` by method+path key.
+  - V1 defaults are applied when values are missing or invalid.
+- Updated `tusq compile` to propagate `examples` and `constraints` from `tusq.manifest.json` instead of regenerating examples internally.
+- Updated `tusq serve` `tools/call` responses to include normalized `constraints` alongside existing schema and examples.
+- Expanded smoke coverage in `tests/smoke.mjs` to verify:
+  - manifest emits default `constraints` and `examples`,
+  - human-edited `examples`/`constraints` values in manifest survive into compiled tools,
+  - MCP `tools/call` returns those exact propagated values.
+- Updated fixtures and docs:
+  - Added `constraints` and `examples` to express fixture manifest/tool JSON.
+  - Updated `website/docs/manifest-format.md` and `website/docs/mcp-server.md` to document V1 behavior and propagation path.
 
 ## Continuation Changes In This Turn (M9 Classification Closure)
 
@@ -102,6 +119,9 @@
   - `cd website && npm run build`
 - Ran existing CLI regression smoke suite to ensure website work did not regress shipped CLI behavior:
   - `node tests/smoke.mjs`
+- Verified the M11 examples/constraints implementation on current HEAD:
+  - `npm test`
+  - `cd website && npm run build`
 
 ## Notes / Follow-ups
 

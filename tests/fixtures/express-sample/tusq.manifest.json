@@ -23,6 +23,21 @@
       "auth_hints": [
         "requireAuth"
       ],
+      "examples": [
+        {
+          "input": {},
+          "output": {
+            "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+          }
+        }
+      ],
+      "constraints": {
+        "rate_limit": null,
+        "max_payload_bytes": null,
+        "required_headers": [],
+        "idempotent": null,
+        "cacheable": null
+      },
       "provenance": {
         "file": "src/app.ts",
         "line": 12
@@ -52,6 +67,21 @@
       "auth_hints": [
         "requireAuth"
       ],
+      "examples": [
+        {
+          "input": {},
+          "output": {
+            "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+          }
+        }
+      ],
+      "constraints": {
+        "rate_limit": null,
+        "max_payload_bytes": null,
+        "required_headers": [],
+        "idempotent": null,
+        "cacheable": null
+      },
       "provenance": {
         "file": "src/app.ts",
         "line": 13
