@@ -343,6 +343,12 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
     "idempotent": null,
     "cacheable": null
   },
+  "redaction": {
+    "pii_fields": [],
+    "log_level": "full",
+    "mask_in_traces": false,
+    "retention_days": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 12
@@ -350,6 +356,8 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
   "confidence": 0.86,
   "review_needed": false,
   "approved": true,
+  "approved_by": null,
+  "approved_at": null,
   "domain": "users"
 }
 ```
@@ -367,10 +375,13 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `auth_hints` | string[] | Auth-related middleware/decorators detected |
 | `examples` | array | Request/response examples; static describe-only placeholder in V1 — see Examples specification below |
 | `constraints` | object | Operational constraints on the capability (rate limits, payload limits, idempotency) — see Constraints specification below |
+| `redaction` | object | Redaction policy for this capability's input/output — see Redaction and Approval Metadata below |
 | `provenance` | object | Source file and line number |
 | `confidence` | number | 0.0–0.95 |
-| `review_needed` | boolean | `true` when `confidence < 0.8` |
-| `approved` | boolean | Human-set gate; only `approved: true` capabilities compile into tools |
+| `review_needed` | boolean | `true` when `confidence < 0.8` — see Redaction and Approval Metadata below |
+| `approved` | boolean | Human-set gate; only `approved: true` capabilities compile into tools — see Redaction and Approval Metadata below |
+| `approved_by` | string \| null | Identity of the human who approved this capability. `null` until explicitly set |
+| `approved_at` | string \| null | ISO 8601 timestamp of when approval was granted. `null` until explicitly set |
 | `domain` | string | Logical grouping (inferred from route prefix) |
 
 **V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
@@ -690,6 +701,202 @@ Future versions will infer constraints from middleware and configuration:
 
 The V2 shape adds `timeout_ms` and `retry_policy` as new fields. Existing V1 fields remain with the same semantics. The V1 shape is valid in V2 — new fields are additive.
 
+#### Redaction and Approval Metadata
+
+The `redaction`, `approved`, `approved_by`, `approved_at`, and `review_needed` fields form the sixth governance dimension in the canonical artifact. VISION.md line 60 explicitly lists "redaction and approval metadata" as a core component of the manifest. These fields answer two distinct questions:
+
+| Field group | Question it answers | Who acts on it |
+|-------------|-------------------|----------------|
+| `redaction` | What data must be masked, minimized, or retained with limits? | Agent runtimes, logging systems, audit pipelines |
+| `approved` + `approved_by` + `approved_at` + `review_needed` | Has a human reviewed and accepted this capability for compilation? | The `tusq compile` gate, governance dashboards, audit trails |
+
+Together with the five previously specified dimensions, the governance model is now six fields:
+
+| # | Field | Question |
+|---|-------|----------|
+| 1 | `side_effect_class` | Does this mutate state? |
+| 2 | `sensitivity_class` | What kind of data does this touch? |
+| 3 | `auth_hints` | What authentication/authorization is required? |
+| 4 | `examples` | What does correct usage look like? |
+| 5 | `constraints` | What operational limits apply? |
+| 6 | `redaction` + approval metadata | What must be masked, and who approved this? |
+
+##### Redaction Specification
+
+The `redaction` object declares how an agent runtime, logging system, or governance layer should handle data flowing through a capability. This complements `sensitivity_class` (which says *what kind of data* a capability touches) by specifying *what to do about it* in operational contexts.
+
+**Redaction object shape:**
+
+```json
+{
+  "pii_fields": ["<string>"],
+  "log_level": "full | redacted | silent",
+  "mask_in_traces": true | false,
+  "retention_days": <integer | null>
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `pii_fields` | string[] | yes | Field names in input or output that contain PII and must be masked in logs/traces. Empty array when none identified |
+| `log_level` | string | yes | How much of the request/response should be logged: `full` (everything), `redacted` (strip `pii_fields`), or `silent` (log only the invocation, not payloads) |
+| `mask_in_traces` | boolean | yes | Whether request/response payloads should be masked in distributed traces (OpenTelemetry spans, etc.) |
+| `retention_days` | integer \| null | yes | Maximum number of days to retain logs containing this capability's data. `null` when no policy is set |
+
+**Agent implications of redaction:**
+
+| Redaction state | Agent interpretation | Recommended behavior |
+|----------------|---------------------|---------------------|
+| `pii_fields: []` | No PII fields identified | Agent may log full payloads (subject to `log_level`) |
+| `pii_fields: ["email", "ssn"]` | Named fields contain PII | Agent must mask these fields before logging, caching, or including in trace spans |
+| `log_level: "full"` | No logging restrictions | Agent may include full request/response in logs |
+| `log_level: "redacted"` | Strip PII before logging | Agent must remove `pii_fields` values from log entries |
+| `log_level: "silent"` | Do not log payloads | Agent may log that the capability was invoked (name, timestamp, status) but must not include request or response bodies |
+| `mask_in_traces: true` | Sensitive trace context | Agent must not attach request/response payloads to distributed trace spans |
+| `retention_days: 30` | Time-limited retention | Logging/audit systems must enforce the stated retention period |
+| `retention_days: null` | No retention policy set | Default organizational retention policy applies |
+
+**V1 redaction limitations:**
+
+1. **All fields default to empty/permissive.** In V1, `redaction` is always `{ pii_fields: [], log_level: "full", mask_in_traces: false, retention_days: null }`. No inference is performed.
+2. **No PII detection from source code.** V1 does not scan for field names matching PII patterns (`email`, `password`, `ssn`, `phone`, etc.) in schemas, DTOs, or handler code.
+3. **No framework-specific extraction.** V1 does not detect data masking middleware, logging sanitizers, or GDPR-related annotations.
+4. **Human-editable.** Like `sensitivity_class`, `examples`, and `constraints`, redaction can be manually authored in the manifest before `tusq compile`. The permissive defaults are starting points, not final values.
+5. **The field is present to establish the contract** so downstream consumers (agent runtimes, audit tools, compliance systems) can rely on it, and V2 inference logic can populate it without changing the artifact shape.
+
+**Relationship to sensitivity_class:**
+
+`sensitivity_class` and `redaction` are complementary, not redundant:
+
+| Field | What it captures | Who sets it | What it drives |
+|-------|-----------------|-------------|----------------|
+| `sensitivity_class` | Category of data touched (unknown/public/internal/confidential/restricted) | Scanner (V2) or human (V1) | Access control decisions, audit tier selection |
+| `redaction` | Specific operational masking and retention rules | Human (V1), scanner + policy engine (V2) | Logging behavior, trace masking, data retention |
+
+A capability can be `sensitivity_class: "confidential"` (it touches PII) and `redaction: { pii_fields: ["email"], log_level: "redacted", mask_in_traces: true, retention_days: 90 }` (here's exactly what to mask and how long to keep it). Sensitivity is the classification; redaction is the operational response to that classification.
+
+**Pipeline propagation:** The `redaction` field originates in `tusq.manifest.json`, is propagated unchanged through `tusq compile` to `tusq-tools/*.json`, and is returned in MCP `tools/call` responses. It is **not** present in `.tusq/scan.json` (scan discovers routes, not redaction policy) or MCP `tools/list` (summary view).
+
+```
+.tusq/scan.json         — no redaction field
+tusq.manifest.json      — redaction {} (permissive defaults or human-authored)
+tusq-tools/*.json       — redaction {} (propagated from manifest)
+MCP tools/call response — redaction {} (propagated from compiled tool)
+```
+
+**V2 redaction inference (planned):**
+
+Future versions will infer redaction policy from multiple signals:
+
+| V2 capability | Description |
+|--------------|-------------|
+| PII field detection | Scan schema properties, DTO fields, and handler variables for PII patterns (`email`, `password`, `ssn`, `phone`, `address`, `dob`, `card_number`) |
+| Sensitivity-driven defaults | Auto-set `log_level: "redacted"` and `mask_in_traces: true` for `confidential` capabilities; `log_level: "silent"` for `restricted` |
+| Regulatory annotation detection | Parse GDPR, HIPAA, PCI-DSS annotations or comments in source code to set retention periods |
+| Logging middleware analysis | Detect data-masking middleware (e.g., `morgan` custom formatters, `pino` redaction paths) to infer existing redaction behavior |
+| Policy engine integration | Accept organizational redaction policies as input and apply them to capabilities matching sensitivity/domain criteria |
+
+**V2 redaction shape (planned):**
+
+```json
+{
+  "pii_fields": ["email", "phone", "billing_address"],
+  "log_level": "redacted",
+  "mask_in_traces": true,
+  "retention_days": 90,
+  "regulatory_tags": ["GDPR", "PCI-DSS"],
+  "redaction_source": "inferred",
+  "redaction_confidence": 0.82
+}
+```
+
+The V2 shape adds `regulatory_tags` (which compliance frameworks apply), `redaction_source` (whether the policy was inferred or human-authored), and `redaction_confidence` (scanner confidence in the inferred policy). The V1 shape remains valid in V2 — new fields are additive.
+
+##### Approval Metadata Specification
+
+The `approved`, `approved_by`, `approved_at`, and `review_needed` fields form the human-in-the-loop gate in the tusq.dev pipeline. This is the only place where a human decision blocks automated compilation. Nothing compiles without `approved: true`.
+
+**Approval fields shape:**
+
+```json
+{
+  "review_needed": true,
+  "approved": false,
+  "approved_by": null,
+  "approved_at": null
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `review_needed` | boolean | yes | `true` when `confidence < 0.8`. Signals that the capability has low confidence and should receive extra scrutiny during review |
+| `approved` | boolean | yes | `true` when a human has reviewed and accepted this capability. Only `approved: true` capabilities pass through `tusq compile` |
+| `approved_by` | string \| null | yes | Human-readable identifier (name, email, or username) of the person who approved. `null` until explicitly set |
+| `approved_at` | string \| null | yes | ISO 8601 timestamp of when `approved` was set to `true`. `null` until explicitly set |
+
+**Agent implications of approval metadata:**
+
+| Approval state | Agent interpretation | Recommended behavior |
+|---------------|---------------------|---------------------|
+| `approved: false` | Capability has not been human-reviewed | Agent must not treat this as a reliable tool definition; capability is draft-quality |
+| `approved: true, approved_by: null` | Approved but no audit trail | Agent may use the tool, but governance dashboards should flag missing provenance |
+| `approved: true, approved_by: "alice@co.com"` | Approved with attribution | Full audit trail available; agent may use with confidence |
+| `review_needed: true` | Low-confidence detection | Human reviewer should pay extra attention to this capability's accuracy |
+| `review_needed: false` | High-confidence detection | Standard review process applies |
+
+**How approval flows through the pipeline:**
+
+1. `tusq manifest` generates capabilities with `approved: false` (new) or preserves existing `approved` values (regeneration). `approved_by` and `approved_at` are preserved from existing manifests when present.
+2. A human edits `tusq.manifest.json`, setting `approved: true` and optionally `approved_by` and `approved_at` for capabilities they have reviewed.
+3. `tusq compile` filters: only `approved: true` capabilities produce compiled tool files.
+4. Compiled tools (`tusq-tools/*.json`) do **not** carry approval fields — their existence is proof of approval.
+5. MCP `tools/list` and `tools/call` do **not** return approval fields — only approved capabilities are served.
+
+```
+.tusq/scan.json         — no approval fields (scan discovers, does not judge)
+tusq.manifest.json      — review_needed, approved, approved_by, approved_at (the gate)
+tusq-tools/*.json       — no approval fields (existence = approved)
+MCP server responses    — no approval fields (only approved tools served)
+```
+
+**V1 approval limitations:**
+
+1. **`approved_by` and `approved_at` default to `null`.** V1 does not auto-populate these fields. They exist for humans to fill in during manifest review. The `approved` boolean alone gates compilation.
+2. **No approval workflow tooling.** V1 has no `tusq approve` command or interactive review UI. Approval is done by editing the JSON file directly.
+3. **No approval history.** V1 does not track when a capability was previously approved and then un-approved (e.g., after manifest regeneration changed its shape).
+4. **No multi-party approval.** V1 supports a single `approved_by` identity. There is no countersignature or quorum requirement.
+
+**V2 approval metadata (planned):**
+
+| V2 capability | Description |
+|--------------|-------------|
+| `tusq approve` command | Interactive CLI for reviewing and approving capabilities, auto-setting `approved_by` and `approved_at` |
+| Approval history | Track approval/revocation events with timestamps and identities in a `approval_history[]` array |
+| Multi-party approval | Support `approved_by` as an array for capabilities requiring multiple reviewers |
+| CI/CD integration | Gate deployment pipelines on approval status; fail builds if unapproved capabilities are referenced |
+| Diff-aware re-approval | When `tusq manifest` regeneration changes a capability's shape, automatically set `approved: false` and flag for re-review |
+
+**V2 approval shape (planned):**
+
+```json
+{
+  "review_needed": true,
+  "approved": true,
+  "approved_by": "alice@company.com",
+  "approved_at": "2026-04-19T10:30:00.000Z",
+  "approval_history": [
+    {
+      "action": "approved",
+      "by": "alice@company.com",
+      "at": "2026-04-19T10:30:00.000Z",
+      "note": "Reviewed after auth migration"
+    }
+  ]
+}
+```
+
+The V2 shape adds `approval_history` for audit trail completeness. The V1 fields remain with the same semantics — new fields are additive.
+
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
 Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.
@@ -728,6 +935,12 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
     "idempotent": null,
     "cacheable": null
   },
+  "redaction": {
+    "pii_fields": [],
+    "log_level": "full",
+    "mask_in_traces": false,
+    "retention_days": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 12
@@ -746,6 +959,7 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
 | `auth_hints` | string[] | Auth requirements |
 | `examples` | array | Static examples; in V1 always contain a describe-only note |
 | `constraints` | object | Operational constraints; all null/empty in V1 — see Constraints specification |
+| `redaction` | object | Redaction policy; permissive defaults in V1 — see Redaction specification |
 | `provenance` | object | Source traceability |
 
 **Tool index shape (`tusq-tools/index.json`):**
@@ -806,6 +1020,12 @@ The `tusq serve` command exposes compiled tools via an HTTP JSON-RPC endpoint.
       "required_headers": [],
       "idempotent": null,
       "cacheable": null
+    },
+    "redaction": {
+      "pii_fields": [],
+      "log_level": "full",
+      "mask_in_traces": false,
+      "retention_days": null
     }
   }
 }
@@ -851,7 +1071,7 @@ tusq-tools/*.json          (compiled tools for approved capabilities only)
 MCP server responses       (tools/list and tools/call over JSON-RPC)
 ```
 
-Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval.
+Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval. The `redaction` field propagates from manifest through compile to MCP `tools/call`, enabling agent runtimes to enforce data masking at every stage. Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) lives only in the manifest — downstream artifacts exist only for approved capabilities.
 
 ## Constraints
 

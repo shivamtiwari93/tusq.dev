@@ -98,6 +98,15 @@
 - [x] Update MCP `tools/call` response shape to include `constraints` field
 - [x] Document the five-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints
 
+### M12: Redaction and Approval Metadata Specification (~0.5 day)
+- [x] Add `redaction` field to manifest Capability object shape in SYSTEM_SPEC.md with 4-field structure (pii_fields, log_level, mask_in_traces, retention_days)
+- [x] Add `approved_by` and `approved_at` fields to manifest Capability object to create audit trail for the approval gate
+- [x] Formally specify Redaction: shape, agent implications, relationship to sensitivity_class, V1 permissive-default limitations, V2 PII detection and regulatory inference
+- [x] Formally specify Approval Metadata: shape, pipeline flow (manifest-only gate), agent implications, V1 limitations (no approval workflow tooling), V2 plans (tusq approve CLI, approval history, multi-party approval)
+- [x] Update compiled tool shape (`tusq-tools/*.json`) to include `redaction` field
+- [x] Update MCP `tools/call` response shape to include `redaction` field
+- [x] Document the six-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints + redaction/approval metadata
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
