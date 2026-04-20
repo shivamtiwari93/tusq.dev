@@ -4,9 +4,10 @@
 
 ### Primary release package
 
-- Publish the announcement and release notes with the same V1 framing: open-source CLI, Express/Fastify/NestJS support, reviewed manifest, approved tool compilation, describe-only MCP serve
+- Publish the announcement and release notes with the same V1 framing: existing Node.js SaaS teams, reviewed manifest, approved tool compilation, describe-only MCP serve, explicit V1 boundary
 - Update the homepage and README entry points so the first screen a visitor sees matches the release story
 - Share one terminal-first post showing the six-step workflow from `init` to `serve`
+- Share one short operator-proof post: "your product logic already exists; the missing piece is reviewed AI exposure"
 - Use "try it locally from the repo" as the launch CTA until package distribution is confirmed
 
 ### Channel plan
@@ -22,6 +23,7 @@
 
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
 - Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
+- Publish a short "why this starts from existing product code" post so the product wedge is clear before deeper architecture content
 - Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and how `examples` / `constraints` show up downstream
 
 ### Day 3-4
@@ -34,6 +36,7 @@
 
 - Share a roadmap-oriented follow-up: runtime learning, live execution, and broader framework coverage are next-stage work, not hidden current functionality
 - Invite early users to contribute scanner edge cases and unsupported routing patterns
+- Summarize first-week objections or confusion points and answer them in one public clarification post if needed
 
 ## Follow-ups
 
@@ -41,6 +44,5 @@
 
 - Publish a deeper technical post on why tusq.dev starts from product behavior instead of prompt-first tool authoring
 - Release one polished sample app or reference repo for repeatable demos
-- Turn common launch questions into an FAQ section covering framework support, approval flow, provenance, governance metadata, MCP behavior, and local setup expectations
 - Turn common launch questions into an FAQ section covering framework support, approval flow, approval trail, provenance, redaction policy, governance metadata, MCP behavior, and local setup expectations
 - If usage quality is high, prepare a comparison-style post around "manual tool definition vs manifest-first capability compilation"

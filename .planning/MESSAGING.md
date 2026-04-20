@@ -1,5 +1,11 @@
 # Messaging
 
+## Launch Correction
+
+- Previous launch framing leaned too hard on the internal category label "capability compiler" before qualifying the buyer problem
+- Launch copy should instead start with the operator reality: an existing Express, Fastify, or NestJS product, pressure to make that product AI-visible, and a need to keep review and control intact
+- The category label still matters, but only after the audience, problem, proof sequence, and V1 boundary are clear
+
 ## Audience
 
 ### Primary
@@ -22,37 +28,38 @@
 
 ### Category
 
-tusq.dev v0.1.0 is an open-source capability compiler CLI for existing SaaS products.
+tusq.dev v0.1.0 is an open-source governed capability compiler CLI for existing Node.js SaaS products.
 
 ### One-line Positioning
 
-Turn a supported Node.js API codebase into a reviewable manifest and describe-only MCP tool surface.
+Turn supported Node.js product behavior into a reviewed manifest and inspectable describe-only MCP surface.
 
 ### Positioning Statement
 
-For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. The review surface is concrete: teams can inspect approval state, approval trail (`approved_by`, `approved_at`), provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, manifest-level `redaction` policy, and the describe-only `examples` and `constraints` that survive into downstream tool output. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
+For teams already running Express, Fastify, or NestJS services, tusq.dev is the OSS CLI that turns existing API behavior into a reviewed manifest, approved tool-definition JSON, and a local describe-only MCP surface without forcing teams to hand-author every tool. The review surface is concrete: teams can inspect approval state, approval trail (`approved_by`, `approved_at`), provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, manifest-level `redaction` policy, and the describe-only `examples` and `constraints` that survive into downstream tool output. Unlike prompt wrappers or generic agent shells, tusq.dev starts from the product logic already running in the repo and keeps human review in the loop.
 
 ### Qualification Filter
 
 - Best fit: a team already shipping a supported Node.js service, feeling pressure to make product functionality AI-visible, and unwilling to hand-author or blindly auto-generate tool catalogs
-- Strongest launch hook: "You already have product logic. tusq.dev gives you a governed way to inspect and package it for AI systems."
+- Strongest launch hook: "You already have product logic. tusq.dev gives you a reviewed way to inspect and package it for AI systems."
 - Disqualifier to say early: if a buyer needs hosted execution, a chat UI, or non-Node support on day one, this release is not for them
 
 ### Problem Framing
 
 - The launch problem is not "how do we invent AI behavior from scratch?"
 - The launch problem is "how do we expose existing product behavior to AI systems without losing reviewability, provenance, and operator control?"
+- The launch message should state that operator problem before it states the category label
 - That framing keeps the message anchored on incumbent SaaS teams, not generic AI curiosity traffic
 
 ### Messaging Pillars
 
 1. **Start from the product you already have**
-   Existing APIs, handlers, and auth hints are the raw material. V1 is for teams that already have working product logic and want a faster path to AI exposure.
+   Existing APIs, handlers, schemas, and auth hints are the raw material. V1 is for teams that already have working product logic and want a faster path to AI exposure.
 2. **Review before you expose**
    The manifest is the contract. Users scan, inspect, approve, and then compile. Approval state is explicit, optional approval identity and timestamp can be recorded, and tusq.dev does not ask teams to trust an opaque generation step.
 3. **Governance and usage context are visible, not implied**
    Reviewers can see mutation class, sensitivity placeholder, auth hints, confidence, provenance, approval trail, manifest-level redaction policy, and describe-only usage context such as `examples` and `constraints` in downstream tool output.
-4. **Ship an MCP-visible surface without rebuilding the stack**
+4. **Expose product behavior without rebuilding the stack**
    V1 gets teams from repo to manifest to compiled tools to a local describe-only MCP endpoint in one terminal workflow.
 5. **Be explicit about the V1 boundary**
    This release proves discovery, manifest generation, compile, review, and MCP exposure. It does not yet execute live product actions.
@@ -74,6 +81,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Preferred early-adopter promise: "clone the repo, run the CLI locally, and tell us where scanner or manifest edge cases appear"
 - Exact CTA language to repeat: "Try tusq.dev locally from the repo on an Express, Fastify, or NestJS codebase."
 - Exact qualification line to repeat near the CTA: "Best fit: an existing Express, Fastify, or NestJS service you already run, not a greenfield prototype or a hosted-agent evaluation."
+- Exact hero-problem line to repeat in first screens: "Your product logic already exists. The missing piece is a reviewed path to make it AI-visible."
 - Exact inspection prompt to repeat near demos: "Before you approve anything, inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest, then confirm the downstream `examples` and `constraints` match what you want AI clients to see."
 - Exact "governed" line to repeat in launch assets: "Governed means you can inspect provenance, approval state, optional approval trail, auth hints, side-effect class, sensitivity marker, redaction policy, and the describe-only examples and constraints before anything is exposed."
 - Do not promise a public package-manager install path until distribution is actually confirmed

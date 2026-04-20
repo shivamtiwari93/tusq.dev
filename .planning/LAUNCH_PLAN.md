@@ -1,8 +1,14 @@
 # Launch Plan
 
+## Challenge To Prior Framing
+
+- The previous launch framing was directionally accurate but still too abstract at the top: it named tusq.dev as a "capability compiler" before it made the buyer pain operational
+- For launch, the first screen should answer four questions in order: who this is for, what problem it solves, what proof exists today, and where V1 stops
+- Governance detail stays important, but it should support the operator story rather than replace it
+
 ## Launch Goals
 
-1. Launch tusq.dev `v0.1.0` with a clear, defensible promise: existing Node.js SaaS products can go from codebase to reviewed manifest to describe-only MCP exposure in one CLI workflow.
+1. Launch tusq.dev `v0.1.0` with a clear, defensible promise: existing Node.js SaaS teams can turn product behavior they already run into a reviewed manifest and describe-only MCP surface in one CLI workflow.
 2. Attract the right first adopters: engineering and platform teams on Express, Fastify, or NestJS who are already exploring agent tooling and MCP.
 3. Prevent category confusion by separating the shipped OSS CLI from the broader tusq.dev vision and tusq.cloud roadmap.
 4. Create enough clarity that early users know exactly what to try first, what to trust, and what is intentionally deferred.
@@ -11,9 +17,9 @@
 
 ### Core story
 
-- tusq.dev v0.1.0 is for incumbent SaaS teams that already have product logic in a supported Node.js backend and need a governed way to make that logic inspectable by AI systems
+- tusq.dev v0.1.0 is for incumbent SaaS teams that already have product logic in a supported Node.js backend and need a reviewed way to make that logic inspectable by AI systems
 - The defensible proof is concrete: scan the repo, generate a reviewable manifest, approve capabilities manually, compile approved tool JSON, and inspect the resulting describe-only MCP surface
-- The launch should sell the control model as much as the automation model: reviewed manifest, explicit approval, optional approval trail, preserved provenance, inspectable governance metadata, inspectable redaction policy, and inspectable output
+- The launch should sell the operator control model as much as the automation model: reviewed manifest, explicit approval, optional approval trail, preserved provenance, inspectable governance metadata, inspectable redaction policy, and inspectable output
 
 ### First user action
 
@@ -25,9 +31,10 @@
 ## Message Hierarchy
 
 1. Lead with the audience filter: existing Express, Fastify, or NestJS SaaS teams with real product logic already in production or active development.
-2. State the proof sequence in one line: repo scan -> reviewed manifest -> approved tool JSON -> describe-only MCP.
-3. State the boundary immediately after the proof: no live execution, no hosted control plane, no non-Node support in V1.
-4. End with the repo-local CTA and an explicit ask for edge-case feedback.
+2. State the operator problem in one line: the product logic already exists, but there is no reviewed path to make it AI-visible.
+3. State the proof sequence in one line: repo scan -> reviewed manifest -> approved tool JSON -> describe-only MCP.
+4. State the boundary immediately after the proof: no live execution, no hosted control plane, no non-Node support in V1.
+5. End with the repo-local CTA and an explicit ask for edge-case feedback.
 
 ## Required Assets
 
@@ -35,6 +42,7 @@
 
 - A launch announcement that names the release as `tusq.dev v0.1.0`
 - Messaging that stays inside the verified product boundary: scan, manifest, compile, review, describe-only MCP serve
+- A first-screen line in README and homepage hero that makes the buyer problem explicit before the category label
 - A simple terminal-first workflow example:
   `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
 - Release notes that spell out supported frameworks and deferred items
@@ -73,16 +81,18 @@
    Some developers will assume `tools/call` executes actions. The announcement and FAQ need to repeat that V1 is describe-only and returns schema, examples, and constraints only.
 3. **Governance vagueness**
    If "governed" is left as slogan-level copy, buyers may miss that V1 already ships reviewable approval state, optional approval trail, and redaction policy alongside route provenance and classification metadata.
-4. **Framework expectation drift**
+4. **Category abstraction overload**
+   If we lead with "capability compiler" without first naming the incumbent-SaaS problem, the launch will sound like internal platform language rather than a concrete product wedge.
+5. **Framework expectation drift**
    If the launch message sounds category-wide, teams on unsupported stacks will bounce immediately. Framework support should appear high in every primary asset.
-5. **Heuristic scanner perception**
+6. **Heuristic scanner perception**
    The scanner is useful but not exhaustive. We should frame the manifest as reviewable output, not perfect autonomous understanding.
-6. **Install-path ambiguity**
+7. **Install-path ambiguity**
    Until the package/distribution path is finalized, the launch CTA should be "try it locally from the repo" rather than "install it from npm."
 
 ## Channel Guardrails
 
-- Website and announcement: lead with the workflow proof and V1 boundary in the first screenful
+- Website and announcement: lead with audience + operator problem before the workflow proof and V1 boundary
 - Website and announcement: show at least one concrete example of the review surface, not just the word "governance"
 - GitHub README and docs: tell users how to try the product today without implying a public package is already published
 - Social posts: frame the release as a governed path from repo to reviewed manifest to describe-only MCP, not as a general AI agent platform

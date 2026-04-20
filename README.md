@@ -1,8 +1,8 @@
 # tusq.dev
 
-tusq.dev is the open-source capability compiler CLI for supported Node.js SaaS backends.
+For teams already running Express, Fastify, or NestJS services, tusq.dev is the open-source capability compiler CLI for turning supported product behavior into a reviewed manifest and an inspectable describe-only MCP surface.
 
-It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a governed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface with inspectable provenance, approval state, optional approval trail, governance metadata, redaction policy, examples, and constraints.
+It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a reviewed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface with inspectable provenance, approval state, optional approval trail, governance metadata, redaction policy, examples, and constraints.
 
 ## Current shipped surface in v0.1.0
 

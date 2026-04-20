@@ -9,6 +9,8 @@ Today we are releasing `tusq.dev v0.1.0`, the first public version of the open-s
 
 {/* truncate */}
 
+If you already run a supported Express, Fastify, or NestJS backend and need a reviewed path to make that product behavior AI-visible, this release is for you.
+
 Most SaaS teams already have the logic they need for AI workflows, but that logic is trapped behind APIs designed for UI flows. Routes, handlers, validators, and auth checks exist. What is missing is a governed path that turns those implementation surfaces into something AI systems can safely consume.
 
 That is the focus of tusq.dev.

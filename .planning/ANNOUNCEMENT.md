@@ -6,11 +6,13 @@ Open-source tusq.dev v0.1.0 turns supported Node.js SaaS APIs into reviewed mani
 
 ## Product Summary
 
-tusq.dev `v0.1.0` is the first public release of the tusq capability compiler CLI. It is built for SaaS teams with existing Express, Fastify, or NestJS backends who want a faster path from shipping product logic to AI-visible capability surfaces.
+tusq.dev `v0.1.0` is the first public release of the tusq capability compiler CLI. It is built for SaaS teams already running Express, Fastify, or NestJS services and feeling pressure to expose product behavior to AI systems without skipping review.
 
 Best fit for this launch: teams with a real supported service, real routes, and real pressure to expose product behavior to AI systems without hand-authoring every tool definition.
 
 Not the right fit for this launch: teams looking for hosted execution, a built-in chat UI, runtime-autonomous agents, or support beyond Express, Fastify, and NestJS.
+
+The product story is straightforward: your product logic already exists. The missing piece is a reviewed path to make that logic AI-visible.
 
 This release gives teams a concrete terminal workflow:
 
@@ -27,11 +29,13 @@ The proof points for this launch are intentionally concrete: reviewed manifest o
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
-The narrative priority is deliberate: lead with who should care, then show the proof sequence, then state the boundary. That keeps the launch honest and helps the right teams qualify themselves quickly.
+The narrative priority is deliberate: lead with who should care, then the operator problem, then the proof sequence, then the boundary. That keeps the launch honest and helps the right teams qualify themselves quickly.
 
 ## Blog Draft
 
 Today we’re releasing `tusq.dev v0.1.0`, the first public version of the open-source capability compiler CLI for existing SaaS products.
+
+If you already run a supported Express, Fastify, or NestJS backend and need a reviewed path to make that product behavior AI-visible, this release is for you.
 
 The problem we care about is simple: most SaaS companies already have the logic they need for AI products, but that logic is trapped behind APIs designed for UI flows. Routes, handlers, validators, and auth checks exist. What’s missing is a governed path that turns those implementation surfaces into something AI systems can safely see and use.
 

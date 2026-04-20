@@ -51,18 +51,20 @@ export default function Home(): ReactNode {
       description="Open-source capability compiler CLI for turning supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.">
       <main className={styles.pageShell}>
         <section className={styles.hero}>
-          <p className={styles.eyebrow}>Open-source CLI</p>
+          <p className={styles.eyebrow}>For existing Node.js SaaS teams</p>
           <h1 className={styles.heroTitle}>
-            Turn a supported Node.js SaaS backend into a reviewed, inspectable capability surface.
+            Expose supported Node.js product behavior to AI systems without skipping review.
           </h1>
           <p className={styles.lede}>
-            tusq.dev v0.1.0 scans Express, Fastify, and NestJS codebases, generates a reviewable{' '}
-            <code>tusq.manifest.json</code>, compiles approved capabilities into strict JSON tool
-            definitions, and serves them through a local describe-only MCP endpoint that clients
-            can inspect. The review chain keeps provenance, <code>side_effect_class</code>,{' '}
-            <code>sensitivity_class</code>, <code>auth_hints</code>, optional approval trail, and{' '}
-            <code>redaction</code> visible before exposure, while describe-only{' '}
-            <code>examples</code> and <code>constraints</code> stay inspectable at runtime.
+            tusq.dev v0.1.0 is for teams already running Express, Fastify, or NestJS services and
+            needing a reviewed path from existing product logic to an AI-visible surface. It scans
+            supported codebases, generates a reviewable <code>tusq.manifest.json</code>, compiles
+            approved capabilities into strict JSON tool definitions, and serves them through a
+            local describe-only MCP endpoint that clients can inspect. The review chain keeps
+            provenance, <code>side_effect_class</code>, <code>sensitivity_class</code>,{' '}
+            <code>auth_hints</code>, optional approval trail, and <code>redaction</code> visible
+            before exposure, while describe-only <code>examples</code> and <code>constraints</code>{' '}
+            stay inspectable at runtime.
           </p>
           <p className={styles.launchNote}>
             Try it locally from the repo on a supported codebase. Current launch flow: clone the
