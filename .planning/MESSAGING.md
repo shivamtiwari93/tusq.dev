@@ -30,7 +30,7 @@ Turn a supported Node.js API codebase into a reviewable manifest and describe-on
 
 ### Positioning Statement
 
-For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. The review surface is concrete: teams can inspect approval state, provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` before exposing anything. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
+For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. The review surface is concrete: teams can inspect approval state, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and the describe-only `examples` and `constraints` that survive into downstream tool output. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
 
 ### Qualification Filter
 
@@ -50,8 +50,8 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
    Existing APIs, handlers, and auth hints are the raw material. V1 is for teams that already have working product logic and want a faster path to AI exposure.
 2. **Review before you expose**
    The manifest is the contract. Users scan, inspect, approve, and then compile. tusq.dev does not ask teams to trust an opaque generation step.
-3. **Governance is visible, not implied**
-   Reviewers can see mutation class, sensitivity placeholder, auth hints, confidence, and provenance in the manifest and downstream tool output.
+3. **Governance and usage context are visible, not implied**
+   Reviewers can see mutation class, sensitivity placeholder, auth hints, confidence, provenance, and describe-only usage context such as `examples` and `constraints` in downstream tool output.
 4. **Ship an MCP-visible surface without rebuilding the stack**
    V1 gets teams from repo to manifest to compiled tools to a local describe-only MCP endpoint in one terminal workflow.
 5. **Be explicit about the V1 boundary**
@@ -62,6 +62,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Supported framework scope is narrow and explicit: Express, Fastify, and NestJS only
 - Generated outputs are inspectable: `.tusq/scan.json`, `tusq.manifest.json`, and compiled `tusq-tools/*.json`
 - Governance metadata is explicit in the artifact chain: `side_effect_class`, `sensitivity_class`, and `auth_hints` survive from manifest to compiled tools to MCP responses
+- Describe-only usage context is inspectable in the runtime surface: `examples` and `constraints` survive from manifest to compiled tools to MCP `tools/call`
 - Provenance survives the pipeline: compiled tool definitions can point back to the source file and line where a route was discovered
 - MCP is real but intentionally constrained: `tools/list` works, and `tools/call` returns schema/example data instead of executing live actions
 - The operator remains in control: approval is manual, compilation is explicit, and review output is non-interactive stdout
@@ -72,7 +73,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Preferred early-adopter promise: "clone the repo, run the CLI locally, and tell us where scanner or manifest edge cases appear"
 - Exact CTA language to repeat: "Try tusq.dev locally from the repo on an Express, Fastify, or NestJS codebase."
 - Exact qualification line to repeat near the CTA: "Best fit: an existing Express, Fastify, or NestJS service you already run, not a greenfield prototype or a hosted-agent evaluation."
-- Exact inspection prompt to repeat near demos: "Before you approve anything, inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest."
+- Exact inspection prompt to repeat near demos: "Before you approve anything, inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest, then confirm the downstream `examples` and `constraints` match what you want AI clients to see."
 - Do not promise a public package-manager install path until distribution is actually confirmed
 - README, homepage, docs, and announcement should all use the same repo-local CTA so the first skim does not imply a published installer
 
@@ -87,7 +88,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - `tusq compile` emits JSON tool definitions only for approved capabilities
 - `tusq review` is non-interactive and prints a grouped summary to stdout
 - `tusq serve` exposes compiled tools through a local MCP HTTP endpoint
-- MCP `tools/call` is describe-only in V1: it returns schema and example payloads, not live API execution
+- MCP `tools/call` is describe-only in V1: it returns schema, example payloads, and constraints, not live API execution
 - Domain grouping exists at a basic level in V1; intelligent cross-resource capability composition does not
 - Runtime learning, plugin APIs, non-Node ecosystems, hosted delivery, and embedded UI are deferred beyond V1
 
@@ -98,7 +99,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - tusq.dev can compile approved capabilities into structured JSON tool definitions
 - tusq.dev can preserve provenance from discovered routes into compiled tool definitions
 - tusq.dev surfaces governance metadata reviewers can inspect before exposure: `side_effect_class`, `sensitivity_class`, and `auth_hints`
-- tusq.dev can expose compiled tools through a local, describe-only MCP server
+- tusq.dev can expose compiled tools through a local, describe-only MCP server with inspectable schema, examples, and constraints
 - tusq.dev gives teams a governed path from existing SaaS code to AI-visible capability definitions without starting from prompts
 - V1 is self-hosted and terminal-native; teams can run the workflow locally
 

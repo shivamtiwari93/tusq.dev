@@ -8,7 +8,7 @@ const workflow = [
   'Scan routes with tusq scan .',
   'Review the generated tusq.manifest.json.',
   'Approve capabilities in the manifest, then compile.',
-  'Serve compiled tools over a local describe-only MCP endpoint.',
+  'Serve compiled tools over a local describe-only MCP endpoint and inspect schema, examples, and constraints.',
 ];
 
 const surfaceItems = [
@@ -18,6 +18,7 @@ const surfaceItems = [
   'Route discovery',
   'Manifest generation',
   'Visible governance metadata',
+  'Examples and constraints',
   'Manual approval flow',
   'Approved tool compilation',
   'Describe-only MCP serve',
@@ -57,7 +58,9 @@ export default function Home(): ReactNode {
             <code>tusq.manifest.json</code>, compiles approved capabilities into strict JSON tool
             definitions, and serves them through a local describe-only MCP endpoint that clients
             can inspect. The review chain keeps provenance, <code>side_effect_class</code>,{' '}
-            <code>sensitivity_class</code>, and <code>auth_hints</code> visible before exposure.
+            <code>sensitivity_class</code>, and <code>auth_hints</code> visible before exposure,
+            while describe-only <code>examples</code> and <code>constraints</code> stay
+            inspectable at runtime.
           </p>
           <p className={styles.launchNote}>
             Try it locally from the repo on a supported codebase. Current launch flow: clone the
@@ -83,7 +86,8 @@ export default function Home(): ReactNode {
             <p>
               It discovers supported API routes and inferred auth hints from code, then converts
               that output into a capability manifest your team can inspect before exposing anything.
-              Reviewers get concrete metadata, not just a generic governance claim.
+              Reviewers get concrete metadata, not just a generic governance claim, plus explicit
+              downstream usage context.
             </p>
           </article>
           <article className={styles.card}>
@@ -91,7 +95,7 @@ export default function Home(): ReactNode {
             <p>
               From the manifest, tusq.dev compiles approved capabilities into JSON tool definitions
               and serves them through a local describe-only MCP surface. V1 returns schemas and
-              example payloads for inspection, not live execution.
+              example payloads plus constraints for inspection, not live execution.
             </p>
           </article>
           <article className={styles.card}>

@@ -56,6 +56,6 @@ tusq serve
 
 ## V1 boundaries
 
-- MCP execution is describe-only in v0.1.0.
+- MCP execution is describe-only in v0.1.0. `tools/call` returns schema, examples, and constraints only.
 - Capability approval is manual by editing `tusq.manifest.json`.
 - Runtime learning and plugin APIs are not shipped in V1.

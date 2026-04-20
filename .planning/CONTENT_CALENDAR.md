@@ -22,12 +22,12 @@
 
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
 - Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
-- Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`
+- Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and how `examples` / `constraints` show up downstream
 
 ### Day 3-4
 
 - Post a framework-specific example using one supported stack, ideally Express first because it is easiest to recognize
-- Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out governance metadata that survives into MCP responses
+- Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out governance metadata and the `examples` / `constraints` payload that survive into MCP responses
 - Publish a short "how to try it today" post that points users to the repo workflow instead of a public package-manager claim
 
 ### Day 5-7

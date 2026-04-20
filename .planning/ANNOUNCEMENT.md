@@ -2,7 +2,7 @@
 
 ## Headline
 
-Open-source tusq.dev v0.1.0 turns supported Node.js SaaS APIs into reviewed manifests, approved tool JSON, and a describe-only MCP surface
+Open-source tusq.dev v0.1.0 turns supported Node.js SaaS APIs into reviewed manifests, approved tool JSON, and an inspectable describe-only MCP surface
 
 ## Product Summary
 
@@ -23,7 +23,7 @@ This release gives teams a concrete terminal workflow:
 
 What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls, does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
-The proof points for this launch are intentionally concrete: reviewed manifest output, manual approval, compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), and an inspectable describe-only MCP surface.
+The proof points for this launch are intentionally concrete: reviewed manifest output, manual approval, compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), inspectable `examples` and `constraints` in the describe-only runtime surface, and an inspectable describe-only MCP surface.
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
@@ -41,7 +41,7 @@ This release is for teams already running a supported Express, Fastify, or NestJ
 
 In `v0.1.0`, tusq.dev focuses on a narrow, honest slice of that vision. If your product runs on Express, Fastify, or NestJS, you can point tusq.dev at the repo, scan the codebase, generate a reviewable `tusq.manifest.json`, approve the capabilities you actually want exposed, compile them into strict JSON tool definitions, preserve provenance back to the source route, and serve those definitions through a local describe-only MCP endpoint.
 
-That review surface is more specific than "governance" as a slogan. Each capability carries concrete metadata a human can inspect before exposure: provenance back to the source route, `side_effect_class` for mutation type, `sensitivity_class` as the current data-sensitivity marker, and `auth_hints` showing detected auth or middleware signals.
+That review surface is more specific than "governance" as a slogan. Each capability carries concrete metadata a human can inspect before exposure: provenance back to the source route, `side_effect_class` for mutation type, `sensitivity_class` as the current data-sensitivity marker, and `auth_hints` showing detected auth or middleware signals. Downstream, the describe-only runtime also exposes `examples` and `constraints` so teams can inspect what AI clients would be shown before any execution layer exists.
 
 The workflow is terminal-native:
 
@@ -54,7 +54,7 @@ tusq compile
 tusq serve
 ```
 
-This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema and example payloads; it does not execute live product actions. Review is non-interactive and happens by editing the manifest directly. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
+This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. Review is non-interactive and happens by editing the manifest directly. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
 
 We think that tradeoff is the right one for a first release. It proves the important part: teams can start from the product they already have and move toward an AI-visible capability surface without rebuilding the stack or hand-authoring every tool definition.
 
@@ -73,6 +73,7 @@ npm link
 
 - Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → approve in the manifest → `tusq compile` → `tusq serve`
 - Review `tusq.manifest.json` before approving any capability, especially provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`
+- After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
 - Treat the first run as an inspection workflow: check confidence, domain grouping, provenance, and the describe-only MCP output
 - Best first proof: approve one or two capabilities only, then verify that `tools/list` and `tools/call` reflect exactly what you expected
 - Wait to publish a public package-manager install step until distribution is confirmed
@@ -85,7 +86,7 @@ npm link
 
 It scans supported Node.js SaaS backends (`Express`, `Fastify`, `NestJS`), generates a reviewable `tusq.manifest.json`, compiles approved capabilities into JSON tool defs, and exposes them through a local describe-only MCP endpoint.
 
-This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, with visible governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, not live execution.
+This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, with visible governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, plus inspectable `examples` and `constraints`, not live execution.
 
 Best fit: teams with an existing supported backend, not teams looking for hosted agents on day one.
 
@@ -95,7 +96,7 @@ Try it locally from the repo on a supported service.
 
 Most SaaS companies already have the product logic they need for AI workflows. The problem is that the logic is trapped behind APIs and internal code paths that are not packaged for agent use.
 
-`tusq.dev v0.1.0` is our first open-source step at fixing that. It gives Express, Fastify, and NestJS teams a CLI to scan a codebase, generate a reviewable capability manifest, approve what should be exposed, compile approved capabilities into tool definitions, preserve provenance, surface `side_effect_class`, `sensitivity_class`, and `auth_hints`, and serve the result through a local describe-only MCP endpoint.
+`tusq.dev v0.1.0` is our first open-source step at fixing that. It gives Express, Fastify, and NestJS teams a CLI to scan a codebase, generate a reviewable capability manifest, approve what should be exposed, compile approved capabilities into tool definitions, preserve provenance, surface `side_effect_class`, `sensitivity_class`, and `auth_hints`, and serve the result through a local describe-only MCP endpoint that also exposes inspectable `examples` and `constraints`.
 
 The release is intentionally narrow and honest. No live proxying yet. No interactive TUI yet. Just a concrete path from existing product code to a governed AI-visible surface.
 
@@ -112,6 +113,7 @@ Current V1 scope:
 - `init` / `scan` / `manifest` / `compile` / `review` / `serve`
 - reviewed `tusq.manifest.json`
 - visible governance metadata (`side_effect_class`, `sensitivity_class`, `auth_hints`)
+- inspectable `examples` and `constraints` in describe-only `tools/call`
 - approved capability compilation
 - local describe-only MCP server
 - repo-local evaluation path for launch

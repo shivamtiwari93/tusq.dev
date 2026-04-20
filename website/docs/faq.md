@@ -8,7 +8,7 @@ sidebar_position: 7
 
 ## Does tusq.dev execute live API calls in v0.1.0?
 
-No. The MCP surface is describe-only in V1. `tools/call` returns schema and example payloads, not live execution.
+No. The MCP surface is describe-only in V1. `tools/call` returns schema, example payloads, and constraints, not live execution.
 
 ## Which frameworks are supported?
 

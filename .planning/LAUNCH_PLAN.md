@@ -18,7 +18,7 @@
 ### First user action
 
 - Direct early adopters to run tusq.dev locally against a real Express, Fastify, or NestJS repo
-- Ask them to inspect `tusq.manifest.json` first, with special attention to provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`, then approve one or two capabilities, compile, and confirm the MCP surface matches expectations
+- Ask them to inspect `tusq.manifest.json` first, with special attention to provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`, then approve one or two capabilities, compile, and confirm the describe-only MCP `examples` and `constraints` match expectations
 - Treat scanner misses, low-confidence routes, and awkward manifest edits as feedback fuel for the next release
 - Do not optimize the launch flow around `tusq serve` alone; the key product moment is seeing existing product behavior become a reviewable manifest before exposure
 
@@ -39,12 +39,12 @@
   `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
 - Release notes that spell out supported frameworks and deferred items
 - Website or landing-page copy that reflects the actual V1 surface instead of the full long-term vision
-- One sentence in every primary asset that explains what "governed" means in practice: inspect provenance, mutation class, auth hints, and sensitivity markers before exposure
+- One sentence in every primary asset that explains what "governed" means in practice: inspect provenance, mutation class, auth hints, sensitivity markers, and the describe-only usage context exposed through `examples` and `constraints`
 
 ### Strongly recommended supporting assets
 
 - A short terminal demo or GIF using one of the fixture apps
-- One annotated manifest example showing approvals, provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints`
+- One annotated manifest example showing approvals, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and the `examples` / `constraints` values that flow into `tools/call`
 - A concise FAQ covering "Does it execute tools?" and "Which frameworks are supported?"
 
 ## Dependencies
@@ -69,7 +69,7 @@
 1. **Overclaim risk**
    The repo vision and older copy imply runtime learning, live execution, embedded surfaces, and broader capability composition. Launch copy must not inherit those promises.
 2. **Expectation mismatch on MCP**
-   Some developers will assume `tools/call` executes actions. The announcement and FAQ need to repeat that V1 is describe-only.
+   Some developers will assume `tools/call` executes actions. The announcement and FAQ need to repeat that V1 is describe-only and returns schema, examples, and constraints only.
 3. **Framework expectation drift**
    If the launch message sounds category-wide, teams on unsupported stacks will bounce immediately. Framework support should appear high in every primary asset.
 4. **Heuristic scanner perception**
