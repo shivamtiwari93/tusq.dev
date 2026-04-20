@@ -2,6 +2,18 @@
 
 ## Verdict: SHIP
 
+## Challenge To Dev Turn (turn_79938a12a7f2e441) — examples/constraints end-to-end
+
+The dev turn added `examples` and `constraints` fields across the full pipeline: manifest preservation maps, compile propagation, MCP `tools/call` response, smoke-test assertions, and doc updates. I challenged this on three grounds:
+
+1. **Pipeline coverage and intentional asymmetry:** `examples` and `constraints` appear at manifest, compile, and MCP `tools/call` but NOT at scan or MCP `tools/list`. I checked whether this was an oversight. SYSTEM_SPEC.md lines 564-571 explicitly document the pipeline for `examples` as: scan (no field), manifest (yes), tusq-tools (yes), `tools/call` (yes) — `tools/list` exclusion is by design. The `tools/list` response at `src/cli.js:529-541` correctly omits both fields; `tools/call` at lines 555-566 correctly includes them. **Challenge resolved: intentional per spec.**
+
+2. **Smoke test assertion completeness:** Three coverage points tested: (a) manifest capabilities carry default `examples[]` with at least one entry and default `constraints` with the expected 5-field null/empty shape (smoke lines 157-161); (b) custom values survive manifest→compile propagation (lines 175-179); (c) custom values survive manifest→`tools/call` propagation (lines 232-236). All three pass (`node tests/smoke.mjs` → exit 0). `tools/list` is intentionally not tested for these fields. **Challenge resolved: correct and complete per spec.**
+
+3. **Documentation accuracy in manifest-format.md:** Lines 31-32 list `examples` and `constraints` in the capability field inventory, and lines 75+ provide the `## Examples and constraints (V1)` section describing the describe-only default and the 5-field constraints object. No overclaim or omission found. **Challenge resolved: accurate.**
+
+New requirement REQ-033 added to acceptance matrix covering the three pipeline stages (manifest, compile, `tools/call`), smoke-test assertions, and SYSTEM_SPEC-confirmed design rationale for `tools/list` exclusion. Acceptance matrix now covers 33 criteria.
+
 ## Challenge To Dev Turn (turn_3443bc3f16b31888) — auth_hints in MCP runtime
 
 The dev turn added `auth_hints` to MCP `tools/list` and `tools/call` responses in `src/cli.js`, added two smoke-test assertions for the field, and updated `website/docs/mcp-server.md` to list it alongside the other governance fields. I challenged this on four grounds:
@@ -95,7 +107,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 32 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), and 1 auth_hints MCP runtime check (REQ-032). This QA pass challenged the dev turn (turn_3443bc3f16b31888) that added `auth_hints` to MCP `tools/list` and `tools/call` responses and verified that the field is emitted at all four pipeline stages, the fallback to empty array is correct, smoke-test assertions cover both MCP methods, and documentation is consistent. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
+All 33 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), 1 auth_hints MCP runtime check (REQ-032), and 1 examples/constraints pipeline check (REQ-033). This QA pass challenged the dev turn (turn_79938a12a7f2e441) that added examples/constraints end-to-end and verified that: (a) the `tools/list` exclusion of examples/constraints is intentional per SYSTEM_SPEC.md lines 564-571, not a bug; (b) smoke-test assertions cover all three required pipeline stages; and (c) manifest-format.md accurately documents both fields. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.

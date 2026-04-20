@@ -59,9 +59,9 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 ## Verification Summary
 
-- Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: 20 scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC, and SIGINT shutdown.
+- Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints propagation), and SIGINT shutdown.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 32 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime).
+- All 33 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 
@@ -90,13 +90,15 @@ tusq serve
 
 ## Governance Dimensions Shipped
 
-Every compiled capability carries three governance fields at every pipeline stage (scan → manifest → compile → MCP serve):
+Every compiled capability carries five governance fields through the pipeline (manifest → compile → MCP `tools/call`):
 
-- **`side_effect_class`**: mutation type — `read`, `write`, or `destructive` (inferred from HTTP method and path/handler signals)
-- **`sensitivity_class`**: data sensitivity — `unknown`, `public`, `internal`, `confidential`, or `restricted` (defaults to `unknown` in V1; manual overrides survive regeneration)
-- **`auth_hints`**: detected auth/middleware identifiers — string array (empty array means no signal found, not that the endpoint is public)
+- **`side_effect_class`**: mutation type — `read`, `write`, or `destructive` (inferred from HTTP method and path/handler signals); also in `tools/list`
+- **`sensitivity_class`**: data sensitivity — `unknown`, `public`, `internal`, `confidential`, or `restricted` (defaults to `unknown` in V1; manual overrides survive regeneration); also in `tools/list`
+- **`auth_hints`**: detected auth/middleware identifiers — string array (empty array means no signal found, not that the endpoint is public); also in `tools/list`
+- **`examples`**: usage examples — defaults to a single describe-only placeholder in V1; human-editable in `tusq.manifest.json`; propagates unchanged through compile to `tools/call`
+- **`constraints`**: operational limits — five-field object (`rate_limit`, `max_payload_bytes`, `required_headers`, `idempotent`, `cacheable`); all null/empty defaults in V1; human-editable in manifest; propagates to `tools/call`
 
-All three fields are visible through `tools/list` and `tools/call` MCP responses so downstream agents can reason about authorization requirements before attempting a call.
+`side_effect_class`, `sensitivity_class`, and `auth_hints` appear in both `tools/list` and `tools/call` MCP responses. `examples` and `constraints` appear in `tools/call` only (by design — they are per-capability detail, not listing metadata).
 
 ## Known V1 Limits And Non-Claims
 
