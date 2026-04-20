@@ -17,6 +17,9 @@ Approved: YES
 >
 > Updated in run_78133e963b912f46 (turn_360905c7f7c8ac1a) to address vision goal "The canonical artifact: version history and diffs." Challenged prior turns for leaving this VISION.md dimension (line 61) — the seventh and final canonical artifact dimension — entirely unspecified. No version tracking, content hashing, or diff mechanism existed anywhere in the pipeline. SYSTEM_SPEC now includes: (1) Manifest-level version fields (`manifest_version` integer counter, `previous_manifest_hash` SHA-256 hash chain) added to manifest root shape; (2) Per-capability `capability_digest` (SHA-256 of content fields excluding approval metadata) for change detection; (3) Full specification with agent implications, V1 limitations (no diff CLI, no history file, no auto re-approval), pipeline propagation (manifest-only), and V2 plans (`tusq diff` command, structured diff output format, diff-aware re-approval, manifest history file, git integration, CI/CD diff gate). ROADMAP updated with M13 milestone. The governance model is now seven dimensions, completing ALL items listed in VISION.md lines 55-61.
 
+>
+> Updated in run_5fa4a26c3973e02d (turn_addce63aff584689) to address vision goal "support the most common framework stacks deeply within the first release." Challenged prior turns for leaving framework support depth undocumented — the V1 implementation shipped three deep framework detectors (Express, Fastify, NestJS) but the planning artifacts never formally specified what "deep" means per framework, why Node.js-only is the right V1 scope, what the detection limitations are, or what the V2 expansion plan looks like. SYSTEM_SPEC now includes: (1) Per-framework detection matrix showing 12 capabilities across all 3 frameworks with framework-specific patterns; (2) Rationale for Node.js-only V1 scope (depth over breadth, shared infrastructure, target audience); (3) V1 detection limitations table (regex-based, no router composition, single-file scope, no TypeScript type inference); (4) V2 expansion plan with 5 frameworks prioritized (Django REST, FastAPI, Flask, Spring Boot, Gin/Echo) via plugin interface. ROADMAP updated with M14 milestone.
+
 ## Discovery Checklist
 
 - [x] **Target user defined** — Developers and engineering leads evaluating or adopting tusq.dev. They need clear docs, honest product positioning, and a quickstart workflow they can follow in one terminal session.
@@ -131,6 +134,26 @@ Should version tracking propagate through compiled tools and MCP responses, like
 The `capability_digest` must exclude some fields to be useful for change detection. If it included `approved` and `approved_by`, every human approval would change the digest and create a false "capability changed" signal.
 
 **Decision:** Exclude `capability_digest` (circular), `approved`, `approved_by`, `approved_at`, and `review_needed` (human gate state, not capability content). Include everything else: name, description, method, path, schemas, side_effect_class, sensitivity_class, auth_hints, examples, constraints, redaction, provenance, confidence, domain. This means the digest answers "did the *capability itself* change?" not "did someone approve it?"
+
+### Challenge 14: Framework support depth — documented but not specified
+
+The vision (VISION.md line 71) requires "support the most common framework stacks deeply within the first release." V1 ships deep support for Express, Fastify, and NestJS — three framework-specific extractors with distinct detection patterns, not a single generic regex. But the planning artifacts never formally specified what "deep" means:
+
+- No per-framework detection matrix showing what each detector captures
+- No rationale for why Node.js-only satisfies the vision's "most common stacks" requirement
+- No documentation of V1 detection limitations (regex-based, single-file scope, no router composition)
+- No V2 expansion plan for Python/Java/Go frameworks
+- No reference to the plugin interface that enables community framework adapters
+
+The frameworks.md docs page lists what support means (7 extraction signals) but at 42 lines is too thin to substantiate the "deeply" claim.
+
+**Decision:** Add a Framework Support Depth section to SYSTEM_SPEC.md with: (1) a 12-row detection matrix showing per-framework capabilities; (2) rationale for Node.js-only V1 scope; (3) V1 limitations table; (4) V2 expansion plan with 5 prioritized frameworks; (5) reference to plugin interface for community adapters. This makes the "deeply" claim verifiable against the actual implementation.
+
+### Challenge 15: M13 roadmap items still unchecked
+
+M13 (Version History and Diffs) items remain unchecked in ROADMAP.md despite the implementation being completed and verified by QA in prior turns (DEC-207 through DEC-210). This is the same stale-roadmap issue that was caught and fixed for M1–M7 in an earlier PM turn. The implementation shipped, tests pass, QA signed off, but the planning roadmap was not updated.
+
+**Decision:** Leave M13 unchecked — the implementation was done in a prior run, but this PM turn is not claiming to have verified the implementation. The next dev turn or QA turn should mark M13 items as checked after re-verification. Honest planning means not checking boxes the PM has not personally verified.
 
 ## Key Judgment Calls
 

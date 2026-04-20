@@ -294,6 +294,60 @@ Produced by `tusq scan <path>`. Contains raw route discovery results before huma
 | Non-root path | +0.04 |
 | **Cap** | **0.95** |
 
+#### Framework Support Depth — V1
+
+The vision requires "support the most common framework stacks deeply within the first release" (VISION.md line 71). V1 delivers deep support for the three most widely used Node.js backend frameworks: **Express**, **Fastify**, and **NestJS**. "Deep" means every framework detector extracts the full Route object shape (method, path, handler, domain, auth_hints, provenance, confidence, schema_hint) using framework-specific patterns — not a single generic regex.
+
+**Per-framework detection matrix:**
+
+| Capability | Express | Fastify | NestJS |
+|------------|---------|---------|--------|
+| Route method extraction | `app.get/post/put/patch/delete/options/head` | `fastify.get/post/...` + `fastify.route({method})` | `@Get/@Post/@Put/@Patch/@Delete` decorators |
+| Route path extraction | String literal in route call | String literal + `url`/`path` in route block | `@Controller()` prefix + method decorator argument |
+| Named handler detection | Last identifier in handler expression | `handler:` property in route block | Next method signature after decorator |
+| Inline handler detection | Arrow function / `function(` test | Arrow function / `function(` test | N/A (NestJS uses class methods) |
+| Middleware chain extraction | All tokens except last in handler expression | Token extraction from inline handler | Class-level + method-level `@UseGuards` |
+| Auth hint extraction | Handler expression + 3-line radius | Handler expression + 5-line radius + route block tokens | Class `@UseGuards` + method decorators + controller metadata |
+| Schema hint detection | `zod`, `z.object`, `joi`, `schema` in 3-line radius | `schema:` property in 5-line radius | `dto`, `schema`, `zod`, `class-validator` in 4-line radius |
+| Domain inference | First path segment | First path segment | Controller prefix or first path segment |
+| Controller/prefix resolution | N/A | N/A | `@Controller('prefix')` → prepended to all method paths |
+| Guard inheritance | N/A | N/A | Class-level guards inherited by all methods in controller |
+| Deduplication | N/A | Cross-pattern dedup (inline + `fastify.route()` matches) | N/A |
+| Nearby code radius | 3 lines | 5 lines (inline), full block (route object) | 4 lines |
+
+**Why these three frameworks:**
+
+Express, Fastify, and NestJS account for the overwhelming majority of Node.js backend API projects. Express is the default choice; Fastify is the performance-oriented alternative; NestJS is the enterprise/TypeScript-first framework built on top of Express or Fastify. Together they cover the spectrum from minimal to opinionated Node.js backends.
+
+**Why Node.js only in V1:**
+
+1. **Depth over breadth.** VISION line 114: "Support fewer stacks, deeper... done correctly, beats thin support for twelve." Shipping three deeply-supported frameworks with full governance metadata is more valuable than shallow support for many.
+2. **Shared extraction infrastructure.** All three frameworks share the same runtime (Node.js), the same module system, and similar routing conventions. The confidence scoring, auth hint extraction, schema detection, and domain inference logic is reusable across all three without framework-specific reimplementation.
+3. **Target audience alignment.** The V1 target user is a backend engineering team evaluating tusq.dev against a real codebase. Node.js backends are the most common target for AI-enablement due to the prevalence of REST APIs built on these frameworks.
+
+**V1 framework detection limitations:**
+
+| Limitation | Impact | V2 plan |
+|-----------|--------|---------|
+| Regex-based, not AST | May miss dynamically constructed routes or complex middleware chains | AST parsing with framework-specific visitors |
+| No router composition | `express.Router()` sub-routers with `.use()` mounting not followed | Router graph resolution |
+| No middleware ordering | Auth middleware order not captured | Middleware pipeline reconstruction |
+| No re-export following | Routes defined in re-exported modules not discovered | Module resolution + re-export tracing |
+| Single-file scope | Each file scanned independently; cross-file patterns missed | Multi-file analysis with import graph |
+| No TypeScript type inference | Type annotations in handlers not used for schema extraction | TypeScript compiler API integration |
+
+**V2 framework expansion plan:**
+
+| Framework | Language | Priority | Rationale |
+|-----------|----------|----------|-----------|
+| Django REST Framework | Python | High | Most popular Python API framework; decorator-based routing similar to NestJS |
+| FastAPI | Python | High | Growing rapidly; type-annotated routes enable richer schema extraction |
+| Flask | Python | Medium | Widely used but less structured; fewer extraction signals |
+| Spring Boot | Java | Medium | Enterprise standard; annotation-based routing |
+| Gin / Echo | Go | Lower | Common but Go projects often use custom routing |
+
+V2 framework support will be delivered through the plugin interface (VISION line 130: "Framework detectors... all live behind plugin interfaces"). Each framework adapter implements a standard `extractRoutes(content, filePath)` interface, enabling community contribution without core changes.
+
 ### 3. `tusq.manifest.json` — The Canonical Artifact
 
 Produced by `tusq manifest`. This is the reviewable contract between code and agents — the central product of tusq.dev.

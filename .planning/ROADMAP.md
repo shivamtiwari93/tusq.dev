@@ -115,6 +115,13 @@
 - [ ] Update manifest root shape to include new fields alongside existing `schema_version`, `generated_at`, `source_scan`
 - [ ] Document the seven-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints + redaction/approval metadata + version history/diffs
 
+### M14: Framework Support Depth Specification (~0.5 day)
+- [x] Add per-framework detection matrix to SYSTEM_SPEC.md documenting what V1 extracts for Express, Fastify, and NestJS
+- [x] Document why Node.js-only is the correct V1 scope (depth over breadth, shared infrastructure, target audience)
+- [x] Document V1 framework detection limitations (regex-based, no router composition, single-file scope)
+- [x] Specify V2 framework expansion plan (Django REST, FastAPI, Flask, Spring Boot, Gin/Echo) with priority and rationale
+- [x] Document V2 plugin interface for community framework adapters
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
