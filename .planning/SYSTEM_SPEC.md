@@ -275,7 +275,7 @@ Produced by `tusq scan <path>`. Contains raw route discovery results before huma
 | `method` | string | HTTP method (uppercased) |
 | `path` | string | Route path, always starts with `/` |
 | `handler` | string | Function name or `inline_handler` / `unknown_handler` |
-| `domain` | string | Inferred from first path segment or controller prefix |
+| `domain` | string | Inferred from first meaningful path segment (after prefix-skipping) or controller prefix |
 | `auth_hints` | string[] | Middleware/decorator names matching auth patterns |
 | `provenance.file` | string | Relative path to source file |
 | `provenance.line` | integer | 1-based line number |
@@ -292,7 +292,10 @@ Produced by `tusq scan <path>`. Contains raw route discovery results before huma
 | Auth hints present | +0.08 |
 | Schema hint detected (zod, joi, DTO) | +0.14 |
 | Non-root path | +0.04 |
+| No schema hint detected | -0.10 |
 | **Cap** | **0.95** |
+
+The schema-less penalty ensures routes without extractable schema signal (the majority in real codebases) trigger `review_needed: true` (threshold 0.8) even when handler name and auth are present. See First-Pass Manifest Usability section for detailed impact analysis.
 
 #### Framework Support Depth — V1
 
@@ -368,13 +371,13 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 ```json
 {
   "name": "get_users_users",
-  "description": "GET /users capability in users domain",
+  "description": "Retrieve users — read-only, requires requireAuth (handler: listUsers)",
   "method": "GET",
   "path": "/users",
   "input_schema": {
     "type": "object",
     "additionalProperties": true,
-    "description": "<inference status>"
+    "description": "No path parameters. Additional body/query parameters require manual review."
   },
   "output_schema": {
     "type": "object",
@@ -421,8 +424,8 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | string | `{method}_{domain}_{path_slug}` — unique identifier |
-| `description` | string | Human-readable summary |
+| `name` | string | `{method}_{domain}_{path_slug}` — unique identifier (domain uses smart prefix-skipping) |
+| `description` | string | Rich description: "{verb} {noun} {qualifier} — {side_effect}, {auth_context} (handler: {name})" |
 | `method` | string | HTTP method (uppercased) |
 | `path` | string | Route path |
 | `input_schema` | object | JSON Schema describing expected input parameters |
@@ -440,9 +443,160 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `approved_by` | string \| null | Identity of the human who approved this capability. `null` until explicitly set |
 | `approved_at` | string \| null | ISO 8601 timestamp of when approval was granted. `null` until explicitly set |
 | `capability_digest` | string | SHA-256 hex digest of content fields (excluding approval/review metadata and the digest itself). Enables change detection between manifest versions — see Version History and Diffs section |
-| `domain` | string | Logical grouping (inferred from route prefix) |
+| `domain` | string | Logical grouping (inferred from route prefix with smart prefix-skipping — see First-Pass Manifest Usability) |
 
 **V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
+
+#### First-Pass Manifest Usability
+
+VISION.md line 72 requires "produce manifests that are usable on first pass for real codebases, not toy examples." Line 73 adds: "treat manual manifest authoring as a failure of the engine, not a feature." The following four improvements use only information the scanner already computes to make first-pass output actionable without full manual rewrite.
+
+##### 1. Path Parameter Extraction
+
+Route paths like `/users/:id` and `/orders/{orderId}/items` contain explicit parameter names. V1 must extract these into `input_schema.properties` so that LLM consumers know what arguments to provide.
+
+**Extraction rules:**
+
+| Pattern | Regex | Example | Extracted parameter |
+|---------|-------|---------|-------------------|
+| Express/Fastify colon params | `/:([a-zA-Z_][a-zA-Z0-9_]*)` | `/users/:id` | `id` |
+| OpenAPI-style brace params | `/\{([a-zA-Z_][a-zA-Z0-9_]*)\}` | `/orders/{orderId}` | `orderId` |
+
+**V1 `input_schema` with path parameters:**
+
+When path parameters are detected, `input_schema` is enriched:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Path parameter: id"
+    }
+  },
+  "required": ["id"],
+  "additionalProperties": true,
+  "description": "Path parameters extracted from route. Additional body/query parameters require manual review."
+}
+```
+
+When no path parameters are detected, the schema remains the existing conservative default.
+
+**Pipeline propagation:** Path parameter extraction occurs in `finalizeRouteInference()` during `tusq scan`. The enriched `input_schema` flows unchanged through `tusq manifest` → `tusq compile` → `tusq serve` (both `tools/list` and `tools/call`).
+
+**Agent implication:** An LLM receiving a tool with `required: ["id"]` in `input_schema` knows it must provide an `id` argument. Without this, the LLM has no signal about what the tool needs beyond `{ type: "object", additionalProperties: true }`.
+
+**V1 limitations:**
+- All path parameters are typed as `string` — no type inference from handler code
+- Query parameters and request body fields are not extracted (V2 goal via DTO/Zod/Joi parsing)
+- Path parameter descriptions are generic ("Path parameter: {name}") — no semantic inference
+
+##### 2. Smart Domain Inference
+
+The current `inferDomain()` takes the first non-parameter path segment. For routes mounted under API version prefixes (`/api/v1/users/:id`), this produces domain `api` — useless for grouping.
+
+**V1 prefix-skipping rules:**
+
+The following path segments are skipped when inferring domain:
+
+| Prefix | Why it's skipped |
+|--------|-----------------|
+| `api` | Generic API namespace, not a business domain |
+| `v1`, `v2`, `v3`, `v4`, `v5` | API version prefixes |
+| `rest` | Transport-layer label |
+| `graphql` | Transport-layer label |
+| `internal` | Access-layer label, not a domain |
+| `public` | Access-layer label, not a domain |
+| `external` | Access-layer label, not a domain |
+
+**Updated inference algorithm:**
+
+1. Split path by `/`, filter out empty segments and parameter tokens (`:id`, `{id}`)
+2. Skip segments matching the prefix-skip list (case-insensitive)
+3. Take the first remaining segment as the domain
+4. If no segments remain after skipping, fall back to `general`
+
+**Examples:**
+
+| Route path | Current domain | Corrected domain |
+|-----------|---------------|-----------------|
+| `/users` | `users` | `users` (unchanged) |
+| `/api/v1/users/:id` | `api` | `users` |
+| `/api/v2/orders/{orderId}/items` | `api` | `orders` |
+| `/internal/admin/roles` | `internal` | `admin` |
+| `/v1/health` | `v1` | `health` |
+| `/` | `general` | `general` (unchanged) |
+
+**Cascade effect on `name`:** Since `capabilityName()` uses `domain`, correcting the domain also fixes the capability name. `get_api_api_v1_users_id` becomes `get_users_users_id`.
+
+##### 3. Rich Capability Descriptions
+
+The current `describeCapability()` produces: `"GET /users capability in users domain"`. This template string conveys no semantic value to an LLM deciding whether to use a tool.
+
+**V1 rich description template:**
+
+```
+{verb} {noun} {qualifier} — {side_effect}, {auth_context} (handler: {handler_name})
+```
+
+**Template field derivation:**
+
+| Field | Source | Derivation rule |
+|-------|--------|----------------|
+| `verb` | HTTP method | GET → "Retrieve", POST → "Create", PUT → "Replace", PATCH → "Update", DELETE → "Delete", OPTIONS → "Check options for", HEAD → "Check" |
+| `noun` | domain (after smart inference) | Singularize for single-resource paths (`/users/:id` → "user"), pluralize for collection paths (`/users` → "users") |
+| `qualifier` | path parameters | "by {param}" for single param, "by {p1} and {p2}" for multiple, empty for collection routes |
+| `side_effect` | `side_effect_class` | `read` → "read-only", `write` → "state-modifying", `destructive` → "destructive" |
+| `auth_context` | `auth_hints` | Empty → "no authentication detected", non-empty → "requires {hint1}, {hint2}" |
+| `handler_name` | `handler` field | As-is; omitted if `inline_handler` or `unknown_handler` |
+
+**Examples:**
+
+| Route | Current description | Rich description |
+|-------|-------------------|-----------------|
+| `GET /users` (handler: `listUsers`, auth: `[requireAuth]`) | "GET /users capability in users domain" | "Retrieve users — read-only, requires requireAuth (handler: listUsers)" |
+| `GET /api/v1/users/:id` (handler: `getUser`, auth: `[requireAuth]`) | "GET /api/v1/users/:id capability in api domain" | "Retrieve user by id — read-only, requires requireAuth (handler: getUser)" |
+| `POST /orders` (handler: `createOrder`, auth: `[requireAuth, AdminGuard]`) | "POST /orders capability in orders domain" | "Create orders — state-modifying, requires requireAuth, AdminGuard (handler: createOrder)" |
+| `DELETE /users/:id` (handler: `inline_handler`, auth: `[]`) | "DELETE /users/:id capability in users domain" | "Delete user by id — destructive, no authentication detected" |
+
+**V1 limitations:**
+- Verb mapping is method-based only — handler name semantics not used (e.g., `POST /users/:id/disable` still says "Create" not "Disable")
+- Noun singularization is heuristic (trailing `s` removal) — not linguistically robust
+- No business-logic description extraction from code comments or JSDoc
+
+**V2 plans:** Extract semantic descriptions from JSDoc `@description`, inline code comments above handler, and OpenAPI `summary`/`description` fields if available.
+
+##### 4. Honest Confidence Scoring
+
+The current confidence formula can produce 0.86 for a route with a named handler and auth hints but zero actual schema extraction. This misleads reviewers: the manifest shows `review_needed: false` for a route where the engine could not determine what parameters the tool accepts.
+
+**V1 confidence adjustment:**
+
+Add a penalty when no schema hint is detected:
+
+| Signal | Score delta |
+|--------|------------|
+| Base score | +0.62 |
+| Named handler (not inline/unknown) | +0.12 |
+| Auth hints present | +0.08 |
+| Schema hint detected (zod, joi, DTO) | +0.14 |
+| Non-root path | +0.04 |
+| **No schema hint detected** | **-0.10** |
+| **Cap** | **0.95** |
+
+**Impact on `review_needed` threshold (0.8):**
+
+| Scenario | Old score | New score | `review_needed` change |
+|----------|----------|----------|----------------------|
+| Named handler + auth + schema hint + non-root | 0.95 | 0.95 | No change (still `false`) |
+| Named handler + auth + no schema + non-root | 0.86 | 0.76 | `false` → `true` |
+| Named handler + no auth + no schema + non-root | 0.78 | 0.68 | No change (still `true`) |
+| Inline handler + no auth + no schema + non-root | 0.66 | 0.56 | No change (still `true`) |
+
+The key correction: a route where the engine extracted the handler name and auth hints but failed to find any schema signals now correctly triggers `review_needed: true`. This is honest — the route needs human review to add parameter structure.
+
+**V1 limitation:** The penalty is binary (present/absent). A V2 scoring model could weight partial schema extraction (e.g., path params extracted but body unknown) differently from zero extraction.
 
 #### Side Effect Classification Rules
 

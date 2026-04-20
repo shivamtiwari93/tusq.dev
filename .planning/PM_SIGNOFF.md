@@ -19,6 +19,8 @@ Approved: YES
 
 >
 > Updated in run_5fa4a26c3973e02d (turn_addce63aff584689) to address vision goal "support the most common framework stacks deeply within the first release." Challenged prior turns for leaving framework support depth undocumented — the V1 implementation shipped three deep framework detectors (Express, Fastify, NestJS) but the planning artifacts never formally specified what "deep" means per framework, why Node.js-only is the right V1 scope, what the detection limitations are, or what the V2 expansion plan looks like. SYSTEM_SPEC now includes: (1) Per-framework detection matrix showing 12 capabilities across all 3 frameworks with framework-specific patterns; (2) Rationale for Node.js-only V1 scope (depth over breadth, shared infrastructure, target audience); (3) V1 detection limitations table (regex-based, no router composition, single-file scope, no TypeScript type inference); (4) V2 expansion plan with 5 frameworks prioritized (Django REST, FastAPI, Flask, Spring Boot, Gin/Echo) via plugin interface. ROADMAP updated with M14 milestone.
+>
+> Updated in run_4b24e171693ac091 (turn_dca9c6c9fe1063eb) to address the core vision goal "produce manifests that are usable on first pass for real codebases, not toy examples" (VISION.md line 72). Challenged ALL prior turns for focusing exclusively on governance metadata dimensions while leaving the manifest fundamentally unusable for LLM consumers. Four concrete deficiencies identified in the current V1 implementation: (1) Path parameters (`:id`, `{id}`) in route paths are never extracted into `input_schema` — an LLM receiving the tool cannot know what arguments to provide; (2) Domain inference takes the first path segment blindly, so `/api/v1/users` produces domain `api` instead of `users`; (3) Capability descriptions are template strings ("GET /users capability in users domain") that convey zero semantic value to an agent; (4) Confidence scoring gives 0.86 to routes with zero actual schema extraction, misleading reviewers about manifest quality. All four are fixable with information the scanner already possesses — no AST parsing or TypeScript compiler API required. SYSTEM_SPEC updated with First-Pass Manifest Usability section specifying path parameter extraction rules, smart domain inference with prefix skipping, rich description templates, and confidence penalty for schema-less routes. ROADMAP updated with M15 milestone.
 
 ## Discovery Checklist
 
@@ -148,6 +150,38 @@ The vision (VISION.md line 71) requires "support the most common framework stack
 The frameworks.md docs page lists what support means (7 extraction signals) but at 42 lines is too thin to substantiate the "deeply" claim.
 
 **Decision:** Add a Framework Support Depth section to SYSTEM_SPEC.md with: (1) a 12-row detection matrix showing per-framework capabilities; (2) rationale for Node.js-only V1 scope; (3) V1 limitations table; (4) V2 expansion plan with 5 prioritized frameworks; (5) reference to plugin interface for community adapters. This makes the "deeply" claim verifiable against the actual implementation.
+
+### Challenge 16: Manifests are not usable on first pass for real codebases
+
+VISION.md line 72: "produce manifests that are usable on first pass for real codebases, not toy examples." Line 73: "treat manual manifest authoring as a failure of the engine, not a feature." Prior turns (DEC-143 through DEC-223) systematically addressed all seven governance metadata dimensions. But none addressed whether the core extraction output — the fields an LLM actually reads to understand a tool — is usable without manual enrichment.
+
+**Current state of a first-pass manifest for a real codebase:**
+
+| Field | What it produces | Usable? |
+|-------|-----------------|---------|
+| `name` | `get_api_api_v1_users_id` | No — domain `api` is wrong, path slug is noisy |
+| `description` | "GET /api/v1/users/:id capability in api domain" | No — tells an LLM nothing about what the tool does |
+| `input_schema` | `{ type: "object", additionalProperties: true }` | No — LLM has no idea what parameters to send, even though `:id` is in the path |
+| `domain` | `api` (from `/api/v1/users/:id`) | No — should be `users` |
+| `confidence` | 0.86 (named handler + auth hints) | Misleading — suggests route is well-understood when schema is empty |
+
+**The four deficiencies are fixable in V1** because they use only information the scanner already has:
+
+1. **Path parameter extraction.** The route path `/users/:id` already contains the parameter name. Regex extraction of `:param` and `{param}` tokens and injecting them as `input_schema.properties` with `required: true` is trivial. This makes the difference between an LLM that knows it needs to provide `id` and one that guesses.
+
+2. **Smart domain inference.** The path segments are already split. Skipping well-known API prefixes (`api`, `v1`, `v2`, `v3`, `rest`) before taking the first meaningful segment turns `/api/v1/users/:id` → domain `users`. Zero new parsing required.
+
+3. **Rich capability descriptions.** The handler name, auth hints, side effect class, and method/path are all already computed before `describeCapability()` runs. Using them produces "Retrieve a specific user by ID — read-only, requires authentication (handler: getUser)" instead of "GET /api/v1/users/:id capability in api domain." The LLM gets semantic context.
+
+4. **Honest confidence penalty for schema-less routes.** A route scoring 0.86 with `additionalProperties: true` and no real schema is misleading. Adding a penalty of -0.10 when no schema hint is detected (bringing such routes to 0.76, below the `review_needed` threshold of 0.8) ensures the manifest honestly flags routes where the engine couldn't extract structure.
+
+**Options considered:**
+
+- **A) Defer all four to V2.** Leaves manifests unusable on first pass for an indefinite period. Violates VISION line 72 and 73.
+- **B) Implement path params only.** Lowest effort but leaves descriptions useless and domain wrong.
+- **C) Implement all four.** Each is a small, contained change in `src/cli.js`. Combined, they transform a manifest from "requires full manual rewrite" to "requires targeted review and enrichment."
+
+**Decision:** Option C. All four improvements use only data the scanner already computes. They transform first-pass manifest quality from "structurally present but functionally empty" to "actionable with targeted review." This is the minimum bar for VISION line 72.
 
 ### Challenge 15: M13 roadmap items still unchecked
 

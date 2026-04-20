@@ -122,6 +122,14 @@
 - [x] Specify V2 framework expansion plan (Django REST, FastAPI, Flask, Spring Boot, Gin/Echo) with priority and rationale
 - [x] Document V2 plugin interface for community framework adapters
 
+### M15: First-Pass Manifest Usability (~1 day)
+- [ ] Implement path parameter extraction in `finalizeRouteInference()` — extract `:param` and `{param}` tokens from route paths into `input_schema.properties` with `required` array
+- [ ] Implement smart domain inference in `inferDomain()` — skip common API prefixes (`api`, `v1`–`v5`, `rest`, `graphql`, `internal`, `public`, `external`) before selecting first meaningful segment
+- [ ] Implement rich capability descriptions in `describeCapability()` — use verb/noun/qualifier/side_effect/auth_context template instead of static "METHOD /path capability in domain domain"
+- [ ] Implement honest confidence penalty in `scoreConfidence()` — subtract 0.10 when no schema hint is detected, pushing schema-less routes below `review_needed` threshold of 0.8
+- [ ] Update smoke tests to assert: path params appear in `input_schema.properties`, domain inference skips prefixes, descriptions contain handler name and auth context, confidence is below 0.8 for schema-less routes with named handler + auth
+- [ ] Update `website/docs/manifest-format.md` to document path parameter extraction, rich descriptions, and updated confidence scoring
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
