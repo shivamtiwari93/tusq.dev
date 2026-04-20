@@ -22,12 +22,12 @@
 
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
 - Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
-- Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and how `examples` / `constraints` show up downstream
+- Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and how `examples` / `constraints` show up downstream
 
 ### Day 3-4
 
 - Post a framework-specific example using one supported stack, ideally Express first because it is easiest to recognize
-- Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out governance metadata and the `examples` / `constraints` payload that survive into MCP responses
+- Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out approval state, governance metadata, `redaction`, and the `examples` / `constraints` payload that survive into MCP responses
 - Publish a short "how to try it today" post that points users to the repo workflow instead of a public package-manager claim
 
 ### Day 5-7
@@ -42,4 +42,5 @@
 - Publish a deeper technical post on why tusq.dev starts from product behavior instead of prompt-first tool authoring
 - Release one polished sample app or reference repo for repeatable demos
 - Turn common launch questions into an FAQ section covering framework support, approval flow, provenance, governance metadata, MCP behavior, and local setup expectations
+- Turn common launch questions into an FAQ section covering framework support, approval flow, approval trail, provenance, redaction policy, governance metadata, MCP behavior, and local setup expectations
 - If usage quality is high, prepare a comparison-style post around "manual tool definition vs manifest-first capability compilation"

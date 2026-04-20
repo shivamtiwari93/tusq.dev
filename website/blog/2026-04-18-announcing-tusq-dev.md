@@ -35,11 +35,11 @@ Current framework support:
 The V1 boundary is explicit:
 
 - MCP is describe-only in this release
-- `tools/call` returns schema and examples, not live execution
+- `tools/call` returns schema, examples, constraints, and redaction guidance, not live execution
 - capability approval is manual by editing the manifest
 - early adopters should try it locally from the repo rather than assume a public package-manager install is already live
 
-What makes the workflow governable is visible in the artifacts themselves. Reviewers can inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest and see the same metadata survive into the compiled tool and MCP surfaces.
+What makes the workflow governable is visible in the artifacts themselves. Reviewers can inspect approval state, optional approval trail (`approved_by`, `approved_at`), provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction` in the manifest and see the relevant runtime-facing fields survive into the compiled tool and MCP surfaces.
 
 The best first proof is simple: run tusq.dev on a supported service you already own, inspect `tusq.manifest.json`, approve one or two capabilities, and verify that `tools/list` and `tools/call` reflect exactly what you intended.
 

@@ -18,6 +18,10 @@ Express, Fastify, and NestJS.
 
 Edit `tusq.manifest.json` directly and set `approved: true` on the capabilities you want to expose.
 
+## What does "governed" mean in v0.1.0?
+
+It means the review surface is explicit. Before exposing anything, you can inspect provenance, approval state, optional approval trail (`approved_by`, `approved_at`), `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and the downstream `examples` / `constraints`.
+
 ## Is there an interactive approval UI?
 
 No. `tusq review` is non-interactive in v0.1.0 and prints a grouped summary to stdout.

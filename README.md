@@ -2,7 +2,7 @@
 
 tusq.dev is the open-source capability compiler CLI for supported Node.js SaaS backends.
 
-It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a governed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface with inspectable provenance, governance metadata, examples, and constraints.
+It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a governed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface with inspectable provenance, approval state, optional approval trail, governance metadata, redaction policy, examples, and constraints.
 
 ## Current shipped surface in v0.1.0
 
@@ -19,10 +19,12 @@ Current V1 boundaries:
 
 - Supported frameworks: Express, Fastify, NestJS
 - Approval flow: edit `tusq.manifest.json` directly and set `approved: true`
+- Optional audit trail: record `approved_by` and `approved_at` in the manifest when you want reviewer identity and timestamp attached to a capability
 - MCP behavior: describe-only in V1; `tools/call` returns schema, example payloads, and constraints, not live API execution
+- Review policy surface: `redaction` is inspectable in the manifest and survives into compiled tools and `tools/call`
 - Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
 
-At its core, `v0.1.0` discovers supported product routes, models them in a reviewable manifest, compiles approved capabilities into strict JSON tool definitions, and exposes those definitions through a local describe-only MCP endpoint with inspectable runtime-facing examples and constraints.
+At its core, `v0.1.0` discovers supported product routes, models them in a reviewable manifest, compiles approved capabilities into strict JSON tool definitions, and exposes those definitions through a local describe-only MCP endpoint with inspectable runtime-facing redaction policy, examples, and constraints.
 
 ## Why tusq.dev exists
 
@@ -45,6 +47,18 @@ tusq.dev exists to bridge that gap.
 
 tusq.dev is an open-source capability compiler CLI that turns supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.
 
+## Best Fit
+
+- existing Express, Fastify, or NestJS services with real product logic already in code
+- teams that want to inspect approval state, provenance, side effects, auth hints, sensitivity markers, and redaction before exposing anything to AI systems
+- buyers comfortable trying a repo-local CLI workflow first
+
+## Not For V1
+
+- teams expecting hosted execution or live MCP action execution
+- teams outside Express, Fastify, or NestJS
+- buyers who need an interactive approval UI instead of manifest review
+
 ## What tusq.dev does in v0.1.0
 
 The shipped workflow today is:
@@ -58,6 +72,8 @@ The shipped workflow today is:
 7. expose compiled tools through a local describe-only MCP endpoint with `tusq serve`
 
 The key point is the same: the product does not start from prompts. It starts from product behavior already encoded in code.
+
+In practical terms, "governed" in `v0.1.0` means a reviewer can inspect provenance, approval state, optional approval trail, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and the downstream `examples` and `constraints` before exposing a capability.
 
 ## Core principle
 

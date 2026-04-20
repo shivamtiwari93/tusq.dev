@@ -18,6 +18,8 @@ const surfaceItems = [
   'Route discovery',
   'Manifest generation',
   'Visible governance metadata',
+  'Approval trail support',
+  'Reviewable redaction policy',
   'Examples and constraints',
   'Manual approval flow',
   'Approved tool compilation',
@@ -58,14 +60,15 @@ export default function Home(): ReactNode {
             <code>tusq.manifest.json</code>, compiles approved capabilities into strict JSON tool
             definitions, and serves them through a local describe-only MCP endpoint that clients
             can inspect. The review chain keeps provenance, <code>side_effect_class</code>,{' '}
-            <code>sensitivity_class</code>, and <code>auth_hints</code> visible before exposure,
-            while describe-only <code>examples</code> and <code>constraints</code> stay
-            inspectable at runtime.
+            <code>sensitivity_class</code>, <code>auth_hints</code>, optional approval trail, and{' '}
+            <code>redaction</code> visible before exposure, while describe-only{' '}
+            <code>examples</code> and <code>constraints</code> stay inspectable at runtime.
           </p>
           <p className={styles.launchNote}>
             Try it locally from the repo on a supported codebase. Current launch flow: clone the
             repo, install locally, run <code>tusq scan</code>, review the manifest, approve what
-            you want exposed, then compile and serve.
+            you want exposed, then compile and serve. Best fit: teams with a real Express,
+            Fastify, or NestJS service, not teams expecting hosted execution or live MCP actions.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.buttonPrimary} to="/docs/getting-started">
@@ -86,16 +89,18 @@ export default function Home(): ReactNode {
             <p>
               It discovers supported API routes and inferred auth hints from code, then converts
               that output into a capability manifest your team can inspect before exposing anything.
-              Reviewers get concrete metadata, not just a generic governance claim, plus explicit
-              downstream usage context.
+              Reviewers get concrete metadata, not just a generic governance claim: approval state,
+              optional approval trail, provenance, classification fields, redaction policy, plus
+              explicit downstream usage context.
             </p>
           </article>
           <article className={styles.card}>
             <h2>What it ships</h2>
             <p>
               From the manifest, tusq.dev compiles approved capabilities into JSON tool definitions
-              and serves them through a local describe-only MCP surface. V1 returns schemas and
-              example payloads plus constraints for inspection, not live execution.
+              and serves them through a local describe-only MCP surface. V1 returns schemas,
+              example payloads, constraints, and redaction guidance for inspection, not live
+              execution.
             </p>
           </article>
           <article className={styles.card}>

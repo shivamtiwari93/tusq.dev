@@ -30,7 +30,7 @@ Turn a supported Node.js API codebase into a reviewable manifest and describe-on
 
 ### Positioning Statement
 
-For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. The review surface is concrete: teams can inspect approval state, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and the describe-only `examples` and `constraints` that survive into downstream tool output. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
+For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is the OSS CLI that discovers routes from the codebase, turns them into a governed `tusq.manifest.json`, compiles approved capabilities into tool-definition JSON, preserves provenance back to source, and serves them over a local describe-only MCP endpoint. The review surface is concrete: teams can inspect approval state, approval trail (`approved_by`, `approved_at`), provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, manifest-level `redaction` policy, and the describe-only `examples` and `constraints` that survive into downstream tool output. Unlike prompt wrappers or manual tool authoring, tusq.dev starts from product behavior already encoded in code and keeps human review in the loop.
 
 ### Qualification Filter
 
@@ -49,9 +49,9 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 1. **Start from the product you already have**
    Existing APIs, handlers, and auth hints are the raw material. V1 is for teams that already have working product logic and want a faster path to AI exposure.
 2. **Review before you expose**
-   The manifest is the contract. Users scan, inspect, approve, and then compile. tusq.dev does not ask teams to trust an opaque generation step.
+   The manifest is the contract. Users scan, inspect, approve, and then compile. Approval state is explicit, optional approval identity and timestamp can be recorded, and tusq.dev does not ask teams to trust an opaque generation step.
 3. **Governance and usage context are visible, not implied**
-   Reviewers can see mutation class, sensitivity placeholder, auth hints, confidence, provenance, and describe-only usage context such as `examples` and `constraints` in downstream tool output.
+   Reviewers can see mutation class, sensitivity placeholder, auth hints, confidence, provenance, approval trail, manifest-level redaction policy, and describe-only usage context such as `examples` and `constraints` in downstream tool output.
 4. **Ship an MCP-visible surface without rebuilding the stack**
    V1 gets teams from repo to manifest to compiled tools to a local describe-only MCP endpoint in one terminal workflow.
 5. **Be explicit about the V1 boundary**
@@ -62,6 +62,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Supported framework scope is narrow and explicit: Express, Fastify, and NestJS only
 - Generated outputs are inspectable: `.tusq/scan.json`, `tusq.manifest.json`, and compiled `tusq-tools/*.json`
 - Governance metadata is explicit in the artifact chain: `side_effect_class`, `sensitivity_class`, and `auth_hints` survive from manifest to compiled tools to MCP responses
+- Governance is not just classification metadata: approval state is explicit in the manifest, optional `approved_by` / `approved_at` create an audit trail, and `redaction` defines masking and retention policy before exposure
 - Describe-only usage context is inspectable in the runtime surface: `examples` and `constraints` survive from manifest to compiled tools to MCP `tools/call`
 - Provenance survives the pipeline: compiled tool definitions can point back to the source file and line where a route was discovered
 - MCP is real but intentionally constrained: `tools/list` works, and `tools/call` returns schema/example data instead of executing live actions
@@ -74,6 +75,7 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - Exact CTA language to repeat: "Try tusq.dev locally from the repo on an Express, Fastify, or NestJS codebase."
 - Exact qualification line to repeat near the CTA: "Best fit: an existing Express, Fastify, or NestJS service you already run, not a greenfield prototype or a hosted-agent evaluation."
 - Exact inspection prompt to repeat near demos: "Before you approve anything, inspect provenance, `side_effect_class`, `sensitivity_class`, and `auth_hints` in the manifest, then confirm the downstream `examples` and `constraints` match what you want AI clients to see."
+- Exact "governed" line to repeat in launch assets: "Governed means you can inspect provenance, approval state, optional approval trail, auth hints, side-effect class, sensitivity marker, redaction policy, and the describe-only examples and constraints before anything is exposed."
 - Do not promise a public package-manager install path until distribution is actually confirmed
 - README, homepage, docs, and announcement should all use the same repo-local CTA so the first skim does not imply a published installer
 
@@ -85,10 +87,12 @@ For SaaS teams with working Express, Fastify, or NestJS products, tusq.dev is th
 - `tusq scan` uses static heuristics to detect routes and write `.tusq/scan.json`
 - `tusq manifest` generates `tusq.manifest.json` and preserves prior approvals
 - Capability approval is manual in V1: users edit `tusq.manifest.json` directly and set `approved: true`
+- Approval trail exists in V1 at the manifest layer: users may also record `approved_by` and `approved_at`
 - `tusq compile` emits JSON tool definitions only for approved capabilities
 - `tusq review` is non-interactive and prints a grouped summary to stdout
 - `tusq serve` exposes compiled tools through a local MCP HTTP endpoint
 - MCP `tools/call` is describe-only in V1: it returns schema, example payloads, and constraints, not live API execution
+- `redaction` ships in V1 as reviewable masking and retention policy that propagates to compiled tools and MCP `tools/call`
 - Domain grouping exists at a basic level in V1; intelligent cross-resource capability composition does not
 - Runtime learning, plugin APIs, non-Node ecosystems, hosted delivery, and embedded UI are deferred beyond V1
 
