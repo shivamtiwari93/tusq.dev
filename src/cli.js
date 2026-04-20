@@ -533,7 +533,8 @@ function cmdServe(args) {
             parameters: tool.parameters,
             returns: tool.returns,
             side_effect_class: tool.side_effect_class,
-            sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class)
+            sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
+            auth_hints: tool.auth_hints || []
           }))
         };
         respondRpcJson(res, id, result);
@@ -559,6 +560,7 @@ function cmdServe(args) {
           },
           side_effect_class: tool.side_effect_class,
           sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
+          auth_hints: tool.auth_hints || [],
           examples: tool.examples || []
         };
         respondRpcJson(res, id, result);

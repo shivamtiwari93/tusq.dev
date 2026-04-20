@@ -6,6 +6,7 @@
 - Rejected any assumption that "no implementation work remains." This run adds follow-on product clarity improvements to the shipped site while preserving v0.1.0 truth boundaries.
 - Rejected the immediately previous stale implementation reissue as insufficient: it produced no turn artifact and did not validate whether approved planning decisions (artifact-shape clarity) were reflected in user-facing docs.
 - Rejected the assumption that sensitivity classification had already shipped because planning (M9) and spec artifacts defined `sensitivity_class`, but runtime outputs (`tusq manifest`, `tusq compile`, `tusq serve`) still omitted it.
+- Rejected the assumption that governance metadata was fully surfaced at runtime: `auth_hints` existed in compiled tools but was omitted from MCP `tools/list` and `tools/call` responses.
 
 ## Continuation Changes In This Turn (M9 Classification Closure)
 
@@ -21,6 +22,13 @@
   - Added `sensitivity_class` to express fixture manifest and compiled tool JSON.
   - Added smoke assertions that manifest, compiled tools, `tools/list`, and `tools/call` surface `sensitivity_class: "unknown"` in V1.
 - Updated `.planning/ROADMAP.md` M9 checklist to fully complete milestone M9, including post-docs build verification.
+
+## Continuation Changes In This Turn (M10 Runtime Closure)
+
+- Added `auth_hints` to MCP `tools/list` responses in `src/cli.js`.
+- Added `auth_hints` to MCP `tools/call` responses in `src/cli.js`.
+- Updated `website/docs/mcp-server.md` governance metadata line to include `auth_hints` alongside `side_effect_class` and `sensitivity_class`.
+- Expanded `tests/smoke.mjs` to assert both MCP methods return an `auth_hints` array.
 
 ## Baseline (Completed In Parent Run)
 

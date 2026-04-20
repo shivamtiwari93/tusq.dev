@@ -170,6 +170,9 @@ async function run() {
   if (firstTool.sensitivity_class !== 'unknown') {
     throw new Error(`Expected tools/list sensitivity_class=unknown: ${JSON.stringify(firstTool)}`);
   }
+  if (!Array.isArray(firstTool.auth_hints)) {
+    throw new Error(`Expected tools/list auth_hints array: ${JSON.stringify(firstTool)}`);
+  }
   const callResponse = await requestRpc(port, {
     jsonrpc: '2.0',
     id: 2,
@@ -184,6 +187,9 @@ async function run() {
   }
   if (callResponse.result.sensitivity_class !== 'unknown') {
     throw new Error(`Expected tools/call sensitivity_class=unknown: ${JSON.stringify(callResponse)}`);
+  }
+  if (!Array.isArray(callResponse.result.auth_hints)) {
+    throw new Error(`Expected tools/call auth_hints array: ${JSON.stringify(callResponse)}`);
   }
 
   const stop = new Promise((resolve, reject) => {
