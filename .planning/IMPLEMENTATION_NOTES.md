@@ -12,6 +12,29 @@
 - Rejected the assumption that governance metadata was fully surfaced at runtime: `auth_hints` existed in compiled tools but was omitted from MCP `tools/list` and `tools/call` responses.
 - Rejected the assumption that examples/constraints were already implemented because planning (M11) approved both fields in the canonical artifact, while implementation still omitted `constraints` and generated `examples` inside `compile` instead of propagating manifest-authored values.
 - Rejected the immediately previous ghost implementation turn (`turn_21be8394ad263a0d` summary: "Turn reissued: ghost") as insufficient because it provided no implementation artifact, no verification evidence, and did not progress the M13 roadmap closure.
+- Rejected the previous attempt in this run as incomplete for M15: first-pass manifest usability behaviors (path params, prefix-aware domains, rich descriptions, honest confidence penalty) were still unchecked in ROADMAP and not asserted by smoke coverage.
+
+## Continuation Changes In This Turn (M15 First-Pass Manifest Usability Closure)
+
+- Implemented path parameter extraction in `src/cli.js`:
+  - Added `extractPathParameters()` for both `:param` and `{param}` forms.
+  - `finalizeRouteInference()` now enriches `input_schema` with `properties`, `required`, and a path-parameter specific description when path params are present.
+- Implemented smart domain inference in `src/cli.js`:
+  - Added prefix-skip set for `api`, `v1`-`v5`, `rest`, `graphql`, `internal`, `public`, `external`.
+  - `inferDomain()` now skips these segments and falls back to `general` only when no meaningful segment remains.
+- Implemented rich capability descriptions in `src/cli.js`:
+  - Replaced static template with method/domain/qualifier/side-effect/auth-context/handler composition.
+  - Added helper functions for verb mapping, side-effect text, singularization, and multi-param qualifier formatting.
+- Implemented honest confidence penalty in `src/cli.js`:
+  - `scoreConfidence()` now subtracts `0.10` when `schema_hint` is missing, then applies lower/upper bounds.
+- Expanded smoke coverage in `tests/smoke.mjs`:
+  - Added Express fixture assertions for `/api/v1/users/:id` to verify path-param schema, prefix-skipping domain inference, and confidence below `0.8`.
+  - Added manifest assertions for richer descriptions and `review_needed: true` on schema-less named/auth route.
+- Updated fixtures and docs:
+  - Added a prefixed param route to `tests/fixtures/express-sample/src/app.ts` for end-to-end usability assertions.
+  - Updated `website/docs/manifest-format.md` with path-parameter extraction, description template behavior, and confidence scoring details.
+- Updated planning tracking:
+  - Marked all M15 checklist items complete in `.planning/ROADMAP.md`.
 
 ## Continuation Changes In This Turn (M13 Roadmap Closure Verification)
 

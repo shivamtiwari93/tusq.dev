@@ -57,6 +57,63 @@ In `v0.1.0`, both `input_schema` and `output_schema` are intentionally conservat
 The `description` varies by route confidence and available hints, but the structural shape above is fixed in V1.
 Full property-level schema inference is planned beyond `v0.1.0`.
 
+### Path Parameter Extraction (V1)
+
+When a route path contains explicit parameters (`:id` or `{id}`), `input_schema` is enriched with:
+
+- `properties.<param>.type: "string"`
+- `properties.<param>.description: "Path parameter: <param>"`
+- `required: ["<param>", ...]`
+
+Example for `/api/v1/users/:id`:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Path parameter: id"
+    }
+  },
+  "required": ["id"],
+  "additionalProperties": true,
+  "description": "Path parameters extracted from route. Additional body/query parameters require manual review."
+}
+```
+
+This gives downstream tool consumers explicit required arguments even when full body/query schema inference is not available yet.
+
+### Capability Description Template (V1)
+
+`description` is generated with a richer template:
+
+`{verb} {noun} {qualifier} - {side_effect}, {auth_context} (handler: {handler_name})`
+
+- `verb`: derived from method (`GET -> Retrieve`, `POST -> Create`, etc.)
+- `noun`: inferred domain (`users`, `orders`, etc.)
+- `qualifier`: derived from path params (`by id`, `by userId and orderId`, or empty)
+- `side_effect`: `read-only`, `state-modifying`, or `destructive`
+- `auth_context`: `requires <hints>` or `no authentication detected`
+- handler suffix: included only when handler name is known (not inline/unknown)
+
+Example:
+
+`Retrieve user by id - read-only, requires requireAuth (handler: getUser)`
+
+### Confidence Scoring (V1)
+
+V1 confidence is heuristic and capped at `0.95`.
+
+- Base: `0.62`
+- Named handler: `+0.12`
+- Auth hints present: `+0.08`
+- Schema hint present: `+0.14`
+- Non-root path: `+0.04`
+- No schema hint: `-0.10`
+
+`review_needed` remains `true` when `confidence < 0.8`.
+
 ## Classification fields (V1)
 
 `side_effect_class` and `sensitivity_class` answer different governance questions:

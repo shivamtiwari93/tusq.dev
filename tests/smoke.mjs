@@ -167,8 +167,25 @@ async function run() {
 
   const scanResult = runCli(['scan', '.', '--format', 'json'], { cwd: expressProject });
   const scanJson = JSON.parse(scanResult.stdout);
-  if (!scanJson.route_count || scanJson.route_count < 2) {
-    throw new Error('Expected at least two routes in express scan output');
+  if (!scanJson.route_count || scanJson.route_count < 3) {
+    throw new Error('Expected at least three routes in express scan output');
+  }
+
+  const prefixedRoute = scanJson.routes.find((route) => route.method === 'GET' && route.path === '/api/v1/users/:id');
+  if (!prefixedRoute) {
+    throw new Error('Expected Express GET /api/v1/users/:id route in scan output');
+  }
+  if (prefixedRoute.domain !== 'users') {
+    throw new Error(`Expected smart domain inference to skip API prefixes and infer users, got ${prefixedRoute.domain}`);
+  }
+  if (!prefixedRoute.input_schema || !prefixedRoute.input_schema.properties || !prefixedRoute.input_schema.properties.id) {
+    throw new Error(`Expected path parameter extraction for /api/v1/users/:id: ${JSON.stringify(prefixedRoute.input_schema)}`);
+  }
+  if (!Array.isArray(prefixedRoute.input_schema.required) || !prefixedRoute.input_schema.required.includes('id')) {
+    throw new Error(`Expected path parameter id to be marked as required: ${JSON.stringify(prefixedRoute.input_schema)}`);
+  }
+  if (prefixedRoute.confidence >= 0.8) {
+    throw new Error(`Expected schema-less route confidence below 0.8 after penalty, got ${prefixedRoute.confidence}`);
   }
 
   const manifestPath = path.join(expressProject, 'tusq.manifest.json');
@@ -185,6 +202,16 @@ async function run() {
 
   runCli(['manifest', '--verbose'], { cwd: expressProject });
   const manifest = await readJson(manifestPath);
+  const prefixedCapability = manifest.capabilities.find((capability) => capability.path === '/api/v1/users/:id');
+  if (!prefixedCapability) {
+    throw new Error('Expected manifest capability for GET /api/v1/users/:id');
+  }
+  if (!prefixedCapability.description.includes('handler: getUser') || !prefixedCapability.description.includes('requires requireAuth')) {
+    throw new Error(`Expected rich capability description with handler and auth context: ${prefixedCapability.description}`);
+  }
+  if (prefixedCapability.review_needed !== true) {
+    throw new Error(`Expected schema-less route to require review (confidence=${prefixedCapability.confidence})`);
+  }
   const defaultConstraints = {
     rate_limit: null,
     max_payload_bytes: null,

@@ -7,6 +7,7 @@ const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
 const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted'];
 const REDACTION_LOG_LEVELS = ['full', 'redacted', 'silent'];
+const DOMAIN_PREFIX_SEGMENTS = new Set(['api', 'v1', 'v2', 'v3', 'v4', 'v5', 'rest', 'graphql', 'internal', 'public', 'external']);
 const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
 
 class CliError extends Error {
@@ -992,27 +993,19 @@ function extractNestRoutes(content, filePath) {
 function finalizeRouteInference(route) {
   const confidence = scoreConfidence(route);
   const hasSchema = Boolean(route.schema_hint);
+  const normalizedPath = normalizeRoutePath(route.path);
+  const pathParameters = extractPathParameters(normalizedPath);
 
   return {
     framework: route.framework,
     method: route.method,
-    path: normalizeRoutePath(route.path),
+    path: normalizedPath,
     handler: route.handler,
-    domain: route.domain || inferDomain(route.path),
+    domain: route.domain || inferDomain(normalizedPath),
     auth_hints: dedupe(route.auth_hints || []),
     provenance: route.provenance,
     confidence,
-    input_schema: hasSchema
-      ? {
-        type: 'object',
-        additionalProperties: true,
-        description: 'Inferred from framework/type schema hints.'
-      }
-      : {
-        type: 'object',
-        additionalProperties: true,
-        description: 'Schema inference unavailable; review required.'
-      },
+    input_schema: buildInputSchema(hasSchema, pathParameters),
     output_schema: hasSchema
       ? {
         type: 'object',
@@ -1040,10 +1033,16 @@ function scoreConfidence(route) {
 
   if (route.schema_hint) {
     score += 0.14;
+  } else {
+    score -= 0.10;
   }
 
   if (route.path && route.path !== '/') {
     score += 0.04;
+  }
+
+  if (score < 0) {
+    score = 0;
   }
 
   if (score > 0.95) {
@@ -1286,23 +1285,11 @@ function sortKeysDeep(value) {
 }
 
 function inferDomain(routePath, controllerHint) {
-  if (controllerHint) {
-    const clean = sanitizeName(controllerHint).replace(/^_+|_+$/g, '');
-    if (clean) {
-      return clean;
-    }
-  }
-
-  const parts = String(routePath || '')
-    .split('/')
-    .map((part) => part.trim())
-    .filter((part) => part && !part.startsWith(':') && !part.startsWith('{'));
-
-  if (parts.length === 0) {
-    return 'general';
-  }
-
-  return sanitizeName(parts[0]).replace(/^_+|_+$/g, '') || 'general';
+  const candidates = [
+    ...extractDomainSegments(routePath),
+    ...extractDomainSegments(controllerHint)
+  ];
+  return candidates[0] || 'general';
 }
 
 function capabilityName(route) {
@@ -1313,7 +1300,23 @@ function capabilityName(route) {
 }
 
 function describeCapability(route) {
-  return `${route.method.toUpperCase()} ${route.path} capability in ${route.domain} domain`;
+  const method = String(route.method || '').toUpperCase();
+  const domain = String(route.domain || inferDomain(route.path) || 'general').toLowerCase();
+  const pathParameters = extractPathParameters(route.path);
+  const noun = pathParameters.length > 0 ? singularizeWord(domain) : domain;
+  const qualifier = describePathQualifier(pathParameters);
+  const sideEffect = describeSideEffect(classifySideEffect(method, route.path, route.handler));
+  const authHints = dedupe(route.auth_hints || []);
+  const authContext = authHints.length > 0
+    ? `requires ${authHints.join(', ')}`
+    : 'no authentication detected';
+  const handlerSuffix = route.handler && route.handler !== 'inline_handler' && route.handler !== 'unknown_handler'
+    ? ` (handler: ${route.handler})`
+    : '';
+  const verb = describeVerb(method);
+  const target = qualifier ? `${noun} ${qualifier}` : noun;
+
+  return `${verb} ${target} - ${sideEffect}, ${authContext}${handlerSuffix}`;
 }
 
 function capabilityKey(method, routePath) {
@@ -1345,6 +1348,148 @@ function joinPaths(prefix, routePath) {
   const slashRight = right.startsWith('/') ? right : (right ? `/${right}` : '');
 
   return normalizeRoutePath(`${slashLeft}${slashRight}`);
+}
+
+function buildInputSchema(hasSchema, pathParameters) {
+  if (pathParameters.length > 0) {
+    const properties = {};
+    for (const name of pathParameters) {
+      properties[name] = {
+        type: 'string',
+        description: `Path parameter: ${name}`
+      };
+    }
+    return {
+      type: 'object',
+      properties,
+      required: pathParameters,
+      additionalProperties: true,
+      description: 'Path parameters extracted from route. Additional body/query parameters require manual review.'
+    };
+  }
+
+  if (hasSchema) {
+    return {
+      type: 'object',
+      additionalProperties: true,
+      description: 'Inferred from framework/type schema hints.'
+    };
+  }
+
+  return {
+    type: 'object',
+    additionalProperties: true,
+    description: 'Schema inference unavailable; review required.'
+  };
+}
+
+function extractPathParameters(routePath) {
+  const value = String(routePath || '');
+  const pattern = /:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+  const seen = new Set();
+  const params = [];
+  let match;
+  while ((match = pattern.exec(value)) !== null) {
+    const param = match[1] || match[2];
+    if (!seen.has(param)) {
+      seen.add(param);
+      params.push(param);
+    }
+  }
+  return params;
+}
+
+function extractDomainSegments(value) {
+  const raw = String(value || '')
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  const segments = [];
+  for (const segment of raw) {
+    if (isPathParameterToken(segment)) {
+      continue;
+    }
+    const normalized = sanitizeName(segment).replace(/^_+|_+$/g, '');
+    if (!normalized || DOMAIN_PREFIX_SEGMENTS.has(normalized)) {
+      continue;
+    }
+    segments.push(normalized);
+  }
+
+  return segments;
+}
+
+function isPathParameterToken(segment) {
+  return /^:[A-Za-z_][A-Za-z0-9_]*$/.test(segment) || /^\{[A-Za-z_][A-Za-z0-9_]*\}$/.test(segment);
+}
+
+function singularizeWord(word) {
+  const value = String(word || '').trim();
+  if (!value) {
+    return 'resource';
+  }
+  if (value.endsWith('ies') && value.length > 3) {
+    return `${value.slice(0, -3)}y`;
+  }
+  if (value.endsWith('ss')) {
+    return value;
+  }
+  if (value.endsWith('s') && value.length > 1) {
+    return value.slice(0, -1);
+  }
+  return value;
+}
+
+function describePathQualifier(pathParameters) {
+  if (!Array.isArray(pathParameters) || pathParameters.length === 0) {
+    return '';
+  }
+  return `by ${joinWithAnd(pathParameters)}`;
+}
+
+function joinWithAnd(items) {
+  if (items.length === 1) {
+    return items[0];
+  }
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+function describeVerb(method) {
+  switch (String(method || '').toUpperCase()) {
+    case 'GET':
+      return 'Retrieve';
+    case 'POST':
+      return 'Create';
+    case 'PUT':
+      return 'Replace';
+    case 'PATCH':
+      return 'Update';
+    case 'DELETE':
+      return 'Delete';
+    case 'OPTIONS':
+      return 'Check options for';
+    case 'HEAD':
+      return 'Check';
+    default:
+      return 'Handle';
+  }
+}
+
+function describeSideEffect(sideEffectClass) {
+  if (sideEffectClass === 'read') {
+    return 'read-only';
+  }
+  if (sideEffectClass === 'destructive') {
+    return 'destructive';
+  }
+  if (sideEffectClass === 'write') {
+    return 'state-modifying';
+  }
+  return 'unknown side effects';
 }
 
 function findNextMethodSignature(lines, startIndex) {
