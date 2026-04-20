@@ -2,7 +2,7 @@
 
 ## Headline
 
-Open-source tusq.dev v0.1.0 turns supported Node.js SaaS APIs into reviewed manifests, approved tool JSON, and an inspectable describe-only MCP surface
+tusq.dev v0.1.0 gives existing Node.js SaaS teams a reviewed path from repo to describe-only MCP
 
 ## Product Summary
 
@@ -13,6 +13,8 @@ Best fit for this launch: teams with a real supported service, real routes, and 
 Not the right fit for this launch: teams looking for hosted execution, a built-in chat UI, runtime-autonomous agents, or support beyond Express, Fastify, and NestJS.
 
 The product story is straightforward: your product logic already exists. The missing piece is a reviewed path to make that logic AI-visible.
+
+The proof path is equally straightforward: scan a supported repo, inspect the generated manifest, approve what should be exposed, compile approved tool JSON, then inspect the local describe-only MCP output.
 
 This release gives teams a concrete terminal workflow:
 
@@ -40,6 +42,8 @@ If you already run a supported Express, Fastify, or NestJS backend and need a re
 The problem we care about is simple: most SaaS companies already have the logic they need for AI products, but that logic is trapped behind APIs designed for UI flows. Routes, handlers, validators, and auth checks exist. What’s missing is a governed path that turns those implementation surfaces into something AI systems can safely see and use.
 
 That is the job of tusq.dev.
+
+The proof path in `v0.1.0` is deliberately easy to evaluate: point tusq.dev at a supported repo, inspect `tusq.manifest.json`, approve what should be exposed, compile approved tool definitions, then inspect the local describe-only MCP output.
 
 This release is for teams already running a supported Express, Fastify, or NestJS service and trying to turn existing product behavior into something AI systems can inspect. It is not for teams that need hosted execution, non-Node support, or a polished end-user agent interface on day one.
 

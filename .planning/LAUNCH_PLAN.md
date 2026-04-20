@@ -3,6 +3,7 @@
 ## Challenge To Prior Framing
 
 - The previous launch framing was directionally accurate but still too abstract at the top: it named tusq.dev as a "capability compiler" before it made the buyer pain operational
+- The previous pass also overloaded the first screen with governance detail before stating the proof path a buyer can verify in one session
 - For launch, the first screen should answer four questions in order: who this is for, what problem it solves, what proof exists today, and where V1 stops
 - Governance detail stays important, but it should support the operator story rather than replace it
 
@@ -18,7 +19,7 @@
 ### Core story
 
 - tusq.dev v0.1.0 is for incumbent SaaS teams that already have product logic in a supported Node.js backend and need a reviewed way to make that logic inspectable by AI systems
-- The defensible proof is concrete: scan the repo, generate a reviewable manifest, approve capabilities manually, compile approved tool JSON, and inspect the resulting describe-only MCP surface
+- The defensible proof is concrete and skimmable: scan the repo, inspect the manifest, approve capabilities manually, compile approved tool JSON, and inspect the resulting describe-only MCP surface
 - The launch should sell the operator control model as much as the automation model: reviewed manifest, explicit approval, optional approval trail, preserved provenance, inspectable governance metadata, inspectable redaction policy, and inspectable output
 
 ### First user action
@@ -32,7 +33,7 @@
 
 1. Lead with the audience filter: existing Express, Fastify, or NestJS SaaS teams with real product logic already in production or active development.
 2. State the operator problem in one line: the product logic already exists, but there is no reviewed path to make it AI-visible.
-3. State the proof sequence in one line: repo scan -> reviewed manifest -> approved tool JSON -> describe-only MCP.
+3. State the proof sequence in one line: supported repo -> reviewed manifest -> approved tool JSON -> describe-only MCP.
 4. State the boundary immediately after the proof: no live execution, no hosted control plane, no non-Node support in V1.
 5. End with the repo-local CTA and an explicit ask for edge-case feedback.
 
@@ -43,6 +44,7 @@
 - A launch announcement that names the release as `tusq.dev v0.1.0`
 - Messaging that stays inside the verified product boundary: scan, manifest, compile, review, describe-only MCP serve
 - A first-screen line in README and homepage hero that makes the buyer problem explicit before the category label
+- A first-screen line in README and homepage hero that also states the proof path before any metadata inventory appears
 - A simple terminal-first workflow example:
   `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
 - Release notes that spell out supported frameworks and deferred items
@@ -93,6 +95,7 @@
 ## Channel Guardrails
 
 - Website and announcement: lead with audience + operator problem before the workflow proof and V1 boundary
+- Website and announcement: keep the proof sentence short enough to skim before listing metadata fields
 - Website and announcement: show at least one concrete example of the review surface, not just the word "governance"
 - GitHub README and docs: tell users how to try the product today without implying a public package is already published
 - Social posts: frame the release as a governed path from repo to reviewed manifest to describe-only MCP, not as a general AI agent platform

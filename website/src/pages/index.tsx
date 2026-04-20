@@ -12,18 +12,18 @@ const workflow = [
 ];
 
 const surfaceItems = [
-  'Express support',
-  'Fastify support',
-  'NestJS support',
-  'Route discovery',
-  'Manifest generation',
-  'Visible governance metadata',
-  'Approval trail support',
-  'Reviewable redaction policy',
-  'Examples and constraints',
+  'Express, Fastify, NestJS',
+  'Reviewable manifest',
   'Manual approval flow',
-  'Approved tool compilation',
-  'Describe-only MCP serve',
+  'Approved tool JSON',
+  'Route provenance',
+  'Auth hints',
+  'Side-effect class',
+  'Sensitivity marker',
+  'Redaction policy',
+  'Examples and constraints',
+  'Describe-only MCP',
+  'Repo-local trial path',
 ];
 
 const postV010Items = [
@@ -56,21 +56,20 @@ export default function Home(): ReactNode {
             Expose supported Node.js product behavior to AI systems without skipping review.
           </h1>
           <p className={styles.lede}>
-            tusq.dev v0.1.0 is for teams already running Express, Fastify, or NestJS services and
-            needing a reviewed path from existing product logic to an AI-visible surface. It scans
-            supported codebases, generates a reviewable <code>tusq.manifest.json</code>, compiles
-            approved capabilities into strict JSON tool definitions, and serves them through a
-            local describe-only MCP endpoint that clients can inspect. The review chain keeps
-            provenance, <code>side_effect_class</code>, <code>sensitivity_class</code>,{' '}
-            <code>auth_hints</code>, optional approval trail, and <code>redaction</code> visible
-            before exposure, while describe-only <code>examples</code> and <code>constraints</code>{' '}
-            stay inspectable at runtime.
+            tusq.dev v0.1.0 gives Express, Fastify, and NestJS teams a reviewed path from
+            supported product code to a local describe-only MCP surface.
           </p>
           <p className={styles.launchNote}>
-            Try it locally from the repo on a supported codebase. Current launch flow: clone the
-            repo, install locally, run <code>tusq scan</code>, review the manifest, approve what
-            you want exposed, then compile and serve. Best fit: teams with a real Express,
-            Fastify, or NestJS service, not teams expecting hosted execution or live MCP actions.
+            Proof path: scan a supported repo, inspect <code>tusq.manifest.json</code>, approve
+            what should be exposed, compile approved tool JSON, then inspect the local
+            describe-only MCP output. The review chain keeps provenance,{' '}
+            <code>side_effect_class</code>, <code>sensitivity_class</code>, <code>auth_hints</code>
+            , optional approval trail, <code>redaction</code>, and downstream{' '}
+            <code>examples</code> / <code>constraints</code> visible before exposure.
+          </p>
+          <p className={styles.launchNote}>
+            Best fit: teams with a real Express, Fastify, or NestJS service already in code. Not
+            this launch: hosted execution, live MCP actions, or unsupported frameworks.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.buttonPrimary} to="/docs/getting-started">
@@ -87,29 +86,25 @@ export default function Home(): ReactNode {
 
         <section className={styles.gridBand}>
           <article className={styles.card}>
-            <h2>What it does</h2>
+            <h2>Who it is for</h2>
             <p>
-              It discovers supported API routes and inferred auth hints from code, then converts
-              that output into a capability manifest your team can inspect before exposing anything.
-              Reviewers get concrete metadata, not just a generic governance claim: approval state,
-              optional approval trail, provenance, classification fields, redaction policy, plus
-              explicit downstream usage context.
+              Existing SaaS teams already shipping product logic on Express, Fastify, or NestJS and
+              needing a reviewed way to make that logic AI-visible.
             </p>
           </article>
           <article className={styles.card}>
-            <h2>What it ships</h2>
+            <h2>What you can verify</h2>
             <p>
-              From the manifest, tusq.dev compiles approved capabilities into JSON tool definitions
-              and serves them through a local describe-only MCP surface. V1 returns schemas,
-              example payloads, constraints, and redaction guidance for inspection, not live
-              execution.
+              In one session you can go from supported repo to reviewable manifest, approved tool
+              JSON, and a local describe-only MCP surface with inspectable metadata and usage
+              context.
             </p>
           </article>
           <article className={styles.card}>
-            <h2>Why it matters</h2>
+            <h2>Where V1 stops</h2>
             <p>
-              Incumbent SaaS companies should not lose to AI-native competitors just because their
-              product logic is trapped behind old interfaces.
+              V1 does not execute live product actions. It returns schemas, examples, constraints,
+              and redaction guidance for inspection, not hosted execution.
             </p>
           </article>
         </section>

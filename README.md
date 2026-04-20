@@ -1,12 +1,18 @@
 # tusq.dev
 
-For teams already running Express, Fastify, or NestJS services, tusq.dev is the open-source capability compiler CLI for turning supported product behavior into a reviewed manifest and an inspectable describe-only MCP surface.
+For teams already running Express, Fastify, or NestJS services, `tusq.dev v0.1.0` is the open-source CLI that gives you a reviewed path from supported product code to a local describe-only MCP surface.
 
-It is designed for teams that already have a working product with APIs, schemas, permissions, and business logic, and want a reviewed way to turn that existing code into reviewed capability definitions and a local describe-only MCP surface with inspectable provenance, approval state, optional approval trail, governance metadata, redaction policy, examples, and constraints.
+If you are evaluating the release, the proof path is simple: scan a supported repo, inspect the generated `tusq.manifest.json`, approve what should be exposed, compile approved tool JSON, then inspect the local MCP output.
 
-## Current shipped surface in v0.1.0
+## Who This Is For
 
-`tusq.dev v0.1.0` currently ships a narrow, verified CLI workflow for supported Node.js backends:
+- teams with a real Express, Fastify, or NestJS service and real product logic already in code
+- teams that want to inspect provenance, approval state, auth hints, side-effect class, sensitivity marker, redaction policy, and describe-only usage context before exposing anything
+- buyers comfortable trying a repo-local CLI workflow first
+
+## What You Can Verify In v0.1.0
+
+`tusq.dev v0.1.0` ships a narrow, verified CLI workflow for supported Node.js backends:
 
 - `tusq init`
 - `tusq scan`
@@ -15,7 +21,9 @@ It is designed for teams that already have a working product with APIs, schemas,
 - `tusq review`
 - `tusq serve`
 
-Current V1 boundaries:
+## V1 Boundary
+
+Current `v0.1.0` boundaries:
 
 - Supported frameworks: Express, Fastify, NestJS
 - Approval flow: edit `tusq.manifest.json` directly and set `approved: true`
@@ -25,6 +33,19 @@ Current V1 boundaries:
 - Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
 
 At its core, `v0.1.0` discovers supported product routes, models them in a reviewable manifest, compiles approved capabilities into strict JSON tool definitions, and exposes those definitions through a local describe-only MCP endpoint with inspectable runtime-facing redaction policy, examples, and constraints.
+
+## Try It Locally
+
+Use the repo-local path until package distribution is explicitly confirmed:
+
+```bash
+git clone https://github.com/shivamtiwari93/tusq.dev
+cd tusq.dev
+npm install
+npm link
+```
+
+Then run the CLI against a supported codebase and inspect the manifest before approving anything.
 
 ## Why tusq.dev exists
 
@@ -46,12 +67,6 @@ tusq.dev exists to bridge that gap.
 ## One-line description
 
 tusq.dev is an open-source capability compiler CLI that turns supported Node.js APIs into reviewed manifests, approved tool definitions, and a describe-only MCP surface.
-
-## Best Fit
-
-- existing Express, Fastify, or NestJS services with real product logic already in code
-- teams that want to inspect approval state, provenance, side effects, auth hints, sensitivity markers, and redaction before exposing anything to AI systems
-- buyers comfortable trying a repo-local CLI workflow first
 
 ## Not For V1
 
@@ -123,19 +138,6 @@ The accurate launch workflow is:
 6. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
-
-## Launch CTA
-
-Try `v0.1.0` locally from the repo:
-
-```bash
-git clone https://github.com/shivamtiwari93/tusq.dev
-cd tusq.dev
-npm install
-npm link
-```
-
-Then run the CLI against a supported Express, Fastify, or NestJS codebase and inspect the generated manifest before approving anything.
 
 ## Beyond v0.1.0 vision
 

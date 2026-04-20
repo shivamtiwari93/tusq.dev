@@ -8,6 +8,7 @@
 - Update the homepage and README entry points so the first screen a visitor sees matches the release story
 - Share one terminal-first post showing the six-step workflow from `init` to `serve`
 - Share one short operator-proof post: "your product logic already exists; the missing piece is reviewed AI exposure"
+- Share one short proof-path post: "supported repo -> reviewed manifest -> approved tool JSON -> describe-only MCP"
 - Use "try it locally from the repo" as the launch CTA until package distribution is confirmed
 
 ### Channel plan
@@ -24,6 +25,7 @@
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
 - Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
 - Publish a short "why this starts from existing product code" post so the product wedge is clear before deeper architecture content
+- Publish a short "what you can verify in one session" post built around scan -> manifest -> approve -> compile -> describe-only MCP
 - Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and how `examples` / `constraints` show up downstream
 
 ### Day 3-4
