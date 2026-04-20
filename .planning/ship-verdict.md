@@ -2,6 +2,20 @@
 
 ## Verdict: SHIP
 
+## Challenge To Dev Turn (turn_3443bc3f16b31888) — auth_hints in MCP runtime
+
+The dev turn added `auth_hints` to MCP `tools/list` and `tools/call` responses in `src/cli.js`, added two smoke-test assertions for the field, and updated `website/docs/mcp-server.md` to list it alongside the other governance fields. I challenged this on four grounds:
+
+1. **Pipeline coverage at all 4 stages:** auth_hints was already emitted at scan (lines 799, 838, 867, 925 in src/cli.js), manifest (line 347), and compile (line 423) from prior implementation. The dev turn completed coverage by adding it to MCP `tools/list` (line 537) and `tools/call` (line 563). Verified by running smoke tests end-to-end. **Challenge resolved: all 4 stages covered.**
+
+2. **Fallback correctness:** The implementation uses `tool.auth_hints || []` as the fallback — an empty array, not null or undefined. This is the correct sentinel for "no auth signals detected." **Challenge resolved: correct.**
+
+3. **Smoke test assertions:** Two new `Array.isArray(auth_hints)` checks cover both MCP methods. Both pass on current HEAD (`node tests/smoke.mjs` → exit 0). **Challenge resolved: assertions valid and passing.**
+
+4. **Documentation accuracy:** `website/docs/mcp-server.md` now lists all three governance fields (`side_effect_class`, `sensitivity_class`, and `auth_hints`) consistently. `website/docs/manifest-format.md` lists `auth_hints` in the capability field inventory (line 30). No overclaim or omission found. **Challenge resolved: accurate.**
+
+New requirement REQ-032 added to acceptance matrix covering all four pipeline stages plus smoke-test and documentation coverage. Acceptance matrix now covers 32 criteria.
+
 ## Challenge To Dev Turn (turn_b872581d85a8ec3b) — sensitivity_class
 
 The dev turn added `sensitivity_class` to `src/cli.js` (manifest, compile, MCP serve pipelines) and updated `tests/smoke.mjs` with four explicit assertions. I challenged this on three grounds:
@@ -81,7 +95,7 @@ Decision: dev turn accepted. REQ-029 added to acceptance matrix. Build and smoke
 
 ## QA Summary
 
-All 31 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), and 1 sensitivity_class pipeline check (REQ-031). This QA pass challenged the dev turn (turn_b872581d85a8ec3b) that added `sensitivity_class` to the manifest/compile/MCP-serve pipeline and verified that the field is emitted at all four stages, existing values are preserved, and the documentation is accurate. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
+All 32 acceptance criteria are now covered in QA evidence, including the 22 CLI/runtime checks, 3 live-site consolidation checks, 3 provenance-chain checks (REQ-026 through REQ-028), 1 roadmap page check (REQ-029), 1 manifest-format doc check (REQ-030), 1 sensitivity_class pipeline check (REQ-031), and 1 auth_hints MCP runtime check (REQ-032). This QA pass challenged the dev turn (turn_3443bc3f16b31888) that added `auth_hints` to MCP `tools/list` and `tools/call` responses and verified that the field is emitted at all four pipeline stages, the fallback to empty array is correct, smoke-test assertions cover both MCP methods, and documentation is consistent. The smoke test suite (`node tests/smoke.mjs`) executed end-to-end and exited 0 independently. Website build (`npm run build`) exited 0. Manual spot-checks confirmed correct CLI UX:
 
 - `tusq help` / `--help` / `-h` all print the 8-command listing and exit 0.
 - `tusq version` / `--version` prints `0.1.0` and exits 0.
