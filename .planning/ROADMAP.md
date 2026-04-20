@@ -89,6 +89,15 @@
 - [x] Specify V2 `auth_requirements` structured shape alongside existing `auth_hints` array
 - [x] Document the three-field governance model: side_effect_class + sensitivity_class + auth_hints
 
+### M11: Examples and Constraints Specification (~0.5 day)
+- [x] Add `examples` field to manifest Capability object shape in SYSTEM_SPEC.md
+- [x] Add `constraints` field to manifest Capability object shape in SYSTEM_SPEC.md
+- [x] Formally specify Examples: shape, agent implications, V1 limitations (static placeholder), V2 inference (test extraction, JSDoc, OpenAPI, runtime learning)
+- [x] Formally specify Constraints: shape (rate_limit, max_payload_bytes, required_headers, idempotent, cacheable), agent implications, V1 limitations (all null/empty), V2 inference (middleware detection)
+- [x] Update compiled tool shape (`tusq-tools/*.json`) to include `constraints` field
+- [x] Update MCP `tools/call` response shape to include `constraints` field
+- [x] Document the five-field governance model: side_effect_class + sensitivity_class + auth_hints + examples + constraints
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

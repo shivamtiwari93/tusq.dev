@@ -10,6 +10,8 @@ Approved: YES
 > Updated in run_aeca336174864081 (turn_d50a72d77645f27f) to address vision goal "The canonical artifact: side effects and sensitivity class." Formally specified `side_effect_class` classification rules (already implemented in V1) and introduced `sensitivity_class` as a new canonical artifact field. The sensitivity field follows the same conservative-default pattern as input/output schemas: present in V1 with `"unknown"` default, inference planned for V2. ROADMAP updated with M9 milestone. SYSTEM_SPEC updated with both classification rule tables, V1 limitations, and V2 inference signals.
 >
 > Updated in run_100292687c7b6b6e (turn_79fe98fb459a70cc) to address vision goal "The canonical artifact: auth and permission expectations." Challenged prior turns for leaving `auth_hints` under-specified — the field was shipped in V1 code but never formally documented with detection rules, agent implications, or limitations. SYSTEM_SPEC now includes a complete Auth and Permission Expectations section covering: detection regex and framework-specific extraction, agent behavior recommendations, V1 limitations (identifier-only, no role/scope extraction), and V2 structured `auth_requirements` shape. ROADMAP updated with M10 milestone. The three-field governance model (side_effect_class + sensitivity_class + auth_hints) is now fully specified.
+>
+> Updated in run_eef8e3a64fda1b0f (turn_85f68d6ffa429813) to address vision goal "The canonical artifact: examples and constraints." Challenged prior turns for leaving these two VISION.md dimensions (line 59) entirely unspecified. `examples` existed in compiled tools and MCP responses but was absent from the manifest Capability shape and had no formal spec. `constraints` did not exist anywhere in the pipeline. SYSTEM_SPEC now includes: (1) Examples specification with shape, agent implications, V1 static-placeholder limitations, pipeline propagation, and V2 inference from tests/JSDoc/OpenAPI/runtime; (2) Constraints specification with 5-field shape (rate_limit, max_payload_bytes, required_headers, idempotent, cacheable), agent implications, V1 null-default limitations, and V2 middleware-based inference. Both fields added to manifest, compiled tool, and MCP response shapes. ROADMAP updated with M11 milestone. The governance model is now five fields: side_effect_class + sensitivity_class + auth_hints + examples + constraints.
 
 ## Discovery Checklist
 
@@ -77,6 +79,15 @@ Prior turns (DEC-143 through DEC-158) completed formal specifications for input/
 - What the V1 limitations are (identifier-only, no role extraction)
 
 **Decision:** Formally specify auth_hints detection rules, agent implications, V1 limitations, and the planned V2 `auth_requirements` structured shape. This completes the three-field governance model that the vision requires: side effects (mutation), sensitivity (data classification), and auth (access requirements).
+
+### Challenge 8: Examples and constraints — two missing VISION dimensions
+
+VISION.md line 59 explicitly lists "examples and constraints" as a core dimension of the canonical artifact, alongside input/output shapes, side effects/sensitivity, and auth hints. Prior turns (DEC-143 through DEC-170) completed formal specifications for four of the five dimensions but left examples and constraints as gaps:
+
+- **Examples gap:** The `examples` field existed in compiled tools (`tusq-tools/*.json`) and MCP `tools/call` responses as a static placeholder, but was **absent from the manifest Capability shape** in SYSTEM_SPEC.md. There was no formal section explaining what examples mean for agents, how they propagate through the pipeline, or what V2 inference looks like.
+- **Constraints gap:** There was **no `constraints` field anywhere** in the pipeline — not in the manifest, not in compiled tools, not in MCP responses. The VISION listed it, but it was never specified.
+
+**Decision:** Add both fields to the manifest Capability shape and create dedicated specification sections following the established pattern (shape → agent implications → V1 limitations → pipeline propagation → V2 plans). Examples use the existing static placeholder as V1 default. Constraints use a structured object with all-null defaults, mirroring the conservative-default pattern from `sensitivity_class`. The governance model is now five fields, covering all dimensions listed in VISION.md line 55-59.
 
 ## Key Judgment Calls
 

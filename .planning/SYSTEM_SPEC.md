@@ -328,6 +328,21 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
   "side_effect_class": "read | write | destructive",
   "sensitivity_class": "unknown | public | internal | confidential | restricted",
   "auth_hints": ["requireAuth"],
+  "examples": [
+    {
+      "input": {},
+      "output": {
+        "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+      }
+    }
+  ],
+  "constraints": {
+    "rate_limit": null,
+    "max_payload_bytes": null,
+    "required_headers": [],
+    "idempotent": null,
+    "cacheable": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 12
@@ -350,6 +365,8 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `side_effect_class` | string | `read` (GET/HEAD/OPTIONS), `write` (POST/PUT/PATCH), or `destructive` (DELETE or destructive handler names) |
 | `sensitivity_class` | string | `unknown` (default in V1), `public`, `internal`, `confidential`, or `restricted` — see classification rules below |
 | `auth_hints` | string[] | Auth-related middleware/decorators detected |
+| `examples` | array | Request/response examples; static describe-only placeholder in V1 — see Examples specification below |
+| `constraints` | object | Operational constraints on the capability (rate limits, payload limits, idempotency) — see Constraints specification below |
 | `provenance` | object | Source file and line number |
 | `confidence` | number | 0.0–0.95 |
 | `review_needed` | boolean | `true` when `confidence < 0.8` |
@@ -502,6 +519,177 @@ Future versions will move from identifier matching to structured permission mode
 
 The V2 shape adds `auth_requirements` as a structured companion to the existing `auth_hints` array. The `auth_hints` field remains for backward compatibility. The `auth_requirements` object is absent in V1 (not emitted), present with inferred values in V2.
 
+#### Examples Specification
+
+The `examples` field provides concrete request/response pairs that demonstrate how to invoke a capability. This is the fourth governance dimension listed in VISION.md: examples let agents understand expected usage patterns, and let human reviewers verify that the capability behaves as described.
+
+| Field | Question it answers | Agent decision it drives |
+|-------|-------------------|------------------------|
+| `side_effect_class` | Does this mutate state? | Can the agent call this without confirmation? |
+| `sensitivity_class` | What kind of data does this touch? | What audit/redaction rules apply? |
+| `auth_hints` | What authentication/authorization is required? | Does the agent have sufficient credentials? |
+| `examples` | What does a correct invocation look like? | How should the agent construct requests and interpret responses? |
+
+**Example object shape:**
+
+```json
+{
+  "input": { "<key>": "<value>" },
+  "output": { "<key>": "<value>" },
+  "description": "<optional human-readable explanation of this example>"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input` | object | yes | Example request parameters — keys match `input_schema` properties |
+| `output` | object | yes | Example response body — keys match `output_schema` properties |
+| `description` | string | no | Human-readable note explaining what this example demonstrates |
+
+**Agent implications of examples:**
+
+| Examples state | Agent interpretation | Recommended behavior |
+|---------------|---------------------|---------------------|
+| Static V1 placeholder (describe-only note) | No real examples available | Agent must rely on `input_schema`/`output_schema` shapes alone; do not fabricate example data |
+| Contains real input/output pairs | Capability has documented usage patterns | Agent may use examples to construct well-formed requests and validate response shapes |
+| Multiple examples present | Capability has edge cases worth demonstrating | Agent should review all examples to understand the full range of valid invocations |
+
+**V1 examples limitations:**
+
+1. **Always static placeholder.** In V1, every capability's `examples` array contains exactly one entry with `input: {}` and `output: { note: "Describe-only mode in V1. Live execution is deferred to V1.1." }`. No real request/response data is generated.
+2. **No inference from source code.** V1 does not extract example data from test files, JSDoc `@example` tags, or OpenAPI example fields.
+3. **No validation against schemas.** V1 does not verify that example input/output conforms to `input_schema`/`output_schema`.
+4. **Human-editable.** Like `approved` and `sensitivity_class`, examples can be manually authored in the manifest before `tusq compile`. The static placeholder is a starting point, not a final value.
+
+**Pipeline propagation:** The `examples` field originates in `tusq.manifest.json`, is propagated unchanged through `tusq compile` to `tusq-tools/*.json`, and is returned in MCP `tools/call` responses. It is **not** present in `.tusq/scan.json` (scan discovers routes, not usage patterns).
+
+```
+.tusq/scan.json         — no examples field
+tusq.manifest.json      — examples[] (static placeholder or human-authored)
+tusq-tools/*.json       — examples[] (propagated from manifest)
+MCP tools/call response — examples[] (propagated from compiled tool)
+```
+
+**V2 examples inference (planned):**
+
+Future versions will infer real examples from multiple sources:
+
+| V2 capability | Description |
+|--------------|-------------|
+| Test file extraction | Parse `*.test.js`, `*.spec.ts` files for request/response pairs matching the capability's route |
+| JSDoc `@example` tags | Extract example blocks from handler function documentation |
+| OpenAPI example fields | Pull `example` and `examples` from OpenAPI/Swagger specs if present |
+| Runtime learning | Record real request/response pairs from instrumented traffic (requires opt-in) |
+| Example validation | Verify all examples conform to `input_schema` and `output_schema`; flag mismatches |
+| Negative examples | Include examples of invalid input and expected error responses |
+
+**V2 example object shape (planned):**
+
+```json
+{
+  "input": { "id": 42 },
+  "output": { "name": "Alice", "email": "alice@example.com" },
+  "description": "Fetch a user by ID",
+  "source": "test",
+  "source_file": "tests/users.test.js",
+  "source_line": 87,
+  "validated": true
+}
+```
+
+The V2 shape adds `source` (where the example came from), `source_file`/`source_line` (provenance), and `validated` (whether it conforms to the capability's schemas). The V1 shape remains valid in V2 — new fields are additive.
+
+#### Constraints Specification
+
+The `constraints` field captures operational boundaries on a capability: rate limits, payload size limits, required headers, idempotency, and cacheability. This is the fifth governance dimension listed in VISION.md. Constraints let agents respect operational limits without trial-and-error, and let governance layers enforce quotas and retry policies.
+
+| Field | Question it answers | Agent decision it drives |
+|-------|-------------------|------------------------|
+| `side_effect_class` | Does this mutate state? | Can the agent call this without confirmation? |
+| `sensitivity_class` | What kind of data does this touch? | What audit/redaction rules apply? |
+| `auth_hints` | What authentication/authorization is required? | Does the agent have sufficient credentials? |
+| `examples` | What does a correct invocation look like? | How should the agent construct requests? |
+| `constraints` | What operational limits apply? | How should the agent throttle, size, and retry? |
+
+**Constraints object shape:**
+
+```json
+{
+  "rate_limit": "<string | null>",
+  "max_payload_bytes": "<integer | null>",
+  "required_headers": ["<string>"],
+  "idempotent": "<boolean | null>",
+  "cacheable": "<boolean | null>"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `rate_limit` | string \| null | yes | Human-readable rate limit (e.g., `"100/minute"`, `"10/second"`). `null` when unknown or unset |
+| `max_payload_bytes` | integer \| null | yes | Maximum request body size in bytes. `null` when unknown or unset |
+| `required_headers` | string[] | yes | Header names the endpoint requires beyond standard auth (e.g., `["X-Request-Id"]`, `["Content-Type"]`). Empty array when none |
+| `idempotent` | boolean \| null | yes | Whether repeated identical calls produce the same result. `null` when unknown |
+| `cacheable` | boolean \| null | yes | Whether responses can be cached. `null` when unknown |
+
+**Agent implications of constraints:**
+
+| Constraint field | Agent interpretation when set | Agent interpretation when null |
+|-----------------|------------------------------|-------------------------------|
+| `rate_limit` | Throttle invocations to stay within the stated limit | No rate information — agent should apply conservative defaults |
+| `max_payload_bytes` | Validate request body size before sending | No size limit known — agent should avoid sending unbounded payloads |
+| `required_headers` | Include all listed headers in every request | No special headers required beyond auth |
+| `idempotent: true` | Safe to retry on transient failures without confirmation | Unknown — agent should treat as non-idempotent (no automatic retry for write/destructive) |
+| `cacheable: true` | Agent may cache responses and reuse them within a reasonable TTL | Unknown — agent should not cache |
+
+**V1 constraints limitations:**
+
+1. **All fields default to null/empty.** In V1, `constraints` is always `{ rate_limit: null, max_payload_bytes: null, required_headers: [], idempotent: null, cacheable: null }`. No inference is performed.
+2. **No detection from source code.** V1 does not scan for rate-limiting middleware (e.g., `express-rate-limit`, `@nestjs/throttler`), body-parser size configs, or caching decorators.
+3. **Human-editable.** Like `sensitivity_class` and `examples`, constraints can be manually set in the manifest before `tusq compile`. The null defaults are starting points.
+4. **The field is present to establish the contract** so downstream consumers can rely on it, and V2 inference logic can populate it without changing the artifact shape.
+
+**Pipeline propagation:** The `constraints` field originates in `tusq.manifest.json`, is propagated unchanged through `tusq compile` to `tusq-tools/*.json`, and is returned in MCP `tools/call` responses. It is **not** present in `.tusq/scan.json`.
+
+```
+.tusq/scan.json         — no constraints field
+tusq.manifest.json      — constraints {} (null defaults or human-authored)
+tusq-tools/*.json       — constraints {} (propagated from manifest)
+MCP tools/call response — constraints {} (propagated from compiled tool)
+```
+
+**V2 constraints inference (planned):**
+
+Future versions will infer constraints from middleware and configuration:
+
+| V2 capability | Description |
+|--------------|-------------|
+| Rate limit detection | Parse `express-rate-limit`, `@nestjs/throttler`, Fastify `fastify-rate-limit` configurations for window/max values |
+| Payload size detection | Read `body-parser` `limit` option, Fastify `bodyLimit`, NestJS `@Body()` size decorators |
+| Required headers detection | Identify custom header checks in middleware (`req.headers['x-request-id']`) |
+| Idempotency inference | Mark GET/HEAD/OPTIONS as `idempotent: true`; detect idempotency-key middleware for POST endpoints |
+| Cacheability inference | Detect `cache-control` header setting, `@CacheKey()` decorators, or CDN/proxy cache configuration |
+| Timeout detection | Extract request timeout values from middleware or framework configuration |
+
+**V2 constraints shape (planned):**
+
+```json
+{
+  "rate_limit": "100/minute",
+  "max_payload_bytes": 1048576,
+  "required_headers": ["X-Request-Id", "X-Tenant-Id"],
+  "idempotent": true,
+  "cacheable": true,
+  "timeout_ms": 30000,
+  "retry_policy": {
+    "max_retries": 3,
+    "backoff": "exponential",
+    "retry_on": [429, 503]
+  }
+}
+```
+
+The V2 shape adds `timeout_ms` and `retry_policy` as new fields. Existing V1 fields remain with the same semantics. The V1 shape is valid in V2 — new fields are additive.
+
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
 Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.
@@ -533,6 +721,13 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
       }
     }
   ],
+  "constraints": {
+    "rate_limit": null,
+    "max_payload_bytes": null,
+    "required_headers": [],
+    "idempotent": null,
+    "cacheable": null
+  },
   "provenance": {
     "file": "src/app.ts",
     "line": 12
@@ -550,6 +745,7 @@ Produced by `tusq compile`. One JSON file per approved capability, plus an `inde
 | `sensitivity_class` | string | Same classification as manifest |
 | `auth_hints` | string[] | Auth requirements |
 | `examples` | array | Static examples; in V1 always contain a describe-only note |
+| `constraints` | object | Operational constraints; all null/empty in V1 — see Constraints specification |
 | `provenance` | object | Source traceability |
 
 **Tool index shape (`tusq-tools/index.json`):**
@@ -603,7 +799,14 @@ The `tusq serve` command exposes compiled tools via an HTTP JSON-RPC endpoint.
         "input": {},
         "output": { "note": "Describe-only mode in V1. Live execution is deferred to V1.1." }
       }
-    ]
+    ],
+    "constraints": {
+      "rate_limit": null,
+      "max_payload_bytes": null,
+      "required_headers": [],
+      "idempotent": null,
+      "cacheable": null
+    }
   }
 }
 ```
