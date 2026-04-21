@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776642496608_972f",
+  "event_id": "evt_1776642496607_f1fa",
+  "status": "superseded",
+  "priority": "p0",
+  "template": "cli-tool",
+  "charter": "Continue governed execution until the goals in .planning/VISION.md are materially satisfied with real product and operational outcomes, not only internally consistent artifacts. Treat deployment, release execution, and runnable/live surfaces as in scope whenever they are the shortest path to making tusq.dev real. PM must continuously add roadmap and system-spec milestones for product, infrastructure, deployment, release execution, and operational readiness without waiting for human prompts. Prefer existing infrastructure already discoverable in the repo or environment; if GCP or GCS deployment context already exists, use it rather than inventing a new hosting target. Use human escalation only when a truly external decision, credentialed action, or irreversible operator action is required.",
+  "acceptance_contract": [
+    "PM adds operational roadmap items when needed without human prompting",
+    "Existing discoverable deployment infrastructure is preferred over inventing a new host",
+    "Human escalation is used only for real external decisions or actions",
+    "The run does not stop at docs or launch artifacts when a real deployable outcome is still missing"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-19T23:48:16.606Z",
+  "updated_at": "2026-04-19T23:48:16.611Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-19T23:48:16.606Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-19T23:48:16.610Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "superseded",
+      "at": "2026-04-19T23:48:16.611Z",
+      "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
+      "approver": "human"
+    }
+  ],
+  "approved_run_id": "run_100292687c7b6b6e",
+  "approved_by": "human",
+  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776642496607_f1fa",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-19T23:48:16.606Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Continue governed execution until .planning/VISION.md is materially satisfied with real product and operational outcomes. PM must keep adding roadmap items, include deployment and release work when needed, prefer existing discoverable GCP/GCS infrastructure, and escalate to human only for truly external actions.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Continue governed execution until .planning/VISION.md is materially satisfied with real product and operational outcomes. PM must keep adding roadmap items, include deployment and release work when needed, prefer existing discoverable GCP/GCS infrastructure, and escalate to human only for truly external actions."
+    }
+  ],
+  "dedup_key": "manual:ff950b7571cece3b"
+}

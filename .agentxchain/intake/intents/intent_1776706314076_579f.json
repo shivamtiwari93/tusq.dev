@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776706314076_579f",
+  "event_id": "evt_1776706314076_a589",
+  "status": "suppressed",
+  "priority": "p2",
+  "template": "generic",
+  "charter": "[vision] Why we move fast: treat manual manifest authoring as a failure of the engine, not a feature",
+  "acceptance_contract": [
+    "Vision goal addressed: treat manual manifest authoring as a failure of the engine, not a feature"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-20T17:31:54.076Z",
+  "updated_at": "2026-04-20T17:32:53.637Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-20T17:31:54.076Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-20T17:31:54.077Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-20T17:31:54.078Z",
+      "reason": "vision-derived auto-approval",
+      "approver": "continuous_loop"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-20T17:31:54.084Z",
+      "reason": "generated 0 planning artifact(s) from template \"generic\"",
+      "artifacts": []
+    },
+    {
+      "from": "planned",
+      "to": "suppressed",
+      "at": "2026-04-20T17:32:53.637Z",
+      "reason": "stale: approved under run run_4b24e171693ac091, archived on run run_5fa4a26c3973e02d initialization"
+    }
+  ],
+  "approved_run_id": "run_4b24e171693ac091",
+  "approved_by": "continuous_loop",
+  "planning_artifacts": [],
+  "archived_reason": "stale: approved under run run_4b24e171693ac091, archived on run run_5fa4a26c3973e02d initialization"
+}

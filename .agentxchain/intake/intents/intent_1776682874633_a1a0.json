@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776682874633_a1a0",
+  "event_id": "evt_1776682874633_26b1",
+  "status": "completed",
+  "priority": "p2",
+  "template": "generic",
+  "charter": "[vision] Why we move fast: support the most common framework stacks deeply within the first release",
+  "acceptance_contract": [
+    "Vision goal addressed: support the most common framework stacks deeply within the first release"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": "run_5fa4a26c3973e02d",
+  "created_at": "2026-04-20T11:01:14.633Z",
+  "updated_at": "2026-04-20T11:11:42.270Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-20T11:01:14.633Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-20T11:01:14.634Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-20T11:01:14.635Z",
+      "reason": "vision-derived auto-approval",
+      "approver": "continuous_loop"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-20T11:01:14.642Z",
+      "reason": "generated 0 planning artifact(s) from template \"generic\"",
+      "artifacts": []
+    },
+    {
+      "from": "planned",
+      "to": "executing",
+      "at": "2026-04-20T11:01:15.298Z",
+      "run_id": "run_5fa4a26c3973e02d",
+      "turn_id": "turn_addce63aff584689",
+      "role": "pm",
+      "reason": "governed execution started"
+    },
+    {
+      "from": "executing",
+      "to": "completed",
+      "at": "2026-04-20T11:11:42.270Z",
+      "turn_id": "turn_addce63aff584689",
+      "role": "pm",
+      "run_id": "run_5fa4a26c3973e02d",
+      "reason": "turn accepted — acceptance contract satisfied"
+    }
+  ],
+  "approved_run_id": "run_78133e963b912f46",
+  "approved_by": "continuous_loop",
+  "planning_artifacts": [],
+  "target_turn": "turn_addce63aff584689",
+  "started_at": "2026-04-20T11:01:15.298Z",
+  "completed_at": "2026-04-20T11:11:42.270Z",
+  "run_completed_at": "2026-04-20T11:11:42.270Z",
+  "run_final_turn": "turn_addce63aff584689",
+  "satisfying_turn": "turn_addce63aff584689"
+}

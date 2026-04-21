@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776621762461_e0b1",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-19T18:02:42.461Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Continue building tusq.dev from the completed v0.1.0 baseline by identifying and executing the next highest-value product, docs, website, and launch improvements that strengthen open-source onboarding and the capability-compiler experience.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Continue building tusq.dev from the completed v0.1.0 baseline by identifying and executing the next highest-value product, docs, website, and launch improvements that strengthen open-source onboarding and the capability-compiler experience."
+    }
+  ],
+  "dedup_key": "manual:8517eaab73882bab"
+}

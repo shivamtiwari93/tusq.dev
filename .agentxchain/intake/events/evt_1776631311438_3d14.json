@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776631311438_3d14",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-19T20:41:51.437Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Continue governed execution until the goals in .planning/VISION.md are materially satisfied. Do not stop after partial polish passes or isolated artifact completion. Keep generating and executing the next highest-value roadmap items that move the actual tusq.dev product closer to the vision. Priority order: core product engineering first including CLI scanner manifest compile serve governance flow and tests; product UX and docs only when they directly support shipped capabilities or unblock adoption of completed product work; website and launch polish last. The PM must continuously propose the next concrete roadmap items needed to close the gap between the current shipped state and the vision, and the run should keep advancing through those items rather than treating one completed pass as the end of the initiative. Do not declare the work complete merely because planning QA or launch artifacts are internally consistent. Completion means the product itself has materially advanced toward satisfying the vision.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Continue governed execution until the goals in .planning/VISION.md are materially satisfied. Do not stop after partial polish passes or isolated artifact completion. Keep generating and executing the next highest-value roadmap items that move the actual tusq.dev product closer to the vision. Priority order: core product engineering first including CLI scanner manifest compile serve governance flow and tests; product UX and docs only when they directly support shipped capabilities or unblock adoption of completed product work; website and launch polish last. The PM must continuously propose the next concrete roadmap items needed to close the gap between the current shipped state and the vision, and the run should keep advancing through those items rather than treating one completed pass as the end of the initiative. Do not declare the work complete merely because planning QA or launch artifacts are internally consistent. Completion means the product itself has materially advanced toward satisfying the vision."
+    }
+  ],
+  "dedup_key": "manual:0bb6703f669caf7e"
+}

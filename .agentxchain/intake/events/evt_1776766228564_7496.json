@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776766228564_7496",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-21T10:10:28.563Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Review the current uncommitted tusq.dev manifest/review improvements, reconcile them with .planning/VISION.md, and drive the next governed product step through PM/dev/QA rather than direct operator edits.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Review the current uncommitted tusq.dev manifest/review improvements, reconcile them with .planning/VISION.md, and drive the next governed product step through PM/dev/QA rather than direct operator edits."
+    }
+  ],
+  "dedup_key": "manual:c3c82f62c09705de"
+}

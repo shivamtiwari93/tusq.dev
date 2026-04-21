@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776766228564_117c",
+  "event_id": "evt_1776766228564_7496",
+  "status": "superseded",
+  "priority": "p0",
+  "template": "cli-tool",
+  "charter": "Use AgentXchain roles to move tusq.dev forward. Preserve current operator-created work unless the agents explicitly decide it should change; prioritize concrete code, tests, fixtures, docs, or release-readiness outcomes.",
+  "acceptance_contract": [
+    "Agent turn is assigned through AgentXchain",
+    "PM or dev provides a concrete next-step plan or patch",
+    "Verification expectations are explicit",
+    "No unrelated workspace state is reverted"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-21T10:10:28.563Z",
+  "updated_at": "2026-04-21T10:10:28.566Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-21T10:10:28.563Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-21T10:10:28.565Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "superseded",
+      "at": "2026-04-21T10:10:28.566Z",
+      "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
+      "approver": "codex"
+    }
+  ],
+  "approved_run_id": "run_4b24e171693ac091",
+  "approved_by": "codex",
+  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+}

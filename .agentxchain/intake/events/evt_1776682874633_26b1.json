@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776682874633_26b1",
+  "source": "vision_scan",
+  "category": "vision_derived",
+  "created_at": "2026-04-20T11:01:14.633Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "support the most common framework stacks deeply within the first release",
+    "vision_section": "Why we move fast",
+    "derived": true
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Vision section: Why we move fast — Goal: support the most common framework stacks deeply within the first release"
+    }
+  ],
+  "dedup_key": "vision_scan:cdaa6ed0afb87009"
+}

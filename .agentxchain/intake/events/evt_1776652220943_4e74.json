@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776652220943_4e74",
+  "source": "vision_scan",
+  "category": "vision_derived",
+  "created_at": "2026-04-20T02:30:20.943Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "redaction and approval metadata",
+    "vision_section": "The canonical artifact",
+    "derived": true
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Vision section: The canonical artifact — Goal: redaction and approval metadata"
+    }
+  ],
+  "dedup_key": "vision_scan:88d25076783109e9"
+}

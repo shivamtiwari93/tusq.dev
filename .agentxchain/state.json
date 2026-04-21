@@ -1,15 +1,26 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_c8a4701ce0d4952d",
+  "run_id": "run_4b24e171693ac091",
   "project_id": "tusq-dev",
-  "status": "completed",
-  "phase": "launch",
-  "accepted_integration_ref": "git:490b72c640df5592fadf0da0cdcfc07e3c75da0e",
+  "status": "blocked",
+  "phase": "qa",
+  "accepted_integration_ref": "git:7a51368873943ffc2eebf5e418eb789863749481",
   "active_turns": {},
-  "turn_sequence": 104,
-  "last_completed_turn_id": "turn_63932e28468a0c34",
-  "blocked_on": null,
-  "blocked_reason": null,
+  "turn_sequence": 52,
+  "last_completed_turn_id": "turn_1f89182d2701a838",
+  "blocked_on": "human:qa_ship_verdict gate explicitly requires human approval before transition to the launch phase. All 38 acceptance criteria PASS and smoke tests exit 0, so no further automated verification is outstanding — the remaining step is a human sign-off on the release.",
+  "blocked_reason": {
+    "category": "needs_human",
+    "recovery": {
+      "typed_reason": "needs_human",
+      "owner": "human",
+      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
+      "turn_retained": false,
+      "detail": "qa_ship_verdict gate explicitly requires human approval before transition to the launch phase. All 38 acceptance criteria PASS and smoke tests exit 0, so no further automated verification is outstanding — the remaining step is a human sign-off on the release."
+    },
+    "blocked_at": "2026-04-21T12:53:12.365Z",
+    "turn_id": "turn_1f89182d2701a838"
+  },
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -19,22 +30,22 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
-    "launch_ready": "passed"
+    "qa_ship_verdict": "pending",
+    "launch_ready": "pending"
   },
   "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-18T05:23:50.880Z",
-  "phase_entered_at": "2026-04-19T11:02:30.000Z",
+  "created_at": "2026-04-20T12:16:39.386Z",
+  "phase_entered_at": "2026-04-20T12:53:55.742Z",
   "provenance": {
-    "trigger": "manual",
+    "trigger": "vision_scan",
     "parent_run_id": null,
-    "trigger_reason": null,
-    "intake_intent_id": null,
-    "created_by": "operator"
+    "trigger_reason": "Why we move fast: produce manifests that are usable on first pass for real codebases, not toy examples",
+    "intake_intent_id": "intent_1776687399375_2b88",
+    "created_by": "continuous_loop"
   },
   "inherited_context": null,
   "repo_decisions": null,
@@ -42,14 +53,13 @@
   "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_5d0694e7ed0e70b7",
-    "role": "product_marketing",
-    "phase": "qa",
-    "checkpoint_sha": "490b72c640df5592fadf0da0cdcfc07e3c75da0e",
-    "checkpointed_at": "2026-04-19T09:36:40.044Z",
+    "turn_id": "turn_211ef51c87494bb8",
+    "role": "dev",
+    "phase": "implementation",
+    "checkpoint_sha": "0f60878817cd90ce4687f12919173e55a365f799",
+    "checkpointed_at": "2026-04-20T12:54:06.612Z",
     "intent_id": null
   },
   "non_progress_signature": null,
-  "non_progress_count": 0,
-  "completed_at": "2026-04-19T11:15:00.169Z"
+  "non_progress_count": 0
 }

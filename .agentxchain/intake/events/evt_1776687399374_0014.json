@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776687399374_0014",
+  "source": "vision_scan",
+  "category": "vision_derived",
+  "created_at": "2026-04-20T12:16:39.374Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "produce manifests that are usable on first pass for real codebases, not toy examples",
+    "vision_section": "Why we move fast",
+    "derived": true
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Vision section: Why we move fast — Goal: produce manifests that are usable on first pass for real codebases, not toy examples"
+    }
+  ],
+  "dedup_key": "vision_scan:3e57d8cf0b63e06f"
+}
