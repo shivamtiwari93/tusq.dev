@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-04-18T04:48:44.226Z",
+  "generated_at": "2026-04-21T09:45:28.637Z",
   "target_path": "/Users/shivamtiwari.highlevel/VS Code/1008apps/tusq.cloud/tusq.dev/tests/fixtures/express-sample",
   "framework": "express",
   "warnings": [],
-  "route_count": 2,
+  "route_count": 3,
   "routes": [
     {
       "framework": "express",
@@ -16,18 +16,67 @@
       ],
       "provenance": {
         "file": "src/app.ts",
-        "line": 12
+        "line": 13,
+        "handler": "listUsers",
+        "framework": "express"
       },
-      "confidence": 0.86,
+      "confidence": 0.76,
       "input_schema": {
         "type": "object",
+        "properties": {},
+        "required": [],
         "additionalProperties": true,
-        "description": "Schema inference unavailable; review required."
+        "description": "No required input detected; review optional query/body fields manually."
+      },
+      "output_schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Inferred array response from handler return/json usage."
+      }
+    },
+    {
+      "framework": "express",
+      "method": "GET",
+      "path": "/api/v1/users/:id",
+      "handler": "getUser",
+      "domain": "users",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 14,
+        "handler": "getUser",
+        "framework": "express"
+      },
+      "confidence": 0.76,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "source": "path",
+            "description": "Path parameter: id"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": true,
+        "description": "path parameters inferred from route pattern."
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Response schema not confidently inferred."
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "description": "Inferred object response from handler return/json usage."
       }
     },
     {
@@ -41,18 +90,33 @@
       ],
       "provenance": {
         "file": "src/app.ts",
-        "line": 13
+        "line": 15,
+        "handler": "createUser",
+        "framework": "express"
       },
-      "confidence": 0.86,
+      "confidence": 0.76,
       "input_schema": {
         "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "source": "request_body"
+          }
+        },
+        "required": [],
         "additionalProperties": true,
-        "description": "Schema inference unavailable; review required."
+        "description": "request body expected for write operation."
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Response schema not confidently inferred."
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "description": "Inferred object response from handler return/json usage."
       }
     }
   ]

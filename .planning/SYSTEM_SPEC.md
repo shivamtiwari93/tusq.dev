@@ -376,13 +376,18 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
   "path": "/users",
   "input_schema": {
     "type": "object",
+    "properties": {},
+    "required": [],
     "additionalProperties": true,
-    "description": "No path parameters. Additional body/query parameters require manual review."
+    "description": "No required input detected; review optional query/body fields manually."
   },
   "output_schema": {
-    "type": "object",
-    "additionalProperties": true,
-    "description": "<inference status>"
+    "type": "array",
+    "items": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "description": "Inferred array response from handler return/json usage."
   },
   "side_effect_class": "read | write | destructive",
   "sensitivity_class": "unknown | public | internal | confidential | restricted",
@@ -410,7 +415,9 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
   },
   "provenance": {
     "file": "src/app.ts",
-    "line": 12
+    "line": 12,
+    "handler": "listUsers",
+    "framework": "express"
   },
   "confidence": 0.86,
   "review_needed": false,
@@ -436,7 +443,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `examples` | array | Request/response examples; static describe-only placeholder in V1 — see Examples specification below |
 | `constraints` | object | Operational constraints on the capability (rate limits, payload limits, idempotency) — see Constraints specification below |
 | `redaction` | object | Redaction policy for this capability's input/output — see Redaction and Approval Metadata below |
-| `provenance` | object | Source file and line number |
+| `provenance` | object | Source file, line number, handler, and framework metadata |
 | `confidence` | number | 0.0–0.95 |
 | `review_needed` | boolean | `true` when `confidence < 0.8` — see Redaction and Approval Metadata below |
 | `approved` | boolean | Human-set gate; only `approved: true` capabilities compile into tools — see Redaction and Approval Metadata below |
@@ -445,7 +452,7 @@ Produced by `tusq manifest`. This is the reviewable contract between code and ag
 | `capability_digest` | string | SHA-256 hex digest of content fields (excluding approval/review metadata and the digest itself). Enables change detection between manifest versions — see Version History and Diffs section |
 | `domain` | string | Logical grouping (inferred from route prefix with smart prefix-skipping — see First-Pass Manifest Usability) |
 
-**V1 input/output schema limitations:** In V1, both `input_schema` and `output_schema` are always `{ "type": "object", "additionalProperties": true }` with a description indicating the inference status. Full schema inference (extracting actual property names and types from DTOs, Zod schemas, or Joi validators) is a V2 goal. The shapes are present and structurally valid JSON Schema, but intentionally conservative.
+**V1 input/output schema limitations:** In V1, `input_schema` and `output_schema` remain intentionally conservative, but they include first-pass route evidence when it is safe to infer. Path parameters become required string properties, write methods receive a `body` object placeholder, array returns are represented as `type: "array"`, and simple object literal responses expose property names and literal types. Full body/query schema inference from DTOs, Zod schemas, or Joi validators remains a V2 goal.
 
 #### First-Pass Manifest Usability
 
@@ -472,16 +479,17 @@ When path parameters are detected, `input_schema` is enriched:
   "properties": {
     "id": {
       "type": "string",
+      "source": "path",
       "description": "Path parameter: id"
     }
   },
   "required": ["id"],
   "additionalProperties": true,
-  "description": "Path parameters extracted from route. Additional body/query parameters require manual review."
+  "description": "path parameters inferred from route pattern."
 }
 ```
 
-When no path parameters are detected, the schema remains the existing conservative default.
+When no path parameters are detected, the schema remains conservative for read routes. For write routes, V1 adds a `body` object placeholder with `source: "request_body"` or `source: "framework_schema_hint"`.
 
 **Pipeline propagation:** Path parameter extraction occurs in `finalizeRouteInference()` during `tusq scan`. The enriched `input_schema` flows unchanged through `tusq manifest` → `tusq compile` → `tusq serve` (both `tools/list` and `tools/call`).
 
@@ -1070,6 +1078,10 @@ tusq.manifest.json      — review_needed, approved, approved_by, approved_at (t
 tusq-tools/*.json       — no approval fields (existence = approved)
 MCP server responses    — no approval fields (only approved tools served)
 ```
+
+**Review gate:**
+
+`tusq review` prints a grouped, non-interactive summary for human and CI review. Each row includes approval state, confidence, inferred input/output shape summaries, and provenance. `tusq review --strict` exits `1` when any capability is unapproved or has `review_needed: true`, and exits `0` only when the manifest is fully approved and no low-confidence capability remains.
 
 **V1 approval limitations:**
 

@@ -1,15 +1,28 @@
 {
   "name": "post_users_users",
-  "description": "POST /users capability in users domain",
+  "description": "Create users - state-modifying, requires requireAuth (handler: createUser)",
   "parameters": {
     "type": "object",
+    "properties": {
+      "body": {
+        "type": "object",
+        "additionalProperties": true,
+        "source": "request_body"
+      }
+    },
+    "required": [],
     "additionalProperties": true,
-    "description": "Schema inference unavailable; review required."
+    "description": "request body expected for write operation."
   },
   "returns": {
     "type": "object",
     "additionalProperties": true,
-    "description": "Response schema not confidently inferred."
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      }
+    },
+    "description": "Inferred object response from handler return/json usage."
   },
   "side_effect_class": "write",
   "sensitivity_class": "unknown",
@@ -39,6 +52,8 @@
   },
   "provenance": {
     "file": "src/app.ts",
-    "line": 13
+    "line": 15,
+    "handler": "createUser",
+    "framework": "express"
   }
 }

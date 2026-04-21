@@ -33,7 +33,7 @@ Each capability includes:
 - `examples`: usage examples (V1 defaults to a describe-only placeholder)
 - `constraints`: operational limits object (`rate_limit`, `max_payload_bytes`, `required_headers`, `idempotent`, `cacheable`)
 - `redaction`: operational masking/retention policy (`pii_fields`, `log_level`, `mask_in_traces`, `retention_days`)
-- `provenance`: source file and line metadata
+- `provenance`: source file, line, framework, and handler metadata
 - `confidence`: inference confidence score
 - `review_needed`: true when confidence is below threshold
 - `approved`: manual approval flag
@@ -42,26 +42,28 @@ Each capability includes:
 - `domain`: domain grouping label
 - `capability_digest`: SHA-256 digest of capability content fields (excludes approval/review metadata)
 
-## V1 schema limitations
+## V1 schema inference
 
-In `v0.1.0`, both `input_schema` and `output_schema` are intentionally conservative JSON Schema objects.
+In `v0.1.0`, `input_schema` and `output_schema` are intentionally conservative JSON Schema objects, but they now include first-pass route evidence when it can be inferred safely.
 
 ```json
 {
   "type": "object",
+  "properties": {},
+  "required": [],
   "additionalProperties": true,
   "description": "<inference status message>"
 }
 ```
 
-The `description` varies by route confidence and available hints, but the structural shape above is fixed in V1.
-Full property-level schema inference is planned beyond `v0.1.0`.
+The `description` varies by route confidence and available hints. Full body/query schema inference is still planned beyond `v0.1.0`, but V1 emits path parameters, write-body placeholders, array responses, object responses, and simple literal response properties when those are visible in route handlers.
 
 ### Path Parameter Extraction (V1)
 
 When a route path contains explicit parameters (`:id` or `{id}`), `input_schema` is enriched with:
 
 - `properties.<param>.type: "string"`
+- `properties.<param>.source: "path"`
 - `properties.<param>.description: "Path parameter: <param>"`
 - `required: ["<param>", ...]`
 
@@ -73,16 +75,56 @@ Example for `/api/v1/users/:id`:
   "properties": {
     "id": {
       "type": "string",
+      "source": "path",
       "description": "Path parameter: id"
     }
   },
   "required": ["id"],
   "additionalProperties": true,
-  "description": "Path parameters extracted from route. Additional body/query parameters require manual review."
+  "description": "path parameters inferred from route pattern."
 }
 ```
 
 This gives downstream tool consumers explicit required arguments even when full body/query schema inference is not available yet.
+
+### Write Body Placeholder (V1)
+
+For `POST`, `PUT`, `PATCH`, and `DELETE` routes, `input_schema.properties.body` is emitted as an object placeholder. Its `source` is `request_body` unless a framework schema hint was detected, in which case it is `framework_schema_hint`.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "object",
+      "additionalProperties": true,
+      "source": "request_body"
+    }
+  },
+  "required": [],
+  "additionalProperties": true,
+  "description": "request body expected for write operation."
+}
+```
+
+### Response Shape Hints (V1)
+
+When handlers visibly return or JSON-serialize arrays or object literals, `output_schema` records that evidence:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    }
+  },
+  "description": "Inferred object response from handler return/json usage."
+}
+```
+
+If the handler returns an array, `output_schema.type` is `array` with object items. When no reliable response evidence is found, V1 keeps the conservative object fallback.
 
 ### Capability Description Template (V1)
 

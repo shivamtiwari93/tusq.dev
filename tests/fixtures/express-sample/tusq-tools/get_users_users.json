@@ -1,15 +1,20 @@
 {
   "name": "get_users_users",
-  "description": "GET /users capability in users domain",
+  "description": "Retrieve users - read-only, requires requireAuth (handler: listUsers)",
   "parameters": {
     "type": "object",
+    "properties": {},
+    "required": [],
     "additionalProperties": true,
-    "description": "Schema inference unavailable; review required."
+    "description": "No required input detected; review optional query/body fields manually."
   },
   "returns": {
-    "type": "object",
-    "additionalProperties": true,
-    "description": "Response schema not confidently inferred."
+    "type": "array",
+    "items": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "description": "Inferred array response from handler return/json usage."
   },
   "side_effect_class": "read",
   "sensitivity_class": "unknown",
@@ -39,6 +44,8 @@
   },
   "provenance": {
     "file": "src/app.ts",
-    "line": 12
+    "line": 13,
+    "handler": "listUsers",
+    "framework": "express"
   }
 }

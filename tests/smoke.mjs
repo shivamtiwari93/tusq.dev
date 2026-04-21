@@ -260,6 +260,25 @@ async function run() {
   if (!manifest.capabilities.every((capability) => Array.isArray(capability.examples) && capability.examples.length > 0)) {
     throw new Error('Expected manifest capabilities to include examples array in V1');
   }
+  const expressGetUsers = manifest.capabilities.find((capability) => capability.method === 'GET' && capability.path === '/users');
+  const expressPostUsers = manifest.capabilities.find((capability) => capability.method === 'POST' && capability.path === '/users');
+  if (!expressGetUsers || !expressPostUsers) {
+    throw new Error('Expected express manifest to include GET /users and POST /users capabilities');
+  }
+  if (!expressGetUsers.output_schema || expressGetUsers.output_schema.type !== 'array') {
+    throw new Error(`Expected GET /users output_schema.type=array, got ${JSON.stringify(expressGetUsers && expressGetUsers.output_schema)}`);
+  }
+  if (!expressPostUsers.input_schema || !expressPostUsers.input_schema.properties || !expressPostUsers.input_schema.properties.body) {
+    throw new Error(`Expected POST /users input_schema to include body property: ${JSON.stringify(expressPostUsers && expressPostUsers.input_schema)}`);
+  }
+  if (!expressPostUsers.output_schema || expressPostUsers.output_schema.properties?.ok?.type !== 'boolean') {
+    throw new Error(`Expected POST /users output_schema to infer ok:boolean, got ${JSON.stringify(expressPostUsers && expressPostUsers.output_schema)}`);
+  }
+  for (const capability of [expressGetUsers, expressPostUsers]) {
+    if (!capability.provenance || capability.provenance.framework !== 'express' || capability.provenance.handler === undefined) {
+      throw new Error(`Expected capability provenance to include framework and handler: ${JSON.stringify(capability.provenance)}`);
+    }
+  }
   if (!manifest.capabilities.every((capability) => capability.approved_by === null && capability.approved_at === null)) {
     throw new Error('Expected manifest capabilities to include null approval metadata in V1');
   }
@@ -346,7 +365,24 @@ async function run() {
   if ('capability_digest' in compiledTool || 'manifest_version' in compiledTool || 'previous_manifest_hash' in compiledTool) {
     throw new Error('Expected compiled tool to exclude manifest version history metadata');
   }
-  runCli(['review', '--verbose'], { cwd: expressProject });
+  const reviewResult = runCli(['review', '--verbose'], { cwd: expressProject });
+  if (!reviewResult.stdout.includes('returns=array<object>') || !reviewResult.stdout.includes('inputs=body:request_body')) {
+    throw new Error(`Expected review output to summarize inferred input/output shapes:\n${reviewResult.stdout}`);
+  }
+  if (!reviewResult.stdout.includes('source=src/app.ts') || !reviewResult.stdout.includes('handler=listUsers') || !reviewResult.stdout.includes('framework=express')) {
+    throw new Error(`Expected review output to summarize provenance:\n${reviewResult.stdout}`);
+  }
+  const strictReviewFailure = runCli(['review', '--strict'], { cwd: expressProject, expectedStatus: 1 });
+  if (!strictReviewFailure.stderr.includes('Review gate failed')) {
+    throw new Error(`Expected strict review mode to fail with governance gate message:\n${strictReviewFailure.stderr}`);
+  }
+  const reviewReadyManifest = await readJson(manifestPath);
+  for (const capability of reviewReadyManifest.capabilities) {
+    capability.approved = true;
+    capability.review_needed = false;
+  }
+  await fs.writeFile(manifestPath, `${JSON.stringify(reviewReadyManifest, null, 2)}\n`, 'utf8');
+  runCli(['review', '--strict'], { cwd: expressProject });
 
   // REQ-036: Framework-specific deep extraction assertions
   runCli(['init'], { cwd: fastifyProject });
@@ -392,6 +428,9 @@ async function run() {
   }
   if (!nestPost.auth_hints.includes('AuthGuard') || !nestPost.auth_hints.includes('AdminGuard')) {
     throw new Error(`Expected NestJS POST to have both AuthGuard (inherited) and AdminGuard (method-level), got ${JSON.stringify(nestPost.auth_hints)}`);
+  }
+  if (!nestPost.input_schema?.properties?.id || nestPost.input_schema.properties.id.source !== 'path') {
+    throw new Error(`Expected NestJS POST path parameter id to be represented in input_schema: ${JSON.stringify(nestPost.input_schema)}`);
   }
 
   const port = 32155;

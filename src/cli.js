@@ -625,7 +625,8 @@ function cmdServe(args) {
 
 function cmdReview(args) {
   const { opts, positionals } = parseCommandArgs('review', args, {
-    format: 'value'
+    format: 'value',
+    strict: 'boolean'
   });
 
   if (opts.help) {
@@ -634,7 +635,7 @@ function cmdReview(args) {
   }
 
   if (positionals.length > 0) {
-    throw new CliError('Usage: tusq review [--format json]', 1);
+    throw new CliError('Usage: tusq review [--format json] [--strict]', 1);
   }
 
   if (opts.format && opts.format !== 'json') {
@@ -653,9 +654,11 @@ function cmdReview(args) {
   }
 
   const manifest = readJson(manifestPath);
+  const reviewStats = getReviewStats(manifest);
 
   if (opts.format === 'json') {
     process.stdout.write(`${JSON.stringify(manifest, null, 2)}\n`);
+    enforceStrictReviewIfRequested(opts.strict, reviewStats);
     return;
   }
 
@@ -670,28 +673,101 @@ function cmdReview(args) {
 
   process.stdout.write(`Capability review for ${manifestPath}\n`);
 
-  let unapproved = 0;
-  let lowConfidence = 0;
-
   for (const [domain, capabilities] of grouped.entries()) {
     process.stdout.write(`\n[${domain}]\n`);
     for (const capability of capabilities) {
       const approved = capability.approved ? 'x' : ' ';
-      if (!capability.approved) {
-        unapproved += 1;
-      }
-      if (capability.review_needed) {
-        lowConfidence += 1;
-      }
       const lowFlag = capability.review_needed ? ' LOW_CONFIDENCE' : '';
+      const inputSummary = summarizeInputSchemaForReview(capability.input_schema);
+      const outputSummary = summarizeOutputSchemaForReview(capability.output_schema);
+      const provenanceSummary = summarizeProvenanceForReview(capability.provenance);
       process.stdout.write(
-        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag}\n`
+        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag} inputs=${inputSummary} returns=${outputSummary} source=${provenanceSummary}\n`
       );
     }
   }
 
-  process.stdout.write(`\nSummary: ${manifest.capabilities.length} total, ${unapproved} unapproved, ${lowConfidence} low confidence.\n`);
+  process.stdout.write(`\nSummary: ${reviewStats.total} total, ${reviewStats.unapproved} unapproved, ${reviewStats.lowConfidence} low confidence.\n`);
   process.stdout.write('Approve capabilities by editing tusq.manifest.json and setting approved=true.\n');
+  enforceStrictReviewIfRequested(opts.strict, reviewStats);
+}
+
+function getReviewStats(manifest) {
+  const capabilities = Array.isArray(manifest.capabilities) ? manifest.capabilities : [];
+  return {
+    total: capabilities.length,
+    unapproved: capabilities.filter((capability) => !capability.approved).length,
+    lowConfidence: capabilities.filter((capability) => capability.review_needed).length
+  };
+}
+
+function enforceStrictReviewIfRequested(strict, reviewStats) {
+  if (!strict) {
+    return;
+  }
+
+  if (reviewStats.unapproved > 0 || reviewStats.lowConfidence > 0) {
+    throw new CliError(
+      `Review gate failed: ${reviewStats.unapproved} unapproved, ${reviewStats.lowConfidence} low confidence.`,
+      1
+    );
+  }
+}
+
+function summarizeInputSchemaForReview(schema) {
+  const properties = schema && typeof schema === 'object' && schema.properties && typeof schema.properties === 'object'
+    ? Object.entries(schema.properties)
+    : [];
+
+  if (properties.length === 0) {
+    return 'none';
+  }
+
+  return properties
+    .map(([name, meta]) => {
+      const source = meta && typeof meta === 'object' && meta.source ? `:${meta.source}` : '';
+      return `${name}${source}`;
+    })
+    .join(',');
+}
+
+function summarizeOutputSchemaForReview(schema) {
+  if (!schema || typeof schema !== 'object') {
+    return 'unknown';
+  }
+
+  if (schema.type === 'array') {
+    const itemType = schema.items && schema.items.type ? schema.items.type : 'unknown';
+    return `array<${itemType}>`;
+  }
+
+  if (schema.type === 'object') {
+    const properties = schema.properties && typeof schema.properties === 'object'
+      ? Object.entries(schema.properties)
+      : [];
+    if (properties.length === 0) {
+      return 'object';
+    }
+    const fields = properties
+      .map(([name, meta]) => `${name}:${meta && meta.type ? meta.type : 'unknown'}`)
+      .join(',');
+    return `object{${fields}}`;
+  }
+
+  return String(schema.type || 'unknown');
+}
+
+function summarizeProvenanceForReview(provenance) {
+  if (!provenance || typeof provenance !== 'object') {
+    return 'unknown';
+  }
+
+  const location = provenance.file
+    ? `${provenance.file}${provenance.line ? `:${provenance.line}` : ''}`
+    : 'unknown';
+  const handler = provenance.handler ? ` handler=${provenance.handler}` : '';
+  const framework = provenance.framework ? ` framework=${provenance.framework}` : '';
+  return `${location}${handler}${framework}`;
 }
 
 function printHelp() {
@@ -715,7 +791,7 @@ function printCommandHelp(command) {
     manifest: 'Usage: tusq manifest [--out <path>] [--format json] [--verbose]',
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--verbose]',
-    review: 'Usage: tusq review [--format json] [--verbose]'
+    review: 'Usage: tusq review [--format json] [--strict] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }
@@ -815,6 +891,7 @@ function extractExpressRoutes(content, filePath) {
     const handler = isInline ? 'inline_handler' : (tokens[tokens.length - 1] || 'unknown_handler');
     const middleware = isInline ? tokens : tokens.slice(0, Math.max(0, tokens.length - 1));
     const nearby = nearbySnippet(lines, i, 3);
+    const handlerSource = isInline ? handlerExpr : findNamedHandlerSource(content, handler);
 
     routes.push({
       framework: 'express',
@@ -825,9 +902,12 @@ function extractExpressRoutes(content, filePath) {
       auth_hints: inferAuthHints([handlerExpr, nearby]),
       provenance: {
         file: filePath,
-        line: i + 1
+        line: i + 1,
+        handler,
+        framework: 'express'
       },
       schema_hint: /\bzod\b|\bz\.object\b|\bjoi\b|\bschema\b/i.test(nearby),
+      response_hint: inferResponseHint(handlerSource || nearby),
       middleware
     });
   }
@@ -864,9 +944,12 @@ function extractFastifyRoutes(content, filePath) {
       auth_hints: inferAuthHints([handlerExpr, nearby]),
       provenance: {
         file: filePath,
-        line: i + 1
+        line: i + 1,
+        handler,
+        framework: 'fastify'
       },
       schema_hint: /\bschema\s*:/i.test(nearby),
+      response_hint: inferResponseHint(nearby),
       middleware: tokens
     });
   }
@@ -891,9 +974,12 @@ function extractFastifyRoutes(content, filePath) {
       auth_hints: inferAuthHints([handlerExpr]),
       provenance: {
         file: filePath,
-        line: lineFromIndex(content, optMatch.index)
+        line: lineFromIndex(content, optMatch.index),
+        handler,
+        framework: 'fastify'
       },
       schema_hint: /\bschema\s*:/i.test(optionsBlock),
+      response_hint: inferResponseHint(`${optionsBlock}\n${handlerExpr}`),
       middleware: tokens
     });
   }
@@ -920,9 +1006,12 @@ function extractFastifyRoutes(content, filePath) {
       auth_hints: dedupe(authTokens),
       provenance: {
         file: filePath,
-        line: lineFromIndex(content, match.index)
+        line: lineFromIndex(content, match.index),
+        handler: handlerMatch ? handlerMatch[1] : 'inline_handler',
+        framework: 'fastify'
       },
       schema_hint: /\bschema\s*:/i.test(block),
+      response_hint: inferResponseHint(block),
       middleware: []
     });
   }
@@ -968,6 +1057,7 @@ function extractNestRoutes(content, filePath) {
     const signature = findNextMethodSignature(lines, i + 1);
     const handler = signature || 'unknown_handler';
     const nearby = nearbySnippet(lines, i, 4);
+    const methodBody = signature ? findClassMethodSource(lines, i + 1, signature) : nearby;
 
     routes.push({
       framework: 'nestjs',
@@ -978,9 +1068,12 @@ function extractNestRoutes(content, filePath) {
       auth_hints: dedupe([...classGuards, ...pendingGuards, ...inferAuthHints([nearby])]),
       provenance: {
         file: filePath,
-        line: i + 1
+        line: i + 1,
+        handler,
+        framework: 'nestjs'
       },
       schema_hint: /dto|schema|zod|class-validator/i.test(nearby),
+      response_hint: inferResponseHint(methodBody),
       middleware: dedupe([...classGuards, ...pendingGuards])
     });
 
@@ -1005,18 +1098,8 @@ function finalizeRouteInference(route) {
     auth_hints: dedupe(route.auth_hints || []),
     provenance: route.provenance,
     confidence,
-    input_schema: buildInputSchema(hasSchema, pathParameters),
-    output_schema: hasSchema
-      ? {
-        type: 'object',
-        additionalProperties: true,
-        description: 'Inferred response shape from available schema hints.'
-      }
-      : {
-        type: 'object',
-        additionalProperties: true,
-        description: 'Response schema not confidently inferred.'
-      }
+    input_schema: buildInputSchema(route, hasSchema, pathParameters),
+    output_schema: buildOutputSchema(route, hasSchema)
   };
 }
 
@@ -1350,37 +1433,92 @@ function joinPaths(prefix, routePath) {
   return normalizeRoutePath(`${slashLeft}${slashRight}`);
 }
 
-function buildInputSchema(hasSchema, pathParameters) {
-  if (pathParameters.length > 0) {
-    const properties = {};
-    for (const name of pathParameters) {
-      properties[name] = {
-        type: 'string',
-        description: `Path parameter: ${name}`
-      };
-    }
-    return {
+function buildInputSchema(route, hasSchema, pathParameters) {
+  const method = String(route.method || '').toUpperCase();
+  const properties = {};
+  const required = [];
+
+  for (const name of pathParameters) {
+    properties[name] = {
+      type: 'string',
+      source: 'path',
+      description: `Path parameter: ${name}`
+    };
+    required.push(name);
+  }
+
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    properties.body = {
       type: 'object',
-      properties,
-      required: pathParameters,
       additionalProperties: true,
-      description: 'Path parameters extracted from route. Additional body/query parameters require manual review.'
+      source: hasSchema ? 'framework_schema_hint' : 'request_body'
     };
   }
 
-  if (hasSchema) {
+  return {
+    type: 'object',
+    properties,
+    required,
+    additionalProperties: true,
+    description: describeInputSchema(route, hasSchema, pathParameters.length)
+  };
+}
+
+function buildOutputSchema(route, hasSchema) {
+  const hint = route.response_hint || {};
+
+  if (hint.kind === 'array') {
+    return {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: true
+      },
+      description: hasSchema
+        ? 'Inferred array response from framework schema hints.'
+        : 'Inferred array response from handler return/json usage.'
+    };
+  }
+
+  if (hint.kind === 'object') {
     return {
       type: 'object',
       additionalProperties: true,
-      description: 'Inferred from framework/type schema hints.'
+      properties: hint.properties || {},
+      description: hasSchema
+        ? 'Inferred object response from framework schema hints.'
+        : 'Inferred object response from handler return/json usage.'
     };
   }
 
   return {
     type: 'object',
     additionalProperties: true,
-    description: 'Schema inference unavailable; review required.'
+    description: hasSchema
+      ? 'Inferred response shape from available schema hints.'
+      : 'Response schema not confidently inferred.'
   };
+}
+
+function describeInputSchema(route, hasSchema, pathParameterCount) {
+  const method = String(route.method || '').toUpperCase();
+  const parts = [];
+
+  if (pathParameterCount > 0) {
+    parts.push('path parameters inferred from route pattern');
+  }
+
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    parts.push(hasSchema ? 'request body inferred from framework schema hints' : 'request body expected for write operation');
+  }
+
+  if (parts.length === 0) {
+    return hasSchema
+      ? 'Inferred from framework/type schema hints.'
+      : 'No required input detected; review optional query/body fields manually.';
+  }
+
+  return `${parts.join('; ')}.`;
 }
 
 function extractPathParameters(routePath) {
@@ -1508,6 +1646,138 @@ function findNextMethodSignature(lines, startIndex) {
   return null;
 }
 
+function findNamedHandlerSource(content, handlerName) {
+  if (!handlerName || handlerName === 'unknown_handler' || handlerName === 'inline_handler') {
+    return null;
+  }
+
+  const escaped = escapeRegExp(handlerName);
+  const patterns = [
+    new RegExp(`(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;]+);`, 'm'),
+    new RegExp(`function\\s+${escaped}\\s*\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n\\}`, 'm')
+  ];
+
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  return null;
+}
+
+function findClassMethodSource(lines, startIndex, methodName) {
+  const escaped = escapeRegExp(methodName);
+  const signaturePattern = new RegExp(`^\\s*${escaped}\\s*\\(`);
+
+  for (let i = startIndex; i < Math.min(lines.length, startIndex + 8); i += 1) {
+    if (!signaturePattern.test(lines[i])) {
+      continue;
+    }
+
+    const collected = [];
+    let depth = 0;
+    let opened = false;
+    for (let j = i; j < lines.length; j += 1) {
+      const line = lines[j];
+      collected.push(line);
+      for (const char of line) {
+        if (char === '{') {
+          depth += 1;
+          opened = true;
+        } else if (char === '}') {
+          depth -= 1;
+        }
+      }
+      if (opened && depth <= 0) {
+        break;
+      }
+    }
+    return collected.join('\n');
+  }
+
+  return null;
+}
+
+function inferResponseHint(source) {
+  if (!source) {
+    return null;
+  }
+
+  const text = String(source);
+  if (/\b(?:return|json)\s*\(\s*\[/.test(text) || /\breturn\s+\[/.test(text) || /\btype\s*:\s*['"`]array['"`]/i.test(text)) {
+    return { kind: 'array' };
+  }
+
+  const objectLiteral = extractResponseObjectLiteral(text);
+  if (objectLiteral) {
+    return {
+      kind: 'object',
+      properties: inferObjectProperties(objectLiteral)
+    };
+  }
+
+  if (/\btype\s*:\s*['"`]object['"`]/i.test(text)) {
+    return { kind: 'object', properties: {} };
+  }
+
+  return null;
+}
+
+function extractResponseObjectLiteral(text) {
+  const patterns = [
+    /\bjson\s*\(\s*(\{[^)]*\})\s*\)/m,
+    /\breturn\s+(\{[^;]*\})\s*;?/m
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+function inferObjectProperties(objectLiteral) {
+  const properties = {};
+  const pairs = String(objectLiteral).matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^,}\n]+)/g);
+
+  for (const match of pairs) {
+    const key = match[1];
+    properties[key] = {
+      type: inferJsonLiteralType(match[2])
+    };
+  }
+
+  return properties;
+}
+
+function inferJsonLiteralType(rawValue) {
+  const value = String(rawValue || '').trim();
+  if (/^['"`]/.test(value)) {
+    return 'string';
+  }
+  if (/^(true|false)\b/.test(value)) {
+    return 'boolean';
+  }
+  if (/^-?\d+(?:\.\d+)?\b/.test(value)) {
+    return 'number';
+  }
+  if (/^\[/.test(value)) {
+    return 'array';
+  }
+  if (/^\{/.test(value)) {
+    return 'object';
+  }
+  if (/^null\b/.test(value)) {
+    return 'null';
+  }
+  return 'unknown';
+}
+
 function extractIdentifiers(text) {
   if (!text) {
     return [];
@@ -1570,6 +1840,10 @@ function extractFirstStringLiteral(raw) {
 
   const match = String(raw).match(/['"`]([^'"`]+)['"`]/);
   return match ? match[1] : null;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function nearbySnippet(lines, index, radius) {

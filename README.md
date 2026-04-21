@@ -30,6 +30,7 @@ Current `v0.1.0` boundaries:
 - Optional audit trail: record `approved_by` and `approved_at` in the manifest when you want reviewer identity and timestamp attached to a capability
 - MCP behavior: describe-only in V1; `tools/call` returns schema, example payloads, and constraints, not live API execution
 - Review policy surface: `redaction` is inspectable in the manifest and survives into compiled tools and `tools/call`
+- CI review gate: `tusq review --strict` exits non-zero when capabilities remain unapproved or low-confidence
 - Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
 
 At its core, `v0.1.0` discovers supported product routes, models them in a reviewable manifest, compiles approved capabilities into strict JSON tool definitions, and exposes those definitions through a local describe-only MCP endpoint with inspectable runtime-facing redaction policy, examples, and constraints.
@@ -88,7 +89,7 @@ The shipped workflow today is:
 
 The key point is the same: the product does not start from prompts. It starts from product behavior already encoded in code.
 
-In practical terms, "governed" in `v0.1.0` means a reviewer can inspect provenance, approval state, optional approval trail, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and the downstream `examples` and `constraints` before exposing a capability.
+In practical terms, "governed" in `v0.1.0` means a reviewer can inspect provenance, approval state, optional approval trail, inferred input/output shape hints, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and the downstream `examples` and `constraints` before exposing a capability.
 
 ## Core principle
 

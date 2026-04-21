@@ -1,24 +1,29 @@
 {
   "schema_version": "1.0",
-  "manifest_version": 1,
-  "previous_manifest_hash": "4c3c49fcc2050481fdc76b8a3d990743e7bf5188762caf3498635cd08b3c675c",
-  "generated_at": "2026-04-20T09:53:21.919Z",
+  "manifest_version": 2,
+  "previous_manifest_hash": "f773c6c739c5fee3f8faa0b27ee14ba0854f43d094837fdcdaed0a4480de7c12",
+  "generated_at": "2026-04-21T09:45:28.719Z",
   "source_scan": ".tusq/scan.json",
   "capabilities": [
     {
       "name": "get_users_users",
-      "description": "GET /users capability in users domain",
+      "description": "Retrieve users - read-only, requires requireAuth (handler: listUsers)",
       "method": "GET",
       "path": "/users",
       "input_schema": {
         "type": "object",
+        "properties": {},
+        "required": [],
         "additionalProperties": true,
-        "description": "Schema inference unavailable; review required."
+        "description": "No required input detected; review optional query/body fields manually."
       },
       "output_schema": {
-        "type": "object",
-        "additionalProperties": true,
-        "description": "Response schema not confidently inferred."
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Inferred array response from handler return/json usage."
       },
       "side_effect_class": "read",
       "sensitivity_class": "unknown",
@@ -48,30 +53,115 @@
       },
       "provenance": {
         "file": "src/app.ts",
-        "line": 12
+        "line": 13,
+        "handler": "listUsers",
+        "framework": "express"
       },
-      "confidence": 0.86,
-      "review_needed": false,
+      "confidence": 0.76,
+      "review_needed": true,
       "approved": true,
       "approved_by": null,
       "approved_at": null,
       "domain": "users",
-      "capability_digest": "1061d59d61dfc98330de808898dff80cd370d6e55797e41380918275475b7149"
+      "capability_digest": "59235f6219f9e79bc05d034b85976ccdebb9475f5251d1d0496ccc9a9c567c56"
     },
     {
-      "name": "post_users_users",
-      "description": "POST /users capability in users domain",
-      "method": "POST",
-      "path": "/users",
+      "name": "get_users_api_v1_users_id",
+      "description": "Retrieve user by id - read-only, requires requireAuth (handler: getUser)",
+      "method": "GET",
+      "path": "/api/v1/users/:id",
       "input_schema": {
         "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "source": "path",
+            "description": "Path parameter: id"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "additionalProperties": true,
-        "description": "Schema inference unavailable; review required."
+        "description": "path parameters inferred from route pattern."
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Response schema not confidently inferred."
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "description": "Inferred object response from handler return/json usage."
+      },
+      "side_effect_class": "read",
+      "sensitivity_class": "unknown",
+      "auth_hints": [
+        "requireAuth"
+      ],
+      "examples": [
+        {
+          "input": {},
+          "output": {
+            "note": "Describe-only mode in V1. Live execution is deferred to V1.1."
+          }
+        }
+      ],
+      "constraints": {
+        "rate_limit": null,
+        "max_payload_bytes": null,
+        "required_headers": [],
+        "idempotent": null,
+        "cacheable": null
+      },
+      "redaction": {
+        "pii_fields": [],
+        "log_level": "full",
+        "mask_in_traces": false,
+        "retention_days": null
+      },
+      "provenance": {
+        "file": "src/app.ts",
+        "line": 14,
+        "handler": "getUser",
+        "framework": "express"
+      },
+      "confidence": 0.76,
+      "review_needed": true,
+      "approved": false,
+      "approved_by": null,
+      "approved_at": null,
+      "domain": "users",
+      "capability_digest": "b056d75367b7fe6f019483bd58bd05983b3317f54683ddf2266bda31e17dd0c7"
+    },
+    {
+      "name": "post_users_users",
+      "description": "Create users - state-modifying, requires requireAuth (handler: createUser)",
+      "method": "POST",
+      "path": "/users",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "source": "request_body"
+          }
+        },
+        "required": [],
+        "additionalProperties": true,
+        "description": "request body expected for write operation."
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "description": "Inferred object response from handler return/json usage."
       },
       "side_effect_class": "write",
       "sensitivity_class": "unknown",
@@ -101,15 +191,17 @@
       },
       "provenance": {
         "file": "src/app.ts",
-        "line": 13
+        "line": 15,
+        "handler": "createUser",
+        "framework": "express"
       },
-      "confidence": 0.86,
-      "review_needed": false,
+      "confidence": 0.76,
+      "review_needed": true,
       "approved": true,
       "approved_by": null,
       "approved_at": null,
       "domain": "users",
-      "capability_digest": "00ba4f3f239a01d566085579e0f728801f854befeb8ebd956ab2b5960e80c511"
+      "capability_digest": "86e9da67cb5ad658b2fa4387fa88e78378f49a868014ab75b1802cbb4c742d93"
     }
   ]
 }
