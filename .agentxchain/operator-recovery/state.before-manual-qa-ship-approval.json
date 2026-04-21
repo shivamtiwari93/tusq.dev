@@ -3,7 +3,7 @@
   "run_id": "run_8543d07bd34cc982",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "launch",
+  "phase": "qa",
   "accepted_integration_ref": "git:cfd06bd5eb28bca468c15a0e7fc513ab1e13dd71",
   "active_turns": {},
   "turn_sequence": 45,
@@ -19,7 +19,7 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
+    "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
   "budget_reservations": {},
@@ -28,7 +28,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-21T22:21:51.146Z",
-  "phase_entered_at": "2026-04-21T23:56:23.000Z",
+  "phase_entered_at": "2026-04-21T23:44:18.068Z",
   "provenance": {
     "trigger": "recovery",
     "parent_run_id": "run_233ad84feab64d38",
@@ -98,7 +98,7 @@
   },
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": "product_marketing",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
     "turn_id": "turn_7401f68ff8ff8bbb",
