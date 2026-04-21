@@ -2,6 +2,7 @@
 
 ## Challenge To Prior Turn
 
+- Rejected turn_b9fd4cbc1588bb9e (attempt 1 of this dev slot, summary "Turn reissued: ghost") as non-actionable: it carried no implementation artifact, no verification evidence, and no updated workflow-kit content. A ghost reissue cannot satisfy the implementation_complete gate.
 - Rejected the prior implementation state as incomplete for M13: planning approved manifest version history (`manifest_version`, `previous_manifest_hash`, `capability_digest`), but runtime code and smoke tests had no implementation or verification of those fields.
 - Rejected the previous implementation reissue (`turn_7220d0e20cbbbadd`) as stale and non-actionable: it delivered no runtime changes for approved M12 work (`redaction`, `approved_by`, `approved_at`) and therefore did not satisfy implementation completeness.
 - Rejected any assumption that planning completion implied runtime completion: M12 was specified in planning artifacts, but `src/cli.js` still omitted redaction propagation and approval audit fields in manifest generation.
