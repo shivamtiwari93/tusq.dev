@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_fb1bab22b6c25837",
+  "run_id": "run_9b2fc2aa7bb60565",
   "project_id": "tusq-dev",
   "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:632b65f33c5a8c6407f649ea9ff4b0cc2e5ef7f0",
+  "accepted_integration_ref": "git:273a23b21a42e225339dff12ecd16492316f94d5",
   "active_turns": {},
-  "turn_sequence": 14,
-  "last_completed_turn_id": "turn_8cf7d2eb4cc58972",
+  "turn_sequence": 12,
+  "last_completed_turn_id": "turn_1663b68deab64508",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -27,18 +27,18 @@
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-21T14:17:14.565Z",
-  "phase_entered_at": "2026-04-21T14:50:30Z",
+  "created_at": "2026-04-21T15:00:46.098Z",
+  "phase_entered_at": "2026-04-21T16:52:50.903Z",
   "provenance": {
     "trigger": "continuation",
-    "parent_run_id": "run_4b24e171693ac091",
+    "parent_run_id": "run_fb1bab22b6c25837",
     "trigger_reason": null,
     "intake_intent_id": null,
     "created_by": "operator"
   },
   "inherited_context": {
     "schema_version": "0.1",
-    "parent_run_id": "run_4b24e171693ac091",
+    "parent_run_id": "run_fb1bab22b6c25837",
     "parent_status": "blocked",
     "parent_completed_at": null,
     "parent_phases_completed": [
@@ -47,67 +47,77 @@
     "parent_roles_used": [
       "pm"
     ],
-    "parent_blocked_reason": "human:Planning signoff gate requires human approval before transitioning to implementation phase. M15 (First-Pass Manifest Usability) is fully specified and ready for dev implementation, but the planning_signoff gate explicitly requires human review.",
+    "parent_blocked_reason": "human:planning_signoff gate explicitly requires human approval before phase transition to implementation. All 4 required artifacts exist and are internally consistent; smoke tests pass (exit 0); CLI surface matches the plan. No further agent work is productive until a human reviewer approves the gate.",
     "parent_retrospective": {
-      "headline": "Planning signoff gate requires human approval before transitioning to implementation phase. M15 (First-Pass Manifest Usability) is fully specified and ready for dev implementation, but the planning_signoff gate explicitly requires human review.",
+      "headline": "planning_signoff gate explicitly requires human approval before phase transition to implementation. All 4 required artifacts exist and are internally consistent; smoke tests pass (exit 0); CLI surface matches the plan. No further agent work is productive until a human reviewer approves the gate.",
       "terminal_reason": "needs_human",
       "next_operator_action": "Resolve the stated issue, then run agentxchain resume",
       "follow_on_hint": null
     },
     "recent_decisions": [
       {
-        "id": "DEC-228",
-        "statement": "Confidence scoring applies a -0.10 penalty when no schema hint is detected, pushing schema-less routes with named handlers and auth below the review_needed threshold of 0.8.",
+        "id": "DEC-238",
+        "statement": "Re-verified launch artifact alignment against current product truth: CLI surface (init/scan/manifest/compile/serve/review/version/help) matches bin/tusq.js help output; package.json reports name=tusq, version=0.1.0, private=true (justifying the repo-local CTA); git origin matches https://github.com/shivamtiwari93/tusq.dev.git referenced in ANNOUNCEMENT.md; node tests/smoke.mjs exits 0; README first screen leads with audience filter and proof path as MESSAGING.md and LAUNCH_PLAN.md prescribe.",
+        "decided_by": "product_marketing",
+        "phase": "launch"
+      },
+      {
+        "id": "DEC-239",
+        "statement": "Launch phase exit gate launch_ready is returned to the human for approval. All four required artifacts exist with concrete content; messaging, launch plan, content calendar, and announcement are internally consistent and match the shipped v0.1.0 boundary.",
+        "decided_by": "product_marketing",
+        "phase": "launch"
+      },
+      {
+        "id": "DEC-240",
+        "statement": "Did not rubber-stamp parent run DEC-229's 'Approved: YES' as sufficient to transition phases. The planning_signoff gate explicitly requires human approval; an agent PM cannot satisfy it by self-declaration regardless of artifact completeness.",
         "decided_by": "pm",
         "phase": "planning"
       },
       {
-        "id": "DEC-229",
-        "statement": "Planning signoff maintained as Approved: YES. All 4 required artifacts are complete and internally consistent. Status set to needs_human because the planning_signoff gate explicitly requires human approval before transitioning to implementation phase.",
+        "id": "DEC-241",
+        "statement": "Planning artifacts are structurally complete and internally consistent as of 2026-04-21: PM_SIGNOFF.md (Approved: YES, 16 documented challenges through M15), ROADMAP.md (M1–M15 all checked complete), SYSTEM_SPEC.md (80KB canonical shape spec covering all 7 VISION dimensions + M15 first-pass usability + framework depth), command-surface.md (site surface inventory for the Docusaurus platform).",
         "decided_by": "pm",
         "phase": "planning"
       },
       {
-        "id": null,
-        "statement": null,
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": null,
-        "statement": null,
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": null,
-        "statement": null,
+        "id": "DEC-242",
+        "statement": "Shipped product behavior still matches the plan: node tests/smoke.mjs exits 0 and bin/tusq.js help lists the 8-command surface (init, scan, manifest, compile, serve, review, version, help) referenced by the planning artifacts.",
         "decided_by": "pm",
         "phase": "planning"
       }
     ],
     "recent_accepted_turns": [
       {
-        "turn_id": "turn_dca9c6c9fe1063eb",
+        "turn_id": "turn_43f8eb9df22ccd3d",
         "role": "pm",
-        "summary": "Challenged all prior turns for focusing on governance metadata while leaving first-pass manifest output unusable for LLM consumers. Specified four concrete V1 improvements — path parameter extraction, smart domain inference, rich capability descriptions, honest confidence penalty — that transform manifests from structurally present but functionally empty to actionable with targeted review. Updated SYSTEM_SPEC.md, ROADMAP.md (M15), and PM_SIGNOFF.md (Challenge 16).",
+        "summary": "Independently re-verified planning artifacts and smoke test after parent run blocked on human approval; planning_signoff gate returned to human with all 4 required artifacts complete and shipped behavior intact.",
         "phase": "planning"
       }
     ],
-    "inherited_at": "2026-04-21T14:17:14.561Z"
+    "inherited_at": "2026-04-21T15:00:46.094Z"
   },
   "repo_decisions": null,
   "delegation_queue": [],
   "next_recommended_role": null,
   "pending_delegation_review": null,
+  "operator_recovery": {
+    "last_action": "manual_launch_ready_approval_and_completion",
+    "at": "2026-04-21T16:55:43.848Z",
+    "reason": "Product marketing verified launch artifacts and native unblock reassigned duplicate launch turn instead of completing run.",
+    "cleared_escalation_id": "hesc_b52ef0947c672e04",
+    "previous_turn_id": "turn_a325dad1e69c9d1e",
+    "accepted_launch_turn_id": "turn_1663b68deab64508",
+    "cleared_duplicate_turn_id": "turn_2ccfbc51fca8ac4c"
+  },
   "non_progress_signature": null,
   "non_progress_count": 0,
   "last_completed_turn": {
-    "turn_id": "turn_3ae514f35df1db9d",
+    "turn_id": "turn_a325dad1e69c9d1e",
     "role": "qa",
     "phase": "qa",
-    "checkpoint_sha": "632b65f33c5a8c6407f649ea9ff4b0cc2e5ef7f0",
-    "checkpointed_at": "2026-04-21T14:50:16.242Z",
+    "checkpoint_sha": "273a23b21a42e225339dff12ecd16492316f94d5",
+    "checkpointed_at": "2026-04-21T16:52:35.268Z",
     "intent_id": null
-  }
+  },
+  "completed_at": "2026-04-21T16:55:43.848Z"
 }

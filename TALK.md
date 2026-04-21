@@ -1153,3 +1153,60 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn a73bf2cd — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Independently re-verified planning artifacts and shipped behavior on current HEAD (566fa68); all 4 required artifacts exist, smoke tests pass, CLI surface matches spec; planning_signoff gate returned to human for approval.
+- **Decision DEC-258:** Did not rubber-stamp the prior PM turn (turn_43f8eb9df22ccd3d / DEC-243-DEC-246) or the parent run's self-declared 'Approved: YES' as sufficient. This turn independently re-ran verification commands on current HEAD (566fa68) rather than inheriting prior evidence.
+- **Decision DEC-259:** All four required planning artifacts are structurally complete and internally consistent as of 2026-04-21: PM_SIGNOFF.md (208 lines, Approved: YES, documented challenges through M15 first-pass usability), ROADMAP.md (140 lines, 90 checked items, 0 open), SYSTEM_SPEC.md (1,481 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability), command-surface.md (150 lines of Docusaurus site surface inventory).
+- **Decision DEC-260:** Shipped product behavior still matches planning artifacts: node tests/smoke.mjs exits 0 ('Smoke tests passed') and bin/tusq.js help enumerates the 8-command surface (init, scan, manifest, compile, serve, review, version, help) referenced by SYSTEM_SPEC.md and command-surface.md.
+- **Decision DEC-261:** Planning signoff maintained as Approved: YES. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to implementation; an agent PM cannot satisfy that gate by self-declaration.
+- **Proposed next:** human
+
+---
+
+## Turn fae69190 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM turn: independently re-verified planning artifacts and shipped product behavior on HEAD 566fa68; all four required artifacts present and consistent; smoke tests exit 0; returning planning_signoff gate to human because agent PM cannot self-declare approval.
+- **Decision DEC-262:** Challenged the prior turn (turn_d3ff21ed8be478ab attempt-1 non_progress reissue) and refused to pass it through. This attempt-2 turn performed fresh on-disk verification against HEAD 566fa68 rather than inheriting the reissue's empty evidence trail.
+- **Decision DEC-263:** All four required planning artifacts are structurally complete and internally consistent as of 2026-04-21 on HEAD 566fa68: PM_SIGNOFF.md (208 lines, Approved: YES), ROADMAP.md (140 lines, 90 checked items, 0 open), SYSTEM_SPEC.md (1,481 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability), command-surface.md (150 lines of Docusaurus site surface inventory).
+- **Decision DEC-264:** Shipped product behavior still matches planning artifacts on HEAD 566fa68: node tests/smoke.mjs exits 0 ('Smoke tests passed') and bin/tusq.js help enumerates the 8-command surface (init, scan, manifest, compile, serve, review, version, help) that SYSTEM_SPEC.md and command-surface.md reference.
+- **Decision DEC-265:** Planning signoff maintained as Approved: YES. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to implementation; an agent PM cannot satisfy that gate by self-declaration, regardless of artifact completeness.
+- **Proposed next:** human
+
+---
+
+## Turn caf1a0a2 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Re-verified all M9–M15 implementation on HEAD 566fa68; smoke tests pass (exit 0); CLI surface confirmed 8 commands; updated IMPLEMENTATION_NOTES.md with challenge to prior PM turn and verification evidence; implementation_complete gate satisfied.
+- **Decision DEC-266:** Prior PM turn (turn_fae691907af78136) was a planning-phase re-verification pass — structurally correct but carries no implementation artifacts. It is not rejected; a PM planning turn simply cannot satisfy the implementation_complete gate.
+- **Decision DEC-267:** All milestones M9–M15 remain implemented and verified on HEAD 566fa68: sensitivity classification, auth_hints MCP propagation, examples/constraints, redaction + approval metadata, version-history chain fields, and first-pass manifest usability (path params, prefix-aware domain, rich descriptions, schema-miss confidence penalty).
+- **Decision DEC-268:** Implementation_complete gate is satisfied: IMPLEMENTATION_NOTES.md updated with this turn's challenge, verification evidence, and implementation status summary; smoke tests pass; CLI surface matches spec.
+- **Proposed next:** qa
+
+---
+
+## Turn a325dad1 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Challenged dev turn_caf1a0a2c45f3746 on 4 grounds; independently ran smoke tests (exit 0) and CLI surface check; all 38 acceptance criteria PASS; ship verdict updated with this turn's challenge; qa_ship_verdict gate requires human approval before launch transition.
+- **Decision DEC-269:** Dev turn_caf1a0a2c45f3746 was a procedural verification pass only — zero source/test/doc changes since last QA checkpoint (632b65f); all M9-M15 implementation was already present and verified in prior QA passes; no new acceptance criteria required.
+- **Decision DEC-270:** Ship verdict stands as SHIP. All 38 acceptance criteria PASS on HEAD cb100d6. Independent smoke test executed this turn.
+- **Decision DEC-271:** qa_ship_verdict gate remains pending human approval; this QA turn cannot self-declare gate satisfaction.
+- **Proposed next:** human
+
+---
+
+## Turn 1663b68d — product_marketing (launch)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior QA turn as procedural-only; independently re-verified product truth on HEAD 273a23b; all four launch artifacts remain aligned with shipped v0.1.0; launch_ready gate returned to human for approval.
+- **Decision DEC-272:** Challenged the last accepted turn (qa turn_a325dad1e69c9d1e, DEC-269–DEC-271) as a procedural verification pass: it added no new acceptance criteria and made no source/test/doc changes. It correctly re-ran smoke and CLI surface checks, but a QA-phase re-verification does not by itself advance the launch gate — launch copy still needs an independent product-truth pass against current HEAD before the launch_ready gate is returned to the human.
+- **Decision DEC-273:** Launch artifacts remain aligned with shipped v0.1.0 product truth on HEAD 273a23b as of 2026-04-21. MESSAGING.md (130 lines) leads with audience filter, operator problem, proof sequence, and V1 boundary before governance-metadata inventory. LAUNCH_PLAN.md (102 lines) enforces the four-question first-screen order (who / problem / proof / boundary). CONTENT_CALENDAR.md (50 lines) repeats the repo-local CTA and the proof-path one-liner. ANNOUNCEMENT.md (138 lines) names the release as tusq.dev v0.1.0 and uses the repo-local `git clone` trial path (not `npm install -g`), matching package.json private:true.
+- **Decision DEC-274:** launch_ready gate is returned to human for approval rather than self-declared by this agent PM. All four required artifacts exist with concrete, internally consistent content; verification evidence is attached (smoke exit 0, help exit 0, package identity tusq@0.1.0 private:true, origin matches ANNOUNCEMENT.md); the gate explicitly requires human approval before run completion.
+- **Proposed next:** human
+
+---
+

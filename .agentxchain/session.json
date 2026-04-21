@@ -1,26 +1,26 @@
 {
-  "session_id": "session_f3e8c79367d513d4",
-  "run_id": "run_fb1bab22b6c25837",
+  "session_id": "session_64e542e1ced258a0",
+  "run_id": "run_9b2fc2aa7bb60565",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-21T14:53:15Z",
-  "checkpoint_reason": "operator_approved_launch_ready",
+  "last_checkpoint_at": "2026-04-21T16:55:43.848Z",
+  "checkpoint_reason": "operator_manual_launch_ready_approval_and_completion",
   "run_status": "completed",
   "phase": "launch",
   "last_phase": "launch",
-  "last_turn_id": "turn_8cf7d2eb4cc58972",
-  "last_completed_turn_id": "turn_8cf7d2eb4cc58972",
+  "last_turn_id": "turn_2ccfbc51fca8ac4c",
+  "last_completed_turn_id": "turn_1663b68deab64508",
   "active_turn_ids": [],
   "last_role": "product_marketing",
   "pending_gate": null,
   "pending_run_completion": null,
   "blocked": false,
   "baseline_ref": {
-    "git_head": "632b65f33c5a8c6407f649ea9ff4b0cc2e5ef7f0",
+    "git_head": "273a23b21a42e225339dff12ecd16492316f94d5",
     "git_branch": "main",
-    "workspace_dirty": true
+    "workspace_dirty": false
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": null
+    "dispatch_dir": ".agentxchain/dispatch/turns/turn_2ccfbc51fca8ac4c"
   }
 }
