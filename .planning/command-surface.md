@@ -1,8 +1,8 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-## M16 Product CLI Surface — Planned
+## M16 Product CLI Surface
 
-M16 adds the first active diff command on top of the manifest version fields already specified in SYSTEM_SPEC.md. This is planned product work, not shipped behavior until REQ-039 through REQ-044 pass.
+M16 adds the first active diff command on top of the manifest version fields already specified in SYSTEM_SPEC.md. REQ-039 through REQ-044 passed on 2026-04-21.
 
 | Command | Purpose | Exit 0 means |
 |---------|---------|--------------|
@@ -12,7 +12,7 @@ M16 adds the first active diff command on top of the manifest version fields alr
 | `tusq diff --review-queue --from old.json --to new.json` | Print capabilities requiring review after a manifest change | Review queue was computed from added, changed, unapproved, and review-needed capabilities |
 | `tusq diff --fail-on-unapproved-changes --from old.json --to new.json` | CI gate for changed capabilities that lack approval | All added or changed capabilities are approved and no gate failed |
 
-### Planned `tusq diff` Options
+### `tusq diff` Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -22,7 +22,7 @@ M16 adds the first active diff command on top of the manifest version fields alr
 | `--review-queue` | Include capabilities requiring human review | Omitted |
 | `--fail-on-unapproved-changes` | Exit 1 if added or changed capabilities are unapproved | Disabled |
 
-### Planned `tusq diff` Failure UX
+### `tusq diff` Failure UX
 
 | Failure | User sees |
 |---------|-----------|

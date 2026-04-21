@@ -221,6 +221,25 @@ Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` p
 - `capability_digest` excludes `approved`, `approved_by`, `approved_at`, `review_needed`, and the digest field itself.
 - Version-history fields are manifest-only metadata. They do not propagate to compiled tools or MCP `tools/list` / `tools/call`.
 
+## Manifest diffs and review queues (V1)
+
+`tusq diff` compares two manifest files without changing either file:
+
+```bash
+tusq diff --from old.manifest.json --to tusq.manifest.json --review-queue
+```
+
+Capabilities are matched by `name`.
+
+- Present only in `--to`: `added`
+- Present only in `--from`: `removed`
+- Present in both with different `capability_digest`: `changed`
+- Present in both with the same `capability_digest`: `unchanged`
+
+The review queue includes added capabilities, changed capabilities, unapproved capabilities, and capabilities with `review_needed: true`. `--fail-on-unapproved-changes` exits non-zero when added or changed capabilities are not approved or still require review.
+
+This is a local manifest-file comparison. It does not maintain a history store, read manifests from git, or automatically invalidate approvals during `tusq manifest`.
+
 ## Approval flow
 
 V1 approval is explicit and manual.

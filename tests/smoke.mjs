@@ -384,6 +384,83 @@ async function run() {
   await fs.writeFile(manifestPath, `${JSON.stringify(reviewReadyManifest, null, 2)}\n`, 'utf8');
   runCli(['review', '--strict'], { cwd: expressProject });
 
+  // REQ-039 through REQ-043: manifest diff and review queue
+  const oldDiffManifest = JSON.parse(JSON.stringify(reviewReadyManifest));
+  const newDiffManifest = JSON.parse(JSON.stringify(reviewReadyManifest));
+  const changedCapability = newDiffManifest.capabilities[0];
+  changedCapability.description = `${changedCapability.description} with pagination`;
+  changedCapability.approved = false;
+  changedCapability.review_needed = true;
+  changedCapability.capability_digest = computeExpectedCapabilityDigest(changedCapability);
+  const addedCapability = JSON.parse(JSON.stringify(newDiffManifest.capabilities[1]));
+  addedCapability.name = 'post_users_bulk_import';
+  addedCapability.path = '/users/bulk-import';
+  addedCapability.description = 'Import users in bulk - state-modifying, requires requireAuth';
+  addedCapability.approved = false;
+  addedCapability.review_needed = false;
+  addedCapability.capability_digest = computeExpectedCapabilityDigest(addedCapability);
+  newDiffManifest.capabilities = [
+    changedCapability,
+    newDiffManifest.capabilities[1],
+    addedCapability
+  ];
+  newDiffManifest.manifest_version = oldDiffManifest.manifest_version + 1;
+
+  const oldManifestPath = path.join(expressProject, 'old.manifest.json');
+  const newManifestPath = path.join(expressProject, 'new.manifest.json');
+  await fs.writeFile(oldManifestPath, `${JSON.stringify(oldDiffManifest, null, 2)}\n`, 'utf8');
+  await fs.writeFile(newManifestPath, `${JSON.stringify(newDiffManifest, null, 2)}\n`, 'utf8');
+
+  const diffResult = runCli(['diff', '--from', oldManifestPath, '--to', newManifestPath, '--review-queue'], { cwd: expressProject });
+  if (!diffResult.stdout.includes('Summary: 1 added, 1 removed, 1 changed, 1 unchanged.')) {
+    throw new Error(`Expected manifest diff summary counts, got:\n${diffResult.stdout}`);
+  }
+  if (!diffResult.stdout.includes('changed') || !diffResult.stdout.includes('fields=approved,description,review_needed')) {
+    throw new Error(`Expected changed capability field summary, got:\n${diffResult.stdout}`);
+  }
+  if (!diffResult.stdout.includes('Review queue: 2 capability(s)')) {
+    throw new Error(`Expected diff review queue with added and changed capabilities, got:\n${diffResult.stdout}`);
+  }
+
+  const diffJsonResult = runCli(['diff', '--json', '--from', oldManifestPath, '--to', newManifestPath, '--review-queue'], { cwd: expressProject });
+  const diffJson = JSON.parse(diffJsonResult.stdout);
+  if (diffJson.summary.added !== 1 || diffJson.summary.removed !== 1 || diffJson.summary.changed !== 1 || diffJson.summary.unchanged !== 1) {
+    throw new Error(`Expected JSON diff summary counts, got ${JSON.stringify(diffJson.summary)}`);
+  }
+  const jsonChanged = diffJson.changes.find((change) => change.type === 'changed');
+  if (!jsonChanged || !jsonChanged.fields_changed.includes('description')) {
+    throw new Error(`Expected JSON changed record with fields_changed, got ${JSON.stringify(diffJson.changes)}`);
+  }
+  if (!Array.isArray(diffJson.review_queue) || diffJson.review_queue.length !== 2) {
+    throw new Error(`Expected JSON review_queue with 2 items, got ${JSON.stringify(diffJson.review_queue)}`);
+  }
+
+  const diffGateFailure = runCli(
+    ['diff', '--from', oldManifestPath, '--to', newManifestPath, '--fail-on-unapproved-changes'],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!diffGateFailure.stderr.includes('Review gate failed')) {
+    throw new Error(`Expected diff gate failure for unapproved changes, got:\n${diffGateFailure.stderr}`);
+  }
+  const missingFromFailure = runCli(['diff', '--to', newManifestPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!missingFromFailure.stderr.includes('Pass --from <path>')) {
+    throw new Error(`Expected diff to ask for --from when no predecessor is resolvable, got:\n${missingFromFailure.stderr}`);
+  }
+  const missingPathFailure = runCli(
+    ['diff', '--from', path.join(expressProject, 'missing.manifest.json'), '--to', newManifestPath],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!missingPathFailure.stderr.includes('from manifest not found')) {
+    throw new Error(`Expected diff to report missing manifest path, got:\n${missingPathFailure.stderr}`);
+  }
+
+  for (const capability of newDiffManifest.capabilities) {
+    capability.approved = true;
+    capability.review_needed = false;
+  }
+  await fs.writeFile(newManifestPath, `${JSON.stringify(newDiffManifest, null, 2)}\n`, 'utf8');
+  runCli(['diff', '--from', oldManifestPath, '--to', newManifestPath, '--fail-on-unapproved-changes'], { cwd: expressProject });
+
   // REQ-036: Framework-specific deep extraction assertions
   runCli(['init'], { cwd: fastifyProject });
   const fastifyScanResult = runCli(['scan', '.', '--format', 'json'], { cwd: fastifyProject });

@@ -1,6 +1,6 @@
 # Next Increment — M16 Manifest Diff and Review Queue
 
-Status: PM-selected, implementation-ready, not shipped.
+Status: implemented and smoke-verified on 2026-04-21.
 
 ## Problem
 
@@ -38,6 +38,9 @@ Teams can compare two manifest files, see which capabilities were added/removed/
 - `node tests/smoke.mjs` exits 0.
 - Docs do not claim git integration, history storage, or automatic re-approval are shipped.
 
-## Suggested AgentXchain Handoff
+## Completion Evidence
 
-The next dev role should implement M16 directly from this file, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`, and `.planning/acceptance-matrix.md`.
+- `node tests/smoke.mjs` exits 0.
+- `tusq help` lists `diff`.
+- `tusq diff --help` lists `--from`, `--to`, `--json`, `--review-queue`, and `--fail-on-unapproved-changes`.
+- REQ-039 through REQ-044 are PASS in `.planning/acceptance-matrix.md`.

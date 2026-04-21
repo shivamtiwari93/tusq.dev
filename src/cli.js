@@ -70,6 +70,9 @@ function dispatch(argv) {
     case 'review':
       cmdReview(args);
       return;
+    case 'diff':
+      cmdDiff(args);
+      return;
     default:
       printHelp();
       throw new CliError(`Unknown command: ${command}`, 1);
@@ -692,6 +695,267 @@ function cmdReview(args) {
   enforceStrictReviewIfRequested(opts.strict, reviewStats);
 }
 
+function cmdDiff(args) {
+  const { opts, positionals } = parseCommandArgs('diff', args, {
+    from: 'value',
+    to: 'value',
+    json: 'boolean',
+    'review-queue': 'boolean',
+    'fail-on-unapproved-changes': 'boolean'
+  });
+
+  if (opts.help) {
+    printCommandHelp('diff');
+    return;
+  }
+
+  if (positionals.length > 0) {
+    throw new CliError('Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes]', 1);
+  }
+
+  const root = process.cwd();
+  if (!opts.from) {
+    throw new CliError('No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison.', 1);
+  }
+
+  const fromPath = path.resolve(root, opts.from);
+  const toPath = path.resolve(root, opts.to || 'tusq.manifest.json');
+  const fromManifest = readManifestForDiff(fromPath, 'from');
+  const toManifest = readManifestForDiff(toPath, 'to');
+  const includeReviewQueue = Boolean(opts['review-queue'] || opts['fail-on-unapproved-changes']);
+  const diff = buildManifestDiff(fromManifest, toManifest, fromPath, toPath, includeReviewQueue);
+  const gateFailures = getUnapprovedChangeFailures(diff);
+
+  if (opts.json) {
+    const payload = Object.assign({}, diff, {
+      gate: {
+        fail_on_unapproved_changes: Boolean(opts['fail-on-unapproved-changes']),
+        passed: gateFailures.length === 0,
+        failures: gateFailures.map((item) => item.capability)
+      }
+    });
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  } else {
+    printManifestDiff(diff, Boolean(opts['review-queue']));
+  }
+
+  if (opts['fail-on-unapproved-changes'] && gateFailures.length > 0) {
+    throw new CliError(
+      `Review gate failed: ${gateFailures.length} added or changed capability change(s) require approval: ${gateFailures.map((item) => item.capability).join(', ')}`,
+      1
+    );
+  }
+}
+
+function readManifestForDiff(manifestPath, label) {
+  if (!fs.existsSync(manifestPath)) {
+    throw new CliError(`${label} manifest not found: ${manifestPath}`, 1);
+  }
+
+  const manifest = readJson(manifestPath);
+  validateManifestForDiff(manifest, manifestPath, label);
+  return manifest;
+}
+
+function validateManifestForDiff(manifest, manifestPath, label) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw new CliError(`${label} manifest is not an object: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`${label} manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const seen = new Set();
+  for (const capability of manifest.capabilities) {
+    if (!capability || typeof capability !== 'object' || Array.isArray(capability)) {
+      throw new CliError(`${label} manifest contains an invalid capability object: ${manifestPath}`, 1);
+    }
+    if (typeof capability.name !== 'string' || capability.name.trim() === '') {
+      throw new CliError(`${label} manifest capability missing required field: name`, 1);
+    }
+    if (seen.has(capability.name)) {
+      throw new CliError(`${label} manifest contains duplicate capability name: ${capability.name}`, 1);
+    }
+    seen.add(capability.name);
+  }
+}
+
+function buildManifestDiff(fromManifest, toManifest, fromPath, toPath, includeReviewQueue) {
+  const fromCapabilities = new Map(fromManifest.capabilities.map((capability) => [capability.name, capability]));
+  const toCapabilities = new Map(toManifest.capabilities.map((capability) => [capability.name, capability]));
+  const names = Array.from(new Set([...fromCapabilities.keys(), ...toCapabilities.keys()])).sort();
+  const changes = [];
+
+  for (const name of names) {
+    const previous = fromCapabilities.get(name);
+    const current = toCapabilities.get(name);
+
+    if (!previous && current) {
+      changes.push({
+        type: 'added',
+        capability: name,
+        digest: normalizeDigest(current.capability_digest)
+      });
+      continue;
+    }
+
+    if (previous && !current) {
+      changes.push({
+        type: 'removed',
+        capability: name,
+        previous_digest: normalizeDigest(previous.capability_digest)
+      });
+      continue;
+    }
+
+    const previousDigest = normalizeDigest(previous.capability_digest);
+    const currentDigest = normalizeDigest(current.capability_digest);
+    if (previousDigest !== currentDigest) {
+      changes.push({
+        type: 'changed',
+        capability: name,
+        previous_digest: previousDigest,
+        current_digest: currentDigest,
+        fields_changed: getChangedCapabilityFields(previous, current),
+        approval_invalidated: current.approved !== true || current.review_needed === true
+      });
+      continue;
+    }
+
+    changes.push({
+      type: 'unchanged',
+      capability: name,
+      digest: currentDigest
+    });
+  }
+
+  const summary = {
+    added: changes.filter((change) => change.type === 'added').length,
+    removed: changes.filter((change) => change.type === 'removed').length,
+    changed: changes.filter((change) => change.type === 'changed').length,
+    unchanged: changes.filter((change) => change.type === 'unchanged').length
+  };
+
+  const diff = {
+    from_version: normalizeManifestVersion(fromManifest.manifest_version),
+    to_version: normalizeManifestVersion(toManifest.manifest_version),
+    from_hash: sha256Hex(JSON.stringify(fromManifest)),
+    to_hash: sha256Hex(JSON.stringify(toManifest)),
+    from_path: fromPath,
+    to_path: toPath,
+    generated_at: new Date().toISOString(),
+    summary,
+    changes
+  };
+
+  if (includeReviewQueue) {
+    diff.review_queue = buildReviewQueue(changes, toCapabilities);
+  }
+
+  return diff;
+}
+
+function getChangedCapabilityFields(previous, current) {
+  const excluded = new Set(['capability_digest']);
+  const fields = new Set([...Object.keys(previous || {}), ...Object.keys(current || {})]);
+  const changed = [];
+
+  for (const field of Array.from(fields).sort()) {
+    if (excluded.has(field)) {
+      continue;
+    }
+    if (stableStringify(previous[field]) !== stableStringify(current[field])) {
+      changed.push(field);
+    }
+  }
+
+  return changed;
+}
+
+function buildReviewQueue(changes, toCapabilities) {
+  const changeByName = new Map(changes.map((change) => [change.capability, change]));
+  const queue = [];
+
+  for (const [name, capability] of Array.from(toCapabilities.entries()).sort(([left], [right]) => left.localeCompare(right))) {
+    const change = changeByName.get(name);
+    const changeType = change ? change.type : 'unchanged';
+    const requiresReview = changeType === 'added'
+      || changeType === 'changed'
+      || capability.approved !== true
+      || capability.review_needed === true;
+
+    if (!requiresReview) {
+      continue;
+    }
+
+    queue.push({
+      capability: name,
+      change_type: changeType,
+      approved: capability.approved === true,
+      review_needed: capability.review_needed === true,
+      side_effect_class: capability.side_effect_class || 'unknown',
+      sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
+      confidence: typeof capability.confidence === 'number' ? capability.confidence : null,
+      provenance: capability.provenance || null
+    });
+  }
+
+  return queue;
+}
+
+function getUnapprovedChangeFailures(diff) {
+  const reviewQueue = Array.isArray(diff.review_queue) ? diff.review_queue : [];
+  if (reviewQueue.length > 0) {
+    return reviewQueue.filter((item) => {
+      return (item.change_type === 'added' || item.change_type === 'changed')
+        && (item.approved !== true || item.review_needed === true);
+    });
+  }
+
+  const changedNames = new Set(diff.changes
+    .filter((change) => change.type === 'added' || change.type === 'changed')
+    .map((change) => change.capability));
+  return Array.from(changedNames).map((capability) => ({ capability }));
+}
+
+function printManifestDiff(diff, includeReviewQueue) {
+  process.stdout.write(`Manifest diff: ${diff.from_path} -> ${diff.to_path}\n`);
+  process.stdout.write(`Versions: ${diff.from_version || 'unknown'} -> ${diff.to_version || 'unknown'}\n`);
+  process.stdout.write(
+    `Summary: ${diff.summary.added} added, ${diff.summary.removed} removed, ${diff.summary.changed} changed, ${diff.summary.unchanged} unchanged.\n`
+  );
+
+  const interestingChanges = diff.changes.filter((change) => change.type !== 'unchanged');
+  if (interestingChanges.length > 0) {
+    process.stdout.write('\nChanges:\n');
+    for (const change of interestingChanges) {
+      if (change.type === 'changed') {
+        process.stdout.write(`- changed ${change.capability} fields=${change.fields_changed.join(',') || 'unknown'}\n`);
+      } else {
+        process.stdout.write(`- ${change.type} ${change.capability}\n`);
+      }
+    }
+  }
+
+  if (includeReviewQueue) {
+    const queue = Array.isArray(diff.review_queue) ? diff.review_queue : [];
+    process.stdout.write(`\nReview queue: ${queue.length} capability(s)\n`);
+    for (const item of queue) {
+      const provenance = item.provenance && item.provenance.file
+        ? ` source=${item.provenance.file}${item.provenance.line ? `:${item.provenance.line}` : ''}`
+        : '';
+      process.stdout.write(
+        `- ${item.capability} change=${item.change_type} approved=${item.approved} review_needed=${item.review_needed} side_effect=${item.side_effect_class} sensitivity=${item.sensitivity_class} confidence=${item.confidence}${provenance}\n`
+      );
+    }
+  }
+}
+
+function normalizeDigest(value) {
+  return typeof value === 'string' && value ? value : null;
+}
+
 function getReviewStats(manifest) {
   const capabilities = Array.isArray(manifest.capabilities) ? manifest.capabilities : [];
   return {
@@ -780,6 +1044,7 @@ function printHelp() {
   process.stdout.write('  compile            Compile approved capabilities into tool definitions\n');
   process.stdout.write('  serve              Start describe-only local MCP endpoint\n');
   process.stdout.write('  review             Print manifest summary for human review\n');
+  process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
 }
@@ -791,7 +1056,8 @@ function printCommandHelp(command) {
     manifest: 'Usage: tusq manifest [--out <path>] [--format json] [--verbose]',
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--verbose]',
-    review: 'Usage: tusq review [--format json] [--strict] [--verbose]'
+    review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
+    diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }

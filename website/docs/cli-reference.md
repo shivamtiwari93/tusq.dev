@@ -72,6 +72,24 @@ Use `--format json` when you need the full raw manifest.
 
 Use `--strict` in CI to fail with exit code `1` when any capability is unapproved or marked `review_needed`.
 
+## `tusq diff`
+
+Compare two manifest files and surface capability changes for review.
+
+```bash
+tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]
+```
+
+Use `--from` for the previous manifest and `--to` for the current manifest. If `--to` is omitted, tusq uses `tusq.manifest.json` in the current working directory. If `--from` is omitted and tusq cannot resolve a predecessor locally, the command exits `1` and asks for `--from <path>`.
+
+The default text output reports added, removed, changed, and unchanged counts. Changed capabilities are matched by `name`, detected with `capability_digest`, and include top-level changed field names.
+
+Use `--json` for machine-readable output with `summary`, `changes[]`, and optional `review_queue[]`.
+
+Use `--review-queue` to list added, changed, unapproved, and low-confidence capabilities that need review.
+
+Use `--fail-on-unapproved-changes` in CI to exit `1` when added or changed capabilities are unapproved or still marked `review_needed`.
+
 ## `tusq version`
 
 Print the current version.
@@ -93,3 +111,4 @@ tusq help
 - Invalid command: exits `1` and prints help.
 - Invalid flag: exits `1` and prints per-command usage.
 - Missing prerequisites (no config / no scan / no manifest): exits `1` with an explicit error message.
+- Diff gate failure: exits `1` with `Review gate failed:` and the capability names requiring approval.

@@ -199,6 +199,20 @@ Implementation_complete gate satisfied: all required artifacts exist and verific
 
 ## Changes
 
+## M16 Manifest Diff and Review Queue
+
+- Added `tusq diff` in `src/cli.js`.
+- Supports explicit `--from <path>` and `--to <path>` manifest comparison.
+- Defaults `--to` to `tusq.manifest.json`; requires `--from` when no predecessor is locally resolvable.
+- Classifies capabilities as added, removed, changed, or unchanged by matching `name` and comparing `capability_digest`.
+- Reports top-level `fields_changed` for changed capabilities.
+- Supports human-readable output, `--json`, `--review-queue`, and `--fail-on-unapproved-changes`.
+- Review queue includes added, changed, unapproved, and `review_needed` capabilities with governance/provenance metadata.
+- Updated README, CLI reference, manifest format docs, roadmap, acceptance matrix, command surface, PM signoff, and next-increment handoff.
+- Added smoke coverage for REQ-039 through REQ-044.
+
+## Website Platform Changes
+
 - Scaffolded a real Docusaurus 3.x project at `website/` using the classic TypeScript template.
 - Replaced template config with tusq.dev production settings:
   - strict link policy (`onBrokenLinks: throw`, `onBrokenMarkdownLinks: throw`)

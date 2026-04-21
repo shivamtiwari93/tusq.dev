@@ -206,6 +206,8 @@ The previous AgentXchain idle-expansion path failed to derive this as a new incr
 
 This does not claim M16 is shipped. ROADMAP.md, SYSTEM_SPEC.md, command-surface.md, acceptance-matrix.md, and NEXT_INCREMENT.md now define it as implementation-ready planned work.
 
+**Implementation follow-up:** M16 was then implemented manually after AgentXchain repeatedly looped on `planning_signoff` and ghost PM turns. `src/cli.js` now includes `tusq diff`, `tests/smoke.mjs` verifies REQ-039 through REQ-044, and docs describe the shipped local manifest-file diff boundary without claiming git/history/automatic re-approval support.
+
 ## Key Judgment Calls
 
 1. **Docs are authored content, not auto-generated.** Each docs page is written in user-facing language derived from planning artifacts. This means a human (product_marketing role) owns the content quality.
