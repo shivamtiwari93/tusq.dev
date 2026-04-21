@@ -2,12 +2,12 @@
   "schema_version": "1.1",
   "run_id": "run_4b24e171693ac091",
   "project_id": "tusq-dev",
-  "status": "active",
+  "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:defe5f4c41e92e3025b857b4b637a77a1eb45eff",
+  "accepted_integration_ref": "git:ecdbdcf40adb6481319206c7ba403f3527a0bfe0",
   "active_turns": {},
-  "turn_sequence": 57,
-  "last_completed_turn_id": "turn_b0f37d0554c97960",
+  "turn_sequence": 62,
+  "last_completed_turn_id": "turn_60592eb9651f6728",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -20,7 +20,7 @@
     "planning_signoff": "passed",
     "implementation_complete": "passed",
     "qa_ship_verdict": "passed",
-    "launch_ready": "pending"
+    "launch_ready": "passed"
   },
   "budget_reservations": {},
   "budget_status": {
@@ -42,11 +42,11 @@
   "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_b0f37d0554c97960",
-    "role": "qa",
-    "phase": "qa",
-    "checkpoint_sha": null,
-    "checkpointed_at": null,
+    "turn_id": "turn_60592eb9651f6728",
+    "role": "product_marketing",
+    "phase": "launch",
+    "checkpoint_sha": "ecdbdcf40adb6481319206c7ba403f3527a0bfe0",
+    "checkpointed_at": "2026-04-21T13:34:40.994Z",
     "intent_id": null
   },
   "non_progress_signature": null,

@@ -1076,3 +1076,14 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 60592eb9 — product_marketing (launch)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior reissued launch turn as substantively a no-op; re-verified all four launch artifacts against current product truth (CLI surface, version, private package, supported frameworks, origin URL) and smoke suite exit 0.
+- **Decision DEC-237:** Rejected the previous turn's 'runtime-rebinding' reissue as insufficient proof of launch readiness — a rebind alone does not revalidate that launch copy still matches shipped behavior, so this turn performed an independent product-truth pass before passing the gate to human review.
+- **Decision DEC-238:** Re-verified launch artifact alignment against current product truth: CLI surface (init/scan/manifest/compile/serve/review/version/help) matches bin/tusq.js help output; package.json reports name=tusq, version=0.1.0, private=true (justifying the repo-local CTA); git origin matches https://github.com/shivamtiwari93/tusq.dev.git referenced in ANNOUNCEMENT.md; node tests/smoke.mjs exits 0; README first screen leads with audience filter and proof path as MESSAGING.md and LAUNCH_PLAN.md prescribe.
+- **Decision DEC-239:** Launch phase exit gate launch_ready is returned to the human for approval. All four required artifacts exist with concrete content; messaging, launch plan, content calendar, and announcement are internally consistent and match the shipped v0.1.0 boundary.
+- **Proposed next:** human
+
+---
+
