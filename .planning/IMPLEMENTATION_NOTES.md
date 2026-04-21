@@ -1,5 +1,29 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
+## Dev Turn turn_8634538ce440e926 — Implementation Gate Closure (2026-04-21)
+
+### Challenge To Prior Turn
+
+- Prior turn (turn_8505f25c60a3070c, role=pm, phase=planning) was a planning-phase re-verification pass that returned `needs_human` for the planning_signoff gate. Not rejected — PM turns are not expected to deliver implementation artifacts. However, a PM planning turn cannot satisfy the `implementation_complete` gate; that requires a dev turn with verified implementation evidence.
+- This is the first dev turn in the new run (run_8543d07bd34cc982) after the planning_signoff gate was cleared by the human. Context from the parent run (run_233ad84feab64d38) is stale regarding "no M16 code exists yet" — M16 was shipped in commit 369972f and is fully implemented and verified on HEAD b522773.
+
+### Verification Activities
+
+- Ran `node tests/smoke.mjs` → exit 0, "Smoke tests passed". All M9–M16 behaviors are asserting correctly on HEAD b522773.
+- Ran `node bin/tusq.js help` → exit 0; 9-command surface enumerated (init, scan, manifest, compile, serve, review, diff, version, help).
+- Ran `node bin/tusq.js diff --help` → exit 0; full flag set emitted (`--from`, `--to`, `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`).
+- Confirmed all required planning artifacts exist and are complete: IMPLEMENTATION_NOTES.md, acceptance-matrix.md (REQ-039–REQ-044 all PASS), ROADMAP.md (98 checked / 0 open).
+- No new source changes required — M16 implementation is complete as verified by this independent re-run.
+
+### Implementation Status
+
+All milestones M9–M16 are implemented and verified on HEAD b522773:
+- M16: `tusq diff` command comparing two explicit manifest files; classifies capabilities as added/removed/changed/unchanged by `capability_digest`; reports `fields_changed`; supports `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`; CI gate semantics (exit 1 on unapproved changes); smoke coverage REQ-039–REQ-044 all PASS.
+
+Implementation_complete gate satisfied: all required artifacts exist and independent verification pass completed.
+
+---
+
 ## Dev Turn turn_caf1a0a2c45f3746 — Verification Pass (2026-04-21)
 
 ### Challenge To Prior Turn
