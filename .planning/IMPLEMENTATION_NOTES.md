@@ -1,6 +1,34 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
-## Challenge To Prior Turn
+## Dev Turn turn_caf1a0a2c45f3746 — Verification Pass (2026-04-21)
+
+### Challenge To Prior Turn
+
+- Prior turn (turn_fae691907af78136, role=pm) was a planning-phase re-verification pass: structurally correct, returned `needs_human` for the planning_signoff gate. It is not rejected — PM turns are not expected to deliver implementation artifacts. However, a PM planning turn cannot satisfy the `implementation_complete` gate; that requires a dev turn with verified implementation evidence.
+- No attempt-1 ghost reissue was present for this dev turn slot; this is attempt 1 of turn_caf1a0a2c45f3746 and proceeds as a direct verification-and-close turn.
+
+### Verification Activities
+
+- Ran `node tests/smoke.mjs` → exit 0, "Smoke tests passed". All M9–M15 behaviors asserted by the test suite remain passing on HEAD 566fa68.
+- Ran `node bin/tusq.js help` → exit 0, all 8 commands enumerated (init, scan, manifest, compile, serve, review, version, help).
+- Confirmed all four required planning artifacts exist and are consistent with M15 delivered behavior.
+- No new source changes required — implementation is complete as verified by prior accepted dev turns (DEC-252) and this independent re-run.
+
+### Implementation Status
+
+All milestones M9–M15 are implemented and verified on HEAD 566fa68:
+- M9: `sensitivity_class` on manifest capabilities and propagated through compile/MCP.
+- M10: `auth_hints` surfaced in MCP `tools/list` and `tools/call` responses.
+- M11: `examples` and `constraints` manifest fields, preserved on regeneration, propagated to compile and MCP.
+- M12: `redaction` defaults/normalization; `approved_by`/`approved_at` approval audit fields.
+- M13: `manifest_version` counter, `previous_manifest_hash` SHA-256 chain, per-capability `capability_digest`.
+- M15: Path parameter extraction into `input_schema`, prefix-aware domain inference, rich capability descriptions, schema-miss confidence penalty (-0.10).
+
+Implementation_complete gate satisfied: all required artifacts exist and verification pass completed.
+
+---
+
+## Challenge To Prior Turn (historical)
 
 - Rejected turn_b9fd4cbc1588bb9e (attempt 1 of this dev slot, summary "Turn reissued: ghost") as non-actionable: it carried no implementation artifact, no verification evidence, and no updated workflow-kit content. A ghost reissue cannot satisfy the implementation_complete gate.
 - Rejected the prior implementation state as incomplete for M13: planning approved manifest version history (`manifest_version`, `previous_manifest_hash`, `capability_digest`), but runtime code and smoke tests had no implementation or verification of those fields.
