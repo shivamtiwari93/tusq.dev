@@ -1057,3 +1057,22 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 1dfcc7fe — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** QA challenged PM-led turn_1f89182d2701a838 on four grounds, ran independent smoke tests (exit 0), spot-verified REQ-037/REQ-038 implementation functions in src/cli.js, confirmed no new source changes since last QA pass; all 38 acceptance criteria PASS, ship verdict stands as SHIP, awaiting human approval for qa_ship_verdict gate.
+- **Decision DEC-234:** Did not rubber-stamp PM-led QA turn_1f89182d2701a838 — independently challenged on four grounds: PM-role authorship, commits since last pass, REQ-037/REQ-038 implementation spot-check, and smoke test concreteness. All four challenges resolved.
+- **Decision DEC-235:** Ship verdict stands as SHIP. All 38 acceptance criteria PASS. No new criteria required. qa_ship_verdict gate requires human approval before phase transition to launch.
+- **Proposed next:** human
+
+---
+
+## Turn b0f37d05 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Independently challenged prior QA turn_1dfcc7fe5582abf9 on four grounds (commits since last pass, smoke test independence, workflow artifact consistency, gate blockage correctness); all four challenges resolved; smoke tests exit 0; no new source changes; all 38 acceptance criteria PASS; ship verdict stands as SHIP; awaiting human approval for qa_ship_verdict gate.
+- **Decision DEC-236:** Did not rubber-stamp QA turn_1dfcc7fe5582abf9 — independently challenged on four grounds: (1) commits since that pass (defe5f4 and cc7055b) touch only .agentxchain/ and .planning/ — no source/test/doc changes, no new criteria needed; (2) independently ran node tests/smoke.mjs → exit 0 rather than deferring to prior evidence; (3) verified all three workflow artifacts exist and are internally consistent (38 criteria PASS, verdict SHIP, release notes scoped to shipped behavior); (4) confirmed qa_ship_verdict gate correctly blocks on human approval. All four challenges resolved.
+- **Proposed next:** human
+
+---
+

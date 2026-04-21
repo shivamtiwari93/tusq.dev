@@ -2,25 +2,14 @@
   "schema_version": "1.1",
   "run_id": "run_4b24e171693ac091",
   "project_id": "tusq-dev",
-  "status": "blocked",
-  "phase": "qa",
-  "accepted_integration_ref": "git:7a51368873943ffc2eebf5e418eb789863749481",
+  "status": "active",
+  "phase": "launch",
+  "accepted_integration_ref": "git:defe5f4c41e92e3025b857b4b637a77a1eb45eff",
   "active_turns": {},
-  "turn_sequence": 52,
-  "last_completed_turn_id": "turn_1f89182d2701a838",
-  "blocked_on": "human:qa_ship_verdict gate explicitly requires human approval before transition to the launch phase. All 38 acceptance criteria PASS and smoke tests exit 0, so no further automated verification is outstanding — the remaining step is a human sign-off on the release.",
-  "blocked_reason": {
-    "category": "needs_human",
-    "recovery": {
-      "typed_reason": "needs_human",
-      "owner": "human",
-      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
-      "turn_retained": false,
-      "detail": "qa_ship_verdict gate explicitly requires human approval before transition to the launch phase. All 38 acceptance criteria PASS and smoke tests exit 0, so no further automated verification is outstanding — the remaining step is a human sign-off on the release."
-    },
-    "blocked_at": "2026-04-21T12:53:12.365Z",
-    "turn_id": "turn_1f89182d2701a838"
-  },
+  "turn_sequence": 57,
+  "last_completed_turn_id": "turn_b0f37d0554c97960",
+  "blocked_on": null,
+  "blocked_reason": null,
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -30,7 +19,7 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "pending",
+    "qa_ship_verdict": "passed",
     "launch_ready": "pending"
   },
   "budget_reservations": {},
@@ -39,7 +28,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-20T12:16:39.386Z",
-  "phase_entered_at": "2026-04-20T12:53:55.742Z",
+  "phase_entered_at": "2026-04-21T13:28:28Z",
   "provenance": {
     "trigger": "vision_scan",
     "parent_run_id": null,
@@ -53,11 +42,11 @@
   "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_211ef51c87494bb8",
-    "role": "dev",
-    "phase": "implementation",
-    "checkpoint_sha": "0f60878817cd90ce4687f12919173e55a365f799",
-    "checkpointed_at": "2026-04-20T12:54:06.612Z",
+    "turn_id": "turn_b0f37d0554c97960",
+    "role": "qa",
+    "phase": "qa",
+    "checkpoint_sha": null,
+    "checkpointed_at": null,
     "intent_id": null
   },
   "non_progress_signature": null,
