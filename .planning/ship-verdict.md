@@ -2,6 +2,24 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_2bc1f5e196f81cda (role=qa, 2026-04-21)
+
+This QA turn is the first qa-phase turn in run_8543d07bd34cc982. It challenges the prior accepted turn (turn_bf08abe27778c3a4, role=qa, phase=implementation) rather than rubber-stamping it, and independently re-verifies on HEAD 514f31d.
+
+**Challenge 1 — What did the prior accepted turn actually deliver?** turn_bf08abe27778c3a4 was a qa-role turn operating in the implementation phase. Its sole artifact change was fixing the `## Changes` section body in `.planning/IMPLEMENTATION_NOTES.md` to eliminate the empty-placeholder structure that caused the implementation_complete gate to reject the file. No changes were made to `src/`, `tests/`, `bin/`, or `website/`. The M16 implementation (REQ-039–REQ-044) was already present and ship-ready on HEAD e292452. **Challenge resolved: no new behavior introduced, prior verification evidence remains valid.**
+
+**Challenge 2 — M16 coverage in acceptance matrix vs ship-verdict.** The acceptance matrix already records REQ-039–REQ-044 (tusq diff) as PASS (last tested 2026-04-21 by smoke). Prior QA challenge entries in this file referenced "38 criteria" because M16 was not yet in the matrix at that time. On HEAD 514f31d the matrix now has 44 criteria, all PASS. The ship verdict must reflect the updated criterion count. **Challenge resolved: no defects; discrepancy is historical notation, not a coverage gap. Matrix is authoritative.**
+
+**Challenge 3 — Independent smoke run on current HEAD (514f31d).** Ran `node tests/smoke.mjs` independently → exit 0, "Smoke tests passed". Did not inherit evidence from any prior turn. **Challenge resolved: all 44 acceptance criteria verified PASS on current HEAD.**
+
+**Challenge 4 — 9-command CLI surface unchanged.** Ran `node bin/tusq.js help` → exit 0; surface enumerated: init, scan, manifest, compile, serve, review, diff, version, help. Matches SYSTEM_SPEC.md and command-surface.md. Ran `node bin/tusq.js diff --help` → exit 0; flag set confirmed: --from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose. Ran `node bin/tusq.js diff` (no args) → exit 1 with "Pass --from" actionable error. **Challenge resolved: no surface drift, correct error handling.**
+
+**Challenge 5 — M16 implementation correctness spot-check.** All four REQ-039–REQ-044 behaviors (manifest file comparison, JSON output, digest-based change detection, review queue, CI gate) are covered by concrete smoke assertions in `tests/smoke.mjs` and independently verified by this smoke run. No silent passes. **Challenge resolved.**
+
+**Independent smoke run (2026-04-21, HEAD 514f31d):** `node tests/smoke.mjs` → exit 0. `node bin/tusq.js help` → exit 0. `node bin/tusq.js diff --help` → exit 0. `node bin/tusq.js diff` → exit 1 with correct error. Independent execution, not inherited from prior evidence.
+
+**Result:** All 44 acceptance criteria PASS. No new defects found. Ship verdict stands as SHIP. RELEASE_NOTES.md updated to reflect 44 criteria (was stale at 38). Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. This QA turn has satisfied all automated requirements of the gate.
+
 ## QA Challenge — turn_a325dad1e69c9d1e (role=qa, 2026-04-21)
 
 This QA turn challenged dev turn_caf1a0a2c45f3746 explicitly and ran independent verification rather than accepting it by reference.
