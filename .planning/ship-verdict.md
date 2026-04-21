@@ -2,6 +2,22 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_a325dad1e69c9d1e (role=qa, 2026-04-21)
+
+This QA turn challenged dev turn_caf1a0a2c45f3746 explicitly and ran independent verification rather than accepting it by reference.
+
+**Challenge 1 — What did the dev turn actually deliver?** The dev turn's only non-orchestration changes were `.planning/IMPLEMENTATION_NOTES.md` updates and HUMAN_TASKS.md / TALK.md metadata. No changes to `src/`, `tests/`, `bin/`, or `website/` since the last QA checkpoint (632b65f). The dev turn was procedural: it re-verified existing M9–M15 implementation and documented the challenge to the prior PM planning turn. All M9–M15 implementation was already present and verified in prior QA passes (DEC-234, DEC-235, DEC-236, DEC-253, DEC-254). **Challenge resolved: no new behavior introduced, no new acceptance criteria required.**
+
+**Challenge 2 — Independent smoke test (not deferred to dev evidence).** Ran `node tests/smoke.mjs` directly on current HEAD (cb100d6) → exit 0, "Smoke tests passed". **Challenge resolved: independent verification confirms all 38 criteria PASS.**
+
+**Challenge 3 — CLI surface unchanged.** Ran `node bin/tusq.js help` → 8-command surface (init, scan, manifest, compile, serve, review, version, help) exactly as documented in SYSTEM_SPEC.md and command-surface.md. Exit 0. **Challenge resolved: no surface drift.**
+
+**Challenge 4 — Acceptance matrix coverage complete.** The dev turn introduced no new behavior; no new commits touched source, tests, or docs. The 38 criteria covering M1–M15, provenance chain, governance metadata pipeline, framework-specific deep extraction, first-pass manifest usability, and review governance remain the complete and correct coverage set. **Challenge resolved: matrix accurate and complete.**
+
+**Independent smoke run (2026-04-21):** `node tests/smoke.mjs` → exit 0. `node bin/tusq.js help` → exit 0. Independent execution on HEAD cb100d6, not inherited from dev evidence.
+
+**Result:** No new acceptance criteria needed. All 38 criteria remain PASS. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
 ## QA Challenge — turn_3ae514f35df1db9d (role=qa, 2026-04-21)
 
 This QA turn challenged dev turn_e901ecad58772405 explicitly and ran independent verification rather than accepting it by reference.
