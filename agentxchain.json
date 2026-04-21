@@ -97,13 +97,19 @@
     "local-product-marketing": {
       "type": "local_cli",
       "command": [
-        "/Applications/Codex.app/Contents/Resources/codex",
-        "exec",
-        "--dangerously-bypass-approvals-and-sandbox",
-        "-c",
-        "model_reasoning_effort=\"high\"",
+        "claude",
+        "--print",
+        "--effort",
+        "high",
+        "--permission-mode",
+        "bypassPermissions",
         "--model",
-        "gpt-5.4"
+        "claude-opus-4-7",
+        "--output-format",
+        "stream-json",
+        "--include-partial-messages",
+        "--verbose",
+        "--dangerously-skip-permissions"
       ],
       "cwd": ".",
       "prompt_transport": "stdin"
