@@ -189,6 +189,23 @@ M13 (Version History and Diffs) items remain unchecked in ROADMAP.md despite the
 
 **Decision:** Leave M13 unchecked — the implementation was done in a prior run, but this PM turn is not claiming to have verified the implementation. The next dev turn or QA turn should mark M13 items as checked after re-verification. Honest planning means not checking boxes the PM has not personally verified.
 
+### Challenge 17: The next PM-derived item must become executable, not another broad vision scan
+
+After M15 and REQ-038, the product has usable first-pass manifests and a strict review gate. The broad VISION.md is still unfulfilled in several places, but the most direct next slice is already identified by prior PM work: VISION.md line 218 requires "produce manifest diffs and review queues", and SYSTEM_SPEC.md already names `tusq diff`, structured diff output, review queue generation, and `--fail-on-unapproved-changes` as the planned next layer on top of M13 version fields.
+
+The previous AgentXchain idle-expansion path failed to derive this as a new increment because it treated existing planning artifacts as sufficient and looped through planning signoff instead of creating new work. Manual PM intervention is therefore appropriate: convert the broad vision item into concrete M16 scope, acceptance criteria, and command surface.
+
+**Decision:** Select M16: Manifest Diff and Review Queue as the next PM-driven item. Keep the scope intentionally narrow:
+
+- compare explicit manifest files before attempting git integration or history storage
+- classify added, removed, changed, and unchanged capabilities
+- use `capability_digest` for changed detection
+- report field-level changes for changed capabilities
+- produce a review queue for added, changed, unapproved, and `review_needed` capabilities
+- provide `--json` and `--fail-on-unapproved-changes` so CI and agents can consume the result
+
+This does not claim M16 is shipped. ROADMAP.md, SYSTEM_SPEC.md, command-surface.md, acceptance-matrix.md, and NEXT_INCREMENT.md now define it as implementation-ready planned work.
+
 ## Key Judgment Calls
 
 1. **Docs are authored content, not auto-generated.** Each docs page is written in user-facing language derived from planning artifacts. This means a human (product_marketing role) owns the content quality.

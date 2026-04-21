@@ -130,6 +130,16 @@
 - [x] Update smoke tests to assert: path params appear in `input_schema.properties`, domain inference skips prefixes, descriptions contain handler name and auth context, confidence is below 0.8 for schema-less routes with named handler + auth
 - [x] Update `website/docs/manifest-format.md` to document path parameter extraction, rich descriptions, and updated confidence scoring
 
+### M16: Manifest Diff and Review Queue (~1 day)
+- [ ] Add `tusq diff` command to compare two manifest files with explicit `--from <path>` and `--to <path>` inputs
+- [ ] Default `tusq diff` to comparing the current `tusq.manifest.json` against the predecessor implied by `previous_manifest_hash` only when a predecessor file is available locally
+- [ ] Emit a human-readable diff summary with added, removed, changed, and unchanged capability counts
+- [ ] Emit `--json` output using the planned structured diff shape from SYSTEM_SPEC.md
+- [ ] Detect changed capabilities by `capability_digest` and report field-level changes for changed records
+- [ ] Generate a review queue for added, changed, unapproved, and `review_needed` capabilities
+- [ ] Add `--fail-on-unapproved-changes` to exit non-zero when added or changed capabilities are not approved
+- [ ] Update `tusq help`, command reference docs, manifest docs, README examples, and smoke tests for the new diff workflow
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

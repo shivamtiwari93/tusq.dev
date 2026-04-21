@@ -1296,6 +1296,70 @@ Future versions will build on V1's fields to provide active diff and review capa
 
 The V2 diff format is additive — it introduces a new output artifact (`tusq diff` result) without changing existing shapes. The V1 manifest fields (`manifest_version`, `previous_manifest_hash`, `capability_digest`) remain with the same semantics.
 
+**M16 implementation target: `tusq diff` and review queue**
+
+M16 promotes the first slice of the planned V2 diff work into the next implementation increment. The goal is not a full history store or git integration. The goal is a deterministic local command that turns existing manifest version fields into a reviewable change set.
+
+**CLI interface:**
+
+```bash
+tusq diff [--from <manifest-path>] [--to <manifest-path>] [--json] [--review-queue] [--fail-on-unapproved-changes]
+```
+
+| Option | Required | Behavior |
+|--------|----------|----------|
+| `--from <manifest-path>` | optional | Previous manifest to compare from. If omitted, the command may use a locally available predecessor only when it can be resolved unambiguously. |
+| `--to <manifest-path>` | optional | Current manifest to compare to. Defaults to `tusq.manifest.json` in the current working directory. |
+| `--json` | optional | Print the structured diff output and no human summary text. |
+| `--review-queue` | optional | Include or print the capabilities that require human review after the diff. |
+| `--fail-on-unapproved-changes` | optional | Exit 1 when any added or changed capability is not approved. |
+
+**Diff identity rules:**
+
+Capabilities are matched by `name`. A capability present only in `to` is `added`. A capability present only in `from` is `removed`. A capability present in both with identical `capability_digest` is `unchanged`. A capability present in both with different `capability_digest` is `changed`.
+
+When a changed capability is detected, the command compares normalized capability JSON excluding `capability_digest` itself and reports top-level `fields_changed`. Approval fields (`approved`, `approved_by`, `approved_at`, `review_needed`) remain visible as governance fields, but they do not override digest-based content-change detection.
+
+**Human-readable output:**
+
+The default output must include:
+
+- from/to manifest paths and versions when present
+- summary counts for added, removed, changed, unchanged
+- one line per added, removed, or changed capability
+- field names for changed capabilities
+- review queue count when `--review-queue` is supplied
+- a clear gate failure message when `--fail-on-unapproved-changes` exits non-zero
+
+**Review queue rules:**
+
+A capability enters the M16 review queue when any of these are true:
+
+- it is `added`
+- it is `changed`
+- `approved !== true`
+- `review_needed === true`
+
+The review queue output must include capability name, change type, approved state, review-needed state, side effect class, sensitivity class, confidence, and provenance when available.
+
+**M16 scope exclusions:**
+
+- No `.tusq/manifest-history.jsonl` append-only history file
+- No `--git` integration
+- No automatic approval invalidation during `tusq manifest`
+- No schema migration or manifest shape changes
+- No MCP runtime changes
+
+**Acceptance tests required by M16:**
+
+- `tusq diff --from old.json --to new.json` exits 0 and prints summary counts for fixture manifests
+- `tusq diff --json --from old.json --to new.json` emits parseable JSON matching the structured diff shape
+- changed capabilities report `fields_changed`
+- `--review-queue` includes added, changed, unapproved, and `review_needed` capabilities
+- `--fail-on-unapproved-changes` exits 1 for added or changed unapproved capabilities and exits 0 when changed capabilities are approved
+- invalid or missing manifest paths exit 1 with actionable errors
+- `tusq help` and per-command help list the new command and options
+
 ### 4. `tusq-tools/*.json` — Compiled Tool Definitions (Output)
 
 Produced by `tusq compile`. One JSON file per approved capability, plus an `index.json`.

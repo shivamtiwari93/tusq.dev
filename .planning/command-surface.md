@@ -1,5 +1,36 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+## M16 Product CLI Surface — Planned
+
+M16 adds the first active diff command on top of the manifest version fields already specified in SYSTEM_SPEC.md. This is planned product work, not shipped behavior until REQ-039 through REQ-044 pass.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq diff` | Compare manifest versions and surface capability changes | Diff computed successfully and no requested gate failed |
+| `tusq diff --from old.json --to new.json` | Compare two explicit manifest files | Added, removed, changed, and unchanged counts were computed |
+| `tusq diff --json --from old.json --to new.json` | Emit machine-readable structured diff output | stdout is parseable JSON matching SYSTEM_SPEC.md |
+| `tusq diff --review-queue --from old.json --to new.json` | Print capabilities requiring review after a manifest change | Review queue was computed from added, changed, unapproved, and review-needed capabilities |
+| `tusq diff --fail-on-unapproved-changes --from old.json --to new.json` | CI gate for changed capabilities that lack approval | All added or changed capabilities are approved and no gate failed |
+
+### Planned `tusq diff` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--from <path>` | Previous manifest path | Locally resolvable predecessor when unambiguous; otherwise required for deterministic comparisons |
+| `--to <path>` | Current manifest path | `tusq.manifest.json` |
+| `--json` | Print structured JSON only | Human-readable summary |
+| `--review-queue` | Include capabilities requiring human review | Omitted |
+| `--fail-on-unapproved-changes` | Exit 1 if added or changed capabilities are unapproved | Disabled |
+
+### Planned `tusq diff` Failure UX
+
+| Failure | User sees |
+|---------|-----------|
+| Missing `--from` predecessor | Message explaining that no predecessor manifest could be resolved and asking for `--from <path>` |
+| Missing or invalid manifest path | File path plus "manifest not found" or parse error |
+| Invalid manifest shape | Missing required root/capability fields listed by name |
+| Unapproved change gate failure | `Review gate failed:` followed by capability names requiring approval |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.
