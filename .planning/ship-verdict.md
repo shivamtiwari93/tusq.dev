@@ -2,6 +2,22 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_3ae514f35df1db9d (role=qa, 2026-04-21)
+
+This QA turn challenged dev turn_e901ecad58772405 explicitly and ran independent verification rather than accepting it by reference.
+
+**Challenge 1 — What did the dev turn actually deliver?** The dev turn's only file change was `.planning/IMPLEMENTATION_NOTES.md` to document ghost-turn rejection. Zero changes to `src/`, `tests/`, `website/`, or `bin/`. Verified via `git diff defe5f4..HEAD --name-only` — no source/test/doc changes since the last QA pass. The dev turn was procedural: all M9–M15 implementation was already verified in prior QA turns (DEC-234, DEC-235, DEC-236). **Challenge resolved: no new behavior introduced, no new acceptance criteria required.**
+
+**Challenge 2 — Independent smoke test (not deferred to dev evidence).** Ran `node tests/smoke.mjs` directly on current HEAD → exit 0. **Challenge resolved: independent verification confirms all 38 criteria PASS.**
+
+**Challenge 3 — CLI surface unchanged.** Ran `node bin/tusq.js help` → 8-command surface (init, scan, manifest, compile, serve, review, version, help) exactly as documented in SYSTEM_SPEC.md and command-surface.md. **Challenge resolved: no surface drift.**
+
+**Challenge 4 — Acceptance matrix coverage complete.** The dev turn introduced no new behavior, so the 38 criteria covering M1–M15, provenance chain, governance metadata pipeline, framework-specific deep extraction, first-pass manifest usability, and review governance remain the complete and correct coverage set. **Challenge resolved: matrix accurate and complete.**
+
+**Independent smoke run (2026-04-21):** `node tests/smoke.mjs` → exit 0. `node bin/tusq.js help` → exit 0. Independent execution, not inherited from dev evidence.
+
+**Result:** No new acceptance criteria needed. All 38 criteria remain PASS. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
 ## QA Challenge — turn_1dfcc7fe5582abf9 (role=qa, 2026-04-21)
 
 This QA turn challenged the previous PM-led pass (turn_1f89182d2701a838) on four grounds and ran independent verification:
