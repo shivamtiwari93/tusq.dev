@@ -2,6 +2,29 @@
 
 ## Verdict: SHIP
 
+## PM QA Pass — Independent Challenge (turn_1f89182d2701a838, attempt 3)
+
+This pass is run by the PM role in the qa phase because the last accepted turn (`turn_9f0a5847aa52a8de`) was a runtime-rebinding reissue and many intermediate qa turns were ghost-reissued without content. I did not rubber-stamp the prior sign-off. Two new bodies of work had been merged since the last recorded qa sign-off and were not yet in the acceptance matrix:
+
+1. `0f60878` — M15 first-pass manifest usability (DEC-225 through DEC-230)
+2. `228d4a9` — Manifest review governance improvements (added `--strict` review mode, richer schema and provenance inference, review-output summarization, and body/output schema inference)
+
+I challenged both commits on five grounds:
+
+1. **Path parameter extraction accuracy (M15):** Does `:id` / `{id}` get lifted from the route path into `input_schema.properties` with `required` and `source: "path"`? Verified in `src/cli.js` (`extractPathParameters`, `buildInputSchema`), and end-to-end against the Express fixture `GET /api/v1/users/:id`: `input_schema.properties.id={type:"string",source:"path"}`, `required=["id"]`. Also confirmed for NestJS POST `/users/:id/disable`. **Challenge resolved.**
+
+2. **Prefix-aware domain inference (M15):** Does domain inference skip `api`, `v1-v5`, `rest`, `graphql`, `internal`, `public`, `external` when selecting the first meaningful segment? Verified `DOMAIN_PREFIX_SEGMENTS` in `src/cli.js` and confirmed `GET /api/v1/users/:id` gets `domain="users"` in manifest. **Challenge resolved.**
+
+3. **Rich capability descriptions and schema-miss confidence penalty (M15):** Do descriptions include verb + target + side_effect + auth_context + handler, and does `scoreConfidence` apply a `-0.10` penalty when `schema_hint` is absent? Verified: manifest description is `Retrieve user by id - read-only, requires requireAuth (handler: getUser)`; schema-less routes land at `confidence=0.76`, which is below the `0.8` threshold and correctly flips `review_needed=true`. **Challenge resolved.**
+
+4. **`tusq review --strict` governance gate (228d4a9):** Does `--strict` exit 1 with a recognizable `Review gate failed:` message when any capability is unapproved or low-confidence, and exit 0 once gated manually? Verified via smoke-test path (`tests/smoke.mjs` runs both the failing strict call on the unapproved manifest and a passing strict call after flipping approval/low-confidence on every capability). Implementation is in `enforceStrictReviewIfRequested` (`src/cli.js:704`). **Challenge resolved.**
+
+5. **Review output and schema/provenance inference (228d4a9):** Does `tusq review --verbose` summarize inputs, returns, and source/handler/framework on each capability line, and does schema inference surface `body:request_body`, `array<object>`, and object-property shapes accurately? Verified smoke-test assertions on the substrings `inputs=body:request_body`, `returns=array<object>`, `source=src/app.ts`, `handler=listUsers`, `framework=express`. Manifest output for Express fixture matches: GET `/users` returns `array<object>`, POST `/users` carries `input_schema.properties.body.source="request_body"` and `output_schema.properties.ok.type="boolean"`. **Challenge resolved.**
+
+**Smoke test re-verification this turn:** `node tests/smoke.mjs` → exit 0.
+
+**Matrix update:** Added REQ-037 (M15 usability) and REQ-038 (review governance + schema inference). Acceptance matrix now covers 38 criteria, all PASS.
+
 ## QA Attempt 4 — Independent Challenge (turn_af4fdc071f440a23)
 
 This is a fresh independent challenge of the same dev turn (turn_f38f05a4fef53bc4). The prior QA turn had already resolved four challenges on framework-specific deep extraction. I raised two additional challenges based on live code inspection and did not accept the prior resolution as rubber-stamp evidence.

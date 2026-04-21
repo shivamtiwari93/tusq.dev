@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 36 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction).
+- All 38 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -113,6 +113,24 @@ Approval audit fields (`approved_by`, `approved_at`) are manifest-only. They are
 - **`capability_digest`** (per capability, SHA-256 hex): deterministic SHA-256 of the capability's content fields only — name, description, method, path, schemas, all governance fields, provenance, confidence, domain. Explicitly excludes `approved`, `approved_by`, `approved_at`, `review_needed`, and `capability_digest` itself so approval-only edits do not change the digest. Stable key ordering (recursive alphabetical sort) makes the hash deterministic across runs.
 
 These fields are manifest-only. They are not propagated to compiled tool definitions (`tusq-tools/*.json`) or MCP responses (`tools/list`, `tools/call`). They are V1 groundwork for a V2 diff CLI and history store.
+
+## First-Pass Manifest Usability
+
+The v0.1.0 manifest is designed to be usable by an LLM (or a human reviewer) on first pass without manual rewriting:
+
+- **Path parameters are extracted** from route paths (`:id`, `{id}`) into `input_schema.properties` as required string fields tagged with `source: "path"`.
+- **Domain inference skips well-known API prefixes** (`api`, `v1`–`v5`, `rest`, `graphql`, `internal`, `public`, `external`) before selecting the first meaningful path segment, so `GET /api/v1/users/:id` infers `domain="users"` rather than `api`.
+- **Capability descriptions are generated from a template** (verb + target + side_effect + auth_context + handler) instead of a static `METHOD /path capability in domain domain` string, e.g. `Retrieve user by id - read-only, requires requireAuth (handler: getUser)`.
+- **Schema-less routes take a confidence penalty** of `-0.10` in `scoreConfidence`, pushing schema-less named-handler routes with auth below the `0.8` review threshold so they surface as `review_needed=true` instead of silently auto-approving.
+
+## Review Governance
+
+`tusq review` is the approval gate and ships with governance-oriented output:
+
+- **`tusq review --strict`** exits `1` with `Review gate failed: N unapproved, M low confidence.` on stderr when any capability is unapproved or flagged as low confidence. Exits `0` once every capability is approved and not flagged. Intended for CI use between manifest generation and compile.
+- **`tusq review --verbose`** prints one line per capability with inferred `inputs=…`, `returns=…`, and `source=<file>, handler=<fn>, framework=<framework>` so reviewers see the inferred shape and provenance before approving.
+- **Inferred input and output schemas** fill in obvious shapes so the manifest is not empty for first-pass consumers: write methods get `input_schema.properties.body` with `source: "request_body"`; handlers that return `res.json([…])` or `res.json({…})` produce `output_schema.type="array"` or an object schema with inferred primitive types for simple literal returns (e.g. `{ ok: true }` → `properties.ok.type="boolean"`).
+- **Provenance carries `framework` and `handler`** through scan, manifest, and compiled tools so the review output and downstream tooling can show where a capability came from.
 
 ## Known V1 Limits And Non-Claims
 
