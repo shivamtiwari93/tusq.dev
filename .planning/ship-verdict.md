@@ -2,6 +2,22 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_1dfcc7fe5582abf9 (role=qa, 2026-04-21)
+
+This QA turn challenged the previous PM-led pass (turn_1f89182d2701a838) on four grounds and ran independent verification:
+
+**Challenge 1 — PM role conducting QA:** The prior accepted turn was PM-authored, not a dedicated QA turn. I independently verified all PM challenge resolutions rather than accepting them by reference. **Challenge resolved: PM's five-point challenge (REQ-037 and REQ-038) was substantive and evidence-backed.**
+
+**Challenge 2 — Commits since last QA:** Commits `d90fecd` ("Record PM QA release verdict") and `cc7055b` ("Checkpoint AgentXchain runtime state") are the only commits since the PM's pass. I checked both: `d90fecd` touched only `.planning/` artifacts (the QA workflow files themselves); `cc7055b` touched only `.agentxchain/` orchestration state. **No source code, test, or doc changes require new acceptance criteria.**
+
+**Challenge 3 — REQ-037/REQ-038 implementation spot-check:** I verified that the functions cited in the acceptance matrix actually exist in `src/cli.js` at the claimed locations: `enforceStrictReviewIfRequested` at line 704, `summarizeInputSchemaForReview` at line 717, `summarizeOutputSchemaForReview` at line 734, `summarizeProvenanceForReview` at line 760, `extractPathParameters`, `buildInputSchema`, `describeCapability`, `scoreConfidence`, and `DOMAIN_PREFIX_SEGMENTS` (line 10). All present. **Challenge resolved: implementation matches acceptance criteria claims.**
+
+**Challenge 4 — Smoke test concreteness:** I verified that `tests/smoke.mjs` contains the specific substring assertions cited in REQ-037/REQ-038: `inputs=body:request_body`, `returns=array<object>`, `source=src/app.ts`, `handler=listUsers`, `framework=express`, `Review gate failed` on `--strict` failure, and `--strict` success path on an all-approved manifest. These are real, concrete test assertions, not silent passes. **Challenge resolved.**
+
+**Independent smoke run (2026-04-21):** `node tests/smoke.mjs` → exit 0. This is an independent execution, not deferred to the PM's evidence.
+
+**Result:** No new acceptance criteria needed. All 38 criteria remain PASS. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
 ## PM QA Pass — Independent Challenge (turn_1f89182d2701a838, attempt 3)
 
 This pass is run by the PM role in the qa phase because the last accepted turn (`turn_9f0a5847aa52a8de`) was a runtime-rebinding reissue and many intermediate qa turns were ghost-reissued without content. I did not rubber-stamp the prior sign-off. Two new bodies of work had been merged since the last recorded qa sign-off and were not yet in the acceptance matrix:
