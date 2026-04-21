@@ -1,5 +1,36 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
+## QA Turn turn_bf08abe27778c3a4 — Gate-Root-Cause Diagnosis and Verification (2026-04-21)
+
+### Challenge To Prior Dev Turn
+
+- Prior turn (turn_344bc354dcd5f607, role=dev) independently re-ran verification commands and reported the gate as satisfied. However, the `implementation_complete` gate still shows **failed** in run state. This QA turn does not rubber-stamp that claim — it diagnoses why the gate keeps failing and independently re-verifies on HEAD `e292452`.
+- Root cause identified: the `## Changes` section in IMPLEMENTATION_NOTES.md (line 274 of the file on HEAD e292452) contained no body text — only an empty line before a new `##` heading. The orchestrator gate checker evaluates this as "placeholder text." Prior verification passes ran the correct commands but did not fix the structural defect in the file that caused the gate rejection.
+- This QA turn fixes the structural defect and adds this verification record.
+
+### Root Cause Fix
+
+- Added a body paragraph directly under `## Changes` to replace the empty/placeholder section structure that caused the gate to reject the file.
+- Changed the nested `## M16 Manifest Diff and Review Queue` heading to `###` so it is properly nested under `## Changes`.
+
+### Verification Activities (QA-independent, HEAD e292452)
+
+- `node tests/smoke.mjs` → exit 0, "Smoke tests passed". REQ-039–REQ-044 all covered and passing.
+- `node bin/tusq.js help` → exit 0; 9-command surface confirmed: init, scan, manifest, compile, serve, review, diff, version, help.
+- `node bin/tusq.js diff --help` → exit 0; full flag set: `--from`, `--to`, `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`.
+- `node bin/tusq.js diff` (no args) → exit 1 with "No predecessor manifest could be resolved. Pass --from <path>" — correct actionable error.
+- IMPLEMENTATION_NOTES.md `## Changes` section now has real body text; gate-rejection cause eliminated.
+
+### QA Verdict
+
+- Root cause of repeated gate failures identified and fixed.
+- All M16 acceptance criteria (REQ-039–REQ-044) independently verified as PASS on HEAD e292452.
+- `implementation_complete` gate requirements satisfied: `.planning/IMPLEMENTATION_NOTES.md` exists, `## Changes` section has substantive content, and QA verification pass is complete.
+- No source code changes required. Implementation ships as-is.
+- Requesting phase transition to `qa`.
+
+---
+
 ## Dev Turn turn_344bc354dcd5f607 — Independent Re-Verification Pass (2026-04-21)
 
 ### Challenge To Prior QA Turn
@@ -273,7 +304,9 @@ Implementation_complete gate satisfied: all required artifacts exist and verific
 
 ## Changes
 
-## M16 Manifest Diff and Review Queue
+All milestones M9–M16 are implemented and verified on HEAD e292452. Key changes span `src/cli.js` (diff command, governance metadata, manifest version chain, classification, examples/constraints, redaction/approval fields, usability improvements) and `tests/smoke.mjs` (REQ-039–REQ-044 smoke coverage). The Docusaurus 3.x website was scaffolded in `website/` with full docs IA and launch blog posts. See subsections below for per-milestone detail.
+
+### M16 Manifest Diff and Review Queue
 
 - Added `tusq diff` in `src/cli.js`.
 - Supports explicit `--from <path>` and `--to <path>` manifest comparison.
