@@ -1,5 +1,31 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
+## QA Turn turn_fa8b5ff6bc7e6a4c — Independent Verification Pass (2026-04-21)
+
+### Challenge To Prior Dev Turn
+
+- Prior turn (turn_8634538ce440e926, role=dev) claimed M16 is fully implemented and the `implementation_complete` gate is satisfied. The phase gate still showed as **failed** in the run state, requiring independent QA verification to confirm or reject that claim.
+- This QA turn does NOT rubber-stamp the dev turn's evidence. All commands were re-run independently on HEAD `1fb2cc0`.
+
+### Verification Activities (QA-independent)
+
+- `node tests/smoke.mjs` → exit 0, "Smoke tests passed". Confirmed M9–M16 assertions pass including REQ-039–REQ-044 for `tusq diff`.
+- `node bin/tusq.js help` → exit 0; 9-command surface enumerated correctly: init, scan, manifest, compile, serve, review, diff, version, help.
+- `node bin/tusq.js diff --help` → exit 0; full flag set emitted: `--from`, `--to`, `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`.
+- Edge case: `node bin/tusq.js diff --to /tmp/foo.json` exits non-zero with "Pass --from" error message. Correct behavior confirmed.
+- Inspected `src/cli.js` diff command handler at lines 73, 699–742: `buildManifestDiff`, `getUnapprovedChangeFailures`, `printManifestDiff` all present and correctly implemented.
+- `acceptance-matrix.md`: REQ-039–REQ-044 all PASS (smoke-verified 2026-04-21).
+- `ROADMAP.md`: 98 checked / 0 open — M1–M16 all complete.
+
+### QA Verdict
+
+- Prior dev turn claims are **confirmed accurate**. No defects found.
+- All M16 acceptance criteria (REQ-039–REQ-044) are independently verified as PASS.
+- `implementation_complete` gate is satisfied: `.planning/IMPLEMENTATION_NOTES.md` exists and QA verification pass is complete.
+- No source changes required. Implementation ships as-is on HEAD `1fb2cc0`.
+
+---
+
 ## Dev Turn turn_8634538ce440e926 — Implementation Gate Closure (2026-04-21)
 
 ### Challenge To Prior Turn
