@@ -2,6 +2,24 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_7401f68ff8ff8bbb (role=qa, 2026-04-21)
+
+This QA turn is turn_7401f68ff8ff8bbb in run_8543d07bd34cc982. It challenges the prior accepted turn (turn_2bc1f5e196f81cda, role=qa, phase=qa) independently and does not rubber-stamp it.
+
+**Challenge 1 — What did the prior accepted turn actually deliver?** turn_2bc1f5e196f81cda was the first qa-phase turn in this run. Its changes were: (1) updated RELEASE_NOTES.md to correct the stale "38 criteria" count to 44, and (2) updated ship-verdict.md to add the QA challenge entry for that turn. No source, test, or bin changes were made. The prior turn's verification evidence (smoke exit 0, 9-command surface, diff --help flag set, diff no-args exit 1) was solid but I do not inherit it — I re-ran all four commands independently. **Challenge resolved: prior turn delivered accurate artifact corrections and valid verification.**
+
+**Challenge 2 — Independent smoke run on current HEAD (904acdb).** Ran `node tests/smoke.mjs` → exit 0, "Smoke tests passed". Not inherited from any prior turn. All 44 acceptance criteria REQ-001–REQ-044 covered by concrete assertions in tests/smoke.mjs. **Challenge resolved: all 44 criteria independently verified PASS.**
+
+**Challenge 3 — 9-command CLI surface and diff flag coverage.** Ran `node bin/tusq.js help` → exit 0; surface: init, scan, manifest, compile, serve, review, diff, version, help — 9 commands, matches SYSTEM_SPEC.md and command-surface.md. Ran `node bin/tusq.js diff --help` → exit 0; flag set: --from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose. **Challenge resolved: no surface drift, flag set correct.**
+
+**Challenge 4 — diff error-path correctness.** Ran `node bin/tusq.js diff` (no --from, no --to) → exit 1 with stderr: "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison." Actionable and accurate. **Challenge resolved: REQ-039 error path correct.**
+
+**Challenge 5 — Workflow artifact completeness.** All three required qa-phase artifacts exist and are internally consistent on HEAD 904acdb: acceptance-matrix.md (44 criteria, all PASS, REQ-001–REQ-044), ship-verdict.md (SHIP verdict, all prior challenges recorded), RELEASE_NOTES.md (44 criteria cited, framing accurate). No stale counts or placeholder text found. **Challenge resolved: gate artifacts complete.**
+
+**Independent smoke run (2026-04-21, HEAD 904acdb):** `node tests/smoke.mjs` → exit 0. `node bin/tusq.js help` → exit 0. `node bin/tusq.js diff --help` → exit 0. `node bin/tusq.js diff` → exit 1 with correct actionable error. All independent, not inherited from prior evidence.
+
+**Result:** All 44 acceptance criteria PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
 ## QA Challenge — turn_2bc1f5e196f81cda (role=qa, 2026-04-21)
 
 This QA turn is the first qa-phase turn in run_8543d07bd34cc982. It challenges the prior accepted turn (turn_bf08abe27778c3a4, role=qa, phase=implementation) rather than rubber-stamping it, and independently re-verifies on HEAD 514f31d.
