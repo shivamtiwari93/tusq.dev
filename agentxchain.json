@@ -51,6 +51,10 @@
         "bypassPermissions",
         "--model",
         "claude-opus-4-7",
+        "--output-format",
+        "stream-json",
+        "--include-partial-messages",
+        "--verbose",
         "--dangerously-skip-permissions"
       ],
       "cwd": ".",
@@ -81,6 +85,10 @@
         "bypassPermissions",
         "--model",
         "claude-sonnet-4-6",
+        "--output-format",
+        "stream-json",
+        "--include-partial-messages",
+        "--verbose",
         "--dangerously-skip-permissions"
       ],
       "cwd": ".",
