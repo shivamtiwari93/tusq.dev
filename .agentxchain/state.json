@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_4b24e171693ac091",
+  "run_id": "run_fb1bab22b6c25837",
   "project_id": "tusq-dev",
   "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:ecdbdcf40adb6481319206c7ba403f3527a0bfe0",
+  "accepted_integration_ref": "git:632b65f33c5a8c6407f649ea9ff4b0cc2e5ef7f0",
   "active_turns": {},
-  "turn_sequence": 62,
-  "last_completed_turn_id": "turn_60592eb9651f6728",
+  "turn_sequence": 14,
+  "last_completed_turn_id": "turn_8cf7d2eb4cc58972",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -27,28 +27,87 @@
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-20T12:16:39.386Z",
-  "phase_entered_at": "2026-04-21T13:28:28Z",
+  "created_at": "2026-04-21T14:17:14.565Z",
+  "phase_entered_at": "2026-04-21T14:50:30Z",
   "provenance": {
-    "trigger": "vision_scan",
-    "parent_run_id": null,
-    "trigger_reason": "Why we move fast: produce manifests that are usable on first pass for real codebases, not toy examples",
-    "intake_intent_id": "intent_1776687399375_2b88",
-    "created_by": "continuous_loop"
+    "trigger": "continuation",
+    "parent_run_id": "run_4b24e171693ac091",
+    "trigger_reason": null,
+    "intake_intent_id": null,
+    "created_by": "operator"
   },
-  "inherited_context": null,
+  "inherited_context": {
+    "schema_version": "0.1",
+    "parent_run_id": "run_4b24e171693ac091",
+    "parent_status": "blocked",
+    "parent_completed_at": null,
+    "parent_phases_completed": [
+      "planning"
+    ],
+    "parent_roles_used": [
+      "pm"
+    ],
+    "parent_blocked_reason": "human:Planning signoff gate requires human approval before transitioning to implementation phase. M15 (First-Pass Manifest Usability) is fully specified and ready for dev implementation, but the planning_signoff gate explicitly requires human review.",
+    "parent_retrospective": {
+      "headline": "Planning signoff gate requires human approval before transitioning to implementation phase. M15 (First-Pass Manifest Usability) is fully specified and ready for dev implementation, but the planning_signoff gate explicitly requires human review.",
+      "terminal_reason": "needs_human",
+      "next_operator_action": "Resolve the stated issue, then run agentxchain resume",
+      "follow_on_hint": null
+    },
+    "recent_decisions": [
+      {
+        "id": "DEC-228",
+        "statement": "Confidence scoring applies a -0.10 penalty when no schema hint is detected, pushing schema-less routes with named handlers and auth below the review_needed threshold of 0.8.",
+        "decided_by": "pm",
+        "phase": "planning"
+      },
+      {
+        "id": "DEC-229",
+        "statement": "Planning signoff maintained as Approved: YES. All 4 required artifacts are complete and internally consistent. Status set to needs_human because the planning_signoff gate explicitly requires human approval before transitioning to implementation phase.",
+        "decided_by": "pm",
+        "phase": "planning"
+      },
+      {
+        "id": null,
+        "statement": null,
+        "decided_by": "pm",
+        "phase": "planning"
+      },
+      {
+        "id": null,
+        "statement": null,
+        "decided_by": "pm",
+        "phase": "planning"
+      },
+      {
+        "id": null,
+        "statement": null,
+        "decided_by": "pm",
+        "phase": "planning"
+      }
+    ],
+    "recent_accepted_turns": [
+      {
+        "turn_id": "turn_dca9c6c9fe1063eb",
+        "role": "pm",
+        "summary": "Challenged all prior turns for focusing on governance metadata while leaving first-pass manifest output unusable for LLM consumers. Specified four concrete V1 improvements — path parameter extraction, smart domain inference, rich capability descriptions, honest confidence penalty — that transform manifests from structurally present but functionally empty to actionable with targeted review. Updated SYSTEM_SPEC.md, ROADMAP.md (M15), and PM_SIGNOFF.md (Challenge 16).",
+        "phase": "planning"
+      }
+    ],
+    "inherited_at": "2026-04-21T14:17:14.561Z"
+  },
   "repo_decisions": null,
   "delegation_queue": [],
   "next_recommended_role": null,
   "pending_delegation_review": null,
-  "last_completed_turn": {
-    "turn_id": "turn_60592eb9651f6728",
-    "role": "product_marketing",
-    "phase": "launch",
-    "checkpoint_sha": "ecdbdcf40adb6481319206c7ba403f3527a0bfe0",
-    "checkpointed_at": "2026-04-21T13:34:40.994Z",
-    "intent_id": null
-  },
   "non_progress_signature": null,
-  "non_progress_count": 0
+  "non_progress_count": 0,
+  "last_completed_turn": {
+    "turn_id": "turn_3ae514f35df1db9d",
+    "role": "qa",
+    "phase": "qa",
+    "checkpoint_sha": "632b65f33c5a8c6407f649ea9ff4b0cc2e5ef7f0",
+    "checkpointed_at": "2026-04-21T14:50:16.242Z",
+    "intent_id": null
+  }
 }

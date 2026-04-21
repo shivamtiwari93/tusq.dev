@@ -1087,3 +1087,69 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 43f8eb9d — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Independently re-verified planning artifacts and smoke test after parent run blocked on human approval; planning_signoff gate returned to human with all 4 required artifacts complete and shipped behavior intact.
+- **Decision DEC-240:** Did not rubber-stamp parent run DEC-229's 'Approved: YES' as sufficient to transition phases. The planning_signoff gate explicitly requires human approval; an agent PM cannot satisfy it by self-declaration regardless of artifact completeness.
+- **Decision DEC-241:** Planning artifacts are structurally complete and internally consistent as of 2026-04-21: PM_SIGNOFF.md (Approved: YES, 16 documented challenges through M15), ROADMAP.md (M1–M15 all checked complete), SYSTEM_SPEC.md (80KB canonical shape spec covering all 7 VISION dimensions + M15 first-pass usability + framework depth), command-surface.md (site surface inventory for the Docusaurus platform).
+- **Decision DEC-242:** Shipped product behavior still matches the plan: node tests/smoke.mjs exits 0 and bin/tusq.js help lists the 8-command surface (init, scan, manifest, compile, serve, review, version, help) referenced by the planning artifacts.
+- **Proposed next:** human
+
+---
+
+## Turn 2c54c623 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Independently re-verified the four required planning artifacts exist and are internally consistent, smoke tests pass (exit 0), and the CLI surface still matches the plan; planning_signoff gate returned to human because agent PM self-declaration cannot satisfy a gate that explicitly requires human approval.
+- **Decision DEC-243:** Did not rubber-stamp the prior PM turn (turn_43f8eb9df22ccd3d / DEC-240–DEC-242) as a pass-through. This turn independently re-ran the verification commands on current disk state rather than inheriting the parent run's evidence.
+- **Decision DEC-244:** Planning artifacts remain structurally complete and internally consistent as of 2026-04-21: PM_SIGNOFF.md (Approved: YES, documented challenges through M15 first-pass usability), ROADMAP.md (90 checked items, 0 open), SYSTEM_SPEC.md (80KB covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability), command-surface.md (5.9KB Docusaurus site surface inventory).
+- **Decision DEC-245:** Shipped product behavior still matches planning artifacts: node tests/smoke.mjs exits 0 ('Smoke tests passed'), and bin/tusq.js help enumerates the 8-command surface (init, scan, manifest, compile, serve, review, version, help) that SYSTEM_SPEC.md and command-surface.md reference.
+- **Decision DEC-246:** Planning signoff maintained as Approved: YES. Status set to needs_human because the planning_signoff gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot satisfy that gate by self-declaration.
+- **Proposed next:** human
+
+---
+
+## Turn fcbd21c6 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Independently re-verified planning artifacts and shipped behavior on attempt 2 after prior non_progress reissue; signoff stands but planning_signoff gate requires human approval.
+- **Decision DEC-247:** Challenged the prior turn (turn_d3ff21ed8be478ab) as a non_progress reissue and refused to pass it through. This attempt-2 turn performed fresh on-disk verification rather than inheriting the reissue's empty evidence trail.
+- **Decision DEC-248:** All four required planning artifacts are present and structurally complete as of 2026-04-21: PM_SIGNOFF.md (Approved: YES, documented challenges through M15 first-pass manifest usability and framework-depth M14), ROADMAP.md (90 checked items, 0 open), SYSTEM_SPEC.md (1,481 lines covering the 7 VISION canonical artifact dimensions plus framework-depth and first-pass usability), command-surface.md (150 lines of Docusaurus site surface inventory).
+- **Decision DEC-249:** Shipped product behavior still matches planning artifacts: node tests/smoke.mjs exits 0 ('Smoke tests passed') and bin/tusq.js help enumerates the 8-command surface (init, scan, manifest, compile, serve, review, version, help) referenced by SYSTEM_SPEC.md and command-surface.md.
+- **Decision DEC-250:** Planning signoff maintained as Approved: YES. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to implementation; an agent PM cannot satisfy that gate by self-declaration, regardless of artifact completeness.
+- **Proposed next:** human
+
+---
+
+## Turn e901ecad — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Challenged ghost prior turn; verified all milestones M9–M15 implemented and smoke tests pass; IMPLEMENTATION_NOTES.md updated with explicit ghost-turn rejection; requesting transition to QA.
+- **Decision DEC-251:** Rejected turn_b9fd4cbc1588bb9e (attempt-1 ghost reissue) as non-actionable — it carried no implementation artifact, no verification evidence, and no workflow-kit updates. The implementation_complete gate cannot be satisfied by a ghost turn.
+- **Decision DEC-252:** All milestones M9–M15 are implemented and verified on current HEAD: sensitivity classification, auth_hints MCP propagation, examples/constraints, redaction + approval metadata, version-history chain fields, and first-pass manifest usability (path params, prefix-aware domain, rich descriptions, schema-miss confidence penalty).
+- **Proposed next:** qa
+
+---
+
+## Turn 3ae514f3 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Challenged dev turn_e901ecad58772405 on four grounds (procedural-only delivery, independent smoke test, CLI surface drift, acceptance coverage completeness); all four challenges resolved; 38 acceptance criteria all PASS; ship verdict updated; requesting human approval for qa_ship_verdict gate before transitioning to launch.
+- **Decision DEC-253:** Dev turn_e901ecad58772405 was procedural only — zero source/test/doc changes since last QA pass (defe5f4); all M9-M15 implementation was already present and verified; no new acceptance criteria required.
+- **Decision DEC-254:** Ship verdict stands as SHIP. All 38 acceptance criteria PASS. qa_ship_verdict gate requires human approval before phase transition to launch.
+- **Proposed next:** human
+
+---
+
+## Turn 8cf7d2eb — product_marketing (launch)
+
+- **Status:** needs_human
+- **Summary:** Independently re-verified launch artifacts against current HEAD (632b65f) after dev turn_e901ecad and qa turn_3ae514f landed; all four launch artifacts remain aligned with shipped v0.1.0 product truth; launch_ready gate returned to human for approval.
+- **Decision DEC-255:** Challenged the prior PM launch turn (turn_916b9d8c61adc9ff, DEC-237–DEC-239) as potentially stale because two new accepted turns (dev turn_e901ecad58772405 procedural-only and qa turn_3ae514f35df1db9d with independent smoke) have landed since that verification; this turn independently re-ran product-truth checks against HEAD 632b65f rather than inheriting prior evidence.
+- **Decision DEC-256:** Launch artifacts remain aligned with shipped v0.1.0 product truth as of 2026-04-21: MESSAGING.md (130 lines, audience-first framing with Express/Fastify/NestJS scope), LAUNCH_PLAN.md (102 lines, four-question first-screen sequence), CONTENT_CALENDAR.md (50 lines, repo-local CTA), ANNOUNCEMENT.md (138 lines, headline + blog draft + proof path). All four documents lead with the audience filter, operator problem, proof sequence, and V1 boundary before any governance-metadata inventory, matching the established launch narrative discipline from DEC-212, DEC-222, and DEC-239.
+- **Decision DEC-257:** launch_ready gate is returned to human for approval rather than self-declared by this agent PM. All four required artifacts exist and are structurally complete; verification evidence is attached; but the gate explicitly requires human approval before run completion.
+- **Proposed next:** human
+
+---
+
