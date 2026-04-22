@@ -2658,6 +2658,44 @@ Capability: users_createUser
 
 Capabilities with `pii_fields: []` produce a single reminder line `No canonical PII field-name matches — reviewer action: none required from M27.` within the `Redaction:` sub-block, with no `Advisories:` rows. The human report is plain-text-only (no ANSI escapes) so operators piping to file get byte-identical text.
 
+### Edge-Case and Empty-Manifest Handling
+
+The following edge cases are specified explicitly so the dev role cannot ship two defensible implementations that diverge on reviewer-visible behavior:
+
+| Input manifest condition | Exit code | Human stdout | `--json` stdout | stderr |
+|---------------------------|-----------|--------------|-----------------|--------|
+| `capabilities` is a valid array with ≥1 entry | 0 | One section per capability as shown above | `{manifest_path, manifest_version, generated_at, capabilities: [...]}` | empty |
+| `capabilities` is a valid array with exactly 0 entries (`capabilities: []`) | 0 | Single explicit line `No capabilities in manifest — nothing to review.` and nothing else | `{manifest_path, manifest_version, generated_at, capabilities: []}` (top-level fields still copied verbatim from manifest) | empty |
+| Manifest file path cannot be opened | 1 | empty | empty | `Manifest not found: <path>` |
+| Manifest file opens but `JSON.parse` throws | 1 | empty | empty | `Invalid manifest JSON: <path>` |
+| Manifest parses but top-level `capabilities` is missing OR not an array | 1 | empty | empty | `Invalid manifest: missing capabilities array` |
+| `--capability <name>` specifies a name not present in the manifest | 1 | empty | empty | `Capability not found: <name>` |
+| Unknown flag on `tusq redaction review` | 1 | empty | empty | `Unknown flag: <flag>` |
+| Unknown subcommand under `tusq redaction` | 1 | empty | empty | `Unknown subcommand: <name>` |
+
+Invariants implied by the table:
+
+- **Empty-array is NOT an error.** A manifest with `capabilities: []` is a valid scaffold state (a fresh `tusq init` repo with no routes yet) and M27 MUST treat it as an exit-0 "nothing to review" signal, not a hard failure. Conflating it with the `missing capabilities array` error path would break the scaffold/init-new-repo workflow.
+- **stdout is empty on every exit-1 path.** No partial report, no JSON object with an `error` field, no trailing newline. Operators who pipe stdout to a file get a zero-byte file on failure. The `stdout === ""` invariant is asserted by smoke for every error case.
+- **Error text goes to stderr only.** The six error messages above are written to `process.stderr` exclusively; none of them reach stdout under any flag combination.
+- **Detection-before-output.** Every error path exits before any stdout bytes are written. A malformed manifest MUST NOT produce a half-written JSON object on stdout before the parse error surfaces.
+
+### Optional Top-Level Manifest Field Fallback
+
+The input manifest's own `manifest_version` and `generated_at` fields are copied verbatim to the report. Older fixtures (pre-M13 scaffolds or hand-authored minimal manifests) may lack either field; the rule is:
+
+| Input manifest state | `--json` report | Human report |
+|----------------------|-----------------|--------------|
+| Both fields present and well-formed | Copied verbatim | Copied verbatim |
+| `manifest_version` missing or non-number | Emitted with value `null` | Rendered as the literal string `unknown` |
+| `generated_at` missing or non-ISO-string | Emitted with value `null` | Rendered as the literal string `unknown` |
+
+M27 MUST NOT re-stamp either field with current wall-clock time. M27 MUST NOT omit either field from the `--json` output. M27 MUST NOT error out on a manifest that lacks either field — both are informational top-level context, not required inputs.
+
+### Advisory Byte-Exactness Invariant
+
+The frozen `PII_REVIEW_ADVISORY_BY_CATEGORY` strings enumerated above use the em-dash character (U+2014, `—`) in every entry, not an ASCII hyphen-minus (U+002D, `-`) and not an en-dash (U+2013, `–`). stdout is written as UTF-8; the byte sequence for each advisory is locked by a smoke fixture. Any character-level change — including hyphen drift, whitespace drift, or punctuation drift — is a material governance event that MUST land under its own ROADMAP milestone with a RELEASE_NOTES entry. This is not pedantry: teams that snapshot the review output for change-review CI will see a spurious diff on any byte-level drift, and the whole governance story rests on reviewers being able to trust the wording is stable between releases.
+
 ### Pipeline Propagation
 
 ```

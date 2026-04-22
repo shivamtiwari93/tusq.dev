@@ -528,12 +528,15 @@ There are no other flags. `tusq redaction review --help` prints the flag surface
 | Situation | Operator sees | Exit code |
 |-----------|---------------|-----------|
 | Manifest read successfully, capabilities enumerated | Per-capability report on stdout | 0 |
-| `--manifest` points to a missing file | `Manifest not found: <path>` on stderr; no stdout | 1 |
-| Manifest is present but not valid JSON | `Invalid manifest JSON: <path>` on stderr; no partial report | 1 |
-| Manifest is valid JSON but lacks a top-level `capabilities` array | `Invalid manifest: missing capabilities array` on stderr; no partial report | 1 |
-| `--capability <name>` specifies a name not present in the manifest | `Capability not found: <name>` on stderr; no stdout | 1 |
-| Unknown subcommand under `tusq redaction` | `Unknown subcommand: <name>` on stderr | 1 |
-| Unknown flag on `tusq redaction review` | `Unknown flag: <flag>` on stderr | 1 |
+| Manifest read successfully, `capabilities: []` (empty array — valid scaffold state) | Single line `No capabilities in manifest — nothing to review.` on stdout in human mode; `{manifest_path, manifest_version, generated_at, capabilities: []}` on stdout in `--json` mode | 0 |
+| `--manifest` points to a missing file | `Manifest not found: <path>` on stderr; stdout is empty | 1 |
+| Manifest is present but not valid JSON | `Invalid manifest JSON: <path>` on stderr; stdout is empty (no partial report) | 1 |
+| Manifest is valid JSON but lacks a top-level `capabilities` array (or it is non-array) | `Invalid manifest: missing capabilities array` on stderr; stdout is empty | 1 |
+| `--capability <name>` specifies a name not present in the manifest | `Capability not found: <name>` on stderr; stdout is empty | 1 |
+| Unknown subcommand under `tusq redaction` | `Unknown subcommand: <name>` on stderr; stdout is empty | 1 |
+| Unknown flag on `tusq redaction review` | `Unknown flag: <flag>` on stderr; stdout is empty | 1 |
+
+**Stream discipline:** Every exit-1 row above has `stdout === ""`. Operators who pipe stdout to a file get a zero-byte file on failure. Error text is written to stderr only. Detection-before-output means no partial JSON or human section is written before an error surfaces. The empty-capabilities case (row 2) is deliberately exit 0 — a fresh `tusq init` repo with no routes yet is a valid scaffold state, not a hard failure.
 
 ### M27 Local-Only Invariants
 
@@ -544,6 +547,7 @@ There are no other flags. `tusq redaction review --help` prints the flag surface
 | Zero new dependencies | `package.json` MUST NOT gain any PII, compliance, retention, NLP, or table-rendering library |
 | Deterministic output | Running twice on the same manifest produces byte-identical stdout in both human and `--json` modes; no wall-clock field inside per-capability entries |
 | Frozen advisory set | `PII_REVIEW_ADVISORY_BY_CATEGORY` wording is locked by a smoke fixture; any wording change is a material governance event that MUST land under its own ROADMAP milestone |
+| Advisory byte-exactness | Every advisory uses the em-dash character U+2014, not ASCII hyphen-minus U+002D or en-dash U+2013; stdout is UTF-8; smoke fixture locks the exact byte sequence at merge time |
 | No scan re-run | The subcommand never calls the scanner or re-reads `src/` |
 | No capability execution | The subcommand never calls a compiled tool or starts the MCP server |
 | Reviewer-directive advisory text | Every advisory ends with "reviewer: ..." so the output explicitly reminds the operator the decision is theirs; no advisory claims the capability is compliant or runtime-safe |
