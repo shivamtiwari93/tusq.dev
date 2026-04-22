@@ -687,6 +687,10 @@ The injected consolidation charter is now explicitly satisfied:
 
 None.
 
+## M26 QA Recovery Verdict
+
+Ship verdict remains **PASS** for M26 after recovered QA verification. Static PII category labels are implemented as descriptive manifest metadata only; `npm test` passes with "Smoke tests passed" and "Eval regression harness passed (9 scenarios)"; no blocker was found for moving to launch.
+
 ## Conditions
 
 - Human approval required before transitioning to `launch` phase (per gate `qa_ship_verdict`).

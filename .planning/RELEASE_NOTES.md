@@ -369,6 +369,50 @@ When a Fastify route declares a literal `schema: { body: { properties: {...}, re
 
 **All 93 acceptance criteria** (REQ-001–REQ-093) pass on HEAD ca29d17: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (8 scenarios)`.
 
+## Static PII Category Labels (M26 — V1.7)
+
+`tusq manifest` now automatically populates `capability.redaction.pii_categories` as a parallel array to `capability.redaction.pii_fields`. Each entry labels the M25 canonical category that produced the matching field-name hint, in the same order and at the same index.
+
+**How it works:**
+- `PII_CATEGORY_BY_NAME` in `src/cli.js` is the frozen normalized-name → category lookup.
+- `PII_CANONICAL_NAMES` is derived from `Object.keys(PII_CATEGORY_BY_NAME)`, so the M25 field-name set and M26 category mapping freeze together.
+- `extractPiiFieldCategories(piiFields)` normalizes each M25-emitted field name with the same `toLowerCase()` + strip `_`/`-` rule, looks up the category, and returns a parallel array.
+- If `pii_fields` is empty, `pii_categories` is `[]` (array, never absent).
+
+**Canonical V1.7 category keys:**
+- `email`
+- `phone`
+- `government_id`
+- `name`
+- `address`
+- `date_of_birth`
+- `payment`
+- `secrets`
+- `network`
+
+**Examples:**
+- `pii_fields: ["email", "password"]` → `pii_categories: ["email", "secrets"]`
+- `pii_fields: ["user_email", "first_name", "phone_number"]` → `pii_categories: ["email", "name", "phone"]`
+- `pii_fields: ["user_email", "ssn", "credit_card"]` → `pii_categories: ["email", "government_id", "payment"]`
+- `pii_fields: []` → `pii_categories: []`
+
+**Key invariants:**
+- `pii_categories.length === pii_fields.length`.
+- Category ordering is exactly `pii_fields` ordering.
+- No new command, flag, dependency, source-text scan, value inspection, network I/O, or compliance/retention-policy library was added.
+- `scoreConfidence()` is unchanged; category presence is a redaction signal, not a confidence signal.
+- `sensitivity_class` is NOT auto-escalated — it remains `"unknown"` in V1.7.
+- `log_level`, `mask_in_traces`, and `retention_days` are NOT auto-populated from categories — existing defaults remain `"full"`, `false`, and `null` unless a reviewer edits them.
+- `tusq serve` and `tusq policy verify --strict` do not filter or enforce based on `pii_categories`.
+
+**Upgrade note — broad digest flip and re-approval:** M26 adds `pii_categories` to every capability's `redaction` object. Capabilities with PII hints gain populated category arrays, and non-PII capabilities gain `pii_categories: []`. Because M13 hashes the full `redaction` object, every existing approved capability can see a one-time `capability_digest` flip on its first post-M26 manifest regeneration. Use `tusq diff` to review the shape change, then re-approve affected capabilities with `tusq approve` before expecting them to reappear in `tools/list`.
+
+**Framing boundary** (SYSTEM_SPEC Constraint 18): A `pii_categories` entry means "this field-name hint belongs to this canonical category." It does NOT prove the field carries PII at runtime, does NOT enforce retention policy, does NOT auto-redact payloads, and does NOT imply GDPR/HIPAA/PCI compliance. Reviewers still own final masking, logging, and retention choices.
+
+**New eval scenario** — `pii-category-label-determinism` extends the governed-cli eval harness to 9 scenarios. It runs `tusq scan` + `tusq manifest` three times on the pii-hint-sample fixture and asserts expected `pii_fields`/`pii_categories` pairs for POST /auth, POST /register, POST /profile, and GET /catalog with identical ordering across all three runs.
+
+**All 100 acceptance criteria** (REQ-001–REQ-100) pass on HEAD 45129d3: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (9 scenarios)`. Recovered QA re-ran and confirmed the same command/result before the launch transition.
+
 ## Known V1 Limits And Non-Claims
 
 - **Heuristic scanner:** Route extraction uses regex-based static analysis, not a full AST. Complex dynamic route registration patterns may be missed or produce low-confidence results. Users should review the manifest before compiling.
