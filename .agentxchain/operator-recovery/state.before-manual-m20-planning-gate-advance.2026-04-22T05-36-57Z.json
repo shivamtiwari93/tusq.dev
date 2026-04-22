@@ -2,14 +2,25 @@
   "schema_version": "1.1",
   "run_id": "run_581c22fd7542f94e",
   "project_id": "tusq-dev",
-  "status": "active",
-  "phase": "implementation",
+  "status": "blocked",
+  "phase": "planning",
   "accepted_integration_ref": "git:d3589c0c9f5d6589bea25fed7d092a29685823b9",
   "active_turns": {},
   "turn_sequence": 4,
   "last_completed_turn_id": "turn_33545c65a9905eff",
-  "blocked_on": null,
-  "blocked_reason": null,
+  "blocked_on": "human:planning_signoff gate requires human approval before the run can transition from the planning phase to the implementation phase. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) are structurally complete and internally consistent for M20 on HEAD d3589c0 (workspace dirty). Shipped product behavior matches the planning boundary (npm test green, tusq serve --help has no --policy flag). No further PM work is required before human review.",
+  "blocked_reason": {
+    "category": "needs_human",
+    "recovery": {
+      "typed_reason": "needs_human",
+      "owner": "human",
+      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
+      "turn_retained": false,
+      "detail": "planning_signoff gate requires human approval before the run can transition from the planning phase to the implementation phase. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) are structurally complete and internally consistent for M20 on HEAD d3589c0 (workspace dirty). Shipped product behavior matches the planning boundary (npm test green, tusq serve --help has no --policy flag). No further PM work is required before human review."
+    },
+    "blocked_at": "2026-04-22T05:33:31.088Z",
+    "turn_id": "turn_33545c65a9905eff"
+  },
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -17,7 +28,7 @@
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "passed",
+    "planning_signoff": "pending",
     "implementation_complete": "pending",
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
@@ -28,7 +39,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T05:22:18.137Z",
-  "phase_entered_at": "2026-04-22T05:36:57.000Z",
+  "phase_entered_at": "2026-04-22T05:22:18.137Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
@@ -39,7 +50,7 @@
   "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": "dev",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
     "turn_id": "turn_7c7d7f3f7b5bbc55",
