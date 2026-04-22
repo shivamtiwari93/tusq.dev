@@ -2555,6 +2555,188 @@ M26's first-scan digest flip applies to **every** capability, not only those wit
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-094+ acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M27: Reviewer-Facing PII Redaction Review Report
+
+### Purpose
+
+After M26 labeled every PII field-name hint with a frozen category, reviewers still have no tusq-native way to see those signals per capability alongside an advisory reminder for the category-specific judgment calls they own (retention window, log level, trace masking). M27 closes that gap with a new read-only CLI subcommand, `tusq redaction review`, that aggregates the manifest's M25 `redaction.pii_fields` and M26 `redaction.pii_categories` per capability and attaches one frozen advisory string per category. M27 adds a reviewer aid; it does NOT add runtime enforcement, does NOT mutate the manifest, and does NOT change the behavior of `tusq scan`, `tusq manifest`, `tusq compile`, `tusq serve`, `tusq approve`, `tusq diff`, `tusq docs`, or `tusq policy verify`.
+
+### Scope Boundary
+
+| In V1.8 scope (M27) | Out of V1.8 scope (V2+) |
+|---------------------|--------------------------|
+| New CLI noun `redaction` with one subcommand `review` | No other `redaction` subcommands (e.g., `redaction set-retention`, `redaction classify`) |
+| Read `tusq.manifest.json` and emit a deterministic reviewer report | Mutating the manifest, even to "apply recommended defaults" |
+| Human-readable and `--json` output modes | Interactive TTY UI, `--watch`, ANSI coloring |
+| Frozen nine-entry `PII_REVIEW_ADVISORY_BY_CATEGORY` lookup in `src/cli.js` | Locale-specific advisory strings, custom-advisory file override |
+| One advisory line per distinct category per capability, in category-appearance order | Cross-capability aggregation, category heatmaps, severity scoring |
+| Local/offline/deterministic | Fetching compliance-framework advisory text over the network |
+| Zero change to `retention_days`, `log_level`, `mask_in_traces`, `sensitivity_class` | Auto-populating any of those fields based on report content |
+| Zero change to `tusq serve`, `tusq policy verify` (default or `--strict`) | Gating serve or strict verification on report content |
+| Zero new dependencies | Adding a PII/compliance/retention/NLP library |
+
+### Command Shape
+
+```
+tusq redaction review [--manifest <path>] [--capability <name>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--manifest <path>` | `tusq.manifest.json` (cwd) | Manifest file to read |
+| `--capability <name>` | unset | Filter report to a single capability by exact name |
+| `--json` | unset | Emit machine-readable JSON instead of the human report |
+
+There are no other flags. `tusq redaction` with no subcommand prints a short enumerate-subcommands block identical in shape to `tusq policy`. Unknown subcommands exit 1 with `Unknown subcommand:` followed by the name.
+
+### Frozen Advisory Set (V1.8)
+
+`PII_REVIEW_ADVISORY_BY_CATEGORY` is a frozen nine-entry lookup in `src/cli.js`. Every M26 category key maps to exactly one single-line reviewer-advisory string. The set is total and disjoint; any addition OR wording change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
+
+| Category | Advisory string (single line, frozen V1.8) |
+|----------|--------------------------------------------|
+| `email` | `Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.` |
+| `phone` | `Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.` |
+| `government_id` | `High-sensitivity government-ID field detected — reviewer: apply your org's strictest retention, logging, and trace-redaction defaults.` |
+| `name` | `Personal-name field detected — reviewer: decide whether the field should be logged in plaintext, masked, or redacted; retention follows your org's contact-data policy.` |
+| `address` | `Physical-address field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.` |
+| `date_of_birth` | `Date-of-birth field detected — reviewer: apply age-sensitive retention and redaction defaults; some jurisdictions treat DOB as higher-risk PII.` |
+| `payment` | `Payment-data field detected — reviewer: apply your org's payment-data retention, logging, and masking rules (e.g., PCI-aligned defaults owned by your team).` |
+| `secrets` | `Secret or credential field detected — reviewer: this field SHOULD NOT be logged in plaintext; apply trace redaction and minimal retention at your org's standard.` |
+| `network` | `Network-identifier field detected — reviewer: choose retention and masking aligned with your org's logging policy; some jurisdictions treat IP addresses as PII.` |
+
+The advisory strings are intentionally reviewer-directive (they each start with a noun phrase describing what was detected, followed by "reviewer:" and a reminder of the decision the reviewer still owns). None of them claim the capability is compliant, safe, or runtime-enforced; all of them delegate the retention/logging/masking choice to the reviewer.
+
+### Report Shape (JSON)
+
+```json
+{
+  "manifest_path": "tusq.manifest.json",
+  "manifest_version": 7,
+  "generated_at": "2026-04-22T12:34:56.000Z",
+  "capabilities": [
+    {
+      "name": "users_createUser",
+      "approved": true,
+      "sensitivity_class": "unknown",
+      "pii_fields": ["email", "password"],
+      "pii_categories": ["email", "secrets"],
+      "advisories": [
+        { "category": "email",   "text": "Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy." },
+        { "category": "secrets", "text": "Secret or credential field detected — reviewer: this field SHOULD NOT be logged in plaintext; apply trace redaction and minimal retention at your org's standard." }
+      ]
+    }
+  ]
+}
+```
+
+Invariants on the JSON shape:
+
+- `manifest_path` is the resolved input path (exact `--manifest` value or the default `tusq.manifest.json`).
+- `manifest_version` and `generated_at` are copied verbatim from the manifest's top-level fields (not re-stamped). This keeps the report content-deterministic for a given manifest input.
+- `capabilities` is an array in the manifest's own `capabilities` declaration order.
+- `pii_fields` and `pii_categories` are copied verbatim from the manifest (same length, same parallel order).
+- `advisories` contains one entry per **distinct** category in the order that category first appears in `pii_categories`. A capability with `pii_categories: ["email", "secrets", "email"]` emits two advisory entries (`email`, `secrets`), not three; the appearance order is preserved.
+- Capabilities with `pii_fields: []` emit `pii_fields: []`, `pii_categories: []`, and `advisories: []`.
+- No ANSI escape codes, no wall-clock fields inside per-capability entries, no randomization. Repeated runs produce byte-identical JSON.
+
+### Report Shape (Human)
+
+Human output mirrors the JSON shape in plain text. For each capability, one section:
+
+```
+Capability: users_createUser
+  approved: true
+  sensitivity_class: unknown
+  Redaction:
+    pii_fields:     ["email", "password"]
+    pii_categories: ["email", "secrets"]
+    Advisories:
+      - email:   Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.
+      - secrets: Secret or credential field detected — reviewer: this field SHOULD NOT be logged in plaintext; apply trace redaction and minimal retention at your org's standard.
+```
+
+Capabilities with `pii_fields: []` produce a single reminder line `No canonical PII field-name matches — reviewer action: none required from M27.` within the `Redaction:` sub-block, with no `Advisories:` rows. The human report is plain-text-only (no ANSI escapes) so operators piping to file get byte-identical text.
+
+### Pipeline Propagation
+
+```
+tusq.manifest.json (authored or generated) ─▶
+  tusq redaction review (read-only) ─▶
+    stdout (human or --json) ─▶
+      reviewer (offline) ─▶
+        hand-edits retention_days/log_level/mask_in_traces/sensitivity_class (if they choose)
+```
+
+The manifest is never modified. No other artifact (`.tusq/execution-policy.json`, `tusq-tools/*.json`, `.tusq/scan.json`) is read or written. The reviewer is always in the loop; M27 adds no automated path from advisory text to manifest defaults.
+
+### Default Behavior Preservation Table
+
+| Command / Field | M27 effect |
+|-----------------|------------|
+| `tusq scan` | Unchanged (M27 does not re-scan source) |
+| `tusq manifest` | Unchanged (M27 does not mutate the manifest) |
+| `tusq compile` | Unchanged |
+| `tusq serve` | Unchanged (no filtering based on advisory content) |
+| `tusq approve` / `tusq diff` / `tusq docs` / `tusq version` | Unchanged |
+| `tusq policy verify` (default) | Unchanged |
+| `tusq policy verify --strict` | Unchanged (strict continues to check approval alignment only; M27 advisory content is NOT a strict input) |
+| `capability.redaction.pii_fields` | Unchanged (read verbatim) |
+| `capability.redaction.pii_categories` | Unchanged (read verbatim) |
+| `capability.redaction.retention_days` / `log_level` / `mask_in_traces` | Unchanged — defaults stay `null` / `"full"` / `false` unless a reviewer hand-edits them |
+| `capability.sensitivity_class` | Unchanged — stays `"unknown"`; M27 never escalates |
+| `capability.capability_digest` | Unchanged — M27 does not mutate capability content, so there is no digest flip on first post-M27 run |
+
+### Confidence Model Interaction
+
+M27 does not modify `scoreConfidence()`, does not introduce new confidence inputs, and does not emit a confidence field in the review report. `scoreConfidence()` remains exactly the M15/M24 implementation.
+
+### Sensitivity Class Interaction
+
+M27 does not mutate `sensitivity_class`. The report echoes the manifest's `sensitivity_class` verbatim alongside `pii_fields` and `pii_categories` so the reviewer sees all three signals at once; that is a read, not a write. Constraint 16 (no auto-escalation under M25) and Constraint 18 (no auto-escalation under M26) propagate verbatim to M27 — no advisory category causes any sensitivity escalation.
+
+### Local-Only Invariants
+
+| Invariant | How it shows up at review time |
+|-----------|---------------------------------|
+| Read-only | `tusq.manifest.json` mtime and content are unchanged after any `tusq redaction review` invocation; smoke test asserts this |
+| No network I/O | No HTTP, DB, socket, or DNS; smoke test exercises the default and `--json` paths with network disabled |
+| Zero new dependencies | `package.json` MUST NOT gain any PII, compliance, retention, NLP, or table-rendering library |
+| Deterministic output | Running twice on the same manifest produces byte-identical stdout (human and `--json`); no wall-clock field inside per-capability entries |
+| No scan re-run | The subcommand never calls the scanner or re-reads `src/` |
+| No capability execution | The subcommand never calls a compiled tool or starts the MCP server |
+| Advisory set is frozen | `PII_REVIEW_ADVISORY_BY_CATEGORY` is enumerated in this spec and locked by a smoke fixture; any wording change is a material governance event |
+
+### V1.8 Limitations
+
+- English advisory strings only; multi-locale advisory sets are reserved for V2 under a plugin interface.
+- No custom-advisory override file (so the frozen set is the single source of reviewer guidance; this is deliberate — allowing overrides in V1.8 would create the same governance-drift risk the frozen set is meant to prevent).
+- No CSV/HTML/Markdown export mode; `--json` is the only machine-readable mode (stdout Markdown can be produced by a downstream tool from the `--json` output, which keeps the M27 surface small).
+- No manifest-wide aggregates (total PII capabilities, per-category counts); the report is per-capability. Aggregate reporting is reserved for a later increment.
+- No `--diff` / `--since` flag comparing two manifests; the existing `tusq diff` command covers that territory and M27 deliberately stays single-manifest.
+- No reviewer identity or approval action is captured; M27 is purely informational. `tusq approve` remains the reviewer-action surface.
+
+### Approval-Gate Invariant Preservation
+
+M27 does NOT change the M13 approval gate. `tools/list` and `tools/call` continue to filter on `approved: true` and `review_needed: false` exactly as before. M27 does NOT auto-approve, does NOT clear `review_needed`, and does NOT mutate `approved_by`/`approved_at`. The review report is purely informational and reviewers continue to run `tusq approve` by hand when they want to approve a capability.
+
+### Digest Flip Scope
+
+M27 causes ZERO `capability_digest` flips on first post-M27 run because the manifest is not mutated. In contrast with M25 (narrow flip on PII-name capabilities) and M26 (broad flip across every capability), M27 is observationally invisible in `tusq diff`. The first run after upgrading to a version that includes M27 produces an identical manifest to the version before M27 landed.
+
+### Docs and Tests Required Before Implementation
+
+- `tusq help` — add `redaction` to the noun list (single additional line) and `redaction review` to the subcommand examples; the existing 12-command summary copy gains one new noun with one subcommand and becomes a 12-noun / 13-entry-point surface depending on counting convention (see command-surface.md for the exact table).
+- `tusq redaction --help` — prints the subcommands block (`review`).
+- `tusq redaction review --help` — prints the flag surface (`--manifest`, `--capability`, `--json`), exit codes, and the "reviewer aid, not a runtime enforcement gate" callout.
+- `README.md` — add a short "Reviewer Review Report" subsection under the existing redaction coverage, linking to `website/docs/cli-reference.md` for detail and explicitly stating the advisory set is frozen and the command never mutates the manifest.
+- `website/docs/cli-reference.md` — add a `tusq redaction review` section documenting the command shape, flags, exit codes, human output example, `--json` output example, the nine-entry advisory table (frozen V1.8 wording), and the explicit not-runtime-enforcement / not-compliance / not-a-substitute-for-reviewer-judgment framing required by Constraint 19.
+- `website/docs/manifest-format.md` — extend the existing PII subsection with a "Reviewing PII redaction hints" paragraph pointing readers at `tusq redaction review`; no manifest-shape changes are documented because there are none.
+- `tests/smoke.mjs` — add coverage for: (a) exit 0 on a manifest with M25/M26 PII capabilities, with the expected advisory lines; (b) `--json` round-trips through JSON.parse and preserves order; (c) `--capability <name>` filter to one capability on success; (d) `--capability <unknown>` exits 1 with `Capability not found:`; (e) missing manifest exits 1 with `Manifest not found:`; (f) malformed-JSON manifest exits 1 before any stdout; (g) byte-identical stdout across two runs in both modes; (h) `tusq.manifest.json` mtime and content are unchanged after a review run (the read-only invariant); (i) `sensitivity_class` in the report equals the manifest's value (no escalation); (j) capability with `pii_fields: []` renders the "no canonical PII field-name matches" line; (k) mixed-category capability renders distinct advisory lines in category-appearance order; (l) `tusq policy verify` (default) and `tusq policy verify --strict` stdout/exit code are byte-identical before and after an M27 run on the same fixture.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario (`redaction-review-determinism`) asserting that `tusq redaction review --json` produces byte-identical stdout across three repeated runs and that advisory ordering matches `pii_categories` appearance order. Total eval scenarios become **10**.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-101+ acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2575,3 +2757,5 @@ The dev role is accountable for implementing all items above. The QA role is acc
 16. **M25 redaction-framing invariant** — A non-empty `redaction.pii_fields` array means "the field key matches a well-known PII canonical name." It does NOT mean the field carries PII at runtime, that the route is GDPR/HIPAA/PCI-compliant, or that any payload validation occurs. Docs/README/CLI-help/launch artifacts MUST NOT describe M25 as "PII detection," "PII validation," "PII-validated," "GDPR-compliant," "HIPAA-compliant," "PCI-compliant," "automated redaction," or any phrase that implies regulatory-grade or runtime-enforced PII handling. The defensible framing is "well-known PII field-name hints derived statically from source-declared field keys." M25 MUST NOT auto-escalate `capability.sensitivity_class` on PII match; `sensitivity_class` remains `"unknown"` until an explicit V2 sensitivity-inference increment ships with its own constraint entry. M25 MUST NOT auto-populate `redaction.log_level`, `redaction.mask_in_traces`, or `redaction.retention_days` — those remain `null` in V1.6 and are owned by a future organizational-policy increment.
 17. **M26 static-category-labeling invariant** — PII field-name category labels are produced by a pure function over M25's already-emitted `redaction.pii_fields` array plus a frozen `PII_CATEGORY_BY_NAME` lookup enumerated in `src/cli.js`. The extractor MUST NOT read any source file; MUST NOT inspect any value; MUST NOT invoke regex over source text; MUST NOT make network I/O; MUST NOT import any PII-detection, NLP, retention-policy, or compliance library. `redaction.pii_categories` length MUST equal `redaction.pii_fields` length, and entries MUST appear in the same order (one-to-one index correspondence). Category keys are drawn from a frozen nine-entry set: `"email"`, `"phone"`, `"government_id"`, `"name"`, `"address"`, `"date_of_birth"`, `"payment"`, `"secrets"`, `"network"`. Every normalized name in M25's `PII_CANONICAL_NAMES` MUST map to exactly one category in `PII_CATEGORY_BY_NAME`; M25 and M26 freeze together. Any expansion of either the canonical name set or the category set is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. Repeated manifest generations on the same repo MUST produce byte-identical `pii_categories` arrays. When `redaction.pii_fields` is empty, `redaction.pii_categories` MUST be `[]` (never absent).
 18. **M26 retention-framing invariant** — A populated `redaction.pii_categories` array means "each entry labels the M25 canonical category that produced the matching `pii_fields` entry." It does NOT mean the capability enforces any retention policy at runtime, does NOT prove regulatory compliance, and does NOT imply the manifest auto-sets retention defaults. Docs/README/CLI-help/launch artifacts MUST NOT describe M26 as "auto-retention," "automated redaction," "retention-policy enforcement," "GDPR-retention-compliant," "HIPAA-retention-compliant," or any phrase that implies runtime retention is governed by the manifest. The defensible framing is "canonical PII field-name category labels derived statically from M25's field-name matches, intended to help reviewers set retention/log/trace policy defaults by hand." M26 MUST NOT auto-populate `redaction.retention_days`, `redaction.log_level`, or `redaction.mask_in_traces` — existing defaults remain `null`, `"full"`, and `false` respectively unless explicitly edited by a reviewer, and those fields are owned by a future organizational-policy increment. M26 MUST NOT auto-escalate `capability.sensitivity_class` — it stays `"unknown"` (Constraint 16 propagates verbatim to M26). M26 MUST NOT filter capabilities in `tusq serve` or in `tusq policy verify --strict` based on category content; M26 is descriptive metadata only.
+19. **M27 reviewer-aid-framing invariant** — The `tusq redaction review` subcommand is a reviewer aid, NOT a runtime enforcement gate, NOT a compliance certification, and NOT a substitute for reviewer judgment. Docs/README/CLI-help/launch artifacts MUST NOT describe M27 as "automated PII compliance," "automated redaction policy," "GDPR/HIPAA/PCI-ready check," "pre-flight check for serve," "runtime PII safeguard," "execution-safety gate," or any phrase that implies running the command makes a capability safer at runtime. The defensible framing is "a read-only reviewer report that aggregates the M25 field-name hints, the M26 category labels, and a frozen per-category advisory string for each capability." The V1.8 advisory set is explicitly enumerated in SYSTEM_SPEC § M27 and frozen in `src/cli.js` as `PII_REVIEW_ADVISORY_BY_CATEGORY`. Any addition or wording change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. Every advisory string ends with a reviewer-directed reminder (it always says what the reviewer still has to decide) and never claims the manifest or the capability is compliant.
+20. **M27 read-only invariant** — `tusq redaction review` is strictly read-only. It MUST NOT mutate `tusq.manifest.json`, MUST NOT write to `.tusq/execution-policy.json`, MUST NOT write to `tusq-tools/*.json`, MUST NOT write to `.tusq/scan.json`, MUST NOT create or modify any other repo file. It MUST NOT mutate `capability.redaction.retention_days`, `capability.redaction.log_level`, `capability.redaction.mask_in_traces`, `capability.sensitivity_class`, `capability.approved`, `capability.approved_by`, `capability.approved_at`, or `capability.review_needed`. It MUST NOT re-run the scanner, MUST NOT import `fastify`/`ajv`/`@sinclair/typebox` or any PII/compliance/retention/NLP library, MUST NOT bind a TCP port, MUST NOT start an MCP server, MUST NOT make any network I/O, and MUST NOT invoke any compiled tool. It MUST NOT change the observable behavior of `tusq scan`, `tusq manifest`, `tusq compile`, `tusq serve`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq version`, `tusq policy init`, `tusq policy verify` (default), or `tusq policy verify --strict`. The only observable side effects of a `tusq redaction review` invocation are stdout output, stderr output, and a process exit code; a smoke test asserts that the manifest file's mtime and content are unchanged after any invocation, and that `tusq policy verify` (default and `--strict`) produces byte-identical stdout and exit code before and after running M27 on the same fixture.
