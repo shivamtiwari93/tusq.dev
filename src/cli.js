@@ -70,6 +70,9 @@ function dispatch(argv) {
     case 'review':
       cmdReview(args);
       return;
+    case 'docs':
+      cmdDocs(args);
+      return;
     case 'approve':
       cmdApprove(args);
       return;
@@ -698,6 +701,42 @@ function cmdReview(args) {
   enforceStrictReviewIfRequested(opts.strict, reviewStats);
 }
 
+function cmdDocs(args) {
+  const { opts, positionals } = parseCommandArgs('docs', args, {
+    manifest: 'value',
+    out: 'value'
+  });
+
+  if (opts.help) {
+    printCommandHelp('docs');
+    return;
+  }
+
+  if (positionals.length > 0) {
+    throw new CliError('Usage: tusq docs [--manifest <path>] [--out <path>]', 1);
+  }
+
+  const root = process.cwd();
+  const config = readOptionalProjectConfig(root);
+  const manifestPath = path.resolve(
+    root,
+    opts.manifest || (config.output && config.output.manifest_file) || 'tusq.manifest.json'
+  );
+
+  const manifest = readManifestForDocs(manifestPath);
+  const markdown = renderCapabilityDocs(manifest, manifestPath);
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, markdown, 'utf8');
+    process.stdout.write(`Wrote ${outPath}\n`);
+    return;
+  }
+
+  process.stdout.write(markdown);
+}
+
 function cmdApprove(args) {
   const { opts, positionals } = parseCommandArgs('approve', args, {
     all: 'boolean',
@@ -881,6 +920,111 @@ function validateManifestForDiff(manifest, manifestPath, label) {
     }
     seen.add(capability.name);
   }
+}
+
+function readManifestForDocs(manifestPath) {
+  if (!fs.existsSync(manifestPath)) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  const manifest = readJson(manifestPath);
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw new CliError(`Manifest is not an object: ${manifestPath}`, 1);
+  }
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+  return manifest;
+}
+
+function renderCapabilityDocs(manifest, manifestPath) {
+  const capabilities = manifest.capabilities
+    .slice()
+    .sort((left, right) => String(left.name || '').localeCompare(String(right.name || '')));
+  const lines = [];
+
+  lines.push('# Capability Documentation');
+  lines.push('');
+  lines.push('Generated from a local tusq manifest. This document is review/adoption material only; it does not enable live execution.');
+  lines.push('');
+  lines.push('## Manifest');
+  lines.push('');
+  lines.push(`- Source: ${markdownInline(path.basename(manifestPath))}`);
+  lines.push(`- Schema version: ${formatScalar(manifest.schema_version)}`);
+  lines.push(`- Manifest version: ${formatScalar(manifest.manifest_version)}`);
+  lines.push(`- Previous manifest hash: ${formatScalar(manifest.previous_manifest_hash)}`);
+  lines.push(`- Source scan: ${formatScalar(manifest.source_scan)}`);
+  lines.push(`- Capability count: ${capabilities.length}`);
+  lines.push('');
+  lines.push('## Capabilities');
+  lines.push('');
+
+  for (const capability of capabilities) {
+    lines.push(`### ${markdownText(capability.name || 'unnamed_capability')}`);
+    lines.push('');
+    lines.push(`- Description: ${formatText(capability.description)}`);
+    lines.push(`- Route: ${formatScalar(capability.method)} ${formatScalar(capability.path)}`);
+    lines.push(`- Approved: ${capability.approved === true ? 'yes' : 'no'}`);
+    lines.push(`- Review needed: ${capability.review_needed === true ? 'yes' : 'no'}`);
+    lines.push(`- Approved by: ${formatScalar(capability.approved_by)}`);
+    lines.push(`- Approved at: ${formatScalar(capability.approved_at)}`);
+    lines.push(`- Side effect class: ${formatScalar(capability.side_effect_class)}`);
+    lines.push(`- Sensitivity class: ${formatScalar(normalizeSensitivityClass(capability.sensitivity_class))}`);
+    lines.push(`- Auth hints: ${formatArray(capability.auth_hints)}`);
+    lines.push(`- Domain: ${formatScalar(capability.domain)}`);
+    lines.push(`- Confidence: ${formatScalar(capability.confidence)}`);
+    lines.push(`- Capability digest: ${formatScalar(capability.capability_digest)}`);
+    lines.push('');
+    appendJsonSection(lines, 'Input schema', capability.input_schema);
+    appendJsonSection(lines, 'Output schema', capability.output_schema);
+    appendJsonSection(lines, 'Examples', normalizeExamples(capability.examples));
+    appendJsonSection(lines, 'Constraints', normalizeConstraints(capability.constraints));
+    appendJsonSection(lines, 'Redaction', normalizeRedaction(capability.redaction));
+    appendJsonSection(lines, 'Provenance', capability.provenance || null);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function appendJsonSection(lines, title, value) {
+  lines.push(`#### ${title}`);
+  lines.push('');
+  lines.push('```json');
+  lines.push(JSON.stringify(sortKeysDeep(value === undefined ? null : value), null, 2));
+  lines.push('```');
+  lines.push('');
+}
+
+function markdownText(value) {
+  return String(value).replace(/([\\`*_{}[\]()#+.!|-])/g, '\\$1');
+}
+
+function markdownInline(value) {
+  return `\`${String(value).replace(/`/g, '\\`')}\``;
+}
+
+function formatScalar(value) {
+  if (value === null || value === undefined || value === '') {
+    return '`none`';
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return `\`${value}\``;
+  }
+  return markdownInline(value);
+}
+
+function formatText(value) {
+  if (value === null || value === undefined || value === '') {
+    return '`none`';
+  }
+  return markdownText(value);
+}
+
+function formatArray(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return '`none`';
+  }
+  return value.map((item) => markdownInline(item)).join(', ');
 }
 
 function buildManifestDiff(fromManifest, toManifest, fromPath, toPath, includeReviewQueue) {
@@ -1154,6 +1298,7 @@ function printHelp() {
   process.stdout.write('  compile            Compile approved capabilities into tool definitions\n');
   process.stdout.write('  serve              Start describe-only local MCP endpoint\n');
   process.stdout.write('  review             Print manifest summary for human review\n');
+  process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  version            Print version and exit\n');
@@ -1168,6 +1313,7 @@ function printCommandHelp(command) {
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--verbose]',
     review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
+    docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]'
   };
@@ -1178,6 +1324,14 @@ function readProjectConfig(projectRoot) {
   const configPath = path.join(projectRoot, 'tusq.config.json');
   if (!fs.existsSync(configPath)) {
     throw new CliError('No tusq config found. Run `tusq init` first.', 1);
+  }
+  return readJson(configPath);
+}
+
+function readOptionalProjectConfig(projectRoot) {
+  const configPath = path.join(projectRoot, 'tusq.config.json');
+  if (!fs.existsSync(configPath)) {
+    return {};
   }
   return readJson(configPath);
 }

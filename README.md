@@ -19,6 +19,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 - `tusq manifest`
 - `tusq compile`
 - `tusq review`
+- `tusq docs`
 - `tusq approve`
 - `tusq diff`
 - `tusq serve`
@@ -31,6 +32,7 @@ Current `v0.1.0` boundaries:
 - Approval flow: run `tusq approve <capability>` or `tusq approve --all` to set `approved: true`, clear `review_needed`, and record reviewer audit metadata
 - MCP behavior: describe-only in V1; `tools/call` returns schema, example payloads, and constraints, not live API execution
 - Review policy surface: `redaction` is inspectable in the manifest and survives into compiled tools and `tools/call`
+- Documentation generation: `tusq docs` emits local Markdown adoption/review docs from `tusq.manifest.json`; it does not publish hosted docs or enable live execution
 - CI review gate: `tusq review --strict` exits non-zero when capabilities remain unapproved or low-confidence
 - Manifest diff gate: `tusq diff --from old.manifest.json --to tusq.manifest.json --fail-on-unapproved-changes` exits non-zero when added or changed capabilities still need approval
 - Deferred beyond V1: runtime learning, plugin APIs, non-Node ecosystems, embedded UI, and hosted delivery
@@ -86,9 +88,10 @@ The shipped workflow today is:
 3. generate a reviewable `tusq.manifest.json` with `tusq manifest`
 4. approve capabilities with `tusq approve <name>` or `tusq approve --all`
 5. compile approved capabilities into JSON tool definitions with `tusq compile`
-6. inspect grouped output with `tusq review`
-7. compare manifest versions and generate a review queue with `tusq diff`
-8. expose compiled tools through a local describe-only MCP endpoint with `tusq serve`
+6. generate local Markdown adoption/review docs with `tusq docs`
+7. inspect grouped output with `tusq review`
+8. compare manifest versions and generate a review queue with `tusq diff`
+9. expose compiled tools through a local describe-only MCP endpoint with `tusq serve`
 
 The key point is the same: the product does not start from prompts. It starts from product behavior already encoded in code.
 
@@ -139,8 +142,9 @@ The accurate launch workflow is:
 3. run `tusq manifest` to generate `tusq.manifest.json`
 4. review the manifest and run `tusq approve <capability>` or `tusq approve --all --reviewer <id>` for capabilities to expose
 5. run `tusq compile` to emit JSON tool definitions for approved capabilities
-6. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
-7. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
+6. run `tusq docs --out capability-docs.md` to create local Markdown docs for review and adoption
+7. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
+8. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
 

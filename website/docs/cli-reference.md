@@ -72,6 +72,18 @@ Use `--format json` when you need the full raw manifest.
 
 Use `--strict` in CI to fail with exit code `1` when any capability is unapproved or marked `review_needed`.
 
+## `tusq docs`
+
+Generate deterministic local Markdown documentation from a tusq manifest.
+
+```bash
+tusq docs [--manifest <path>] [--out <path>] [--verbose]
+```
+
+The generated Markdown is review/adoption documentation only. It includes manifest version metadata and per-capability sections for approval state, side-effect class, sensitivity class, auth hints, provenance, examples, constraints, and redaction. It does not publish hosted docs, call product APIs, or add live execution semantics.
+
+If `--manifest` is omitted, tusq reads `tusq.manifest.json` from the current project config or working directory. If `--out` is omitted, tusq prints Markdown to stdout.
+
 ## `tusq approve`
 
 Approve selected capabilities in `tusq.manifest.json` without hand-editing approval fields.

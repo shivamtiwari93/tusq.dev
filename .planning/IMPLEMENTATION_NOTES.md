@@ -496,3 +496,32 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 **Gate satisfaction:** All M1–M18 acceptance criteria (REQ-001–REQ-053) remain fully implemented and verified. `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
 
 **Operator recovery note:** This verification record is scope-drifted for the active M19 run. It verifies completed M1-M18 behavior only and does not implement or verify the M19 repo-local capability documentation generator. Do not use this record as evidence that M19 is complete. The next implementation turn must implement `tusq docs` from the M19 run provenance and acceptance criteria.
+
+---
+
+## M19 Implementation Record - Capability Documentation Generator (2026-04-22)
+
+**Scope:** Implemented a repo-local `tusq docs` command that generates deterministic Markdown review/adoption documentation from `tusq.manifest.json`.
+
+**Changes shipped:**
+
+- Added `tusq docs` to the CLI dispatcher and global command help.
+- Added `tusq docs [--manifest <path>] [--out <path>] [--verbose]` command help.
+- Implemented manifest validation for docs generation with explicit missing/invalid manifest errors.
+- Implemented deterministic Markdown rendering sorted by capability name.
+- Included manifest metadata: schema version, manifest version, previous manifest hash, source scan, source filename, and capability count.
+- Included per-capability documentation for description, route, approval state, review state, approval audit metadata, side effect class, sensitivity class, auth hints, domain, confidence, capability digest, input schema, output schema, examples, constraints, redaction, and provenance.
+- Kept the command local/offline and describe-only; it does not call product APIs, publish hosted docs, or add live execution semantics.
+- Added smoke coverage for `tusq docs` stdout output, `--manifest`, `--out`, generated sections, approval metadata, and deterministic output equivalence.
+- Updated README and website CLI reference to document the local docs-generation workflow honestly.
+
+**Verification:**
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js help` | Exit 0; includes `docs` |
+| `node bin/tusq.js docs --help` | Exit 0; prints `Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]` |
+| `npm test` | Exit 0; smoke tests and eval regression harness pass |
+| `cd website && npm run build` | Exit 0; Docusaurus build succeeds |
+
+**Gate satisfaction:** M19 implementation is complete and verified. `implementation_complete` can advance to QA.

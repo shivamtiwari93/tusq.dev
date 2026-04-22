@@ -157,6 +157,9 @@ async function run() {
   if (!helpResult.stdout.includes('approve')) {
     throw new Error(`Expected help output to include approve command:\n${helpResult.stdout}`);
   }
+  if (!helpResult.stdout.includes('docs')) {
+    throw new Error(`Expected help output to include docs command:\n${helpResult.stdout}`);
+  }
   runCli(['version'], { cwd: root });
   runCli(['does-not-exist'], { cwd: root, expectedStatus: 1 });
   const invalidFlag = runCli(['scan', '--bad-flag'], { cwd: root, expectedStatus: 1 });
@@ -422,6 +425,35 @@ async function run() {
     throw new Error('Expected tusq approve --all to approve every remaining review-needed/unapproved capability');
   }
   runCli(['review', '--strict'], { cwd: expressProject });
+
+  const docsResult = runCli(['docs', '--manifest', manifestPath], { cwd: expressProject });
+  if (!docsResult.stdout.includes('# Capability Documentation')) {
+    throw new Error(`Expected docs output to include title:\n${docsResult.stdout}`);
+  }
+  for (const expected of [
+    '## Manifest',
+    '## Capabilities',
+    'Side effect class',
+    'Sensitivity class',
+    'Auth hints',
+    '#### Examples',
+    '#### Constraints',
+    '#### Redaction',
+    '#### Provenance'
+  ]) {
+    if (!docsResult.stdout.includes(expected)) {
+      throw new Error(`Expected docs output to include ${expected}:\n${docsResult.stdout}`);
+    }
+  }
+  if (!docsResult.stdout.includes('Approved: yes') || !docsResult.stdout.includes('Manifest version')) {
+    throw new Error(`Expected docs output to include approval and manifest version metadata:\n${docsResult.stdout}`);
+  }
+  const docsOutPath = path.join(expressProject, 'capability-docs.md');
+  runCli(['docs', '--manifest', manifestPath, '--out', docsOutPath], { cwd: expressProject });
+  const docsOut = await fs.readFile(docsOutPath, 'utf8');
+  if (docsOut !== docsResult.stdout) {
+    throw new Error('Expected tusq docs --out to write the same deterministic Markdown emitted to stdout');
+  }
 
   // REQ-039 through REQ-043: manifest diff and review queue
   const oldDiffManifest = JSON.parse(JSON.stringify(reviewReadyManifest));
