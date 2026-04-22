@@ -164,6 +164,18 @@
 - [x] Update CLI help, README, and website CLI-reference docs for the docs command
 - [x] Add smoke coverage for stdout output, --manifest, --out, generated sections, approval metadata, and deterministic output
 
+### M20: Opt-In Local Execution Policy Scaffold for MCP serve (~0.5 day)
+- [ ] Specify `.tusq/execution-policy.json` shape (`schema_version`, `mode: "describe-only" | "dry-run"`, optional `allowed_capabilities`) in SYSTEM_SPEC.md
+- [ ] Add `tusq serve --policy <path>` flag that activates dry-run validation mode; absent flag preserves V1 describe-only behavior byte-for-byte
+- [ ] Extend `tools/call` under `mode: "dry-run"` to accept `params.arguments`, validate them against the approved compiled tool's `parameters` schema (required fields enforced, `additionalProperties` respected), and return a structured `dry_run_plan` object
+- [ ] `dry_run_plan` fields: `method`, `path`, `path_params`, `query`, `body`, `headers`, `auth_context`, `side_effect_class`, `sensitivity_class`, `redaction`, `plan_hash` (SHA-256 of canonical plan content), and `evaluated_at` (ISO-8601 UTC)
+- [ ] Emit JSON-RPC error `-32602` with `data.validation_errors` (array of `{path, reason}`) when argument validation fails; no plan is produced
+- [ ] Keep execution fully local/offline — no HTTP request, DB call, or network I/O to the target product under any policy mode
+- [ ] Policy resolution errors (missing file when `--policy` is set, invalid JSON, unknown `mode`, unsupported `schema_version`) exit 1 at serve startup with an actionable message
+- [ ] Add smoke coverage for policy-off (describe-only unchanged), policy-on dry-run success, validation failure paths, and plan_hash determinism
+- [ ] Add eval regression scenarios for dry-run plan structure, approval-gate enforcement (unapproved capabilities remain invisible to `tools/list` and reject in `tools/call`), and validation-error surfaces
+- [ ] Update CLI help, README, and website CLI-reference docs to describe the `--policy` flag and `.tusq/execution-policy.json` shape; add an `execution-policy.md` docs page
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
@@ -172,3 +184,5 @@
 | Docusaurus version/config issues | Build failures | Pin to latest stable 3.x; use default plugins only |
 | Brand inconsistency with current site | Jarring visual transition | Migrate exact colors/fonts from existing CSS |
 | Docs become stale as CLI evolves | User confusion | Docs are derived from spec; updating spec triggers doc update |
+| M20 dry-run plan mistaken for live execution | Operator confusion, false safety expectations | Dry-run response carries an explicit `executed: false` marker and `V1_DRY_RUN_NOTE` string; docs reserve live execution for a later increment |
+| Execution policy drift between manifest governance and serve | Approved capabilities could expose unvalidated plans if policy parser bypasses approval | `tools/list` and `tools/call` continue to filter by `approved: true`; policy mode never relaxes the approval gate |

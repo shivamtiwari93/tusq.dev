@@ -1536,6 +1536,168 @@ MCP server responses       (tools/list and tools/call over JSON-RPC)
 
 Each transformation is deterministic: the same input produces the same output. The `approved` field is the only human-in-the-loop gate. Nothing compiles without explicit human approval. The `redaction` field propagates from manifest through compile to MCP `tools/call`, enabling agent runtimes to enforce data masking at every stage. Approval metadata (`approved`, `approved_by`, `approved_at`, `review_needed`) lives only in the manifest — downstream artifacts exist only for approved capabilities. Version history fields (`manifest_version`, `previous_manifest_hash`, `capability_digest`) also live only in the manifest — they track evolution of the canonical artifact itself and do not propagate to compiled tools or MCP responses.
 
+## M20: Opt-In Local Execution Policy Scaffold for MCP serve
+
+M20 is the first increment on the VISION "safe execution wrappers" ladder (VISION.md lines 177–181 and line 245). V1 currently ships describe-only MCP responses (the `V1_DESCRIBE_ONLY_NOTE` in `src/cli.js` line 11). M20 does **not** turn on live execution. It adds an opt-in, repo-local scaffold that lets an operator validate arguments against the approved compiled tool schema and produce an auditable dry-run execution plan, while preserving V1's byte-for-byte describe-only default.
+
+### Scope boundary
+
+- **In scope.** A policy file `.tusq/execution-policy.json`; a new `tusq serve --policy <path>` flag; a `mode: "dry-run"` extension of the `tools/call` response that validates arguments against the approved compiled tool `parameters` schema and emits a structured `dry_run_plan`; JSON-RPC validation error surfaces; fully local execution (no network I/O to the target product).
+- **Out of scope.** Live API execution; confirmation or approve ladders on the serve path; mutating target-system state; authoring policies via CLI; multi-party policy approval; streaming or async plans; policy inheritance or wildcard capability matchers beyond the explicit `allowed_capabilities` list.
+
+### Policy file shape
+
+File: `.tusq/execution-policy.json`. Human-authored in V1.1; no CLI writer.
+
+```json
+{
+  "schema_version": "1.0",
+  "mode": "dry-run",
+  "allowed_capabilities": ["get_users_id", "list_orders"],
+  "reviewer": "ops@example.com",
+  "approved_at": "2026-04-22T05:20:21Z"
+}
+```
+
+| Field | Type | Required | V1.1 behavior |
+|-------|------|----------|---------------|
+| `schema_version` | string | yes | Must be `"1.0"` or the serve startup fails with exit 1 |
+| `mode` | `"describe-only"` \| `"dry-run"` | yes | `"describe-only"` is a no-op (identical to V1 without `--policy`); `"dry-run"` enables argument validation and plan emission |
+| `allowed_capabilities` | string[] \| null | no | When present, plans are only produced for the listed compiled tool names; other names fall back to describe-only responses even under `dry-run` |
+| `reviewer` | string \| null | no | Echoed into `dry_run_plan.policy.reviewer` for audit; never used for authz |
+| `approved_at` | string (ISO-8601 UTC) \| null | no | Echoed into `dry_run_plan.policy.approved_at`; never used for authz |
+
+### CLI surface additions
+
+- `tusq serve --policy <path>`
+- If `--policy` is set and the file is missing, unreadable, invalid JSON, has an unsupported `schema_version`, or contains an unknown `mode`, `tusq serve` exits 1 with an actionable message.
+- If `--policy` is not set, behavior is byte-for-byte identical to V1 describe-only.
+
+### `tools/call` dry-run response shape
+
+Response body under `mode: "dry-run"` for an approved, allowed capability where argument validation passes:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "name": "get_users_id",
+    "description": "Retrieve a specific user by ID — read-only, requires authentication",
+    "executed": false,
+    "policy": {
+      "mode": "dry-run",
+      "reviewer": "ops@example.com",
+      "approved_at": "2026-04-22T05:20:21Z"
+    },
+    "dry_run_plan": {
+      "method": "GET",
+      "path": "/users/42",
+      "path_params": { "id": "42" },
+      "query": {},
+      "body": null,
+      "headers": { "Accept": "application/json" },
+      "auth_context": { "hints": ["Authorization"], "required": true },
+      "side_effect_class": "read",
+      "sensitivity_class": "unknown",
+      "redaction": { "pii_fields": [], "log_level": "full", "mask_in_traces": false, "retention_days": null },
+      "plan_hash": "<SHA-256 hex of canonical plan content>",
+      "evaluated_at": "2026-04-22T05:20:22Z"
+    },
+    "schema": {
+      "parameters": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] },
+      "returns": { "type": "object", "additionalProperties": true }
+    }
+  }
+}
+```
+
+Agent implications:
+
+- `executed: false` is always present under dry-run mode. Consumers MUST NOT interpret a `dry_run_plan` as evidence of a performed request.
+- `plan_hash` is a SHA-256 over a canonical JSON serialization of `{method, path, path_params, query, body, headers}`. Identical inputs produce identical plans. This is the first primitive for future replay, diff, and eval tooling.
+- `policy.reviewer` and `policy.approved_at` are audit echoes. They do NOT authorize live execution in V1.1.
+
+Validation failure response (argument does not match `parameters` schema):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "error": {
+    "code": -32602,
+    "message": "Invalid arguments for tool: get_users_id",
+    "data": {
+      "validation_errors": [
+        { "path": "/id", "reason": "required field missing" }
+      ]
+    }
+  }
+}
+```
+
+| Error code | Meaning under M20 |
+|------------|-------------------|
+| `-32601` | Method not found (unchanged from V1) |
+| `-32602` | Unknown tool, tool not in `allowed_capabilities`, or invalid arguments under dry-run mode |
+| `-32603` | Internal error during plan construction (reserved; MUST NOT surface live-execution error semantics) |
+
+### Approval gate invariants
+
+The approval gate is preserved under M20:
+
+1. Only capabilities with `approved: true` in the manifest appear in `tools/list` (existing V1 behavior, unchanged).
+2. `tools/call` on an unapproved or missing capability still returns `-32602`.
+3. `mode: "dry-run"` never relaxes the approval gate. `allowed_capabilities` is a strict subset filter on top of the approval gate, not a replacement for it.
+4. Unapproved capabilities cannot be dry-run validated, even with a permissive policy file.
+
+### Argument validation rules
+
+Under `mode: "dry-run"`, arguments at `params.arguments` are validated against the approved compiled tool's `parameters` schema:
+
+- `required` array is enforced; each missing field produces one `validation_errors` entry with `path: "/<field>"` and `reason: "required field missing"`.
+- `type` is enforced for primitive types (`string`, `number`, `integer`, `boolean`); mismatches produce `reason: "expected <type>, got <actual>"`.
+- Unknown top-level properties are rejected when the schema declares `additionalProperties: false`; tolerated otherwise (matches the V1 permissive default of `additionalProperties: true`).
+- Path params extracted by M15 into `parameters.properties` are substituted into `dry_run_plan.path` on validation success. Path params are always string-coerced.
+- No network validation, no remote schema fetch. Validation runs fully in-process.
+
+### V1.1 limitations
+
+| Limitation | V1.1 behavior | Deferred to |
+|------------|---------------|-------------|
+| Live execution | No outbound HTTP, DB, or socket I/O under any policy mode | Later increment past V1.1 |
+| Confirm and approve ladders | No interactive confirmation or run-time approval on serve | Later increment |
+| Policy authoring UX | Policy file is human-authored; no `tusq policy` CLI | V2 |
+| Policy diff and history | No policy version hash chain or diff command | V2 |
+| Schema validation depth | Only required-fields, primitive types, and `additionalProperties: false` rejection; no format/enum/oneOf/regex | V2 |
+| Authentication checks | `auth_context` is echoed; no real identity binding | V2 |
+
+### Pipeline propagation
+
+```
+tusq.manifest.json (approved capabilities, schemas, governance)
+       │
+       ▼
+tusq-tools/*.json (compiled tools for approved capabilities only)
+       │
+       ▼                                  .tusq/execution-policy.json  (opt-in operator artifact)
+MCP server responses ───── merges policy ─────────────┘
+       │
+       ├── describe-only (default or mode="describe-only")      → V1 shape unchanged
+       └── dry-run       (mode="dry-run" + arguments present)   → adds `dry_run_plan`, `executed: false`, `policy`
+```
+
+The policy file is a **governance artifact**: review it like a manifest. No policy is required to run `tusq serve`; the default is V1 describe-only. Adoption is explicit, not implicit.
+
+### Docs and tests required before implementation
+
+- `website/docs/cli-reference.md` — document `tusq serve --policy <path>` and update exit-code table.
+- `website/docs/execution-policy.md` (new) — policy file shape, modes, allowed_capabilities semantics, dry-run response example, validation error example, invariants.
+- `website/docs/mcp-server.md` — add dry-run section alongside the existing describe-only documentation.
+- `tests/smoke.mjs` — add policy-off (describe-only unchanged), policy-on dry-run success, and validation-failure scenarios; assert `executed: false`, `plan_hash` determinism, and error `data.validation_errors` shape.
+- `tests/evals/governed-cli-scenarios.json` — add a dry-run scenario asserting plan shape and one asserting unapproved capabilities stay invisible under dry-run policy.
+- `README.md` — add the `--policy` flag to the CLI reference table.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -1543,3 +1705,4 @@ Each transformation is deterministic: the same input produces the same output. T
 3. **Monorepo-friendly** — The `website/` directory is self-contained with its own `package.json`
 4. **Brand continuity** — Preserve the Fraunces + Space Grotesk font pairing and color scheme from the current site
 5. **Content fidelity** — All user-facing content must be traceable to an accepted planning or launch artifact. Do not invent new product claims
+6. **M20 local-only invariant** — The opt-in execution-policy scaffold MUST NOT perform live API execution. `tools/call` under any policy mode stays in-process; no outbound HTTP, DB, or socket I/O to the target product. `executed: false` MUST appear in every dry-run response.

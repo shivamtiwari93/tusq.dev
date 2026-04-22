@@ -53,6 +53,67 @@ M16 adds the first active diff command on top of the manifest version fields alr
 | Invalid manifest shape | Missing required root/capability fields listed by name |
 | Unapproved change gate failure | `Review gate failed:` followed by capability names requiring approval |
 
+## M20 Product CLI Surface
+
+M20 extends the `tusq serve` command with an opt-in `--policy` flag that activates dry-run argument validation for MCP `tools/call`. No live execution is added. Describe-only stays the default when `--policy` is absent.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq serve` | MCP describe-only server (V1 default, unchanged) | Server bound and accepted describe-only responses |
+| `tusq serve --policy <path>` | MCP server with opt-in execution policy loaded | Server bound, policy file validated, policy mode active |
+
+### `tusq serve` Options (M20)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--port <n>` | TCP port for the local MCP listener | `3333` |
+| `--policy <path>` | Path to `.tusq/execution-policy.json`; enables dry-run mode when `mode: "dry-run"` | Unset (describe-only) |
+| `--verbose` | Print policy resolution and request logs | Disabled |
+
+### `tusq serve --policy` Failure UX
+
+| Failure | User sees |
+|---------|-----------|
+| `--policy` path missing | `Policy file not found:` followed by the path provided |
+| Policy file is not valid JSON | `Invalid policy JSON at:` followed by the path and parser message |
+| Unsupported `schema_version` | `Unsupported policy schema_version:` followed by the value and the list of supported versions |
+| Unknown `mode` | `Unknown policy mode:` followed by the value and the list of allowed modes |
+| `allowed_capabilities` is not an array of strings | `Invalid allowed_capabilities in policy:` followed by the offending value |
+| Policy file present but manifest missing | `Missing manifest:` directing the user to run `tusq manifest` first |
+
+### `tools/call` Dry-Run Response (M20)
+
+When the policy is loaded in `mode: "dry-run"` and the requested capability is approved and listed in `allowed_capabilities` (when set), `tools/call` with a `params.arguments` object returns:
+
+| Field | Meaning |
+|-------|---------|
+| `executed` | Always `false` under dry-run; never evidence of a performed request |
+| `policy.mode` | `"dry-run"` |
+| `policy.reviewer` | Audit echo of the policy reviewer; never authz |
+| `policy.approved_at` | Audit echo of the policy approval timestamp; never authz |
+| `dry_run_plan.method` | HTTP method copied from the compiled tool |
+| `dry_run_plan.path` | Compiled-tool path with path params substituted from validated arguments |
+| `dry_run_plan.path_params` | Validated path parameter map |
+| `dry_run_plan.query` | Query parameter object (empty in V1.1) |
+| `dry_run_plan.body` | Validated body object or `null` |
+| `dry_run_plan.headers` | Default request headers derived from the compiled tool |
+| `dry_run_plan.auth_context` | `{hints, required}` derived from manifest `auth_hints` |
+| `dry_run_plan.side_effect_class` | Copied from the compiled tool |
+| `dry_run_plan.sensitivity_class` | Copied from the compiled tool |
+| `dry_run_plan.redaction` | Copied from the compiled tool |
+| `dry_run_plan.plan_hash` | SHA-256 hex of canonical `{method, path, path_params, query, body, headers}` |
+| `dry_run_plan.evaluated_at` | ISO-8601 UTC timestamp |
+
+### `tools/call` Dry-Run Failure UX (M20)
+
+| Failure | JSON-RPC code | `data` payload |
+|---------|---------------|----------------|
+| Required argument missing | `-32602` | `validation_errors: [{path, reason: "required field missing"}]` |
+| Argument type mismatch | `-32602` | `validation_errors: [{path, reason: "expected <type>, got <actual>"}]` |
+| Unknown top-level property when schema is `additionalProperties: false` | `-32602` | `validation_errors: [{path, reason: "unknown property"}]` |
+| Capability not in `allowed_capabilities` | `-32602` | `data.reason: "capability not permitted under current policy"` |
+| Capability not approved | `-32602` | `data.reason: "capability not approved"` (unchanged from V1 semantics) |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

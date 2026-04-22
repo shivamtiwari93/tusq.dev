@@ -22,6 +22,8 @@ Approved: YES
 >
 > Updated in run_4b24e171693ac091 (turn_dca9c6c9fe1063eb) to address the core vision goal "produce manifests that are usable on first pass for real codebases, not toy examples" (VISION.md line 72). Challenged ALL prior turns for focusing exclusively on governance metadata dimensions while leaving the manifest fundamentally unusable for LLM consumers. Four concrete deficiencies identified in the current V1 implementation: (1) Path parameters (`:id`, `{id}`) in route paths are never extracted into `input_schema` — an LLM receiving the tool cannot know what arguments to provide; (2) Domain inference takes the first path segment blindly, so `/api/v1/users` produces domain `api` instead of `users`; (3) Capability descriptions are template strings ("GET /users capability in users domain") that convey zero semantic value to an agent; (4) Confidence scoring gives 0.86 to routes with zero actual schema extraction, misleading reviewers about manifest quality. All four are fixable with information the scanner already possesses — no AST parsing or TypeScript compiler API required. SYSTEM_SPEC updated with First-Pass Manifest Usability section specifying path parameter extraction rules, smart domain inference with prefix skipping, rich description templates, and confidence penalty for schema-less routes. ROADMAP updated with M15 milestone.
 >
+> Updated on 2026-04-22 for M20 (run_581c22fd7542f94e, turn_7c7d7f3f7b5bbc55) to derive the next VISION-aligned increment: an opt-in local execution-policy scaffold for the MCP serve path. The prior commit 71c4abc recovered intake state but did not extend the four required planning artifacts. This PM turn added the M20 section to ROADMAP.md (plus two new Key Risk rows for dry-run confusion and policy/approval-gate drift), the M20 specification to SYSTEM_SPEC.md (policy file shape, `tusq serve --policy` CLI surface, `tools/call` dry-run response shape with `executed: false` and `plan_hash`, approval-gate invariants, narrow validation rules, V1.1 limitations, pipeline propagation diagram, and the docs/tests-before-implementation list), the M20 Product CLI Surface to command-surface.md (serve flag table and dry-run response/failure UX tables), and Challenges 18–20 to this PM_SIGNOFF. No ROADMAP milestones are claimed checked — M20 remains implementation-ready planned work, not shipped work.
+>
 > Updated on 2026-04-21 for M17 to add a governed CLI eval/regression harness. This closes the gap where smoke tests covered shipped behavior but did not specifically guard prompt-pack/workflow drift around review gates, compiled tool-call metadata, schema source markers, permission/auth hints, redaction/default governance fields, manifest-only approval metadata boundaries, and manifest diff review queues. ROADMAP now includes M17; NEXT_INCREMENT reflects M17 completion; acceptance-matrix.md adds REQ-045 through REQ-049; `npm test` runs both smoke and eval suites.
 
 ## Discovery Checklist
@@ -190,6 +192,52 @@ VISION.md line 72: "produce manifests that are usable on first pass for real cod
 M13 (Version History and Diffs) items remain unchecked in ROADMAP.md despite the implementation being completed and verified by QA in prior turns (DEC-207 through DEC-210). This is the same stale-roadmap issue that was caught and fixed for M1–M7 in an earlier PM turn. The implementation shipped, tests pass, QA signed off, but the planning roadmap was not updated.
 
 **Decision:** Leave M13 unchecked — the implementation was done in a prior run, but this PM turn is not claiming to have verified the implementation. The next dev turn or QA turn should mark M13 items as checked after re-verification. Honest planning means not checking boxes the PM has not personally verified.
+
+### Challenge 18: M20 — Opt-in local execution policy scaffold, not an execution engine
+
+On 2026-04-22 the approved intake intent `intent_1776835221317_7398` requested "an opt-in local execution-policy scaffold for the MCP serve path. The goal is to move beyond describe-only toward safe execution wrappers without live product side effects." The prior commit 71c4abc recovered intake state for M20 but did **not** extend the four required planning artifacts — ROADMAP.md still stopped at M19, SYSTEM_SPEC.md had no execution-policy section, command-surface.md had no `tusq serve --policy` surface, and this PM_SIGNOFF had no M20 challenge. The `planning_signoff` gate cannot pass while the planning artifacts describe only M1–M19.
+
+**The real risk of this increment is not scope ambiguity — it is scope drift into live execution.** VISION.md lines 177–181 ladder dry-run → confirm → approve → execute. It is tempting to collapse dry-run and confirm into a single "try it and see" CLI. That would violate VISION.md line 180 ("make risky operations explicit and governable") and the M20 intent ("Keep all work repo-local/offline and governed").
+
+**Decision:** M20 ships exactly one rung of the ladder: **dry-run argument validation plus auditable plan emission**. Concretely:
+
+1. **Opt-in by a file, not by a flag default.** A new `.tusq/execution-policy.json` file is the operator-authored artifact. Without it, `tusq serve` is byte-for-byte identical to V1 describe-only. The policy file is a governance artifact, reviewable the same way a manifest is reviewable.
+2. **`tusq serve --policy <path>` is the only new CLI surface.** No `tusq execute`, no `tusq confirm`, no `--live`. Adding those commands would imply V1.1 can execute, which it cannot.
+3. **`tools/call` under `mode: "dry-run"` validates arguments against the approved compiled tool's `parameters` schema and returns a structured `dry_run_plan` with an explicit `executed: false` marker.** Every response carries `executed: false`. Downstream consumers cannot mistake a plan for an execution.
+4. **Approval gate invariants are preserved, not relaxed.** Only capabilities with `approved: true` appear in `tools/list`. `allowed_capabilities` is a strict subset filter on top of the approval gate, never a replacement. Dry-run mode never bypasses approval.
+5. **No outbound I/O of any kind to the target product.** Not even a HEAD probe, not even a DNS lookup. The scaffold runs entirely in-process and emits a plan, not a request.
+6. **Validation depth is intentionally narrow for V1.1.** Required fields, primitive type checks, and `additionalProperties: false` rejection. No JSON Schema format/enum/oneOf/regex validation. This is enough to catch the arguments-an-LLM-guesses bug class without committing to a schema validator dependency.
+
+This decision consciously rejects three tempting alternatives:
+
+- **A) A hosted sandbox that forwards requests to a test environment.** Violates the local/offline contract and multiplies the attack surface. Rejected.
+- **B) A `tusq execute --confirm` CLI that prompts before live execution.** Crosses the describe-only boundary. Rejected for V1.1; reserved for a later increment once V1.1 dry-run has soaked.
+- **C) Full JSON Schema draft-07 validation with format/enum/oneOf support.** Pulls in an external validator (ajv) or reimplements one. Rejected as scope creep; the narrow four-rule validator covers the argument failure modes LLMs actually produce.
+
+### Challenge 19: `plan_hash` is the first replay primitive — spec it now or regret it later
+
+The dry-run plan is the first artifact on the serve path that is deterministic across invocations. Every future increment on the VISION ladder (confirm, approve, execute, replay, eval) will want to reference a plan by identity. If we ship dry-run without a stable identifier, V2 will need a breaking shape change to add one.
+
+**Decision:** Ship `plan_hash` in the first dry-run response. The hash is a SHA-256 over a canonical JSON serialization of `{method, path, path_params, query, body, headers}` — the *request content*, not the governance echo fields. Two calls with identical validated arguments MUST produce the same `plan_hash`. This is a one-line guarantee today and the foundation for:
+
+- **V2 confirmation.** Operator approves a `plan_hash`; execution engine refuses to execute if the plan regenerates to a different hash.
+- **V2 replay.** Eval harness asserts the same arguments still produce the same plan after a manifest regeneration.
+- **V2 diff.** `tusq plan-diff old.json new.json` across plan files is trivial when every plan has an identity.
+
+The hash excludes `evaluated_at`, `policy.reviewer`, `policy.approved_at`, and `executed`. Including them would make every invocation unique and defeat the purpose.
+
+### Challenge 20: Docs and tests are required before implementation, per the intake contract
+
+The intake acceptance contract explicitly requires "planning updates identify docs/tests needed before implementation." This PM turn enumerates that list in SYSTEM_SPEC.md under "Docs and tests required before implementation" so that the dev turn that implements M20 cannot sign off on `implementation_complete` without covering:
+
+- policy-off smoke path (describe-only unchanged)
+- policy-on dry-run success smoke path (`executed: false`, `plan_hash` present, path params substituted)
+- validation failure smoke path (JSON-RPC `-32602` with `data.validation_errors`)
+- plan_hash determinism (same input → same hash)
+- eval regression coverage for approval-gate invariance under dry-run policy
+- CLI reference docs update, new `execution-policy.md` docs page, MCP server docs dry-run section, README `--policy` flag entry
+
+**Decision:** The dev role is accountable for implementing all six items above. The QA role is accountable for independently re-verifying them as REQ-058–REQ-063 acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
 ### Challenge 17: The next PM-derived item must become executable, not another broad vision scan
 
