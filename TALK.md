@@ -1513,3 +1513,15 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 646d6a8b — product_marketing (launch)
+
+- **Status:** completed
+- **Summary:** Challenged inherited launch artifacts by independently re-verifying them against HEAD 120dfdd; all four launch_ready artifacts remain complete, internally consistent, and aligned with shipped 9-command surface and tusq diff behavior. No defects found; proposing run completion.
+- **Decision DEC-369:** Challenged the inherited launch artifacts (last touched by parent-run turn_f601da32175e65a2) rather than rubber-stamping them. Performed fresh product-marketing verification on HEAD 120dfdd: read all four launch artifacts end-to-end, cross-checked every product-truth claim against the running CLI, and confirmed each of the four artifacts now names `tusq diff`, the 9-command surface, the `--review-queue` and `--fail-on-unapproved-changes` flags, and the 7-step workflow.
+- **Decision DEC-370:** All four launch_ready gate artifacts are complete and internally consistent on HEAD 120dfdd: MESSAGING.md (134 lines, correct 9-command surface on line 99, tusq diff messaging pillar on line 62, CI gate claim on line 122), LAUNCH_PLAN.md (107 lines, CI-ready diff workflow on line 53, drift re-review narrative on line 10), CONTENT_CALENDAR.md (52 lines, Day 3-4 drift beat on line 36, launch-day diff callout on line 9), ANNOUNCEMENT.md (146 lines, 7-step workflow on line 27, diff bash block on lines 64-67, community bullet on line 135).
+- **Decision DEC-371:** Shipped product behavior matches the launch narrative on HEAD 120dfdd: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates exactly the 9 commands named in MESSAGING.md line 99 (init, scan, manifest, compile, serve, review, diff, version, help); bin/tusq.js diff --help emits exactly the flag set named in MESSAGING.md line 100 and ANNOUNCEMENT.md lines 64-67 (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose); bin/tusq.js diff with no arguments exits 1 with the actionable error 'Pass --from <path> for a deterministic comparison'; ROADMAP shows 98 checked / 0 open; acceptance-matrix shows 44 PASS.
+- **Decision DEC-372:** Propose run completion. All four launch_ready gate artifacts exist, are internally consistent with the shipped product surface on HEAD 120dfdd, and reflect the corrections applied in the parent run. Upstream gates (planning_signoff, implementation_complete, qa_ship_verdict) are all passed. Smoke suite exits 0. No remaining workflow-kit obligations are open for the product_marketing role. Routing to human for launch_ready gate approval.
+- **Proposed next:** human
+
+---
+

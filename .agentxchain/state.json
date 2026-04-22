@@ -2,12 +2,12 @@
   "schema_version": "1.1",
   "run_id": "run_1457f2049b5fc87d",
   "project_id": "tusq-dev",
-  "status": "active",
+  "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:0a5a7363a299458c61892a013345ac7604c0dcf7",
+  "accepted_integration_ref": "git:120dfdd0b3eb24b87992a6f6e27c4a38fbd5bfed",
   "active_turns": {},
-  "turn_sequence": 14,
-  "last_completed_turn_id": "turn_6098b7a0a7aec86b",
+  "turn_sequence": 16,
+  "last_completed_turn_id": "turn_646d6a8bd247cb62",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -20,7 +20,7 @@
     "planning_signoff": "passed",
     "implementation_complete": "passed",
     "qa_ship_verdict": "passed",
-    "launch_ready": "pending"
+    "launch_ready": "passed"
   },
   "budget_reservations": {},
   "budget_status": {
@@ -98,7 +98,7 @@
   },
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": "product_marketing",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
     "turn_id": "turn_6098b7a0a7aec86b",
@@ -109,5 +109,6 @@
     "intent_id": null
   },
   "non_progress_signature": null,
-  "non_progress_count": 0
+  "non_progress_count": 0,
+  "completed_at": "2026-04-22T00:51:30.076Z"
 }
