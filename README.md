@@ -24,6 +24,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 - `tusq diff`
 - `tusq policy init`
 - `tusq policy verify` (add `--strict` for manifest-aware alignment check; a PASS is a policy/manifest alignment statement, not a runtime execution safety guarantee)
+- `tusq redaction review` (reviewer-facing report aggregating `redaction.pii_fields`, `pii_categories`, and frozen per-category advisory text; read-only, not a runtime enforcement gate or compliance certification)
 - `tusq serve`
 
 ## V1 Boundary
@@ -148,8 +149,9 @@ The accurate launch workflow is:
 7. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
 8. run `tusq policy init` to generate `.tusq/execution-policy.json` (add `--mode dry-run` for dry-run argument validation)
 9. run `tusq policy verify` to validate the policy file before serving (use in pre-commit hooks or CI: exits 0 if valid, 1 if not); add `--strict` to additionally cross-reference `allowed_capabilities` against the manifest's approval-gated set — a strict PASS is an alignment statement, not a runtime execution safety guarantee
-10. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
-11. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission
+10. run `tusq redaction review` to inspect per-capability PII field-name hints and category advisories; this is a reviewer aid — it does not mutate the manifest, enforce runtime redaction, or certify compliance
+11. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
+12. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
 

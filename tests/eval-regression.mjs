@@ -588,6 +588,74 @@ async function runPiiCategoryLabelScenario(tmpRoot, scenario) {
   }
 }
 
+async function runRedactionReviewDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await copyFixture(scenario.fixture, project);
+
+  runCli(['init'], { cwd: project });
+  runCli(['scan', '.', '--framework', scenario.framework], { cwd: project });
+  runCli(['manifest'], { cwd: project });
+
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  const manifest = await readJson(manifestPath);
+
+  const repeatRuns = scenario.repeat_runs || 3;
+  let referenceStdout = null;
+
+  for (let i = 0; i < repeatRuns; i++) {
+    const result = runCli(['redaction', 'review', '--manifest', manifestPath, '--json'], { cwd: project });
+    if (referenceStdout === null) {
+      referenceStdout = result.stdout;
+    } else if (result.stdout !== referenceStdout) {
+      fail(`${scenario.id}: non-deterministic JSON output on run ${i + 1}`);
+    }
+  }
+
+  const report = JSON.parse(referenceStdout);
+
+  for (const expected of scenario.expected_routes) {
+    const manifestCap = manifest.capabilities.find(
+      (c) => c.method === expected.method && c.path === expected.path
+    );
+    if (!manifestCap) {
+      fail(`${scenario.id}: expected capability ${expected.method} ${expected.path} not found in manifest`);
+    }
+    const reportCap = report.capabilities.find((c) => c.name === manifestCap.name);
+    if (!reportCap) {
+      fail(`${scenario.id}: expected capability ${manifestCap.name} not found in report`);
+    }
+    if (JSON.stringify(reportCap.pii_fields) !== JSON.stringify(expected.expected_pii_fields)) {
+      fail(
+        `${scenario.id}: ${expected.method} ${expected.path}: ` +
+        `expected pii_fields=${JSON.stringify(expected.expected_pii_fields)}, ` +
+        `got ${JSON.stringify(reportCap.pii_fields)}`
+      );
+    }
+    if (JSON.stringify(reportCap.pii_categories) !== JSON.stringify(expected.expected_pii_categories)) {
+      fail(
+        `${scenario.id}: ${expected.method} ${expected.path}: ` +
+        `expected pii_categories=${JSON.stringify(expected.expected_pii_categories)}, ` +
+        `got ${JSON.stringify(reportCap.pii_categories)}`
+      );
+    }
+    const actualAdvisoryOrder = reportCap.advisories.map((a) => a.category);
+    if (JSON.stringify(actualAdvisoryOrder) !== JSON.stringify(expected.expected_advisory_order)) {
+      fail(
+        `${scenario.id}: ${expected.method} ${expected.path}: ` +
+        `expected advisory order=${JSON.stringify(expected.expected_advisory_order)}, ` +
+        `got ${JSON.stringify(actualAdvisoryOrder)}`
+      );
+    }
+    if (reportCap.advisories.length !== new Set(expected.expected_pii_categories).size) {
+      fail(
+        `${scenario.id}: ${expected.method} ${expected.path}: ` +
+        `expected ${new Set(expected.expected_pii_categories).size} distinct advisories, ` +
+        `got ${reportCap.advisories.length}`
+      );
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -609,6 +677,8 @@ async function run() {
       await runPiiFieldHintScenario(tmpRoot, scenario);
     } else if (scenario.id === 'pii-category-label-determinism') {
       await runPiiCategoryLabelScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'redaction-review-determinism') {
+      await runRedactionReviewDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

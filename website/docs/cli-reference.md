@@ -306,6 +306,42 @@ tusq policy verify --strict --json
 tusq serve --policy .tusq/execution-policy.json
 ```
 
+## `tusq redaction review`
+
+Emit a deterministic, per-capability reviewer report aggregating M25 `redaction.pii_fields`, M26 `redaction.pii_categories`, and frozen per-category advisory text from `PII_REVIEW_ADVISORY_BY_CATEGORY`. This is a **reviewer aid, not a runtime enforcement gate**.
+
+```bash
+tusq redaction review [--manifest <path>] [--capability <name>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--capability <name>` | unset | Filter to one exact capability name |
+| `--json` | unset | Emit machine-readable JSON |
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Manifest read successfully; report emitted |
+| `1` | Missing/invalid manifest, unknown capability, unknown flag, or unknown subcommand |
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `sensitivity_class`, `retention_days`, `log_level`, and `mask_in_traces` are never auto-escalated or auto-populated.
+- Advisory text uses the em-dash character (U+2014); wording is frozen in `PII_REVIEW_ADVISORY_BY_CATEGORY`.
+- A review report is NOT a compliance certification, NOT runtime PII enforcement, and NOT a substitute for reviewer judgment.
+
+```bash
+# Human-readable report (default)
+tusq redaction review
+
+# Machine-readable JSON
+tusq redaction review --json
+
+# Filter to a single capability
+tusq redaction review --capability post_auth_auth --json
+```
+
 ## `tusq version`
 
 Print the current version.

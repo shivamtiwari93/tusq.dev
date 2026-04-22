@@ -232,6 +232,35 @@
           "expected_pii_categories": []
         }
       ]
+    },
+    {
+      "id": "redaction-review-determinism",
+      "fixture": "pii-hint-sample",
+      "framework": "fastify",
+      "repeat_runs": 3,
+      "expected_routes": [
+        {
+          "method": "POST",
+          "path": "/auth",
+          "expected_pii_fields": ["email", "password"],
+          "expected_pii_categories": ["email", "secrets"],
+          "expected_advisory_order": ["email", "secrets"]
+        },
+        {
+          "method": "POST",
+          "path": "/profile",
+          "expected_pii_fields": ["user_email", "ssn", "credit_card"],
+          "expected_pii_categories": ["email", "government_id", "payment"],
+          "expected_advisory_order": ["email", "government_id", "payment"]
+        },
+        {
+          "method": "GET",
+          "path": "/catalog",
+          "expected_pii_fields": [],
+          "expected_pii_categories": [],
+          "expected_advisory_order": []
+        }
+      ]
     }
   ]
 }

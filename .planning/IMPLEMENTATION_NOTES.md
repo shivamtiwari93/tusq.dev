@@ -946,3 +946,69 @@ Prior PM planning established M26 as a bounded category-labeling increment, not 
 | `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (9 scenarios)" |
 
 **Gate satisfaction:** M26 implementation is complete and verified. The implementation emits category labels as descriptive metadata only, leaves existing policy defaults unchanged (`log_level: "full"`, `mask_in_traces: false`, `retention_days: null`), leaves `sensitivity_class` as `"unknown"`, preserves whole-key matching, and adds deterministic eval coverage. Phase transition to `qa` is requested.
+
+## Dev Turn turn_15fa820a626aac33 — M27 Reviewer-Facing PII Redaction Review Report (2026-04-22)
+
+### Challenge To Prior Turn
+
+Prior accepted PM planning turn established M27 scope (new CLI noun `redaction`, one subcommand `review`, read-only, zero new dependencies, frozen `PII_REVIEW_ADVISORY_BY_CATEGORY`). The `implementation_complete` gate requires a dev turn with runtime implementation and verification — PM planning cannot satisfy it. I independently re-confirmed baseline: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (9 scenarios)" before M27 changes.
+
+The core M27 implementation (`cmdRedaction`, `cmdRedactionReview`, `parseRedactionReviewArgs`, `buildRedactionReviewReport`, `buildPiiReviewAdvisories`, `formatRedactionReviewReport`, `assertPiiReviewAdvisorySetComplete`) and the `PII_REVIEW_ADVISORY_BY_CATEGORY` frozen lookup were already present in `src/cli.js` from a prior attempt. The smoke tests for M27 were also already present in `tests/smoke.mjs`. This turn focuses on:
+
+1. **Fixing the failing smoke test** — M27(b) failed with a macOS path-resolution mismatch: the subprocess `process.cwd()` returns `/private/var/folders/...` (real path) while `m27ManifestPath = path.join(os.tmpdir(), ...)` produces `/var/folders/...` (unresolved symlink). Fixed by passing `--manifest m27ManifestPath` explicitly in the JSON comparison calls so the CLI uses the test-supplied path directly, matching the report's `manifest_path` field.
+
+2. **Adding the `redaction-review-determinism` eval scenario** — The ROADMAP required a 10th eval scenario asserting 3 runs produce byte-identical `--json` stdout and advisory order matches `pii_categories` appearance order. Added to both `tests/evals/governed-cli-scenarios.json` and `tests/eval-regression.mjs` (`runRedactionReviewDeterminismScenario`).
+
+3. **Updating documentation** — Added `tusq redaction review` to README CLI list (with Constraint 19 framing: reviewer aid, not enforcement gate), added step 10 to the README core workflow, and added a full `## \`tusq redaction review\`` section to `website/docs/cli-reference.md` with synopsis, flag table, exit codes, invariants, and the not-a-compliance-certification callout.
+
+4. **Marking ROADMAP** — All 21 M27 checklist items marked `[x]`.
+
+### What Was Already Implemented (Prior Attempt)
+
+**`src/cli.js`:**
+- `PII_REVIEW_ADVISORY_BY_CATEGORY` frozen object (9 entries, em-dash U+2014 in every entry).
+- `cmdRedaction(args)` — dispatches to `review`; unknown subcommands throw `CliError("Unknown subcommand: ...")`.
+- `cmdRedactionReview(args)` — parses flags, reads manifest, filters by `--capability`, builds and emits report.
+- `parseRedactionReviewArgs(args)` — handles `--help`, `--json`, `--manifest`, `--capability`, rejects unknown flags.
+- `buildRedactionReviewReport(manifestPath, manifest, capabilities)` — pure; copies `manifest_version`/`generated_at` verbatim (null on missing); maps capabilities to `{name, approved, sensitivity_class, pii_fields, pii_categories, advisories}`.
+- `buildPiiReviewAdvisories(piiCategories)` — deduplicated; one advisory per distinct category in category-appearance order.
+- `formatRedactionReviewReport(report)` — plain-text, no ANSI escapes; empty-array case → single-line "No capabilities in manifest — nothing to review."; per-capability sections with `pii_fields: []` → "No canonical PII field-name matches — reviewer action: none required from M27."
+- `assertPiiReviewAdvisorySetComplete()` — runtime guard asserting all 9 categories are present in `PII_REVIEW_ADVISORY_BY_CATEGORY`.
+- `printHelp` already includes `redaction` noun; `printCommandHelp` already includes `redaction` and `'redaction review'` entries.
+- `case 'redaction':` dispatch in `cmdRedaction` already wired in the main dispatcher.
+
+**`tests/smoke.mjs`:** Full M27 smoke coverage (items a–k) already present before this turn.
+
+### What Was Changed This Turn
+
+**`tests/smoke.mjs`:**
+- Changed `runCli(['redaction', 'review', '--json'], ...)` to `runCli(['redaction', 'review', '--manifest', m27ManifestPath, '--json'], ...)` for the M27(b) `manifest_path` comparison calls (×2), fixing the macOS `/var/` vs `/private/var/` symlink path mismatch.
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `redaction-review-determinism` scenario (10th): `fixture: pii-hint-sample`, `framework: fastify`, `repeat_runs: 3`; three expected routes (POST /auth, POST /profile, GET /catalog) each with `expected_pii_fields`, `expected_pii_categories`, and `expected_advisory_order`.
+
+**`tests/eval-regression.mjs`:**
+- Added `runRedactionReviewDeterminismScenario(tmpRoot, scenario)`: copies fixture, runs scan+manifest once, then runs `tusq redaction review --manifest <path> --json` `repeat_runs` times and asserts byte-identical stdout; on first run parses report and asserts each expected route's `pii_fields`, `pii_categories`, advisory order, and distinct-advisory count.
+- Added `} else if (scenario.id === 'redaction-review-determinism')` dispatch branch.
+
+**`README.md`:**
+- Added `tusq redaction review` to CLI list (with Constraint 19 reviewer-aid framing).
+- Added step 10 (`tusq redaction review`) to core workflow; renumbered old step 10 (serve) to 11 and old step 11 (serve --policy) to 12.
+
+**`website/docs/cli-reference.md`:**
+- Added `## \`tusq redaction review\`` section with synopsis, flag table, exit code table, invariants, and three usage examples.
+
+**`.planning/ROADMAP.md`:**
+- All 21 M27 checklist items marked `[x]`.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node tests/smoke.mjs` | Exit 0; "Smoke tests passed" |
+| `node tests/eval-regression.mjs` | Exit 0; "Eval regression harness passed (10 scenarios)" |
+| `npm test` | Exit 0; both suites pass |
+| `node bin/tusq.js help` | Exit 0; `redaction` noun appears in command list |
+| `node bin/tusq.js redaction review --help` | Exit 0; prints usage, flags, reviewer-aid framing |
+
+**Gate satisfaction:** M27 implementation is complete and verified. All M27 smoke items (a)–(k) pass. 10 eval scenarios pass (up from 9, adding `redaction-review-determinism`). No manifest mutation, no new dependencies, no sensitivity_class escalation, no other command behavior changed. `PII_REVIEW_ADVISORY_BY_CATEGORY` uses em-dash U+2014. Constraint 19 (reviewer-aid framing) and Constraint 20 (read-only invariant) satisfied. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.

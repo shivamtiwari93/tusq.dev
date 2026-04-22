@@ -147,10 +147,12 @@ async function run() {
   const expressProject = path.join(tmpRoot, 'express');
   const fastifyProject = path.join(tmpRoot, 'fastify');
   const nestProject = path.join(tmpRoot, 'nest');
+  const piiProject = path.join(tmpRoot, 'pii');
 
   await copyFixture('express-sample', expressProject);
   await copyFixture('fastify-sample', fastifyProject);
   await copyFixture('nest-sample', nestProject);
+  await copyFixture('pii-hint-sample', piiProject);
 
   runCli(['help'], { cwd: root });
   const helpResult = runCli(['help'], { cwd: root });
@@ -159,6 +161,14 @@ async function run() {
   }
   if (!helpResult.stdout.includes('docs')) {
     throw new Error(`Expected help output to include docs command:\n${helpResult.stdout}`);
+  }
+  if (!helpResult.stdout.includes('redaction')) {
+    throw new Error(`Expected help output to include redaction command:\n${helpResult.stdout}`);
+  }
+  const redactionHelp = runCli(['redaction', 'review', '--help'], { cwd: root });
+  if (!redactionHelp.stdout.includes('Usage: tusq redaction review') ||
+      !redactionHelp.stdout.includes('reviewer aid, not a runtime enforcement gate')) {
+    throw new Error(`Expected redaction review help to document flags and reviewer-aid framing:\n${redactionHelp.stdout}`);
   }
   runCli(['version'], { cwd: root });
   runCli(['does-not-exist'], { cwd: root, expectedStatus: 1 });
@@ -1435,6 +1445,181 @@ async function run() {
 
   // Cleanup m23 temp dir
   await fs.rm(m23TmpDir, { recursive: true, force: true });
+
+  // ─── M27: tusq redaction review ────────────────────────────────────────────
+
+  runCli(['init'], { cwd: piiProject });
+  runCli(['scan', '.', '--framework', 'fastify'], { cwd: piiProject });
+  runCli(['manifest'], { cwd: piiProject });
+
+  const m27ManifestPath = path.join(piiProject, 'tusq.manifest.json');
+  const m27ManifestBeforeRaw = await fs.readFile(m27ManifestPath, 'utf8');
+  const m27ManifestBeforeStat = await fs.stat(m27ManifestPath);
+  const m27Manifest = JSON.parse(m27ManifestBeforeRaw);
+
+  const m27ExpectedAdvisories = {
+    email: "Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+    phone: "Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+    government_id: "High-sensitivity government-ID field detected — reviewer: apply your org's strictest retention, logging, and trace-redaction defaults.",
+    name: "Personal-name field detected — reviewer: decide whether the field should be logged in plaintext, masked, or redacted; retention follows your org's contact-data policy.",
+    address: "Physical-address field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+    date_of_birth: "Date-of-birth field detected — reviewer: apply age-sensitive retention and redaction defaults; some jurisdictions treat DOB as higher-risk PII.",
+    payment: "Payment-data field detected — reviewer: apply your org's payment-data retention, logging, and masking rules (e.g., PCI-aligned defaults owned by your team).",
+    secrets: "Secret or credential field detected — reviewer: this field SHOULD NOT be logged in plaintext; apply trace redaction and minimal retention at your org's standard.",
+    network: "Network-identifier field detected — reviewer: choose retention and masking aligned with your org's logging policy; some jurisdictions treat IP addresses as PII."
+  };
+
+  const m27Review1 = runCli(['redaction', 'review'], { cwd: piiProject });
+  const m27Review2 = runCli(['redaction', 'review'], { cwd: piiProject });
+  if (m27Review1.stdout !== m27Review2.stdout) {
+    throw new Error('M27(g): expected byte-identical human redaction review output across runs');
+  }
+  if (!m27Review1.stdout.includes(m27ExpectedAdvisories.email) ||
+      !m27Review1.stdout.includes(m27ExpectedAdvisories.secrets) ||
+      !m27Review1.stdout.includes('No canonical PII field-name matches — reviewer action: none required from M27.')) {
+    throw new Error(`M27(a/j): expected advisory and no-match lines in human report:\n${m27Review1.stdout}`);
+  }
+
+  const m27Json1 = runCli(['redaction', 'review', '--manifest', m27ManifestPath, '--json'], { cwd: piiProject });
+  const m27Json2 = runCli(['redaction', 'review', '--manifest', m27ManifestPath, '--json'], { cwd: piiProject });
+  if (m27Json1.stdout !== m27Json2.stdout) {
+    throw new Error('M27(g): expected byte-identical JSON redaction review output across runs');
+  }
+  const m27Report = JSON.parse(m27Json1.stdout);
+  if (m27Report.manifest_path !== m27ManifestPath ||
+      m27Report.manifest_version !== m27Manifest.manifest_version ||
+      m27Report.generated_at !== m27Manifest.generated_at ||
+      m27Report.capabilities.length !== m27Manifest.capabilities.length) {
+    throw new Error(`M27(b): report top-level shape mismatch: ${JSON.stringify(m27Report)}`);
+  }
+
+  const m27ProfileManifestCap = m27Manifest.capabilities.find((capability) => capability.method === 'POST' && capability.path === '/profile');
+  const m27CatalogManifestCap = m27Manifest.capabilities.find((capability) => capability.method === 'GET' && capability.path === '/catalog');
+  if (!m27ProfileManifestCap || !m27CatalogManifestCap) {
+    throw new Error('M27 setup: expected /profile and /catalog capabilities in generated PII manifest');
+  }
+  const m27ProfileReportCap = m27Report.capabilities.find((capability) => capability.name === m27ProfileManifestCap.name);
+  const m27CatalogReportCap = m27Report.capabilities.find((capability) => capability.name === m27CatalogManifestCap.name);
+  if (JSON.stringify(m27ProfileReportCap.pii_fields) !== JSON.stringify(['user_email', 'ssn', 'credit_card']) ||
+      JSON.stringify(m27ProfileReportCap.pii_categories) !== JSON.stringify(['email', 'government_id', 'payment']) ||
+      JSON.stringify(m27ProfileReportCap.advisories.map((entry) => entry.category)) !== JSON.stringify(['email', 'government_id', 'payment'])) {
+    throw new Error(`M27(k): mixed-category report order mismatch: ${JSON.stringify(m27ProfileReportCap)}`);
+  }
+  if (m27ProfileReportCap.sensitivity_class !== m27ProfileManifestCap.sensitivity_class) {
+    throw new Error('M27(i): report sensitivity_class must echo manifest verbatim');
+  }
+  if (m27CatalogReportCap.advisories.length !== 0 ||
+      JSON.stringify(m27CatalogReportCap.pii_fields) !== JSON.stringify([]) ||
+      JSON.stringify(m27CatalogReportCap.pii_categories) !== JSON.stringify([])) {
+    throw new Error(`M27(j): no-PII capability should have empty arrays/advisories: ${JSON.stringify(m27CatalogReportCap)}`);
+  }
+
+  const m27Filtered = JSON.parse(runCli(
+    ['redaction', 'review', '--capability', m27ProfileManifestCap.name, '--json'],
+    { cwd: piiProject }
+  ).stdout);
+  if (m27Filtered.capabilities.length !== 1 || m27Filtered.capabilities[0].name !== m27ProfileManifestCap.name) {
+    throw new Error(`M27(c): --capability should filter to one exact capability: ${JSON.stringify(m27Filtered)}`);
+  }
+
+  const m27UnknownCapability = runCli(['redaction', 'review', '--capability', 'missing_cap'], { cwd: piiProject, expectedStatus: 1 });
+  if (!m27UnknownCapability.stderr.includes('Capability not found: missing_cap') || m27UnknownCapability.stdout !== '') {
+    throw new Error(`M27(d): expected capability-not-found on stderr only, got stdout=${m27UnknownCapability.stdout} stderr=${m27UnknownCapability.stderr}`);
+  }
+
+  const m27MissingManifest = runCli(['redaction', 'review', '--manifest', path.join(piiProject, 'missing.manifest.json')], {
+    cwd: piiProject,
+    expectedStatus: 1
+  });
+  if (!m27MissingManifest.stderr.includes('Manifest not found:') || m27MissingManifest.stdout !== '') {
+    throw new Error(`M27(e): expected missing manifest on stderr only, got stdout=${m27MissingManifest.stdout} stderr=${m27MissingManifest.stderr}`);
+  }
+
+  const m27BadManifestPath = path.join(piiProject, 'bad.manifest.json');
+  await fs.writeFile(m27BadManifestPath, '{not json', 'utf8');
+  const m27BadManifest = runCli(['redaction', 'review', '--manifest', m27BadManifestPath], {
+    cwd: piiProject,
+    expectedStatus: 1
+  });
+  if (!m27BadManifest.stderr.includes('Invalid manifest JSON:') || m27BadManifest.stdout !== '') {
+    throw new Error(`M27(f): expected malformed manifest on stderr only, got stdout=${m27BadManifest.stdout} stderr=${m27BadManifest.stderr}`);
+  }
+
+  const m27UnknownFlag = runCli(['redaction', 'review', '--bad-flag'], { cwd: piiProject, expectedStatus: 1 });
+  if (!m27UnknownFlag.stderr.includes('Unknown flag: --bad-flag') || m27UnknownFlag.stdout !== '') {
+    throw new Error(`M27 failure UX: expected unknown flag on stderr only, got stdout=${m27UnknownFlag.stdout} stderr=${m27UnknownFlag.stderr}`);
+  }
+
+  const m27EmptyManifestPath = path.join(piiProject, 'empty.manifest.json');
+  await fs.writeFile(m27EmptyManifestPath, JSON.stringify({ capabilities: [] }, null, 2), 'utf8');
+  const m27EmptyHuman = runCli(['redaction', 'review', '--manifest', m27EmptyManifestPath], { cwd: piiProject });
+  if (m27EmptyHuman.stdout !== 'No capabilities in manifest — nothing to review.\n') {
+    throw new Error(`M27 empty manifest: expected single-line human output, got:\n${m27EmptyHuman.stdout}`);
+  }
+  const m27EmptyJson = JSON.parse(runCli(['redaction', 'review', '--manifest', m27EmptyManifestPath, '--json'], { cwd: piiProject }).stdout);
+  if (m27EmptyJson.manifest_path !== m27EmptyManifestPath ||
+      m27EmptyJson.manifest_version !== null ||
+      m27EmptyJson.generated_at !== null ||
+      JSON.stringify(m27EmptyJson.capabilities) !== JSON.stringify([])) {
+    throw new Error(`M27 empty manifest JSON shape mismatch: ${JSON.stringify(m27EmptyJson)}`);
+  }
+
+  const m27AllCategoryManifestPath = path.join(piiProject, 'all-categories.manifest.json');
+  await fs.writeFile(m27AllCategoryManifestPath, JSON.stringify({
+    manifest_version: 7,
+    generated_at: '2026-04-22T00:00:00.000Z',
+    capabilities: [
+      {
+        name: 'all_category_cap',
+        approved: true,
+        sensitivity_class: 'restricted',
+        redaction: {
+          pii_fields: ['email', 'phone', 'ssn', 'first_name', 'street_address', 'date_of_birth', 'credit_card', 'password', 'ip_address', 'user_email'],
+          pii_categories: ['email', 'phone', 'government_id', 'name', 'address', 'date_of_birth', 'payment', 'secrets', 'network', 'email'],
+          log_level: 'full',
+          mask_in_traces: false,
+          retention_days: null
+        }
+      }
+    ]
+  }, null, 2), 'utf8');
+  const m27AllCategoryReport = JSON.parse(runCli(
+    ['redaction', 'review', '--manifest', m27AllCategoryManifestPath, '--json'],
+    { cwd: piiProject }
+  ).stdout);
+  const m27AllCategoryAdvisories = m27AllCategoryReport.capabilities[0].advisories;
+  const m27ExpectedCategoryOrder = Object.keys(m27ExpectedAdvisories);
+  if (JSON.stringify(m27AllCategoryAdvisories.map((entry) => entry.category)) !== JSON.stringify(m27ExpectedCategoryOrder)) {
+    throw new Error(`M27 advisory order mismatch: ${JSON.stringify(m27AllCategoryAdvisories)}`);
+  }
+  for (const advisory of m27AllCategoryAdvisories) {
+    if (advisory.text !== m27ExpectedAdvisories[advisory.category] ||
+        !Buffer.from(advisory.text, 'utf8').includes(Buffer.from('—', 'utf8'))) {
+      throw new Error(`M27 advisory byte-exactness mismatch: ${JSON.stringify(advisory)}`);
+    }
+  }
+
+  const m27PolicyPath = path.join(piiProject, '.tusq', 'm27-policy.json');
+  await fs.mkdir(path.dirname(m27PolicyPath), { recursive: true });
+  await fs.writeFile(m27PolicyPath, JSON.stringify({
+    schema_version: '1.0',
+    mode: 'describe-only',
+    reviewer: 'm27@example.com',
+    approved_at: '2026-04-22T00:00:00.000Z'
+  }, null, 2), 'utf8');
+  const m27PolicyBefore = runCli(['policy', 'verify', '--policy', m27PolicyPath], { cwd: piiProject });
+  const m27StrictBefore = runCli(['policy', 'verify', '--policy', m27PolicyPath, '--strict', '--manifest', m27ManifestPath], { cwd: piiProject });
+  runCli(['redaction', 'review', '--manifest', m27ManifestPath], { cwd: piiProject });
+  const m27PolicyAfter = runCli(['policy', 'verify', '--policy', m27PolicyPath], { cwd: piiProject });
+  const m27StrictAfter = runCli(['policy', 'verify', '--policy', m27PolicyPath, '--strict', '--manifest', m27ManifestPath], { cwd: piiProject });
+  if (m27PolicyBefore.stdout !== m27PolicyAfter.stdout || m27StrictBefore.stdout !== m27StrictAfter.stdout) {
+    throw new Error('M27 read-only invariant: policy verify output changed after redaction review');
+  }
+  const m27ManifestAfterRaw = await fs.readFile(m27ManifestPath, 'utf8');
+  const m27ManifestAfterStat = await fs.stat(m27ManifestPath);
+  if (m27ManifestBeforeRaw !== m27ManifestAfterRaw || m27ManifestBeforeStat.mtimeMs !== m27ManifestAfterStat.mtimeMs) {
+    throw new Error('M27(h): redaction review must not mutate manifest content or mtime');
+  }
 
   console.log('Smoke tests passed');
 }
