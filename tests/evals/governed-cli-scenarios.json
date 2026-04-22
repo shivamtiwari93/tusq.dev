@@ -67,6 +67,18 @@
       },
       "unapproved_tool": "get_users_api_v1_users_id",
       "expected_error_code": -32602
+    },
+    {
+      "id": "policy-init-generator-round-trip",
+      "fixture": "express-sample",
+      "framework": "express",
+      "policy_init_mode": "dry-run",
+      "policy_init_reviewer": "eval-generator@example.com",
+      "dry_run_tool": "get_users_api_v1_users_id",
+      "dry_run_arguments": { "id": "gen-99" },
+      "expected_plan_method": "GET",
+      "expected_plan_path": "/api/v1/users/gen-99",
+      "expected_path_params": { "id": "gen-99" }
     }
   ]
 }

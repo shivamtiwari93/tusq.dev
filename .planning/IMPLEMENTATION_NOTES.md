@@ -596,3 +596,74 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 | `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (4 scenarios)" |
 
 **Gate satisfaction:** M20 implementation is complete and verified. All REQ-058–REQ-063 smoke assertions pass. 4 eval scenarios pass (up from 2). `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
+## M21 Implementation Record — Execution Policy Scaffold Generator (2026-04-22)
+
+**Turn:** turn_51236e29fbc05bf8
+**HEAD:** abed41f (workspace dirty on orchestration files)
+
+**Challenge of prior turn:** The prior accepted turn (turn_521ac8bd2f786742, role=pm, phase=planning) performed planning artifact verification only — it cannot satisfy the `implementation_complete` gate. This dev turn challenges that claim and performs fresh independent dev-authored implementation and runtime verification. Baseline re-confirmed: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (4 scenarios)" before any M21 changes.
+
+**Scope:** Implemented M21 `tusq policy init` — a local-only policy scaffold generator that writes a valid `.tusq/execution-policy.json` file accepted byte-for-byte by `loadAndValidatePolicy()`.
+
+### Changes shipped
+
+**`src/cli.js`:**
+- Added `case 'policy':` to the command dispatcher (routes to `cmdPolicy`).
+- Added `cmdPolicy(args)` — dispatches to `init` subcommand; unknown subcommands exit 1.
+- Added `cmdPolicyInit(args)` implementing:
+  - `--mode <describe-only|dry-run>` (default: `"describe-only"`; unknown mode exits 1 with actionable message before any write).
+  - `--reviewer <id>` (env-chain: `TUSQ_REVIEWER` → `USER` → `LOGNAME` → `"unknown"`; empty string exits 1).
+  - `--allowed-capabilities <a,b,c>` (optional; splits on comma, trims, deduplicates in declaration order; empty token exits 1).
+  - `--out <path>` (default: `.tusq/execution-policy.json`; parent created with `{ recursive: true }`).
+  - `--force` (overwrite guard; without it, pre-existing file exits 1 with `--force` hint).
+  - `--dry-run` (prints JSON to stdout; does NOT write the file).
+  - `--json` (machine-readable output including written path and policy object).
+  - `approved_at` stamped as `new Date().toISOString()` at generation time; not overridable from CLI.
+  - Generated file: `JSON.stringify(policy, null, 2)` + trailing newline — matches `tusq approve` write convention.
+  - No network, manifest, or target-product I/O (M21 local-only invariant satisfied).
+- Added `'policy'` and `'policy init'` entries to `printCommandHelp`.
+- Added `policy` line to `printHelp` output.
+
+**`tests/smoke.mjs`:**
+- Added M21 smoke block (REQ-064 through REQ-068):
+  - REQ-064: help surface reachable (`tusq policy init --help` includes usage string).
+  - REQ-064: default generation asserts file written, `schema_version: "1.0"`, `mode: "describe-only"`, non-empty `reviewer` string, ISO-8601 `approved_at`, no `allowed_capabilities` field.
+  - REQ-065: `--mode dry-run` produces `mode: "dry-run"` in generated file.
+  - REQ-065: `--allowed-capabilities get_users_users,post_users_users` produces exact `["get_users_users","post_users_users"]` array.
+  - REQ-066: pre-existing file without `--force` exits 1 with `'Policy file already exists:'` and `'--force'` in stderr.
+  - REQ-066: `--force` overwrites successfully.
+  - REQ-067: `--dry-run` prints valid JSON to stdout; target file does NOT exist after.
+  - REQ-065: unknown `--mode` exits 1 with `'Unknown policy mode: live-fire'`.
+  - REQ-065: empty `--allowed-capabilities` token exits 1 with `'Invalid allowed-capabilities:'`.
+  - REQ-068: round-trip — generated dry-run policy accepted by `tusq serve --policy` (server reaches "server listening" state; SIGINT clean).
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `policy-init-generator-round-trip` scenario: generates policy via `tusq policy init`, starts server with generated policy, runs `tools/call` with path-param arguments, asserts `executed: false`, correct path substitution, and SHA-256 `plan_hash` shape — same assertions as a hand-authored policy.
+
+**`tests/eval-regression.mjs`:**
+- Added `runPolicyInitGeneratorScenario(tmpRoot, scenario)`: generates policy via `runCli(['policy', 'init', ...])`, verifies schema_version/mode/reviewer, starts server with `--policy`, asserts dry-run plan shape matches the scenario expectations.
+- Added routing for `'policy-init-generator-round-trip'` in the main dispatch loop.
+
+**`website/docs/cli-reference.md`:**
+- Added `## \`tusq policy init\`` section with synopsis, full flag table, generation semantics, and example two-line workflow.
+
+**`website/docs/execution-policy.md`:**
+- Added `## Authoring a policy file` section before the schema table; recommends `tusq policy init` as the default path and preserves hand-authoring as an advanced alternative.
+
+**`README.md`:**
+- Added `tusq policy init` to the "What You Can Verify" CLI list.
+- Added step 8 (`tusq policy init`) and renumbered steps 9–10 in the Core workflow.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js help` | Exit 0; `policy` appears in command list |
+| `node bin/tusq.js policy init --help` | Exit 0; full flag synopsis printed |
+| `node bin/tusq.js serve --help` | Exit 0; unchanged |
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (5 scenarios)" |
+
+**Gate satisfaction:** M21 implementation is complete and verified. All M21 smoke coverage (REQ-064–REQ-068) passes. 5 eval scenarios pass (up from 4, adding `policy-init-generator-round-trip`). No live API execution was added. Generated policies pass `loadAndValidatePolicy()` byte-for-byte. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.

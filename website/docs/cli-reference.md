@@ -126,6 +126,44 @@ Use `--review-queue` to list added, changed, unapproved, and low-confidence capa
 
 Use `--fail-on-unapproved-changes` in CI to exit `1` when added or changed capabilities are unapproved or still marked `review_needed`.
 
+## `tusq policy init`
+
+Generate a valid `.tusq/execution-policy.json` governance artifact without hand-authoring the schema.
+
+```bash
+tusq policy init [--mode <describe-only|dry-run>]
+                 [--reviewer <id>]
+                 [--allowed-capabilities <name,name,...>]
+                 [--out <path>]
+                 [--force]
+                 [--dry-run]
+                 [--json]
+                 [--verbose]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--mode <describe-only\|dry-run>` | Policy mode for the generated file | `describe-only` |
+| `--reviewer <id>` | Reviewer identity stamped in the file | `TUSQ_REVIEWER`, `USER`, `LOGNAME`, or `"unknown"` |
+| `--allowed-capabilities <name,...>` | Comma-separated capability names to scope dry-run; omit to allow all approved capabilities | Omitted |
+| `--out <path>` | Output path for the generated policy file | `.tusq/execution-policy.json` |
+| `--force` | Overwrite the file if it already exists | Disabled |
+| `--dry-run` | Print the generated JSON to stdout without writing | Disabled |
+| `--json` | Print structured output including the written path and policy object | Disabled |
+
+The generated file passes `loadAndValidatePolicy()` byte-for-byte — it is indistinguishable from a hand-authored policy as far as `tusq serve --policy` is concerned. The `.tusq/` directory is created automatically if missing.
+
+Default mode is `"describe-only"`. To generate a dry-run policy: `tusq policy init --mode dry-run`.
+
+Example three-line workflow:
+
+```bash
+tusq policy init --mode dry-run --reviewer ops@example.com
+tusq serve --policy .tusq/execution-policy.json
+```
+
+See [Execution Policy](./execution-policy.md) for mode semantics and the full policy schema.
+
 ## `tusq version`
 
 Print the current version.

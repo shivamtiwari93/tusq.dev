@@ -79,6 +79,9 @@ function dispatch(argv) {
     case 'diff':
       cmdDiff(args);
       return;
+    case 'policy':
+      cmdPolicy(args);
+      return;
     default:
       printHelp();
       throw new CliError(`Unknown command: ${command}`, 1);
@@ -1423,6 +1426,121 @@ function loadAndValidatePolicy(policyPath) {
   return policy;
 }
 
+function cmdPolicy(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('policy');
+    return;
+  }
+  const sub = args[0];
+  const subArgs = args.slice(1);
+  if (sub === 'init') {
+    cmdPolicyInit(subArgs);
+    return;
+  }
+  printCommandHelp('policy');
+  throw new CliError(`Unknown policy subcommand: ${sub}`, 1);
+}
+
+function cmdPolicyInit(args) {
+  const { opts, positionals } = parseCommandArgs('policy init', args, {
+    mode: 'value',
+    reviewer: 'value',
+    'allowed-capabilities': 'value',
+    out: 'value',
+    force: 'boolean',
+    'dry-run': 'boolean',
+    json: 'boolean'
+  });
+
+  if (opts.help || positionals.length > 0) {
+    printCommandHelp('policy init');
+    return;
+  }
+
+  const ALLOWED_MODES = ['describe-only', 'dry-run'];
+  const mode = opts.mode || 'describe-only';
+  if (!ALLOWED_MODES.includes(mode)) {
+    process.stderr.write(`Unknown policy mode: ${mode}. Allowed: describe-only, dry-run\n`);
+    process.exit(1);
+    return;
+  }
+
+  let reviewer;
+  if (opts.reviewer !== undefined) {
+    if (!opts.reviewer || !opts.reviewer.trim()) {
+      process.stderr.write('Invalid reviewer: reviewer identity cannot be empty\n');
+      process.exit(1);
+      return;
+    }
+    reviewer = opts.reviewer.trim();
+  } else {
+    reviewer = process.env.TUSQ_REVIEWER || process.env.USER || process.env.LOGNAME || 'unknown';
+  }
+
+  let allowedCapabilities;
+  if (opts['allowed-capabilities'] !== undefined) {
+    const parts = opts['allowed-capabilities'].split(',').map((s) => s.trim());
+    if (parts.length === 0 || parts.some((p) => p === '')) {
+      process.stderr.write('Invalid allowed-capabilities: list cannot be empty or contain empty names\n');
+      process.exit(1);
+      return;
+    }
+    const seen = new Set();
+    allowedCapabilities = [];
+    for (const p of parts) {
+      if (!seen.has(p)) {
+        seen.add(p);
+        allowedCapabilities.push(p);
+      }
+    }
+  }
+
+  const root = process.cwd();
+  const outPath = opts.out
+    ? path.resolve(root, opts.out)
+    : path.join(root, '.tusq', 'execution-policy.json');
+
+  if (!opts['dry-run'] && fs.existsSync(outPath) && !opts.force) {
+    process.stderr.write(`Policy file already exists: ${outPath}. Re-run with --force to overwrite.\n`);
+    process.exit(1);
+    return;
+  }
+
+  const approvedAt = new Date().toISOString();
+  const policy = { schema_version: '1.0', mode, reviewer, approved_at: approvedAt };
+  if (allowedCapabilities !== undefined) {
+    policy.allowed_capabilities = allowedCapabilities;
+  }
+
+  const content = `${JSON.stringify(policy, null, 2)}\n`;
+
+  if (opts['dry-run']) {
+    process.stdout.write(content);
+    if (opts.verbose) {
+      process.stderr.write(`Would write: ${outPath}\n`);
+    }
+    return;
+  }
+
+  try {
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, content, 'utf8');
+  } catch (e) {
+    process.stderr.write(`Could not write policy file: ${outPath}: ${e.message}\n`);
+    process.exit(1);
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify({ written: outPath, policy }, null, 2)}\n`);
+  } else {
+    process.stdout.write(`Policy file written: ${outPath}\n`);
+    if (opts.verbose) {
+      process.stderr.write(content);
+    }
+  }
+}
+
 function validateArguments(args, schema) {
   if (!schema || typeof schema !== 'object') {
     return { valid: true, errors: [] };
@@ -1527,6 +1645,7 @@ function printHelp() {
   process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
+  process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
 }
@@ -1541,7 +1660,9 @@ function printCommandHelp(command) {
     review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
-    diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]'
+    diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
+    policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init',
+    'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }

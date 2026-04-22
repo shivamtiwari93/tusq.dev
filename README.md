@@ -22,6 +22,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 - `tusq docs`
 - `tusq approve`
 - `tusq diff`
+- `tusq policy init`
 - `tusq serve`
 
 ## V1 Boundary
@@ -144,8 +145,9 @@ The accurate launch workflow is:
 5. run `tusq compile` to emit JSON tool definitions for approved capabilities
 6. run `tusq docs --out capability-docs.md` to create local Markdown docs for review and adoption
 7. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
-8. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
-9. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission (requires `.tusq/execution-policy.json` with `mode: "dry-run"`)
+8. run `tusq policy init` to generate `.tusq/execution-policy.json` (add `--mode dry-run` for dry-run argument validation)
+9. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
+10. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
 

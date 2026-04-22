@@ -905,6 +905,116 @@ async function run() {
   dryRunProc.kill('SIGINT');
   await dryRunStop;
 
+  // ─── M21: tusq policy init ────────────────────────────────────────────────
+
+  // REQ-064: help surface is reachable
+  const policyHelpResult = runCli(['policy', 'init', '--help'], { cwd: expressProject });
+  if (!policyHelpResult.stdout.includes('tusq policy init')) {
+    throw new Error(`Expected policy init usage in help: ${policyHelpResult.stdout}`);
+  }
+
+  // REQ-064: default generation — file written with schema_version, mode:describe-only, reviewer
+  const defaultPolicyOut = path.join(expressProject, '.tusq', 'generated-default-policy.json');
+  if (await fs.access(defaultPolicyOut).then(() => true).catch(() => false)) {
+    await fs.unlink(defaultPolicyOut);
+  }
+  const defaultGenResult = runCli(['policy', 'init', '--out', defaultPolicyOut], { cwd: expressProject });
+  if (!defaultGenResult.stdout.includes('Policy file written:')) {
+    throw new Error(`Expected 'Policy file written:' in output: ${defaultGenResult.stdout}`);
+  }
+  const defaultGenPolicy = await readJson(defaultPolicyOut);
+  if (defaultGenPolicy.schema_version !== '1.0') {
+    throw new Error(`Expected schema_version:'1.0', got ${defaultGenPolicy.schema_version}`);
+  }
+  if (defaultGenPolicy.mode !== 'describe-only') {
+    throw new Error(`Expected mode:'describe-only' by default, got ${defaultGenPolicy.mode}`);
+  }
+  if (!defaultGenPolicy.reviewer || typeof defaultGenPolicy.reviewer !== 'string') {
+    throw new Error(`Expected non-empty reviewer string, got ${JSON.stringify(defaultGenPolicy.reviewer)}`);
+  }
+  if (!defaultGenPolicy.approved_at || !/^\d{4}-\d{2}-\d{2}T/.test(defaultGenPolicy.approved_at)) {
+    throw new Error(`Expected ISO-8601 approved_at, got ${defaultGenPolicy.approved_at}`);
+  }
+  if ('allowed_capabilities' in defaultGenPolicy) {
+    throw new Error('Expected no allowed_capabilities in default policy');
+  }
+
+  // REQ-065: --mode dry-run sets mode field
+  const dryRunGenOut = path.join(expressProject, '.tusq', 'generated-dryrun-policy.json');
+  runCli(['policy', 'init', '--mode', 'dry-run', '--out', dryRunGenOut], { cwd: expressProject });
+  const dryRunGenPolicy = await readJson(dryRunGenOut);
+  if (dryRunGenPolicy.mode !== 'dry-run') {
+    throw new Error(`Expected mode:'dry-run', got ${dryRunGenPolicy.mode}`);
+  }
+
+  // REQ-065: --allowed-capabilities a,b produces exact array
+  const allowedCapGenOut = path.join(expressProject, '.tusq', 'generated-allowed-policy.json');
+  runCli(['policy', 'init', '--mode', 'dry-run', '--allowed-capabilities', 'get_users_users,post_users_users', '--out', allowedCapGenOut], { cwd: expressProject });
+  const allowedCapGenPolicy = await readJson(allowedCapGenOut);
+  if (JSON.stringify(allowedCapGenPolicy.allowed_capabilities) !== JSON.stringify(['get_users_users', 'post_users_users'])) {
+    throw new Error(`Expected allowed_capabilities=['get_users_users','post_users_users'], got ${JSON.stringify(allowedCapGenPolicy.allowed_capabilities)}`);
+  }
+
+  // REQ-066: exit-1 on pre-existing file without --force
+  const preExistingPolicyOut = path.join(expressProject, '.tusq', 'generated-force-policy.json');
+  runCli(['policy', 'init', '--out', preExistingPolicyOut], { cwd: expressProject });
+  const noForceResult = runCli(['policy', 'init', '--out', preExistingPolicyOut], { cwd: expressProject, expectedStatus: 1 });
+  if (!noForceResult.stderr.includes('Policy file already exists:') || !noForceResult.stderr.includes('--force')) {
+    throw new Error(`Expected 'Policy file already exists:' and '--force' in stderr: ${noForceResult.stderr}`);
+  }
+
+  // REQ-066: --force overwrites without error
+  runCli(['policy', 'init', '--out', preExistingPolicyOut, '--force'], { cwd: expressProject });
+  const forcedPolicy = await readJson(preExistingPolicyOut);
+  if (forcedPolicy.schema_version !== '1.0') {
+    throw new Error(`Expected valid overwritten policy: ${JSON.stringify(forcedPolicy)}`);
+  }
+
+  // REQ-067: --dry-run prints to stdout, does NOT write target file
+  const dryRunNoWriteOut = path.join(expressProject, '.tusq', 'should-not-exist-policy.json');
+  if (await fs.access(dryRunNoWriteOut).then(() => true).catch(() => false)) {
+    await fs.unlink(dryRunNoWriteOut);
+  }
+  const dryRunNoWriteResult = runCli(['policy', 'init', '--dry-run', '--out', dryRunNoWriteOut], { cwd: expressProject });
+  let dryRunNoWriteParsed;
+  try {
+    dryRunNoWriteParsed = JSON.parse(dryRunNoWriteResult.stdout);
+  } catch (e) {
+    throw new Error(`Expected valid JSON on stdout from --dry-run: ${dryRunNoWriteResult.stdout}`);
+  }
+  if (dryRunNoWriteParsed.schema_version !== '1.0') {
+    throw new Error(`Expected schema_version:'1.0' in --dry-run stdout: ${dryRunNoWriteResult.stdout}`);
+  }
+  if (await fs.access(dryRunNoWriteOut).then(() => true).catch(() => false)) {
+    throw new Error(`Expected --dry-run to NOT create file at ${dryRunNoWriteOut}`);
+  }
+
+  // REQ-065: unknown --mode exits 1 with actionable message
+  const badModeGenResult = runCli(['policy', 'init', '--mode', 'live-fire', '--out', '/tmp/bad.json'], { cwd: expressProject, expectedStatus: 1 });
+  if (!badModeGenResult.stderr.includes('Unknown policy mode: live-fire')) {
+    throw new Error(`Expected 'Unknown policy mode:' message: ${badModeGenResult.stderr}`);
+  }
+
+  // REQ-065: empty --allowed-capabilities exits 1
+  const emptyCapResult = runCli(['policy', 'init', '--allowed-capabilities', ',', '--out', '/tmp/bad2.json'], { cwd: expressProject, expectedStatus: 1 });
+  if (!emptyCapResult.stderr.includes('Invalid allowed-capabilities:')) {
+    throw new Error(`Expected 'Invalid allowed-capabilities:' message: ${emptyCapResult.stderr}`);
+  }
+
+  // REQ-068: round-trip — generated dry-run policy passes loadAndValidatePolicy (tusq serve --policy starts successfully)
+  const roundTripPolicyOut = path.join(expressProject, '.tusq', 'round-trip-policy.json');
+  runCli(['policy', 'init', '--mode', 'dry-run', '--reviewer', 'smoke@test.local', '--out', roundTripPolicyOut, '--force'], { cwd: expressProject });
+  const roundTripProc = spawn('node', [cli, 'serve', '--port', '32175', '--policy', roundTripPolicyOut], {
+    cwd: expressProject,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  await waitForReady(roundTripProc);
+  const roundTripStop = new Promise((resolve, reject) => {
+    roundTripProc.on('exit', (code) => { if (code === 0) resolve(); else reject(new Error(`round-trip serve exited with code ${code}`)); });
+  });
+  roundTripProc.kill('SIGINT');
+  await roundTripStop;
+
   console.log('Smoke tests passed');
 }
 

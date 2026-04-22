@@ -289,6 +289,75 @@ async function runPolicyEvalScenario(tmpRoot, scenario) {
   }
 }
 
+async function runPolicyInitGeneratorScenario(tmpRoot, scenario) {
+  const project = await prepareScenarioProject(tmpRoot, scenario);
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  const manifest = await readJson(manifestPath);
+  const approvedNames = manifest.capabilities.map((capability) => capability.name);
+  await writeJson(manifestPath, approveCapabilities(manifest, approvedNames));
+  runCli(['compile'], { cwd: project });
+
+  const policyDir = path.join(project, '.tusq');
+  const policyPath = path.join(policyDir, 'eval-init-policy.json');
+
+  const initArgs = ['policy', 'init', '--mode', scenario.policy_init_mode, '--reviewer', scenario.policy_init_reviewer, '--out', policyPath];
+  runCli(initArgs, { cwd: project });
+
+  const generatedPolicy = JSON.parse(await fs.readFile(policyPath, 'utf8'));
+  if (generatedPolicy.schema_version !== '1.0') {
+    fail(`${scenario.id}: generated policy has wrong schema_version: ${generatedPolicy.schema_version}`);
+  }
+  if (generatedPolicy.mode !== scenario.policy_init_mode) {
+    fail(`${scenario.id}: generated policy has wrong mode: ${generatedPolicy.mode}`);
+  }
+  if (generatedPolicy.reviewer !== scenario.policy_init_reviewer) {
+    fail(`${scenario.id}: generated policy has wrong reviewer: ${generatedPolicy.reviewer}`);
+  }
+
+  const port = 33200 + Math.floor(Math.random() * 900);
+  const proc = spawn('node', [cli, 'serve', '--port', String(port), '--policy', policyPath], {
+    cwd: project,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  try {
+    await waitForReady(proc);
+
+    const response = await requestRpc(port, {
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: scenario.dry_run_tool, arguments: scenario.dry_run_arguments || {} }
+    });
+    if (!response.result) {
+      fail(`${scenario.id}: expected dry-run plan response from generated policy, got ${JSON.stringify(response)}`);
+    }
+    if (response.result.executed !== false) {
+      fail(`${scenario.id}: expected executed:false from generated policy, got ${JSON.stringify(response.result.executed)}`);
+    }
+    if (!response.result.dry_run_plan) {
+      fail(`${scenario.id}: expected dry_run_plan in response from generated policy`);
+    }
+    if (scenario.expected_plan_method && response.result.dry_run_plan.method !== scenario.expected_plan_method) {
+      fail(`${scenario.id}: expected method=${scenario.expected_plan_method}, got ${response.result.dry_run_plan.method}`);
+    }
+    if (scenario.expected_plan_path && response.result.dry_run_plan.path !== scenario.expected_plan_path) {
+      fail(`${scenario.id}: expected path=${scenario.expected_plan_path}, got ${response.result.dry_run_plan.path}`);
+    }
+    if (scenario.expected_path_params) {
+      for (const [key, val] of Object.entries(scenario.expected_path_params)) {
+        if (response.result.dry_run_plan.path_params[key] !== val) {
+          fail(`${scenario.id}: expected path_params.${key}=${val}, got ${response.result.dry_run_plan.path_params[key]}`);
+        }
+      }
+    }
+    if (!response.result.dry_run_plan.plan_hash || !/^[a-f0-9]{64}$/.test(response.result.dry_run_plan.plan_hash)) {
+      fail(`${scenario.id}: expected plan_hash SHA-256 hex from generated policy`);
+    }
+  } finally {
+    proc.kill('SIGINT');
+    await new Promise((resolve) => { proc.on('exit', resolve); });
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -300,6 +369,8 @@ async function run() {
       await runDiffScenario(tmpRoot, scenario);
     } else if (scenario.id === 'policy-dry-run-plan-shape' || scenario.id === 'policy-dry-run-approval-gate') {
       await runPolicyEvalScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'policy-init-generator-round-trip') {
+      await runPolicyInitGeneratorScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

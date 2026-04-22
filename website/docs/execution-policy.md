@@ -4,9 +4,28 @@ The execution policy scaffold is an opt-in, repo-local governance artifact that 
 
 No live API execution is added. `tools/call` under any policy mode stays in-process. `executed: false` is always present in every dry-run response.
 
+## Authoring a policy file
+
+The recommended path is `tusq policy init` (V1.2). It generates a valid policy file without requiring you to know the schema:
+
+```bash
+# Generate a describe-only policy (safe default)
+tusq policy init
+
+# Generate a dry-run policy scoped to two capabilities
+tusq policy init --mode dry-run --reviewer ops@example.com --allowed-capabilities get_users_users,post_users_users
+
+# Preview the output without writing
+tusq policy init --mode dry-run --dry-run
+```
+
+The generated file passes `loadAndValidatePolicy()` byte-for-byte, so it is accepted immediately by `tusq serve --policy`. Use `--force` to overwrite an existing file.
+
+Hand-authoring is still supported as an advanced alternative — the schema is documented below.
+
 ## Policy file shape
 
-File: `.tusq/execution-policy.json`. Human-authored; no CLI writer in V1.1.
+File: `.tusq/execution-policy.json`.
 
 ```json
 {
