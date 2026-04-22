@@ -2,6 +2,28 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_7de1d2affebb3f59 (role=qa, attempt=2, 2026-04-22)
+
+This QA turn (attempt 2) re-challenges the M27 implementation and the prior QA attempt (turn_04df09a5) independently rather than rubber-stamping either. HEAD is c8ffa38 on run_995056dd29cb9f11.
+
+**Challenge 1 — Prior QA attempt checkpoint must not have altered source code.** The prior QA attempt (turn_04df09a5, attempt 1) created a checkpoint commit at c8ffa38. A checkpoint commit that touched `src/`, `tests/`, or other non-QA artifacts would invalidate the implementation-complete gate. **Verified:** `git diff 2118ea5 c8ffa38 --name-only` shows exactly three files changed: `.planning/acceptance-matrix.md`, `.planning/ship-verdict.md`, `.planning/RELEASE_NOTES.md`. No source code (`src/`), test (`tests/`), or non-QA planning artifact was modified by the checkpoint. Challenge resolved: checkpoint is clean.
+
+**Challenge 2 — Independent verification on HEAD c8ffa38.** The prior QA attempt verified HEAD 2118ea5; current HEAD is the checkpoint c8ffa38. Independent re-run confirms: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`; `node bin/tusq.js help` exits 0 listing all 13 commands including `redaction` at position 11; `node bin/tusq.js redaction review --help` exits 0 confirming `--manifest`, `--capability`, `--json` flag surface and "reviewer aid, not a runtime enforcement gate" framing. Challenge resolved: behavior unchanged on c8ffa38.
+
+**Challenge 3 — REQ-101 through REQ-108 content correctness.** The acceptance-matrix rows added by the prior QA checkpoint were inspected. Each criterion accurately references the code path it covers: REQ-101 CLI noun/subcommand surface, REQ-102 `PII_REVIEW_ADVISORY_BY_CATEGORY` em-dash byte-exactness, REQ-103 deterministic human/JSON report shape, REQ-104 advisory order and `--capability` filtering, REQ-105 empty-manifest/stderr-only failure UX, REQ-106 read-only manifest/policy invariant, REQ-107 no governance-default mutation, REQ-108 `redaction-review-determinism` eval scenario + 10-scenario count. All 108 acceptance criteria remain PASS on HEAD c8ffa38. Challenge resolved.
+
+**Challenge 4 — No new acceptance criteria required.** The current run scope (M27) is complete with REQ-101–REQ-108. The implementation turn (DEC-001–DEC-003) made no changes beyond what the prior QA verified. No deferred M27 requirements remain in SYSTEM_SPEC, ROADMAP, or command-surface.md. Challenge resolved: no additional criteria needed.
+
+**Independent verification run (2026-04-22, HEAD c8ffa38):**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, three-flag surface + reviewer-aid framing.
+- `git diff 2118ea5 c8ffa38 --name-only` → only `.planning/*` files; zero source changes.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD c8ffa38. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_642043849a146591 (role=qa, 2026-04-22)
 
 This QA turn challenges the prior accepted implementation turn for M27 rather than rubber-stamping it. HEAD is d242727 on run_995056dd29cb9f11.

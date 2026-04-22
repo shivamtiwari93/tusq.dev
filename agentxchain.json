@@ -32,8 +32,8 @@
       "title": "Staff Product Marketing Manager",
       "mandate": "Sharpen positioning, launch clarity, and market-facing narrative without drifting from product truth.",
       "write_authority": "authoritative",
-      "runtime": "local-director",
-      "runtime_id": "local-director"
+      "runtime": "local-product-marketing",
+      "runtime_id": "local-product-marketing"
     },
     "eng_director": {
       "title": "Engineering Director",
