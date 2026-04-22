@@ -1,3 +1,4 @@
 .env
 .agentxchain/staging/
 .agentxchain/dispatch/
+.agentxchain/reports/export-run_*.json
