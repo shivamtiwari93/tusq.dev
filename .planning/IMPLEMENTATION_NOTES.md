@@ -399,6 +399,67 @@ Implementation_complete gate satisfied: all required artifacts exist and verific
     - route-specific inference status `description`
   - states that full property-level schema inference is beyond `v0.1.0`
 
+## M22 Implementation Record — Execution Policy Verifier (2026-04-22)
+
+**Turn:** turn_d0676f44ad0cde62
+**HEAD:** e707cb9 (workspace dirty on orchestration files)
+
+**Challenge of prior turn:** The prior accepted turn (turn_ebffb83f6740b0b0, role=pm, phase=planning) performed planning artifact verification and document updates only — it cannot satisfy the `implementation_complete` gate. This dev turn challenges that claim and performs fresh independent dev-authored implementation and runtime verification. Baseline re-confirmed: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (5 scenarios)" before any M22 changes.
+
+**Scope:** Implemented M22 `tusq policy verify` — a local-only standalone policy validator that shares `loadAndValidatePolicy()` byte-for-byte with `tusq serve --policy`, giving operators a CI/pre-commit policy validation UX without starting an MCP server.
+
+### Changes shipped
+
+**`src/cli.js`:**
+- Added `case 'verify':` to `cmdPolicy` dispatcher routing to `cmdPolicyVerify`.
+- Added `cmdPolicyVerify(args)` implementing:
+  - `--policy <path>` (default: `.tusq/execution-policy.json`; resolved from cwd).
+  - `--json` (machine-readable output on both success and failure; JSON always goes to stdout; exit code is authoritative).
+  - `--verbose` (prints resolved path to stderr before validation attempt).
+  - On success without `--json`: prints `Policy valid: <path> (mode: <mode>, reviewer: <reviewer>, allowed_capabilities: <count|unset>)` to stdout, exits 0.
+  - On success with `--json`: prints `{valid:true, path, policy:{schema_version,mode,reviewer,approved_at,allowed_capabilities}}` to stdout, exits 0.
+  - On failure without `--json`: writes the `CliError` message (byte-identical to `tusq serve --policy`) to stderr, exits 1.
+  - On failure with `--json`: prints `{valid:false, path, error:"<same message>"}` to stdout, exits 1.
+  - `loadAndValidatePolicy()` is called un-modified (DEC-516 satisfied); no standalone re-implementation of validation logic added.
+  - No TCP port bind, no manifest read, no network I/O, no target-product I/O (M22 local-only invariant satisfied).
+- Updated `printCommandHelp` `policy` entry to list `init, verify` as subcommands.
+- Added `'policy verify'` entry to `printCommandHelp`.
+
+**`tests/smoke.mjs`:**
+- Added M22 smoke block (REQ-070 through REQ-074):
+  - REQ-070: help surface (`tusq policy verify --help` includes usage string).
+  - REQ-070: round-trip init → verify success (exit 0, stdout includes `Policy valid:` and `mode: dry-run`).
+  - REQ-071: `--json` success shape: `valid:true`, `path`, `policy.schema_version`, `policy.mode`, `policy.reviewer` all correct.
+  - REQ-072: exit-1 on missing file; stderr includes `Policy file not found:`.
+  - REQ-072: `--json` failure shape: `valid:false`, `path`, `error` includes `Policy file not found:`.
+  - REQ-073: exit-1 on malformed JSON (`Invalid policy JSON at:`).
+  - REQ-073: exit-1 on unsupported `schema_version` (`Unsupported policy schema_version:`).
+  - REQ-073: exit-1 on unknown `mode` (`Unknown policy mode:`).
+  - REQ-073: exit-1 on non-array `allowed_capabilities` (`Invalid allowed_capabilities in policy:`).
+  - REQ-074: parity check — for all four failure fixtures (`bad JSON`, `bad schema_version`, `bad mode`, `bad allowed_capabilities`), `tusq policy verify` and `tusq serve --policy` both exit 1 with byte-identical stderr messages.
+
+**`website/docs/cli-reference.md`:**
+- Added `## \`tusq policy verify\`` section with synopsis, options table, exit-code table, success/failure JSON examples, and CI usage one-liner.
+
+**`website/docs/execution-policy.md`:**
+- Added `## Verifying a policy file` section before `## Authoring a policy file`; recommends `tusq policy verify` as the pre-serve / pre-commit / CI step and explains the parity contract.
+
+**`README.md`:**
+- Added `tusq policy verify` to the "What You Can Verify" CLI list.
+- Added step 9 (`tusq policy verify`) and renumbered steps 10–11 in the Core workflow.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js policy verify --help` | Exit 0; prints `Usage: tusq policy verify [--policy <path>] [--json] [--verbose]` |
+| `node bin/tusq.js help` | Exit 0; `policy` appears in command list |
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (5 scenarios)" |
+
+**Gate satisfaction:** M22 implementation is complete and verified. All M22 smoke coverage (REQ-070–REQ-074) passes. `loadAndValidatePolicy()` is shared byte-for-byte with `tusq serve --policy` (DEC-516). No live API execution, no manifest read, no TCP port bind (DEC-517, local-only invariant). `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## Changes
 
 All milestones M9–M16 are implemented and verified on HEAD e292452. Key changes span `src/cli.js` (diff command, governance metadata, manifest version chain, classification, examples/constraints, redaction/approval fields, usability improvements) and `tests/smoke.mjs` (REQ-039–REQ-044 smoke coverage). The Docusaurus 3.x website was scaffolded in `website/` with full docs IA and launch blog posts. See subsections below for per-milestone detail.

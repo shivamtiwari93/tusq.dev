@@ -1437,8 +1437,68 @@ function cmdPolicy(args) {
     cmdPolicyInit(subArgs);
     return;
   }
+  if (sub === 'verify') {
+    cmdPolicyVerify(subArgs);
+    return;
+  }
   printCommandHelp('policy');
   throw new CliError(`Unknown policy subcommand: ${sub}`, 1);
+}
+
+function cmdPolicyVerify(args) {
+  const { opts, positionals } = parseCommandArgs('policy verify', args, {
+    policy: 'value',
+    json: 'boolean'
+  });
+
+  if (opts.help || positionals.length > 0) {
+    printCommandHelp('policy verify');
+    return;
+  }
+
+  const root = process.cwd();
+  const policyPath = opts.policy
+    ? path.resolve(root, opts.policy)
+    : path.join(root, '.tusq', 'execution-policy.json');
+
+  if (opts.verbose) {
+    process.stderr.write(`Resolved policy path: ${policyPath}\n`);
+  }
+
+  let policy;
+  try {
+    policy = loadAndValidatePolicy(policyPath);
+  } catch (e) {
+    const message = e instanceof CliError ? e.message : String(e);
+    if (opts.json) {
+      process.stdout.write(`${JSON.stringify({ valid: false, path: policyPath, error: message }, null, 2)}\n`);
+    } else {
+      process.stderr.write(`${message}\n`);
+    }
+    process.exit(1);
+    return;
+  }
+
+  const capCount = Array.isArray(policy.allowed_capabilities)
+    ? String(policy.allowed_capabilities.length)
+    : 'unset';
+
+  if (opts.json) {
+    const out = {
+      valid: true,
+      path: policyPath,
+      policy: {
+        schema_version: policy.schema_version,
+        mode: policy.mode,
+        reviewer: policy.reviewer,
+        approved_at: policy.approved_at,
+        allowed_capabilities: policy.allowed_capabilities !== undefined ? policy.allowed_capabilities : null
+      }
+    };
+    process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
+  } else {
+    process.stdout.write(`Policy valid: ${policyPath} (mode: ${policy.mode}, reviewer: ${policy.reviewer}, allowed_capabilities: ${capCount})\n`);
+  }
 }
 
 function cmdPolicyInit(args) {
@@ -1661,8 +1721,9 @@ function printCommandHelp(command) {
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
-    policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init',
-    'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]'
+    policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
+    'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
+    'policy verify': 'Usage: tusq policy verify [--policy <path>] [--json] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }

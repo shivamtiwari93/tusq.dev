@@ -4,6 +4,24 @@ The execution policy scaffold is an opt-in, repo-local governance artifact that 
 
 No live API execution is added. `tools/call` under any policy mode stays in-process. `executed: false` is always present in every dry-run response.
 
+## Verifying a policy file
+
+Before starting the server, validate your policy file with `tusq policy verify` (V1.3):
+
+```bash
+# Validate the default policy location
+tusq policy verify
+
+# Validate a non-default path
+tusq policy verify --policy path/to/policy.json
+
+# Machine-readable output for CI
+tusq policy verify --json
+echo $?   # 0 = valid, 1 = invalid
+```
+
+`tusq policy verify` shares `loadAndValidatePolicy()` with `tusq serve --policy`. A policy that passes `verify` will start `serve`; a policy that fails `verify` will fail `serve` startup with the same error message. Run `verify` in pre-commit hooks or CI before invoking `serve`.
+
 ## Authoring a policy file
 
 The recommended path is `tusq policy init` (V1.2). It generates a valid policy file without requiring you to know the schema:

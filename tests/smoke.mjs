@@ -1015,6 +1015,124 @@ async function run() {
   roundTripProc.kill('SIGINT');
   await roundTripStop;
 
+  // ─── M22: tusq policy verify ─────────────────────────────────────────────
+
+  // REQ-070: help surface is reachable
+  const policyVerifyHelpResult = runCli(['policy', 'verify', '--help'], { cwd: expressProject });
+  if (!policyVerifyHelpResult.stdout.includes('tusq policy verify')) {
+    throw new Error(`Expected policy verify usage in help: ${policyVerifyHelpResult.stdout}`);
+  }
+
+  // REQ-070: round-trip init → verify (success path, exit 0)
+  const verifyTargetPath = path.join(expressProject, '.tusq', 'verify-target-policy.json');
+  runCli(['policy', 'init', '--mode', 'dry-run', '--reviewer', 'smoke-verify@test.local', '--out', verifyTargetPath, '--force'], { cwd: expressProject });
+  const verifySuccessResult = runCli(['policy', 'verify', '--policy', verifyTargetPath], { cwd: expressProject });
+  if (!verifySuccessResult.stdout.includes('Policy valid:')) {
+    throw new Error(`Expected 'Policy valid:' in stdout on success: ${verifySuccessResult.stdout}`);
+  }
+  if (!verifySuccessResult.stdout.includes('mode: dry-run')) {
+    throw new Error(`Expected mode:dry-run in success summary: ${verifySuccessResult.stdout}`);
+  }
+
+  // REQ-071: --json success shape: {valid:true, path, policy{schema_version,mode,reviewer,approved_at,allowed_capabilities}}
+  const verifyJsonSuccessResult = runCli(['policy', 'verify', '--policy', verifyTargetPath, '--json'], { cwd: expressProject });
+  let verifyJsonSuccess;
+  try {
+    verifyJsonSuccess = JSON.parse(verifyJsonSuccessResult.stdout);
+  } catch (e) {
+    throw new Error(`Expected valid JSON from --json success: ${verifyJsonSuccessResult.stdout}`);
+  }
+  if (verifyJsonSuccess.valid !== true) {
+    throw new Error(`Expected valid:true in JSON success: ${JSON.stringify(verifyJsonSuccess)}`);
+  }
+  if (verifyJsonSuccess.path !== verifyTargetPath) {
+    throw new Error(`Expected path to match in JSON success: ${verifyJsonSuccess.path}`);
+  }
+  if (!verifyJsonSuccess.policy || verifyJsonSuccess.policy.schema_version !== '1.0') {
+    throw new Error(`Expected policy.schema_version:'1.0' in JSON success: ${JSON.stringify(verifyJsonSuccess)}`);
+  }
+  if (verifyJsonSuccess.policy.mode !== 'dry-run') {
+    throw new Error(`Expected policy.mode:'dry-run' in JSON success: ${JSON.stringify(verifyJsonSuccess)}`);
+  }
+  if (verifyJsonSuccess.policy.reviewer !== 'smoke-verify@test.local') {
+    throw new Error(`Expected policy.reviewer in JSON success: ${JSON.stringify(verifyJsonSuccess)}`);
+  }
+
+  // REQ-072: exit-1 on missing file
+  const missingPolicyPath = path.join(expressProject, '.tusq', 'does-not-exist-policy.json');
+  const missingResult = runCli(['policy', 'verify', '--policy', missingPolicyPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!missingResult.stderr.includes('Policy file not found:')) {
+    throw new Error(`Expected 'Policy file not found:' in stderr: ${missingResult.stderr}`);
+  }
+
+  // REQ-072: --json failure shape: {valid:false, path, error}
+  const missingJsonResult = runCli(['policy', 'verify', '--policy', missingPolicyPath, '--json'], { cwd: expressProject, expectedStatus: 1 });
+  let missingJsonParsed;
+  try {
+    missingJsonParsed = JSON.parse(missingJsonResult.stdout);
+  } catch (e) {
+    throw new Error(`Expected valid JSON from --json failure: ${missingJsonResult.stdout}`);
+  }
+  if (missingJsonParsed.valid !== false) {
+    throw new Error(`Expected valid:false in JSON failure: ${JSON.stringify(missingJsonParsed)}`);
+  }
+  if (!missingJsonParsed.error || !missingJsonParsed.error.includes('Policy file not found:')) {
+    throw new Error(`Expected 'Policy file not found:' in JSON error field: ${JSON.stringify(missingJsonParsed)}`);
+  }
+
+  // REQ-073: exit-1 on malformed JSON — write a bad file then verify
+  const m22BadJsonPolicyPath = path.join(expressProject, '.tusq', 'v22-bad-json-policy.json');
+  await fs.writeFile(m22BadJsonPolicyPath, '{not valid json', 'utf8');
+  const badJsonVerifyResult = runCli(['policy', 'verify', '--policy', m22BadJsonPolicyPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!badJsonVerifyResult.stderr.includes('Invalid policy JSON at:')) {
+    throw new Error(`Expected 'Invalid policy JSON at:' in stderr: ${badJsonVerifyResult.stderr}`);
+  }
+
+  // REQ-073: exit-1 on unsupported schema_version
+  const m22BadVersionPolicyPath = path.join(expressProject, '.tusq', 'v22-bad-version-policy.json');
+  await fs.writeFile(m22BadVersionPolicyPath, JSON.stringify({ schema_version: '9.9', mode: 'describe-only', reviewer: 'x', approved_at: '2026-01-01T00:00:00Z' }, null, 2), 'utf8');
+  const badVersionVerifyResult = runCli(['policy', 'verify', '--policy', m22BadVersionPolicyPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!badVersionVerifyResult.stderr.includes('Unsupported policy schema_version:')) {
+    throw new Error(`Expected 'Unsupported policy schema_version:' in stderr: ${badVersionVerifyResult.stderr}`);
+  }
+
+  // REQ-073: exit-1 on unknown mode
+  const m22BadModePolicyPath = path.join(expressProject, '.tusq', 'v22-bad-mode-policy.json');
+  await fs.writeFile(m22BadModePolicyPath, JSON.stringify({ schema_version: '1.0', mode: 'live-fire', reviewer: 'x', approved_at: '2026-01-01T00:00:00Z' }, null, 2), 'utf8');
+  const badModeVerifyResult = runCli(['policy', 'verify', '--policy', m22BadModePolicyPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!badModeVerifyResult.stderr.includes('Unknown policy mode:')) {
+    throw new Error(`Expected 'Unknown policy mode:' in stderr: ${badModeVerifyResult.stderr}`);
+  }
+
+  // REQ-073: exit-1 on non-array allowed_capabilities
+  const m22BadCapPolicyPath = path.join(expressProject, '.tusq', 'v22-bad-cap-policy.json');
+  await fs.writeFile(m22BadCapPolicyPath, JSON.stringify({ schema_version: '1.0', mode: 'dry-run', reviewer: 'x', approved_at: '2026-01-01T00:00:00Z', allowed_capabilities: 'not-an-array' }, null, 2), 'utf8');
+  const badCapVerifyResult = runCli(['policy', 'verify', '--policy', m22BadCapPolicyPath], { cwd: expressProject, expectedStatus: 1 });
+  if (!badCapVerifyResult.stderr.includes('Invalid allowed_capabilities in policy:')) {
+    throw new Error(`Expected 'Invalid allowed_capabilities in policy:' in stderr: ${badCapVerifyResult.stderr}`);
+  }
+
+  // REQ-074: parity — every failure fixture exits 1 under BOTH tusq policy verify and tusq serve --policy with identical messages
+  const parityFixtures = [
+    { path: m22BadJsonPolicyPath, expectedMsg: 'Invalid policy JSON at:' },
+    { path: m22BadVersionPolicyPath, expectedMsg: 'Unsupported policy schema_version:' },
+    { path: m22BadModePolicyPath, expectedMsg: 'Unknown policy mode:' },
+    { path: m22BadCapPolicyPath, expectedMsg: 'Invalid allowed_capabilities in policy:' }
+  ];
+  for (const fixture of parityFixtures) {
+    const verifyR = runCli(['policy', 'verify', '--policy', fixture.path], { cwd: expressProject, expectedStatus: 1 });
+    const serveR = runCli(['serve', '--port', '39999', '--policy', fixture.path], { cwd: expressProject, expectedStatus: 1 });
+    if (!verifyR.stderr.includes(fixture.expectedMsg)) {
+      throw new Error(`Parity check: verify missing '${fixture.expectedMsg}' in stderr: ${verifyR.stderr}`);
+    }
+    if (!serveR.stderr.includes(fixture.expectedMsg)) {
+      throw new Error(`Parity check: serve missing '${fixture.expectedMsg}' in stderr: ${serveR.stderr}`);
+    }
+    if (verifyR.stderr.trim() !== serveR.stderr.trim()) {
+      throw new Error(`Parity check: verify and serve stderr differ for ${fixture.path}:\nverify: ${verifyR.stderr}\nserve:  ${serveR.stderr}`);
+    }
+  }
+
   console.log('Smoke tests passed');
 }
 

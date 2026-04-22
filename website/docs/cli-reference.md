@@ -164,6 +164,67 @@ tusq serve --policy .tusq/execution-policy.json
 
 See [Execution Policy](./execution-policy.md) for mode semantics and the full policy schema.
 
+## `tusq policy verify`
+
+Validate an execution-policy file without starting an MCP server. Shares `loadAndValidatePolicy()` with `tusq serve --policy`, so every accept/reject decision and every error message is identical across the two entry points.
+
+```bash
+tusq policy verify [--policy <path>]
+                   [--json]
+                   [--verbose]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--policy <path>` | Path to the execution-policy file to validate | `.tusq/execution-policy.json` |
+| `--json` | Emit a machine-readable result object to stdout (both success and failure) | Human-readable summary |
+| `--verbose` | Print the resolved path to stderr | Disabled |
+
+| Exit | Meaning |
+|------|---------|
+| `0` | Policy file was read, parsed, and accepted by the shared validator |
+| `1` | Missing file, unreadable file, invalid JSON, unsupported `schema_version`, unknown `mode`, or invalid `allowed_capabilities` |
+
+On success without `--json`, prints one line to stdout:
+
+```
+Policy valid: .tusq/execution-policy.json (mode: dry-run, reviewer: ops@example.com, allowed_capabilities: unset)
+```
+
+With `--json` on success:
+
+```json
+{
+  "valid": true,
+  "path": ".tusq/execution-policy.json",
+  "policy": {
+    "schema_version": "1.0",
+    "mode": "dry-run",
+    "reviewer": "ops@example.com",
+    "approved_at": "2026-04-22T05:20:21.000Z",
+    "allowed_capabilities": null
+  }
+}
+```
+
+With `--json` on failure:
+
+```json
+{
+  "valid": false,
+  "path": ".tusq/execution-policy.json",
+  "error": "Unknown policy mode: live-fire. Allowed: describe-only, dry-run"
+}
+```
+
+Typical pre-commit / CI usage:
+
+```bash
+tusq policy verify && tusq serve --policy .tusq/execution-policy.json
+```
+
+See [Execution Policy](./execution-policy.md) for the full policy schema and mode semantics.
+
 ## `tusq version`
 
 Print the current version.
