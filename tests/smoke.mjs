@@ -153,6 +153,10 @@ async function run() {
   await copyFixture('nest-sample', nestProject);
 
   runCli(['help'], { cwd: root });
+  const helpResult = runCli(['help'], { cwd: root });
+  if (!helpResult.stdout.includes('approve')) {
+    throw new Error(`Expected help output to include approve command:\n${helpResult.stdout}`);
+  }
   runCli(['version'], { cwd: root });
   runCli(['does-not-exist'], { cwd: root, expectedStatus: 1 });
   const invalidFlag = runCli(['scan', '--bad-flag'], { cwd: root, expectedStatus: 1 });
@@ -376,12 +380,47 @@ async function run() {
   if (!strictReviewFailure.stderr.includes('Review gate failed')) {
     throw new Error(`Expected strict review mode to fail with governance gate message:\n${strictReviewFailure.stderr}`);
   }
-  const reviewReadyManifest = await readJson(manifestPath);
-  for (const capability of reviewReadyManifest.capabilities) {
-    capability.approved = true;
-    capability.review_needed = false;
+
+  const approvalCandidateManifest = await readJson(manifestPath);
+  const approvalCandidate = approvalCandidateManifest.capabilities.find((capability) => capability.approved !== true);
+  if (!approvalCandidate) {
+    throw new Error('Expected at least one unapproved capability before tusq approve coverage');
   }
-  await fs.writeFile(manifestPath, `${JSON.stringify(reviewReadyManifest, null, 2)}\n`, 'utf8');
+
+  const dryRunApproval = runCli(['approve', approvalCandidate.name, '--reviewer', 'qa@example.com', '--dry-run', '--json'], { cwd: expressProject });
+  const dryRunJson = JSON.parse(dryRunApproval.stdout);
+  if (dryRunJson.dry_run !== true || dryRunJson.approved_count !== 1 || dryRunJson.approvals[0].name !== approvalCandidate.name) {
+    throw new Error(`Expected tusq approve dry-run JSON to identify one candidate: ${dryRunApproval.stdout}`);
+  }
+  const afterDryRunManifest = await readJson(manifestPath);
+  const afterDryRunCandidate = afterDryRunManifest.capabilities.find((capability) => capability.name === approvalCandidate.name);
+  if (afterDryRunCandidate.approved === true || afterDryRunCandidate.approved_by !== null || afterDryRunCandidate.approved_at !== null) {
+    throw new Error('Expected tusq approve --dry-run to leave manifest approval metadata unchanged');
+  }
+
+  const singleApproval = runCli(['approve', approvalCandidate.name, '--reviewer', 'qa@example.com', '--json'], { cwd: expressProject });
+  const singleApprovalJson = JSON.parse(singleApproval.stdout);
+  if (singleApprovalJson.dry_run !== false || singleApprovalJson.approved_count !== 1 || singleApprovalJson.reviewer !== 'qa@example.com') {
+    throw new Error(`Expected tusq approve JSON to record reviewer and one approval: ${singleApproval.stdout}`);
+  }
+  const afterSingleApproval = await readJson(manifestPath);
+  const approvedCandidate = afterSingleApproval.capabilities.find((capability) => capability.name === approvalCandidate.name);
+  if (approvedCandidate.approved !== true || approvedCandidate.review_needed !== false || approvedCandidate.approved_by !== 'qa@example.com') {
+    throw new Error(`Expected tusq approve to update selected capability: ${JSON.stringify(approvedCandidate)}`);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(String(approvedCandidate.approved_at || ''))) {
+    throw new Error(`Expected tusq approve to record approved_at timestamp: ${JSON.stringify(approvedCandidate)}`);
+  }
+
+  const allApproval = runCli(['approve', '--all', '--reviewer', 'qa@example.com', '--json'], { cwd: expressProject });
+  const allApprovalJson = JSON.parse(allApproval.stdout);
+  if (allApprovalJson.approved_count < 1) {
+    throw new Error(`Expected tusq approve --all to approve remaining capabilities: ${allApproval.stdout}`);
+  }
+  const reviewReadyManifest = await readJson(manifestPath);
+  if (!reviewReadyManifest.capabilities.every((capability) => capability.approved === true && capability.review_needed === false)) {
+    throw new Error('Expected tusq approve --all to approve every remaining review-needed/unapproved capability');
+  }
   runCli(['review', '--strict'], { cwd: expressProject });
 
   // REQ-039 through REQ-043: manifest diff and review queue

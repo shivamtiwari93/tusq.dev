@@ -16,7 +16,7 @@ Express, Fastify, and NestJS.
 
 ## How do I approve capabilities?
 
-Edit `tusq.manifest.json` directly and set `approved: true` on the capabilities you want to expose.
+Run `tusq approve <capability-name> --reviewer <id>` for one capability, or `tusq approve --all --reviewer <id>` for every capability that is unapproved or still marked `review_needed`.
 
 ## What does "governed" mean in v0.1.0?
 

@@ -148,6 +148,14 @@
 - [x] Validate manifest diff review queues and CI failure behavior for changed unapproved capabilities
 - [x] Wire the eval harness into `npm test` alongside the existing smoke suite
 
+### M18: Governed Manifest Approval CLI (~0.5 day)
+- [x] Add `tusq approve` command for repo-local manifest approval without hand-editing approval fields
+- [x] Support one-capability approval by name and intentional `--all` approval for unapproved or review-needed capabilities
+- [x] Record reviewer identity and ISO timestamp in `approved_by` and `approved_at`
+- [x] Clear `review_needed` when a capability is approved so `tusq review --strict` can pass after reviewer action
+- [x] Support `--dry-run`, `--json`, and `--manifest <path>` for safe review and automation
+- [x] Update smoke coverage, CLI help, README, docs, and planning references for the approval workflow
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

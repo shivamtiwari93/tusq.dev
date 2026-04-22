@@ -4,6 +4,8 @@
 
 M17 adds a governed CLI eval/regression harness so tusq.dev can catch prompt-pack and workflow drift beyond the broad smoke suite. The implementation adds `tests/evals/governed-cli-scenarios.json` with versioned scenario contracts, `tests/eval-regression.mjs` with a deterministic local runner, and updates `package.json` so `npm test` runs both `tests/smoke.mjs` and the eval harness. The eval validates strict review gates, compiled tool metadata boundaries, schema source markers, redaction/default governance fields, manifest-only approval metadata boundaries, manifest diff review queues, and `--fail-on-unapproved-changes` CI behavior.
 
+M18 adds a governed repo-local approval command so reviewers no longer need to hand-edit approval fields for the common approval path. `tusq approve <capability-name>` approves exactly one manifest capability; `tusq approve --all` approves all capabilities that are currently unapproved or still marked `review_needed`. The command records `approved_by`, records an ISO `approved_at` timestamp, clears `review_needed`, supports `--manifest <path>`, and supports safe `--dry-run --json` review output. `npm test` now verifies the approve command surface, single approval behavior, all approval behavior, and dry-run JSON non-mutating behavior.
+
 ### M17 Verification
 
 - `npm test` → exit 0.
@@ -11,6 +13,37 @@ M17 adds a governed CLI eval/regression harness so tusq.dev can catch prompt-pac
 - `node tests/eval-regression.mjs` → "Eval regression harness passed (2 scenarios)".
 - Acceptance matrix updated with REQ-045 through REQ-049.
 - ROADMAP updated with M17 completion checklist.
+
+### M18 Verification
+
+- `npm test` → exit 0.
+- `node tests/smoke.mjs` → "Smoke tests passed"; covers REQ-050 through REQ-053.
+- `node tests/eval-regression.mjs` → "Eval regression harness passed (2 scenarios)".
+- Acceptance matrix updated with REQ-050 through REQ-053.
+- ROADMAP updated with M18 completion checklist.
+
+## Engineering Director Turn turn_3a7de9f0afe13e67 — Implementation Gate Coherence Pass (2026-04-21)
+
+### Challenge To Prior Dev Turn
+
+- Prior dev turn `turn_0707f5eae54367c4` claimed full M1-M17 implementation verification on HEAD `1306921`. I did not accept that as inherited proof: the current integration HEAD is `7fbb34f`, the worktree contains unrelated orchestrator/conversation dirt, and the implementation gate requires a fresh verification pass tied to this turn.
+- The prior conclusion is materially supported only after re-running the gate-relevant checks on the current HEAD and confirming no source/test/binary drift relative to the previous dev evidence.
+
+### Verification Activities (director-independent, HEAD 7fbb34f)
+
+- `npm test` → exit 0; both "Smoke tests passed" and "Eval regression harness passed (2 scenarios)" printed.
+- `node bin/tusq.js help` → exit 0; 9-command surface confirmed: init, scan, manifest, compile, serve, review, diff, version, help.
+- `node bin/tusq.js diff --help` → exit 0; planned flag set confirmed: `--from`, `--to`, `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`.
+- `node bin/tusq.js diff >/tmp/tusq-diff-noargs.out 2>&1; rc=$?; cat /tmp/tusq-diff-noargs.out; test $rc -eq 1` → exit 0; verified the no-args path exits 1 with "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison."
+- `grep -c '^\s*- \[x\]' .planning/ROADMAP.md` → exit 0 with `104`.
+- `head -5 .planning/PM_SIGNOFF.md` → exit 0 and shows `Approved: YES`.
+- `git diff 1306921..HEAD --stat` → exit 0; only `.planning/IMPLEMENTATION_NOTES.md` changed between the prior dev evidence and current HEAD, so no source/test/binary implementation drift was found.
+
+### Director Verdict
+
+- All M1-M17 acceptance criteria (REQ-001 through REQ-049) remain implemented and verified on HEAD `7fbb34f`.
+- `implementation_complete` gate requirements are satisfied: `.planning/IMPLEMENTATION_NOTES.md` exists, contains substantive implementation and verification notes, and this turn completed an independent verification pass.
+- No source changes required. Proposing phase transition to `qa`.
 
 ## Dev Turn turn_bacea73d62ee30fa — Independent Verification Pass (2026-04-21)
 

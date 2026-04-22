@@ -19,6 +19,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 - `tusq manifest`
 - `tusq compile`
 - `tusq review`
+- `tusq approve`
 - `tusq diff`
 - `tusq serve`
 
@@ -27,8 +28,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 Current `v0.1.0` boundaries:
 
 - Supported frameworks: Express, Fastify, NestJS
-- Approval flow: edit `tusq.manifest.json` directly and set `approved: true`
-- Optional audit trail: record `approved_by` and `approved_at` in the manifest when you want reviewer identity and timestamp attached to a capability
+- Approval flow: run `tusq approve <capability>` or `tusq approve --all` to set `approved: true`, clear `review_needed`, and record reviewer audit metadata
 - MCP behavior: describe-only in V1; `tools/call` returns schema, example payloads, and constraints, not live API execution
 - Review policy surface: `redaction` is inspectable in the manifest and survives into compiled tools and `tools/call`
 - CI review gate: `tusq review --strict` exits non-zero when capabilities remain unapproved or low-confidence
@@ -84,7 +84,7 @@ The shipped workflow today is:
 1. run `tusq init` in a supported repo
 2. scan routes with `tusq scan`
 3. generate a reviewable `tusq.manifest.json` with `tusq manifest`
-4. manually approve capabilities by editing the manifest
+4. approve capabilities with `tusq approve <name>` or `tusq approve --all`
 5. compile approved capabilities into JSON tool definitions with `tusq compile`
 6. inspect grouped output with `tusq review`
 7. compare manifest versions and generate a review queue with `tusq diff`
@@ -137,7 +137,7 @@ The accurate launch workflow is:
 1. clone the repo and run the CLI locally on a supported codebase
 2. run `tusq scan .` to discover routes
 3. run `tusq manifest` to generate `tusq.manifest.json`
-4. review the manifest and set `approved: true` on capabilities to expose
+4. review the manifest and run `tusq approve <capability>` or `tusq approve --all --reviewer <id>` for capabilities to expose
 5. run `tusq compile` to emit JSON tool definitions for approved capabilities
 6. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
 7. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint

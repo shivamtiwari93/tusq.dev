@@ -11,6 +11,28 @@ M16 adds the first active diff command on top of the manifest version fields alr
 | `tusq diff --json --from old.json --to new.json` | Emit machine-readable structured diff output | stdout is parseable JSON matching SYSTEM_SPEC.md |
 | `tusq diff --review-queue --from old.json --to new.json` | Print capabilities requiring review after a manifest change | Review queue was computed from added, changed, unapproved, and review-needed capabilities |
 | `tusq diff --fail-on-unapproved-changes --from old.json --to new.json` | CI gate for changed capabilities that lack approval | All added or changed capabilities are approved and no gate failed |
+| `tusq approve <capability-name>` | Approve one manifest capability with reviewer audit metadata | Capability exists and was approved in the manifest |
+| `tusq approve --all` | Approve all unapproved or review-needed manifest capabilities intentionally | All selected capabilities were approved in the manifest |
+
+### `tusq approve` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `[capability-name]` | Name of one capability to approve | Required unless `--all` is set |
+| `--all` | Approve every unapproved or review-needed capability | Disabled |
+| `--reviewer <id>` | Reviewer identity written to `approved_by` | `TUSQ_REVIEWER`, `USER`, or `LOGNAME` |
+| `--manifest <path>` | Manifest file to update | `tusq.manifest.json` |
+| `--dry-run` | Print selected approvals without writing | Disabled |
+| `--json` | Print structured approval output | Human-readable summary |
+
+### `tusq approve` Failure UX
+
+| Failure | User sees |
+|---------|-----------|
+| Missing target | Message asking for a capability name or `--all` |
+| Name and `--all` together | Message explaining that only one selection mode can be used |
+| Missing manifest | Message asking the user to run `tusq manifest` first |
+| Unknown capability | `Capability not found:` followed by the requested name |
 
 ### `tusq diff` Options
 

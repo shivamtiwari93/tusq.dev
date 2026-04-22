@@ -101,8 +101,8 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 - Supported frameworks are Express, Fastify, and NestJS only
 - `tusq scan` uses static heuristics to detect routes and write `.tusq/scan.json`
 - `tusq manifest` generates `tusq.manifest.json` and preserves prior approvals
-- Capability approval is manual in V1: users edit `tusq.manifest.json` directly and set `approved: true`
-- Approval trail exists in V1 at the manifest layer: users may also record `approved_by` and `approved_at`
+- Capability approval is repo-local in V1: users run `tusq approve <capability>` or `tusq approve --all` to set `approved: true` intentionally
+- Approval trail exists in V1 at the manifest layer: `tusq approve` records `approved_by` and `approved_at`
 - `tusq compile` emits JSON tool definitions only for approved capabilities
 - `tusq review` is non-interactive and prints a grouped summary to stdout
 - `tusq serve` exposes compiled tools through a local MCP HTTP endpoint
@@ -114,7 +114,8 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 ## Claims We Can Defend
 
 - tusq.dev can scan supported Node.js frameworks and extract route-level capability candidates from a real codebase
-- tusq.dev can generate a reviewable `tusq.manifest.json` from scan data and preserve manual approvals across regeneration
+- tusq.dev can generate a reviewable `tusq.manifest.json` from scan data and preserve approvals across regeneration
+- tusq.dev can approve selected manifest capabilities with `tusq approve`, recording reviewer identity and timestamp
 - tusq.dev can compile approved capabilities into structured JSON tool definitions
 - tusq.dev can preserve provenance from discovered routes into compiled tool definitions
 - tusq.dev surfaces governance metadata reviewers can inspect before exposure: `side_effect_class`, `sensitivity_class`, and `auth_hints`
@@ -129,5 +130,5 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 - Do not say tusq.dev infers full business logic, runtime behavior, or production-grade permissions perfectly
 - Do not say tusq.dev supports Python, Go, Java, or arbitrary backend frameworks in v0.1.0
 - Do not say tusq.dev includes an interactive approval UI, embedded chat experience, or hosted cloud control plane in v0.1.0
-- Do not say tusq.dev replaces human review; V1 depends on manifest review and manual approval
+- Do not say tusq.dev replaces human review; V1 depends on manifest review and explicit `tusq approve` approval
 - Do not publish `npm install -g tusq` as a launch CTA until package distribution is confirmed

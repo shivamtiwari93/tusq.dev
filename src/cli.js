@@ -70,6 +70,9 @@ function dispatch(argv) {
     case 'review':
       cmdReview(args);
       return;
+    case 'approve':
+      cmdApprove(args);
+      return;
     case 'diff':
       cmdDiff(args);
       return;
@@ -695,6 +698,105 @@ function cmdReview(args) {
   enforceStrictReviewIfRequested(opts.strict, reviewStats);
 }
 
+function cmdApprove(args) {
+  const { opts, positionals } = parseCommandArgs('approve', args, {
+    all: 'boolean',
+    reviewer: 'value',
+    manifest: 'value',
+    'dry-run': 'boolean',
+    json: 'boolean'
+  });
+
+  if (opts.help) {
+    printCommandHelp('approve');
+    return;
+  }
+
+  if (positionals.length > 1) {
+    throw new CliError('Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json]', 1);
+  }
+
+  if (opts.all && positionals.length > 0) {
+    throw new CliError('Use either a capability name or --all, not both.', 1);
+  }
+
+  if (!opts.all && positionals.length === 0) {
+    throw new CliError('Pass a capability name or --all.', 1);
+  }
+
+  const root = process.cwd();
+  const config = readProjectConfig(root);
+  const manifestPath = path.resolve(
+    root,
+    opts.manifest || (config.output && config.output.manifest_file) || 'tusq.manifest.json'
+  );
+
+  if (!fs.existsSync(manifestPath)) {
+    throw new CliError('No manifest found. Run `tusq manifest` first.', 1);
+  }
+
+  const manifest = readJson(manifestPath);
+  const capabilities = Array.isArray(manifest.capabilities) ? manifest.capabilities : [];
+  const reviewer = normalizeReviewer(opts.reviewer || process.env.TUSQ_REVIEWER || process.env.USER || process.env.LOGNAME);
+  const approvedAt = new Date().toISOString();
+  const dryRun = Boolean(opts['dry-run']);
+  const targetName = positionals[0];
+  const selected = opts.all
+    ? capabilities.filter((capability) => capability.approved !== true || capability.review_needed === true)
+    : capabilities.filter((capability) => capability.name === targetName);
+
+  if (!opts.all && selected.length === 0) {
+    throw new CliError(`Capability not found: ${targetName}`, 1);
+  }
+
+  const approvals = selected.map((capability) => ({
+    name: capability.name,
+    method: capability.method || null,
+    path: capability.path || null,
+    previously_approved: capability.approved === true,
+    previously_review_needed: capability.review_needed === true
+  }));
+
+  if (!dryRun) {
+    for (const capability of selected) {
+      capability.approved = true;
+      capability.review_needed = false;
+      capability.approved_by = reviewer;
+      capability.approved_at = approvedAt;
+    }
+    writeJson(manifestPath, manifest);
+  }
+
+  const payload = {
+    manifest: manifestPath,
+    dry_run: dryRun,
+    reviewer,
+    approved_at: dryRun ? null : approvedAt,
+    approved_count: approvals.length,
+    approvals
+  };
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  if (approvals.length === 0) {
+    process.stdout.write(`No capabilities required approval in ${manifestPath}.\n`);
+    return;
+  }
+
+  process.stdout.write(`${dryRun ? 'Would approve' : 'Approved'} ${approvals.length} capability(s) in ${manifestPath}\n`);
+  process.stdout.write(`Reviewer: ${reviewer}\n`);
+  for (const approval of approvals) {
+    process.stdout.write(`- ${approval.name}`);
+    if (approval.method && approval.path) {
+      process.stdout.write(` (${approval.method} ${approval.path})`);
+    }
+    process.stdout.write('\n');
+  }
+}
+
 function cmdDiff(args) {
   const { opts, positionals } = parseCommandArgs('diff', args, {
     from: 'value',
@@ -978,6 +1080,14 @@ function enforceStrictReviewIfRequested(strict, reviewStats) {
   }
 }
 
+function normalizeReviewer(value) {
+  const reviewer = String(value || '').trim();
+  if (!reviewer) {
+    throw new CliError('Reviewer identity is required. Pass --reviewer <id> or set TUSQ_REVIEWER.', 1);
+  }
+  return reviewer;
+}
+
 function summarizeInputSchemaForReview(schema) {
   const properties = schema && typeof schema === 'object' && schema.properties && typeof schema.properties === 'object'
     ? Object.entries(schema.properties)
@@ -1044,6 +1154,7 @@ function printHelp() {
   process.stdout.write('  compile            Compile approved capabilities into tool definitions\n');
   process.stdout.write('  serve              Start describe-only local MCP endpoint\n');
   process.stdout.write('  review             Print manifest summary for human review\n');
+  process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
@@ -1057,6 +1168,7 @@ function printCommandHelp(command) {
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--verbose]',
     review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
+    approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);

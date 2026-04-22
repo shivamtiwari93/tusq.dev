@@ -242,12 +242,14 @@ This is a local manifest-file comparison. It does not maintain a history store, 
 
 ## Approval flow
 
-V1 approval is explicit and manual.
+V1 approval is explicit and repo-local.
 
 1. Run `tusq manifest`.
-2. Edit `tusq.manifest.json`.
-3. Set `approved: true` for capabilities you want exposed (optionally also set `approved_by` and `approved_at`).
+2. Inspect `tusq.manifest.json` and `tusq review`.
+3. Run `tusq approve <capability-name> --reviewer <id>` for one capability, or `tusq approve --all --reviewer <id>` to approve all unapproved or review-needed capabilities.
 4. Run `tusq compile` to emit only approved capabilities.
+
+`tusq approve` sets `approved: true`, clears `review_needed`, and records `approved_by` plus `approved_at`. Use `--dry-run` before writing and `--json` for automation-friendly output.
 
 ## Regeneration behavior
 

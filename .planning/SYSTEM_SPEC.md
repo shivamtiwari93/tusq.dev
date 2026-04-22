@@ -16,7 +16,7 @@ Build the tusq.dev public-facing website, documentation, and blog using Docusaur
 2. **Homepage migration** — Migrate the current `websites/index.html` landing page content into a Docusaurus custom homepage component, preserving the hero, feature cards, workflow steps, and V1 surface grid
 3. **Documentation site** — Create user-facing docs pages derived from the accepted planning artifacts:
    - Getting Started (install, init, scan, manifest, compile, serve workflow)
-   - CLI Reference (all 8 commands with flags, from command-surface.md)
+   - CLI Reference (current CLI commands with flags, from command-surface.md)
    - Manifest Format (tusq.manifest.json schema and fields)
    - Configuration (tusq.config.json reference)
    - Supported Frameworks (Express, Fastify, NestJS — what works, what doesn't)
@@ -71,7 +71,7 @@ Build the tusq.dev public-facing website, documentation, and blog using Docusaur
 | Hero | websites/index.html + MESSAGING.md | One-line positioning + CTA |
 | What it does / ships / matters | websites/index.html cards | Three feature cards |
 | Workflow | websites/index.html steps | 5-step terminal workflow |
-| V1 Surface | websites/index.html grid | 8 shipped capabilities |
+| V1 Surface | websites/index.html grid | Shipped CLI capabilities |
 
 ## File Structure
 
@@ -1067,7 +1067,7 @@ The `approved`, `approved_by`, `approved_at`, and `review_needed` fields form th
 **How approval flows through the pipeline:**
 
 1. `tusq manifest` generates capabilities with `approved: false` (new) or preserves existing `approved` values (regeneration). `approved_by` and `approved_at` are preserved from existing manifests when present.
-2. A human edits `tusq.manifest.json`, setting `approved: true` and optionally `approved_by` and `approved_at` for capabilities they have reviewed.
+2. A human reviews `tusq.manifest.json` and uses `tusq approve <capability-name> --reviewer <id>` or `tusq approve --all --reviewer <id>` to set `approved: true`, clear `review_needed`, and record `approved_by` plus `approved_at`.
 3. `tusq compile` filters: only `approved: true` capabilities produce compiled tool files.
 4. Compiled tools (`tusq-tools/*.json`) do **not** carry approval fields — their existence is proof of approval.
 5. MCP `tools/list` and `tools/call` do **not** return approval fields — only approved capabilities are served.
@@ -1085,8 +1085,8 @@ MCP server responses    — no approval fields (only approved tools served)
 
 **V1 approval limitations:**
 
-1. **`approved_by` and `approved_at` default to `null`.** V1 does not auto-populate these fields. They exist for humans to fill in during manifest review. The `approved` boolean alone gates compilation.
-2. **No approval workflow tooling.** V1 has no `tusq approve` command or interactive review UI. Approval is done by editing the JSON file directly.
+1. **`approved_by` and `approved_at` default to `null`.** They remain null until a reviewer approves a capability with `tusq approve` or manually edits the manifest. The `approved` boolean alone gates compilation.
+2. **No interactive approval UI.** V1 ships a non-interactive `tusq approve` command, but not a TUI, web UI, approval history viewer, or multi-party workflow.
 3. **No approval history.** V1 does not track when a capability was previously approved and then un-approved (e.g., after manifest regeneration changed its shape).
 4. **No multi-party approval.** V1 supports a single `approved_by` identity. There is no countersignature or quorum requirement.
 
@@ -1094,7 +1094,7 @@ MCP server responses    — no approval fields (only approved tools served)
 
 | V2 capability | Description |
 |--------------|-------------|
-| `tusq approve` command | Interactive CLI for reviewing and approving capabilities, auto-setting `approved_by` and `approved_at` |
+| Interactive approval UI | Guided terminal or web review flow on top of the non-interactive `tusq approve` primitive |
 | Approval history | Track approval/revocation events with timestamps and identities in a `approval_history[]` array |
 | Multi-party approval | Support `approved_by` as an array for capabilities requiring multiple reviewers |
 | CI/CD integration | Gate deployment pipelines on approval status; fail builds if unapproved capabilities are referenced |

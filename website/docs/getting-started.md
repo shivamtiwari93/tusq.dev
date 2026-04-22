@@ -40,7 +40,7 @@ Run from your target project root:
 tusq init
 tusq scan .
 tusq manifest
-# edit tusq.manifest.json and set approved: true
+tusq approve --all --reviewer you@example.com
 tusq compile
 tusq serve
 ```
@@ -50,7 +50,7 @@ tusq serve
 1. `tusq init` creates `tusq.config.json`.
 2. `tusq scan .` writes `.tusq/scan.json` with discovered routes and inference metadata.
 3. `tusq manifest` writes `tusq.manifest.json`.
-4. Manual approval sets `approved: true` on selected capabilities.
+4. `tusq approve` sets `approved: true`, clears `review_needed`, and records reviewer metadata on selected capabilities.
 5. `tusq compile` emits approved tool JSON files in `tusq-tools/`.
 6. `tusq serve` starts a local MCP endpoint for `tools/list` and describe-only `tools/call`.
 

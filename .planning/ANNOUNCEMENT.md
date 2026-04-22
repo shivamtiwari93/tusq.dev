@@ -28,7 +28,7 @@ This release gives teams a concrete terminal workflow:
 
 What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls, does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
-The proof points for this launch are intentionally concrete: reviewed manifest output, manual approval, optional approval trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, and an inspectable describe-only MCP surface.
+The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, and an inspectable describe-only MCP surface.
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
@@ -58,7 +58,7 @@ The workflow is terminal-native:
 tusq init
 tusq scan .
 tusq manifest
-# edit tusq.manifest.json and set approved: true
+tusq approve --all --reviewer you@example.com
 tusq compile
 tusq serve
 # later, when the codebase changes, re-review drift:

@@ -72,6 +72,20 @@ Use `--format json` when you need the full raw manifest.
 
 Use `--strict` in CI to fail with exit code `1` when any capability is unapproved or marked `review_needed`.
 
+## `tusq approve`
+
+Approve selected capabilities in `tusq.manifest.json` without hand-editing approval fields.
+
+```bash
+tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]
+```
+
+Use a capability name to approve exactly one capability. Use `--all` to approve every capability that is currently unapproved or still marked `review_needed`.
+
+Approval sets `approved: true`, clears `review_needed`, and records `approved_by` plus `approved_at`. If `--reviewer` is omitted, tusq uses `TUSQ_REVIEWER`, `USER`, or `LOGNAME`.
+
+Use `--dry-run` to inspect what would be approved without writing the manifest. Use `--json` for machine-readable approval output.
+
 ## `tusq diff`
 
 Compare two manifest files and surface capability changes for review.

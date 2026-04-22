@@ -84,7 +84,7 @@ This is an initial release. No migration required.
 tusq init
 tusq scan .
 tusq manifest
-# edit tusq.manifest.json to set approved: true on desired capabilities
+tusq approve --all --reviewer you@example.com
 tusq compile
 tusq serve
 ```
