@@ -3,9 +3,30 @@
   "run_id": "run_3c0710a95e02aed1",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "launch",
+  "phase": "qa",
   "accepted_integration_ref": "git:30cb9c29f797c617080778bb37657eca63ce4d4e",
-  "active_turns": {},
+  "active_turns": {
+    "turn_40f11e174717e691": {
+      "turn_id": "turn_40f11e174717e691",
+      "run_id": "run_3c0710a95e02aed1",
+      "assigned_role": "qa",
+      "status": "dispatched",
+      "attempt": 1,
+      "assigned_at": "2026-04-22T01:59:46.345Z",
+      "deadline_at": "2026-04-22T02:19:46.345Z",
+      "runtime_id": "local-qa",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "30cb9c29f797c617080778bb37657eca63ce4d4e",
+        "clean": true,
+        "captured_at": "2026-04-22T01:59:46.198Z",
+        "dirty_snapshot": {}
+      },
+      "assigned_sequence": 11,
+      "concurrent_with": [],
+      "dispatched_at": "2026-04-22T01:59:46.397Z"
+    }
+  },
   "turn_sequence": 11,
   "last_completed_turn_id": "turn_d86b8fb1c45a611a",
   "blocked_on": null,
@@ -19,7 +40,7 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
+    "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
   "budget_reservations": {
@@ -34,7 +55,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T01:39:33.385Z",
-  "phase_entered_at": "2026-04-22T02:00:00.000Z",
+  "phase_entered_at": "2026-04-22T01:45:53.073Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
@@ -53,7 +74,7 @@
     "intent_id": null
   },
   "delegation_queue": [],
-  "next_recommended_role": "product_marketing",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "non_progress_signature": null,
   "non_progress_count": 0
