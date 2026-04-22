@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 69 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init).
+- All 74 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init + REQ-070–REQ-074 policy verify command / tusq policy verify).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -191,6 +191,58 @@ tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] \
 **Generator/validator alignment** (SYSTEM_SPEC Constraint 7) — Generated files pass `loadAndValidatePolicy()` byte-for-byte. The M21 round-trip smoke test (REQ-068) confirms this invariant: it generates a dry-run policy then starts `tusq serve --policy <generated>` to verify the server accepts the output.
 
 **New eval scenario** — `policy-init-generator-round-trip` extends the governed-cli eval harness to 5 scenarios, asserting that a generated dry-run policy produces the same `tools/call dry_run_plan` shape as a hand-authored policy.
+
+## Policy Verify Command (M22 — V1.3)
+
+`tusq policy verify` validates an execution policy file against the same `loadAndValidatePolicy()` validator used by `tusq serve --policy`. It provides a fast, CI-friendly pre-flight check without starting a server.
+
+**Usage:**
+```
+tusq policy verify [--policy <path>] [--json] [--verbose]
+```
+
+Default policy path is `.tusq/execution-policy.json`; override with `--policy <path>`.
+
+**Exit behavior:**
+- Exit 0: policy is valid. Human-readable output: `Policy valid: <path> (mode: <mode>, reviewer: <reviewer>, allowed_capabilities: <unset|N>)`
+- Exit 1: policy is invalid. Error message goes to stderr (or stdout under `--json`).
+
+**Error conditions** (all exit 1, messages match `tusq serve --policy` exactly — shared validator):
+- `Policy file not found: <path>` — file does not exist
+- `Invalid policy JSON at: <path>` — file is not valid JSON
+- `Unsupported policy schema_version: <v>. Supported: 1.0` — unknown schema version
+- `Unknown policy mode: <mode>. Allowed: describe-only, dry-run` — unknown mode
+- `Invalid allowed_capabilities in policy: must be an array of strings` — non-array type
+
+**`--json` output shape:**
+
+Success:
+```json
+{
+  "valid": true,
+  "path": "/path/to/execution-policy.json",
+  "policy": {
+    "schema_version": "1.0",
+    "mode": "dry-run",
+    "reviewer": "ops@example.com",
+    "approved_at": "2026-04-22T07:43:59.949Z",
+    "allowed_capabilities": null
+  }
+}
+```
+
+Failure:
+```json
+{
+  "valid": false,
+  "path": "/path/to/execution-policy.json",
+  "error": "Unsupported policy schema_version: 9.9. Supported: 1.0"
+}
+```
+
+**Parity guarantee** (REQ-074) — `tusq policy verify` and `tusq serve --policy` call `loadAndValidatePolicy()` without modification. Every error message emitted by `verify` is byte-identical to the error emitted by `serve --policy` for the same bad fixture. There is no standalone re-implementation of validation logic.
+
+**All 74 acceptance criteria** (REQ-001–REQ-074) pass on HEAD 3e95062: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (5 scenarios)`.
 
 ## Known V1 Limits And Non-Claims
 
