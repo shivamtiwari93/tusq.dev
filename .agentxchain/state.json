@@ -2,12 +2,12 @@
   "schema_version": "1.1",
   "run_id": "run_035dd2c2b8e4b821",
   "project_id": "tusq-dev",
-  "status": "active",
-  "phase": "planning",
-  "accepted_integration_ref": null,
+  "status": "completed",
+  "phase": "launch",
+  "accepted_integration_ref": "git:c04177592edcf48e462906a6b3ed27e51bf34d71",
   "active_turns": {},
-  "turn_sequence": 0,
-  "last_completed_turn_id": null,
+  "turn_sequence": 17,
+  "last_completed_turn_id": "turn_41847925766151f8",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -17,10 +17,10 @@
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "pending",
-    "implementation_complete": "pending",
-    "qa_ship_verdict": "pending",
-    "launch_ready": "pending"
+    "planning_signoff": "passed",
+    "implementation_complete": "passed",
+    "qa_ship_verdict": "passed",
+    "launch_ready": "passed"
   },
   "budget_reservations": {},
   "budget_status": {
@@ -28,7 +28,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T09:37:21.502Z",
-  "phase_entered_at": "2026-04-22T09:37:21.502Z",
+  "phase_entered_at": "2026-04-22T10:21:18.925Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
@@ -37,5 +37,19 @@
     "created_by": "operator"
   },
   "inherited_context": null,
-  "repo_decisions": null
+  "repo_decisions": null,
+  "delegation_queue": [],
+  "next_recommended_role": null,
+  "pending_delegation_review": null,
+  "last_completed_turn": {
+    "turn_id": "turn_a09f1e00a1a26b11",
+    "role": "product_marketing",
+    "phase": "launch",
+    "checkpoint_sha": "c04177592edcf48e462906a6b3ed27e51bf34d71",
+    "checkpointed_at": "2026-04-22T10:28:10.038Z",
+    "intent_id": null
+  },
+  "non_progress_signature": null,
+  "non_progress_count": 0,
+  "completed_at": "2026-04-22T10:29:11.340Z"
 }
