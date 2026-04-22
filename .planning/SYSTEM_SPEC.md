@@ -1698,6 +1698,120 @@ The policy file is a **governance artifact**: review it like a manifest. No poli
 - `tests/evals/governed-cli-scenarios.json` — add a dry-run scenario asserting plan shape and one asserting unapproved capabilities stay invisible under dry-run policy.
 - `README.md` — add the `--policy` flag to the CLI reference table.
 
+## M21: Execution Policy Scaffold Generator
+
+### Purpose
+
+M20 shipped `tusq serve --policy <path>` and specified the `.tusq/execution-policy.json` shape, but it left operators hand-authoring a governance artifact whose schema they have to derive from SYSTEM_SPEC.md. That is a VISION-breaking friction point: the product must "treat manual manifest authoring as a failure of the engine, not a feature" (VISION.md line 74). By extension, manual authoring of the policy artifact that controls the serve path is also a failure of the engine.
+
+M21 adds a single, local-only CLI command — `tusq policy init` — that generates a valid policy file for the operator. The command does not touch the network, the manifest, or the target product. It writes one JSON file under the repo root, and that file is guaranteed to pass `loadAndValidatePolicy()` (the same validator `tusq serve --policy` invokes at startup).
+
+### Scope Boundary
+
+M21 is deliberately narrow:
+
+- **In scope (V1.2):** scaffold a valid `.tusq/execution-policy.json` file, optionally override `mode`, `reviewer`, `allowed_capabilities`, and output path, support `--force`, `--dry-run`, and `--json` flags.
+- **Out of scope (V1.2):** no interactive wizard; no inspection of `tusq.manifest.json` to propose `allowed_capabilities` values; no rotating-reviewer workflows; no encrypted storage; no multi-environment policy profiles (`--env dev`/`--env prod`); no policy migration from older schema versions (there are none yet); no live API execution under any code path.
+
+The V1.2 limitations table below enumerates these explicitly so the dev turn cannot overreach into V2 territory.
+
+### `tusq policy init` Command Shape
+
+Synopsis:
+
+```
+tusq policy init [--mode <describe-only|dry-run>]
+                 [--reviewer <id>]
+                 [--allowed-capabilities <name,name,...>]
+                 [--out <path>]
+                 [--force]
+                 [--dry-run]
+                 [--json]
+                 [--verbose]
+```
+
+Exit codes:
+
+| Exit | Meaning |
+|------|---------|
+| `0` | File was written (or would have been written, under `--dry-run`) |
+| `1` | Any failure condition in the failure UX table below |
+
+Default behavior (no flags): write `.tusq/execution-policy.json` with `schema_version: "1.0"`, `mode: "describe-only"`, reviewer resolved via env-chain (`TUSQ_REVIEWER` → `USER` → `LOGNAME` → `"unknown"`), `approved_at` set to the current ISO-8601 UTC timestamp at generation time, and no `allowed_capabilities` field (meaning "all approved capabilities in scope"). Parent directory `.tusq/` is created with `{ recursive: true }` if it does not already exist.
+
+### Generated Policy File Shape
+
+The generated file is a strict subset of the M20 policy schema. No new fields are introduced in V1.2.
+
+| Field | Required | V1.2 Default | Notes |
+|-------|----------|--------------|-------|
+| `schema_version` | yes | `"1.0"` | Hard-coded; must match `SUPPORTED_POLICY_VERSIONS` in `loadAndValidatePolicy()` |
+| `mode` | yes | `"describe-only"` | Controlled by `--mode`; any value outside `{describe-only, dry-run}` exits 1 before any file write |
+| `reviewer` | yes | Env-chain resolved identity | Controlled by `--reviewer`; never empty string — empty string exits 1 |
+| `approved_at` | yes | ISO-8601 UTC generation time | Always stamped at generation; not overridable from CLI |
+| `allowed_capabilities` | no | omitted | Controlled by `--allowed-capabilities <a,b,c>`; list is trimmed and de-duplicated in declaration order; empty list or list containing an empty token exits 1 |
+
+The file is written with `JSON.stringify(policy, null, 2)` followed by a trailing newline, matching the formatting convention of `tusq approve` writes so that line-diff tooling stays sensible.
+
+### `tusq policy init` Failure UX
+
+| Failure | User sees | Side effect |
+|---------|-----------|-------------|
+| Unknown `--mode` value | `Unknown policy mode: <value>. Allowed: describe-only, dry-run` | No file written |
+| Empty or missing `--reviewer` value | `Invalid reviewer: reviewer identity cannot be empty` | No file written |
+| Empty or malformed `--allowed-capabilities` | `Invalid allowed-capabilities: list cannot be empty or contain empty names` | No file written |
+| Target file exists without `--force` | `Policy file already exists: <path>. Re-run with --force to overwrite.` | No file written |
+| Unwritable target path (permission or EISDIR) | `Could not write policy file: <path>: <errno message>` | No file written (or partial write is caught and message includes path) |
+| Unknown flag | Standard CLI error: `Unknown option: <flag>` | No file written |
+
+Every failure message ends in an actionable next step (re-run with a flag, fix the value). Error messages are written to `stderr` and the process exits `1`.
+
+### `tools/call` and MCP Surface — Unchanged
+
+M21 adds a generator command only. The MCP server behavior, the M20 dry-run response shape, the `executed: false` invariant, and the approval-gate filter are all unchanged. A generated policy file is indistinguishable, from `tusq serve --policy`'s perspective, from a hand-authored one. This is the stability contract M21 guarantees.
+
+### V1.2 Limitations
+
+| Limitation | Rationale | V2 Plan |
+|------------|-----------|---------|
+| No interactive prompt when `allowed_capabilities` is omitted | Avoids coupling `policy init` to TTY state; keeps CI usage trivial | V2 may add `--interactive` if operator telemetry shows it is needed |
+| Does not read `tusq.manifest.json` to auto-suggest `allowed_capabilities` | Keeps the generator's file surface minimal and decoupled from manifest I/O | V2 `tusq policy suggest` can read the manifest and propose an initial scoped list |
+| No policy migration | There is only one schema version (`"1.0"`); nothing to migrate | V2 `tusq policy migrate` when a `1.1` schema ships |
+| No per-environment profiles | `--out` is sufficient for operators that want multiple policy files | V2 may add `--profile dev|prod` with a dedicated directory layout |
+| No signature or checksum field on the generated file | Operators audit via git history in V1 | V2 signed-policy roadmap is tracked in the governance ladder, not M21 |
+
+### Approval-Gate Invariant Preservation
+
+M21 does not alter the approval-gate invariant set first stated in the M20 section of this spec. For clarity:
+
+1. `tools/list` continues to filter by `approved: true` on the source manifest regardless of whether a policy file was generated by `tusq policy init`.
+2. `allowed_capabilities`, when present in a generated policy, is a **strict subset filter** layered on top of approval. The generator never writes an `allowed_capabilities` entry for an unapproved capability name; names are accepted verbatim from the CLI, and a mismatch between `--allowed-capabilities` and the manifest is a run-time concern surfaced by `tusq serve --policy`, not a policy-generation-time concern.
+3. `tusq policy init` performs no outbound I/O. It cannot leak capability names, manifest state, or reviewer identity beyond the local filesystem.
+
+### Pipeline Propagation
+
+```
+tusq policy init
+   └─ writes: .tusq/execution-policy.json (local file)
+
+tusq serve --policy .tusq/execution-policy.json
+   └─ reads: loadAndValidatePolicy(path)   # unchanged from M20
+   └─ serves: tools/list (approved-only)   # unchanged from M20
+              tools/call (dry-run plan under mode: "dry-run") # unchanged from M20
+```
+
+M21 inserts no new pipeline stage. It only adds a local file producer whose output is consumed, unchanged, by the M20 serve path.
+
+### Docs and Tests Required Before Implementation
+
+- `README.md` — add `policy init` to the CLI reference table; add a three-line example showing the default invocation.
+- `website/docs/cli-reference.md` — add a `policy init` subsection with synopsis, options table, and failure UX table mirroring this spec.
+- `website/docs/execution-policy.md` — insert an "Authoring a policy file" section that recommends `tusq policy init` as the default path and preserves the hand-authoring description as an advanced alternative.
+- `tests/smoke.mjs` — add coverage for: default generation (asserts file exists, `schema_version: "1.0"`, `mode: "describe-only"`), `--mode dry-run` effect on generated file, `--allowed-capabilities a,b` produces exact array `["a", "b"]`, `--force` overwrite behavior, exit-1 on pre-existing file without `--force`, `--dry-run` prints to stdout without creating the target file, and a round-trip that generates a file and then starts `tusq serve --policy <generated path>` (or calls `loadAndValidatePolicy()` directly) to confirm the generated file is accepted.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario asserting that a generated dry-run policy produces the same `dry_run_plan` shape on `tools/call` as a hand-authored policy would, preventing generator drift.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-064 through REQ-069 acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -1706,3 +1820,5 @@ The policy file is a **governance artifact**: review it like a manifest. No poli
 4. **Brand continuity** — Preserve the Fraunces + Space Grotesk font pairing and color scheme from the current site
 5. **Content fidelity** — All user-facing content must be traceable to an accepted planning or launch artifact. Do not invent new product claims
 6. **M20 local-only invariant** — The opt-in execution-policy scaffold MUST NOT perform live API execution. `tools/call` under any policy mode stays in-process; no outbound HTTP, DB, or socket I/O to the target product. `executed: false` MUST appear in every dry-run response.
+7. **M21 local-only invariant** — `tusq policy init` MUST NOT perform any network, manifest, or target-product I/O. Its side effects are limited to writing one JSON file (and creating `.tusq/` if missing) under the repo root, plus stdout/stderr output. The generated file MUST pass `loadAndValidatePolicy()` byte-for-byte so no hidden code path makes the generator drift from the validator.
+8. **M21 safe-default invariant** — The default `mode` for a generated policy is `"describe-only"`. An operator must explicitly pass `--mode dry-run` to generate a dry-run policy. The generator never flips describe-only behavior silently.

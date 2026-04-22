@@ -114,6 +114,53 @@ When the policy is loaded in `mode: "dry-run"` and the requested capability is a
 | Capability not in `allowed_capabilities` | `-32602` | `data.reason: "capability not permitted under current policy"` |
 | Capability not approved | `-32602` | `data.reason: "capability not approved"` (unchanged from V1 semantics) |
 
+## M21 Product CLI Surface
+
+M21 adds one new local-only command, `tusq policy init`, that scaffolds a valid `.tusq/execution-policy.json` file so operators no longer hand-author the M20 policy artifact. No existing command surface is altered.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq policy init` | Write a default `.tusq/execution-policy.json` with `mode: "describe-only"` | File was written (or `--dry-run` printed content) and passes `loadAndValidatePolicy()` |
+| `tusq policy init --mode dry-run` | Generate a dry-run policy instead of the describe-only default | File was written with `mode: "dry-run"` |
+| `tusq policy init --allowed-capabilities a,b,c` | Generate a policy scoped to an explicit capability allow-list | File was written with `allowed_capabilities: ["a","b","c"]` |
+| `tusq policy init --out custom/path.json` | Write the policy to a non-default location | File was written at the requested path |
+| `tusq policy init --force` | Overwrite an existing policy file | Pre-existing file replaced; otherwise file was written |
+| `tusq policy init --dry-run` | Print the would-be content to stdout without writing | Content printed; no file created |
+
+### `tusq policy init` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--mode <describe-only\|dry-run>` | Value written to the generated `mode` field | `describe-only` |
+| `--reviewer <id>` | Value written to the generated `reviewer` field | `TUSQ_REVIEWER`, then `USER`, then `LOGNAME`, then `unknown` |
+| `--allowed-capabilities <name,name,...>` | Comma-separated list written to the generated `allowed_capabilities` array | Omitted (means "all approved capabilities in scope") |
+| `--out <path>` | Target file path for the generated policy | `.tusq/execution-policy.json` |
+| `--force` | Overwrite the target file if it already exists | Disabled |
+| `--dry-run` | Print generated content to stdout; do not write the file | Disabled |
+| `--json` | Emit a machine-readable confirmation object to stdout | Human-readable summary |
+| `--verbose` | Echo resolved reviewer and target path to stderr | Disabled |
+
+### `tusq policy init` Failure UX
+
+| Failure | User sees |
+|---------|-----------|
+| Unknown `--mode` value | `Unknown policy mode:` followed by the offending value and the allowed list (`describe-only, dry-run`) |
+| Empty or missing `--reviewer` value | `Invalid reviewer: reviewer identity cannot be empty` |
+| Empty or malformed `--allowed-capabilities` | `Invalid allowed-capabilities: list cannot be empty or contain empty names` |
+| Target file already exists without `--force` | `Policy file already exists:` followed by the path and `Re-run with --force to overwrite.` |
+| Target path is unwritable (permission / EISDIR / ENOENT on parent that cannot be created) | `Could not write policy file:` followed by the path and the underlying errno message |
+| Unknown flag | Standard CLI error `Unknown option:` followed by the flag name |
+
+### `tusq policy init` Local-Only Invariants
+
+| Invariant | How it shows up at the CLI |
+|-----------|----------------------------|
+| No network I/O | The command performs no HTTP, DB, or socket call; operators can run it with the network disabled |
+| No manifest read | `tusq.manifest.json` is not opened; `--allowed-capabilities` names are accepted verbatim |
+| No target-product call | No capability is executed, dry-run or otherwise; the generator never reaches the MCP server |
+| Safe default mode | Default `mode` is `describe-only`; `dry-run` requires an explicit `--mode dry-run` flag |
+| Validator round-trip | The generated file MUST pass `loadAndValidatePolicy()`; smoke coverage enforces this round-trip |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

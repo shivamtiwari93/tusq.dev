@@ -165,16 +165,31 @@
 - [x] Add smoke coverage for stdout output, --manifest, --out, generated sections, approval metadata, and deterministic output
 
 ### M20: Opt-In Local Execution Policy Scaffold for MCP serve (~0.5 day)
-- [ ] Specify `.tusq/execution-policy.json` shape (`schema_version`, `mode: "describe-only" | "dry-run"`, optional `allowed_capabilities`) in SYSTEM_SPEC.md
-- [ ] Add `tusq serve --policy <path>` flag that activates dry-run validation mode; absent flag preserves V1 describe-only behavior byte-for-byte
-- [ ] Extend `tools/call` under `mode: "dry-run"` to accept `params.arguments`, validate them against the approved compiled tool's `parameters` schema (required fields enforced, `additionalProperties` respected), and return a structured `dry_run_plan` object
-- [ ] `dry_run_plan` fields: `method`, `path`, `path_params`, `query`, `body`, `headers`, `auth_context`, `side_effect_class`, `sensitivity_class`, `redaction`, `plan_hash` (SHA-256 of canonical plan content), and `evaluated_at` (ISO-8601 UTC)
-- [ ] Emit JSON-RPC error `-32602` with `data.validation_errors` (array of `{path, reason}`) when argument validation fails; no plan is produced
-- [ ] Keep execution fully local/offline — no HTTP request, DB call, or network I/O to the target product under any policy mode
-- [ ] Policy resolution errors (missing file when `--policy` is set, invalid JSON, unknown `mode`, unsupported `schema_version`) exit 1 at serve startup with an actionable message
-- [ ] Add smoke coverage for policy-off (describe-only unchanged), policy-on dry-run success, validation failure paths, and plan_hash determinism
-- [ ] Add eval regression scenarios for dry-run plan structure, approval-gate enforcement (unapproved capabilities remain invisible to `tools/list` and reject in `tools/call`), and validation-error surfaces
-- [ ] Update CLI help, README, and website CLI-reference docs to describe the `--policy` flag and `.tusq/execution-policy.json` shape; add an `execution-policy.md` docs page
+- [x] Specify `.tusq/execution-policy.json` shape (`schema_version`, `mode: "describe-only" | "dry-run"`, optional `allowed_capabilities`) in SYSTEM_SPEC.md
+- [x] Add `tusq serve --policy <path>` flag that activates dry-run validation mode; absent flag preserves V1 describe-only behavior byte-for-byte
+- [x] Extend `tools/call` under `mode: "dry-run"` to accept `params.arguments`, validate them against the approved compiled tool's `parameters` schema (required fields enforced, `additionalProperties` respected), and return a structured `dry_run_plan` object
+- [x] `dry_run_plan` fields: `method`, `path`, `path_params`, `query`, `body`, `headers`, `auth_context`, `side_effect_class`, `sensitivity_class`, `redaction`, `plan_hash` (SHA-256 of canonical plan content), and `evaluated_at` (ISO-8601 UTC)
+- [x] Emit JSON-RPC error `-32602` with `data.validation_errors` (array of `{path, reason}`) when argument validation fails; no plan is produced
+- [x] Keep execution fully local/offline — no HTTP request, DB call, or network I/O to the target product under any policy mode
+- [x] Policy resolution errors (missing file when `--policy` is set, invalid JSON, unknown `mode`, unsupported `schema_version`) exit 1 at serve startup with an actionable message
+- [x] Add smoke coverage for policy-off (describe-only unchanged), policy-on dry-run success, validation failure paths, and plan_hash determinism
+- [x] Add eval regression scenarios for dry-run plan structure, approval-gate enforcement (unapproved capabilities remain invisible to `tools/list` and reject in `tools/call`), and validation-error surfaces
+- [x] Update CLI help, README, and website CLI-reference docs to describe the `--policy` flag and `.tusq/execution-policy.json` shape; add an `execution-policy.md` docs page
+
+### M21: Execution Policy Scaffold Generator (~0.5 day)
+- [ ] Add `tusq policy init` command that scaffolds a valid `.tusq/execution-policy.json` with sensible defaults, so operators no longer hand-author the M20 policy file
+- [ ] Default output path is `.tusq/execution-policy.json`; parent directory created if missing; honor `--out <path>` to write elsewhere
+- [ ] Default `schema_version: "1.0"` and `mode: "describe-only"` (the safest possible V1.2 default — preserves describe-only behavior even when `tusq serve --policy` is invoked with the generated file)
+- [ ] Support `--mode <describe-only|dry-run>` to select the generated mode; any other value exits 1 with an actionable message before any file is written
+- [ ] Support `--reviewer <id>` with the same env-chain fallback used by `tusq approve` (`TUSQ_REVIEWER`, `USER`, `LOGNAME`, then literal `"unknown"`); the reviewer identity is written to the generated `reviewer` field
+- [ ] Stamp `approved_at` as the ISO-8601 UTC generation timestamp
+- [ ] Support `--allowed-capabilities <name,name,...>` to set an initial scope filter; omitting the flag leaves `allowed_capabilities` unset (meaning "all approved"); empty or whitespace-only list exits 1
+- [ ] Support `--force` to overwrite an existing target file; without `--force`, a pre-existing target exits 1 with `Policy file already exists:` and the path; `--dry-run` prints the would-be content to stdout without writing and without requiring `--force`
+- [ ] Support `--json` for a machine-readable confirmation (path, mode, reviewer, approved_at, allowed_capabilities) intended for automation
+- [ ] Keep the command fully local/offline — no network I/O, no target-product calls, no MCP handshake; file I/O only
+- [ ] The generated file MUST pass `loadAndValidatePolicy()` byte-for-byte so `tusq serve --policy <generated path>` succeeds without any further human edits
+- [ ] Add smoke coverage for default generation, `--mode dry-run`, `--allowed-capabilities`, `--force` overwrite vs exit-1 existing-file path, `--dry-run` no-write behavior, and a round-trip that loads the generated file through `loadAndValidatePolicy()`
+- [ ] Update CLI help, README, `website/docs/cli-reference.md`, and `website/docs/execution-policy.md` to describe the new `policy init` command and link it from the `tusq serve --policy` walkthrough
 
 ## Key Risks
 
@@ -186,3 +201,5 @@
 | Docs become stale as CLI evolves | User confusion | Docs are derived from spec; updating spec triggers doc update |
 | M20 dry-run plan mistaken for live execution | Operator confusion, false safety expectations | Dry-run response carries an explicit `executed: false` marker and `V1_DRY_RUN_NOTE` string; docs reserve live execution for a later increment |
 | Execution policy drift between manifest governance and serve | Approved capabilities could expose unvalidated plans if policy parser bypasses approval | `tools/list` and `tools/call` continue to filter by `approved: true`; policy mode never relaxes the approval gate |
+| M21 default flipping operators into dry-run by accident | Operators expect describe-only semantics but get dry-run plan responses | `tusq policy init` defaults to `mode: "describe-only"`; switching to dry-run requires an explicit `--mode dry-run` flag and is echoed in stdout and `--json` confirmation |
+| M21 generator drift from `loadAndValidatePolicy()` | Generated policy could fail validation at `tusq serve --policy` time, breaking operator onboarding | Smoke test performs a round-trip: generate → `loadAndValidatePolicy()`; any drift in the validator or generator surfaces as a failing test before merge |
