@@ -2,14 +2,25 @@
   "schema_version": "1.1",
   "run_id": "run_3c0710a95e02aed1",
   "project_id": "tusq-dev",
-  "status": "active",
+  "status": "blocked",
   "phase": "qa",
-  "accepted_integration_ref": "git:0270325df0cf9fa8cb221c9ee7cc0966be7a58d8",
+  "accepted_integration_ref": "git:e45cdce228c8af33ffd884ad6e469f2bf93e3266",
   "active_turns": {},
   "turn_sequence": 6,
   "last_completed_turn_id": "turn_afcc6dfa7b4ddb93",
-  "blocked_on": null,
-  "blocked_reason": null,
+  "blocked_on": "human:qa_ship_verdict gate requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied: acceptance-matrix.md (44 PASS), ship-verdict.md (SHIP verdict, this turn's challenge recorded), RELEASE_NOTES.md (44 criteria, accurate framing). Smoke suite exits 0 on HEAD 359e162.",
+  "blocked_reason": {
+    "category": "needs_human",
+    "recovery": {
+      "typed_reason": "needs_human",
+      "owner": "human",
+      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
+      "turn_retained": false,
+      "detail": "qa_ship_verdict gate requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied: acceptance-matrix.md (44 PASS), ship-verdict.md (SHIP verdict, this turn's challenge recorded), RELEASE_NOTES.md (44 criteria, accurate framing). Smoke suite exits 0 on HEAD 359e162."
+    },
+    "blocked_at": "2026-04-22T01:48:12.409Z",
+    "turn_id": "turn_afcc6dfa7b4ddb93"
+  },
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -47,7 +58,7 @@
     "intent_id": null
   },
   "delegation_queue": [],
-  "next_recommended_role": "qa",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "non_progress_signature": null,
   "non_progress_count": 0
