@@ -328,6 +328,80 @@ M24 extraction either succeeds completely or produces no `schema_fields` at all.
 | Path param authority preserved | When a Fastify body field name collides with a path parameter, the path parameter wins in `input_schema.properties` |
 | Source-literal framing | Manifest `input_schema.source: "fastify_schema_body"` tags the shape as "what the source declares," not "what the runtime enforces"; docs do not use "validator-backed" framing |
 
+## M25 Product CLI Surface
+
+M25 introduces NO new CLI command, NO new flag, and NO new subcommand. The operator-visible surface change is entirely in the shape of the generated `tusq.manifest.json` (and the downstream `tusq-tools/*.json` and MCP `tools/call` responses that inherit from it) for capabilities whose `input_schema.properties` keys match a fixed canonical set of well-known PII field names. The manifest generator adds a single pure function (`extractPiiFieldHints`) that runs after `buildInputSchema()` and populates `capability.redaction.pii_fields` deterministically.
+
+| Commands exercised | How M25 surfaces |
+|--------------------|------------------|
+| `tusq scan <path>` | No scan-artifact shape change; `.tusq/scan.json` is byte-for-byte identical to HEAD `541abcd`; M25 operates entirely during manifest generation |
+| `tusq manifest` | Each `capability.redaction.pii_fields` is populated with the original-case keys of `input_schema.properties` whose normalized form matches the canonical PII set; order = iteration order of `input_schema.properties` |
+| `tusq compile` | Compiled tool `redaction.pii_fields` inherits the populated array verbatim; agents see the advisory field-name hints |
+| `tusq serve` | MCP `tools/call` response `redaction` inherits the populated `pii_fields`; agents receive the hints as metadata alongside every tool-call plan |
+| `tusq diff` | An M25-driven change in `redaction.pii_fields` flips the per-capability `capability_digest` (M13 already hashes `redaction` into the digest); the diff review queue surfaces the change for explicit re-approval |
+| `tusq approve` | Unchanged — M25 does not modify approval semantics; reviewers continue to approve via the M18 flow |
+| `tusq policy verify` / `tusq policy verify --strict` | Unchanged — M22 and M23 checks are orthogonal to `redaction` content; a populated `pii_fields` does not affect either verdict |
+
+### Manifest Output Shape Under M25
+
+| Capability situation | `redaction.pii_fields` (post-M25) |
+|----------------------|------------------------------------|
+| `input_schema.properties` contains canonical PII keys (`email`, `password`, `ssn`, ...) | `[<original-case key>, ...]` in declaration order |
+| `input_schema.properties` contains normalized-form matches (`user_email`, `USER_EMAIL`, `userEmail`) | `[<original-case key>, ...]` — original case preserved, normalization only affects matching |
+| `input_schema.properties` contains tail-match-only keys (`email_template_id`, `phone_book_url`) | `[]` — whole-key match only |
+| `input_schema.properties` is empty or absent | `[]` — byte-identical to pre-M25 |
+| Capability with no `input_schema.properties` | `[]` — byte-identical to pre-M25 |
+| Non-PII capabilities across any framework | `[]` — byte-identical to pre-M25 |
+
+### Canonical PII Name Set
+
+Enumerated in SYSTEM_SPEC § M25. The full V1.6 set is frozen in `src/cli.js`:
+
+| Category | Normalized names |
+|----------|------------------|
+| Email | `email`, `emailaddress`, `useremail` |
+| Phone | `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone` |
+| Government ID | `ssn`, `socialsecuritynumber`, `taxid`, `nationalid` |
+| Name | `firstname`, `lastname`, `fullname`, `middlename` |
+| Address | `streetaddress`, `zipcode`, `postalcode` |
+| Date of birth | `dateofbirth`, `dob`, `birthdate` |
+| Payment | `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban` |
+| Secrets | `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret` |
+| Network | `ipaddress` |
+
+### Sensitivity Class and Confidence Interactions
+
+| Field | M25 effect |
+|-------|------------|
+| `capability.sensitivity_class` | Unchanged — stays `"unknown"` on every capability in V1.6; M25 does NOT auto-escalate |
+| `capability.confidence` | Unchanged — M25 does NOT modify `scoreConfidence()`; PII name presence is not a confidence signal |
+| `capability.redaction.log_level` | Unchanged — stays `null` in V1.6 |
+| `capability.redaction.mask_in_traces` | Unchanged — stays `null` in V1.6 |
+| `capability.redaction.retention_days` | Unchanged — stays `null` in V1.6 |
+| `capability.capability_digest` | Re-computed when `pii_fields` changes (M13 hashes `redaction` into the digest) |
+
+### Failure UX
+
+M25 extraction either succeeds (populates `pii_fields`) or produces no match at all (`pii_fields: []`). There is no operator-visible failure path — M25 cannot cause `tusq manifest` to exit non-zero. Reviewers distinguish the two outcomes by inspecting `redaction.pii_fields` in the generated manifest.
+
+| Situation | Operator sees |
+|-----------|---------------|
+| At least one `input_schema.properties` key matches the canonical set | `redaction.pii_fields: [<matches>]` in declaration order |
+| No keys match | `redaction.pii_fields: []` (same as pre-M25) |
+| `input_schema.properties` empty or absent | `redaction.pii_fields: []` (same as pre-M25) |
+
+### M25 Local-Only Invariants
+
+| Invariant | How it shows up at manifest generation |
+|-----------|-----------------------------------------|
+| Static-only extraction | Pure function over in-memory `input_schema.properties` object; no `fs.readFile`, no `require`, no `eval`, no `new Function` |
+| Zero new dependencies | `package.json` MUST NOT gain `pii-detector`, `presidio`, `compromise`, or any NLP/PII library in V1.6 |
+| Whole-key match only | A field named `email_template_id` MUST NOT be flagged as `email`; normalization strips `_`/`-` and lowercases the key, then compares against the frozen set |
+| Deterministic output | `pii_fields` order equals iteration order of `input_schema.properties`; repeated `tusq scan` + `tusq manifest` runs produce byte-identical arrays |
+| Non-PII capabilities untouched | Capabilities whose `input_schema.properties` has no canonical match produce `pii_fields: []` (byte-identical to HEAD `541abcd`) |
+| No `sensitivity_class` auto-escalation | `sensitivity_class` remains `"unknown"` on every capability; M25 does not imply sensitivity |
+| Source-literal framing | `redaction.pii_fields` is a field-name hint, NOT a runtime PII detection claim; docs do not use "PII-validated" or "compliant" framing (SYSTEM_SPEC Constraint 16) |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

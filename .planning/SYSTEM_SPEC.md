@@ -2277,6 +2277,140 @@ M24 does not alter the approval-gate invariant set first stated in the M20 secti
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-081 through REQ-086-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M25: Static PII Field-Name Redaction Hints
+
+### Purpose
+
+VISION.md lines 167–168 name "detect sensitive fields such as PII, payments, secrets, and regulated data" and "produce redaction and retention defaults" as a V1 data-and-schema-understanding responsibility. M12 added the `capability.redaction` shape with four fields (`pii_fields`, `log_level`, `mask_in_traces`, `retention_days`) but shipped them with permissive defaults — `pii_fields: []`, the other three `null` — deferring inference entirely to V2. That was correct in V1.0 when `input_schema.properties` was empty for most routes.
+
+M15 (path-param extraction) and M24 (Fastify literal `schema.body` extraction) have since populated `input_schema.properties` with real declared field names for a meaningful slice of real SaaS codebases. The deterministic gap is now: every manifest generated against a codebase with declared `email`, `password`, or `ssn` body fields still emits `redaction.pii_fields: []`, even though the key names in `input_schema.properties` are literally telling the scanner which fields are sensitive. A reviewer looking at `tusq.manifest.json` sees `pii_fields: []` on a route that obviously handles PII and has to fix it by hand — the exact failure mode VISION.md line 73 flags ("treat manual manifest authoring as a failure of the engine, not a feature").
+
+M25 closes that gap in the narrowest deterministic zone: match the already-populated `input_schema.properties` keys against a fixed canonical set of well-known PII field names, and populate `redaction.pii_fields` with the matching names in source-declaration order. No value inspection, no regex over source, no new dependency, no new CLI flag, no semantic claim beyond "the field name matches a canonical PII name."
+
+### Scope Boundary
+
+M25 ships exactly one extraction path: `input_schema.properties` keys → `redaction.pii_fields` array via a fixed canonical name set. Everything else is explicitly out of scope for V1.6:
+
+| In-scope for M25 | Out-of-scope for V1.6 |
+|------------------|------------------------|
+| Whole-key case-insensitive match (normalized by stripping `_`/`-` and lowercasing) against a frozen canonical PII name set | Partial-key / tail-match (e.g., flagging `email_template_id` because it contains `email`) |
+| Cross-framework application — same extractor runs against every `input_schema.properties` object regardless of Express/Fastify/NestJS provenance | Nested descent into `properties.address.properties.zip_code` (top-level keys only in V1.6) |
+| Deterministic order matching `input_schema.properties` iteration order (source-literal declaration order from M15/M24) | Value inspection, payload sampling, or format-regex inference (e.g., detecting an email by regex on sample data) |
+| `capability.redaction.pii_fields` populated as an array of original-case field names | Auto-population of `redaction.log_level`, `mask_in_traces`, or `retention_days` (these stay `null` in V1.6) |
+| `capability_digest` re-computation when `redaction.pii_fields` changes (M13 semantics already cover this) | Auto-escalation of `capability.sensitivity_class` on PII match (stays `"unknown"`; explicit V2 increment owns sensitivity inference) |
+| Narrow canonical list covering English-language common PII field names | Multi-locale PII names (Spanish, German, Portuguese, Japanese, etc.) — V2 plugin scope |
+| Zero new dependencies, static in-memory computation | Runtime PII detection, sampling, or regulatory inference (GDPR/HIPAA/PCI mapping) |
+
+### Canonical PII Name Set (V1.6)
+
+The following set is enumerated explicitly and frozen in `src/cli.js`. All entries are shown in **normalized** form (lowercase, no underscores or hyphens). Match occurs when `key.toLowerCase().replace(/[_-]/g, '')` equals one of the entries.
+
+| Category | Normalized names |
+|----------|------------------|
+| Email | `email`, `emailaddress`, `useremail` |
+| Phone | `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone` |
+| Government ID | `ssn`, `socialsecuritynumber`, `taxid`, `nationalid` |
+| Name | `firstname`, `lastname`, `fullname`, `middlename` |
+| Address | `streetaddress`, `zipcode`, `postalcode` |
+| Date of birth | `dateofbirth`, `dob`, `birthdate` |
+| Payment | `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban` |
+| Secrets | `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret` |
+| Network | `ipaddress` |
+
+Expansions to this list are material governance events. Any V1.6.x or V2 expansion lands under its own ROADMAP milestone with a fresh re-approval expectation (reviewers re-evaluate affected capabilities via `tusq diff`) and a RELEASE_NOTES entry.
+
+### Extraction Rules
+
+The extractor (`extractPiiFieldHints` in `src/cli.js`) runs after `buildInputSchema()` finishes populating `capability.input_schema.properties`. For each generated capability:
+
+1. If `input_schema.properties` is absent, empty, or not a plain object, return `[]`.
+2. Iterate keys in object-insertion order (source-literal declaration order established under M15/M24).
+3. For each key, compute `normalized = key.toLowerCase().replace(/[_-]/g, '')`.
+4. If `normalized` is in the canonical set, push the **original-case** `key` into the result array.
+5. Return the result array. No deduplication (insertion order already guarantees no duplicates from a single `properties` object).
+
+The extractor is a pure function — no filesystem I/O, no side effects. It is invoked once per capability during manifest generation, immediately before `buildRedactionDefaults()` (which supplies the rest of the `redaction` shape).
+
+### Pipeline Propagation
+
+```
+input_schema.properties (already populated by M15/M24/heuristic paths)
+   └─ extractPiiFieldHints(properties)                                      # M25; pure function, in-memory only
+      └─ capability.redaction.pii_fields                                    # populated array, declaration order
+         └─ capability_digest (M13)                                         # re-hashed when pii_fields changes
+            └─ tusq.manifest.json capability.redaction                      # persisted artifact
+               └─ tusq-tools/*.json redaction                               # inherits pii_fields verbatim
+                  └─ MCP tools/call redaction                               # agents see pii_fields as advisory metadata
+```
+
+No new artifact field is introduced. `redaction.pii_fields` is the existing M12 array; M25 simply supplies a non-empty default for routes whose `input_schema.properties` declares canonical PII names.
+
+### Default Behavior Preservation Table
+
+| Input | Pre-M25 `redaction.pii_fields` | Post-M25 `redaction.pii_fields` |
+|-------|--------------------------------|----------------------------------|
+| Capability with `input_schema.properties: { email: {...}, password: {...} }` | `[]` | `["email", "password"]` |
+| Capability with `input_schema.properties: { user_email: {...}, FIRST_NAME: {...} }` | `[]` | `["user_email", "FIRST_NAME"]` |
+| Capability with `input_schema.properties: { email_template_id: {...}, phone_book_url: {...} }` | `[]` | `[]` (whole-key match only) |
+| Capability with `input_schema.properties: {}` or absent | `[]` | `[]` |
+| Capability with path-param-only `input_schema.properties: { id: {...} }` | `[]` | `[]` (no canonical match) |
+| Non-Fastify/Non-Express/Non-NestJS capability with no `input_schema.properties` | `[]` | `[]` |
+
+The only observable manifest change is on capabilities whose `input_schema.properties` contains at least one key whose normalized form is in the canonical set.
+
+### Confidence Model Interaction
+
+M25 does NOT modify `scoreConfidence()`. PII field-name presence is not a confidence signal; it is a redaction signal. A capability with `redaction.pii_fields: ["email"]` has the same confidence score as the same capability without M25.
+
+### Sensitivity Class Interaction
+
+M25 does NOT modify `capability.sensitivity_class`. `sensitivity_class` remains `"unknown"` on every capability in V1.6. Auto-escalating to `"confidential"` or `"restricted"` on PII match would overclaim, because sensitivity is a composite judgment (data class + regulatory scope + organizational posture) that field-name matching alone cannot prove. Sensitivity inference is reserved for an explicit V2 increment.
+
+### Local-Only Invariants
+
+| Invariant | How it shows up during manifest generation |
+|-----------|---------------------------------------------|
+| No dynamic evaluation | The extractor is a pure function over an already-built `input_schema.properties` object; no `require`, no `eval`, no `new Function` |
+| No network I/O | Manifest generation remains filesystem-only; no downloads, no registry lookups, no PII-dictionary fetch |
+| No new runtime dependency | `package.json` MUST NOT gain `pii-detector`, `presidio`, `compromise`, or any NLP/PII library; M25 ships with zero new `package.json` entries |
+| Graceful degradation | When `input_schema.properties` is absent or empty, `pii_fields: []` (byte-identical to pre-M25) |
+| Deterministic output | `pii_fields` order is the iteration order of `input_schema.properties`; repeated runs produce byte-identical arrays |
+| Whole-key match only | Partial / substring matches are forbidden; a field named `email_template_id` MUST NOT be flagged |
+| No `sensitivity_class` auto-escalation | `sensitivity_class` stays `"unknown"` even when `pii_fields` is non-empty |
+| No source-text regex | The extractor never opens or scans source files; it operates exclusively on the in-memory `input_schema.properties` object |
+
+### V1.6 Limitations
+
+| Limitation | Rationale | V2 Plan |
+|------------|-----------|---------|
+| English-language canonical names only | Covers the dominant real-SaaS case; multi-locale inference would require either a localization dictionary (new dependency) or locale detection (new heuristic) | V2 `tusq scan --plugin pii-multilocale` introduces opt-in localized canonical sets behind a plugin flag; per-language canonical files owned by contributors |
+| Top-level keys only (no nested descent into `properties.address.properties.zip_code`) | V1.5 extraction already limits to one level of depth (M24 Constraint 13); consistency with the M24 boundary keeps the spec reviewable | V2 extends both M24 and M25 to nested descent under an explicit `max_depth` policy |
+| Whole-key match only (no tail-match, no substring match) | Tail-matching creates false positives on innocuous names (`phone_book_url`, `email_template_id`); whole-key is the most defensible rule | V2 may ship an opt-in `tusq scan --pii-heuristic loose` mode for tail-matching; V1.6 keeps the conservative default |
+| No value inspection | V1.6 is static-only by invariant (Constraint 15); inspecting values would violate the local-only boundary and require runtime sampling | V2 runtime-instrumentation increment may sample payloads under an explicit operator opt-in |
+| No `log_level` / `mask_in_traces` / `retention_days` inference | These three fields encode organizational policy (log retention, redaction rules, regulatory deadlines) that field-name matching cannot derive | V2 reads a repo-local policy file (e.g., `.tusq/redaction-policy.json`) to supply organization-specific defaults |
+| No `sensitivity_class` auto-escalation | Sensitivity is a composite judgment (data class + regulatory scope + org posture); field-name match alone cannot prove it | V2 sensitivity-inference increment ships with its own constraint entry and explicit escalation rules |
+| Capability-digest flip on M25 upgrade | Every capability whose `input_schema.properties` contains a canonical PII name will see its digest flip on the first post-M25 scan, revoking effective approval until re-approval | Expected behavior — M13 approval gate is the correct migration path; RELEASE_NOTES MUST document the re-approval requirement |
+
+### Approval-Gate Invariant Preservation
+
+M25 does not alter the approval-gate invariant set first stated in the M20 section. For clarity:
+
+1. A capability whose `redaction.pii_fields` changes under M25 (from `[]` to a non-empty array) MUST have its `capability_digest` re-computed; M13 semantics propagate verbatim. A reviewer MUST explicitly re-approve the capability for it to appear in `tools/list`.
+2. `tools/list` continues to filter by `approved: true`. A newly-populated `redaction.pii_fields` does NOT implicitly approve the capability; if approval was previously granted on an empty `pii_fields`, M13 diff detection will surface the change for re-approval.
+3. M25 does NOT change `tusq serve` behavior. The `redaction` shape is passed through to `tools/call` responses unchanged; agents see `pii_fields` as advisory metadata, not as an enforced constraint on payloads.
+4. M25 does NOT change `tusq policy verify --strict` behavior. Strict mode's checks (name exists, approved, not review-needed) are orthogonal to redaction content; a capability with populated `pii_fields` and `approved: true` passes `--strict` on the same terms as one with empty `pii_fields` and `approved: true`.
+
+### Docs and Tests Required Before Implementation
+
+- `README.md` — add a one-line note under the manifest-format section that canonical PII field names (by whole-key normalized match) populate `redaction.pii_fields` by default; name the canonical set URL-reference (pointing to `website/docs/manifest-format.md`) and explicitly state that this is a source-literal name hint, not a runtime PII-detection claim; do NOT use "PII detection," "PII-validated," or "compliant" framing.
+- `website/docs/manifest-format.md` — add a "PII Field-Name Redaction Hints" subsection enumerating the full canonical set, the normalization rule (lowercase + strip `_`/`-`), the whole-key match invariant, the no-auto-escalation rule for `sensitivity_class`, the fall-back semantics (empty `properties` → empty `pii_fields`), the V1.6 boundary (field-name-only, no value inspection, no nested descent, no format/regex), and the explicit framing that M25 does NOT prove runtime PII handling — `pii_fields` is a name hint, not a validation gate.
+- `website/docs/redaction.md` (if present) or the manifest-format redaction subsection — add a "What M25 does NOT do" callout enumerating: does not inspect values, does not execute code, does not fetch any dictionary, does not prove regulatory compliance, does not auto-set `sensitivity_class`, does not modify `log_level` / `mask_in_traces` / `retention_days`.
+- `tests/smoke.mjs` — add coverage for: (a) Fastify fixture route with literal `schema.body` declaring `email` and `password` produces `redaction.pii_fields: ["email", "password"]` in declaration order; (b) case/underscore/hyphen variants (`userEmail`, `user_email`, `USER_EMAIL`, `user-email`) all match; (c) whole-key invariant: `email_template_id`, `phone_book_url`, `ssn_document_uri` produce `pii_fields: []`; (d) capability with empty or absent `input_schema.properties` produces `pii_fields: []`; (e) Express and NestJS fixtures with no PII-named fields produce byte-identical manifests pre/post-M25; (f) repeated manifest generations produce byte-identical `pii_fields` ordering; (g) a capability whose `input_schema.properties` acquires a PII name flips `capability_digest` (M13) and surfaces under `tusq diff`; (h) `sensitivity_class` remains `"unknown"` on every capability even when `pii_fields` is populated; (i) `tusq policy verify --strict` is unchanged by M25 (strict's approval-alignment check does not inspect `redaction`).
+- `tests/fixtures/fastify-sample/src/server.ts` — extend the existing Fastify sample to include at least one route whose literal `schema.body` declares `email`, `password`, and a non-PII field like `subject`; ensure the route exercises case/underscore variants.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario asserting that the Fastify fixture generates `redaction.pii_fields` in declaration order and that repeated runs (`repeat_runs=3`) produce byte-identical arrays.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-088 through REQ-094-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2293,3 +2427,5 @@ The dev role is accountable for implementing all items above. The QA role is acc
 12. **M23 least-privilege-validation invariant** — A passing `tusq policy verify --strict` run is strictly a policy/manifest alignment statement at verify time: every name in `allowed_capabilities` exists in the referenced manifest, is `approved: true`, and is not blocked on review. It is NOT a runtime safety gate. Strict mode MUST NOT be documented, described, or framed as an "execution safety check," a "pre-flight for serve --policy," a "manifest freshness check," a "runtime reachability probe," or any phrase that implies a PASS makes execution safe. Strict mode performs exactly two local filesystem reads (the policy file and the manifest file), writes to stdout/stderr, and exits 0 or 1. It never binds a TCP port, never opens a network socket, never executes any capability, never mutates the manifest, and never reads any other file.
 13. **M24 static-literal-extraction invariant** — Fastify `schema.body` extraction is strictly static: the extractor reads source bytes via `fs.readFile` and applies regex + balanced-brace matching on the literal text. It MUST NOT import `fastify`, `ajv`, `@sinclair/typebox`, or any validator runtime; MUST NOT evaluate source code via `require`, `eval`, `new Function`, or `ts-node`; and MUST NOT make any network I/O. When the `schema` value is not a literal object, when `body` is not a literal object, when `properties` is absent, or when any brace/bracket is unbalanced, the extractor MUST drop the entire `schema_fields` record and fall back to M15 behavior byte-for-byte. Partial extraction is forbidden. Manifest output for non-Fastify fixtures and for Fastify routes without a literal `schema.body` block MUST be byte-for-byte identical to HEAD `35b7c9c`.
 14. **M24 source-literal-framing invariant** — The extracted `input_schema` shape represents "what the source declares," NOT "what the Fastify runtime would validate." The manifest `input_schema.source` field tags the extraction as `fastify_schema_body`, and docs/README/CLI-help/launch artifacts MUST NOT describe it as "validator-backed," "runtime-validated," "ajv-validated," or any phrase that implies the manifest shape is enforced at runtime by the framework. The defensible framing is "the declared body schema as it appears literally in source." M24 does NOT invoke any JSON-Schema validator; propagation to `tools/call` dry-run validation continues to use the narrow four-rule validator specified under M20. Any future runtime-enforced validation lands under a separate milestone with its own constraint entry.
+15. **M25 static-name-matching invariant** — PII field-name redaction hints are produced by a pure function over the already-built `input_schema.properties` object. The matching rule is whole-key case-insensitive comparison after normalization (`toLowerCase()` + strip `_` and `-`) against a frozen canonical set explicitly enumerated in `src/cli.js`. Partial-key, tail-match, or substring matching is forbidden: `email_template_id` MUST NOT match `email`. The extractor MUST NOT read any source file; MUST NOT inspect any value; MUST NOT invoke regex over source text; MUST NOT make network I/O; MUST NOT import any PII-detection or NLP library (no `pii-detector`, no `presidio`, no `compromise`). `redaction.pii_fields` ordering MUST equal the iteration order of `input_schema.properties` (source-literal declaration order from M15/M24). Repeated manifest generations on the same repo MUST produce byte-identical `pii_fields` arrays. Manifest output for capabilities whose `input_schema.properties` contains no canonical PII keys MUST be byte-for-byte identical to HEAD `541abcd`. Any expansion of the canonical set beyond the V1.6 list is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
+16. **M25 redaction-framing invariant** — A non-empty `redaction.pii_fields` array means "the field key matches a well-known PII canonical name." It does NOT mean the field carries PII at runtime, that the route is GDPR/HIPAA/PCI-compliant, or that any payload validation occurs. Docs/README/CLI-help/launch artifacts MUST NOT describe M25 as "PII detection," "PII validation," "PII-validated," "GDPR-compliant," "HIPAA-compliant," "PCI-compliant," "automated redaction," or any phrase that implies regulatory-grade or runtime-enforced PII handling. The defensible framing is "well-known PII field-name hints derived statically from source-declared field keys." M25 MUST NOT auto-escalate `capability.sensitivity_class` on PII match; `sensitivity_class` remains `"unknown"` until an explicit V2 sensitivity-inference increment ships with its own constraint entry. M25 MUST NOT auto-populate `redaction.log_level`, `redaction.mask_in_traces`, or `redaction.retention_days` — those remain `null` in V1.6 and are owned by a future organizational-policy increment.
