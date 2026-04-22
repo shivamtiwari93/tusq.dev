@@ -25,10 +25,11 @@ This release gives teams a concrete terminal workflow:
 5. compile approved capabilities into JSON tool definitions
 6. expose those compiled tools through a local, describe-only MCP endpoint
 7. re-review drift with `tusq diff --review-queue` when the codebase or manifest changes, and optionally enforce `--fail-on-unapproved-changes` in CI
+8. share a deterministic, offline review artifact with `tusq docs --out docs/capabilities.md`, which renders approval state, governance metadata, redaction policy, examples, constraints, and provenance directly from the manifest
 
 What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls, does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
-The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, and an inspectable describe-only MCP surface.
+The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, an inspectable describe-only MCP surface, and an offline, deterministic Markdown capability review packet from `tusq docs`.
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
@@ -61,6 +62,8 @@ tusq manifest
 tusq approve --all --reviewer you@example.com
 tusq compile
 tusq serve
+# share a reviewable Markdown artifact with stakeholders who do not run the CLI:
+tusq docs --out docs/capabilities.md
 # later, when the codebase changes, re-review drift:
 tusq diff --from previous.manifest.json --to tusq.manifest.json --review-queue
 # and gate CI on unapproved drift:
@@ -85,6 +88,7 @@ npm link
 ```
 
 - Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` (or approve a single capability by name) → `tusq compile` → `tusq serve`
+- Generate a shareable review packet with `tusq docs --out docs/capabilities.md`; the output is deterministic and offline, so it can be checked in, diffed, and circulated to reviewers who do not run the CLI
 - When the codebase or manifest changes, run `tusq diff --from <old-manifest> --to tusq.manifest.json --review-queue` to see what drifted, and use `--fail-on-unapproved-changes` if you want a CI gate
 - Review `tusq.manifest.json` before approving any capability, especially approval state, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction`
 - After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
@@ -124,7 +128,7 @@ Shipping `tusq.dev v0.1.0` today.
 
 Current V1 scope:
 - Express, Fastify, NestJS
-- `init` / `scan` / `manifest` / `review` / `approve` / `compile` / `serve` / `diff`
+- `init` / `scan` / `manifest` / `review` / `approve` / `compile` / `serve` / `diff` / `docs`
 - reviewed `tusq.manifest.json`
 - explicit approval state and optional approval trail
 - visible governance metadata (`side_effect_class`, `sensitivity_class`, `auth_hints`)
@@ -133,6 +137,7 @@ Current V1 scope:
 - approved capability compilation
 - local describe-only MCP server
 - manifest-version diff with review-queue output and `--fail-on-unapproved-changes` CI gate
+- offline deterministic Markdown capability documentation via `tusq docs`
 - repo-local evaluation path for launch
 
 Explicitly not in V1:

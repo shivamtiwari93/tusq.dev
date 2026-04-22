@@ -4,10 +4,10 @@
 
 - Previous launch framing leaned too hard on the internal category label "capability compiler" before qualifying the buyer problem
 - The last launch pass fixed most boundary issues, but it still let the governance inventory read like the headline instead of the proof
-- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16, and the subsequent launch pass still framed approval as "edit the manifest by hand" even after `tusq approve` shipped in M18 with reviewer identity, timestamp, and audit-trail flags
+- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16, then the subsequent pass still framed approval as "edit the manifest by hand" even after `tusq approve` shipped in M18 with reviewer identity, timestamp, and audit-trail flags, and the most recent pass still described a 10-command surface even after `tusq docs` shipped in M19 as a repo-local Markdown capability-documentation generator
 - Launch copy should instead start with the operator reality: an existing Express, Fastify, or NestJS product, pressure to make that product AI-visible, and a need to keep review and control intact
 - The category label still matters, but only after the audience, problem, proof sequence, and V1 boundary are clear
-- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, governed `tusq approve` audit trail in, approved tool JSON out, describe-only MCP out, drift re-reviewed through `tusq diff`
+- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, governed `tusq approve` audit trail in, approved tool JSON out, describe-only MCP out, drift re-reviewed through `tusq diff`, and adoption documentation generated offline through `tusq docs`
 
 ## Audience
 
@@ -96,9 +96,10 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 ## Product Truth
 
 - Package version is `0.1.0`
-- The CLI surface is `init`, `scan`, `manifest`, `compile`, `serve`, `review`, `approve`, `diff`, `version`, and `help`
+- The CLI surface is `init`, `scan`, `manifest`, `compile`, `serve`, `review`, `docs`, `approve`, `diff`, `version`, and `help`
 - `tusq approve [capability] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]` sets `approved: true` on one or many capabilities and records `approved_by` / `approved_at` so approval is a first-class CLI action rather than a hand-edit
 - `tusq diff` compares two `tusq.manifest.json` versions and, with `--review-queue`, emits a structured queue of capabilities that need re-review; `--fail-on-unapproved-changes` turns that queue into a CI gate
+- `tusq docs [--manifest <path>] [--out <path>] [--verbose]` generates deterministic Markdown capability documentation from `tusq.manifest.json` — fully offline, no network or execution — so reviewers and adopters can share a human-readable artifact that mirrors approval state, governance metadata, redaction policy, examples, constraints, and provenance
 - Supported frameworks are Express, Fastify, and NestJS only
 - `tusq scan` uses static heuristics to detect routes and write `.tusq/scan.json`
 - `tusq manifest` generates `tusq.manifest.json` and preserves prior approvals
@@ -122,6 +123,7 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 - tusq.dev surfaces governance metadata reviewers can inspect before exposure: `side_effect_class`, `sensitivity_class`, and `auth_hints`
 - tusq.dev can expose compiled tools through a local, describe-only MCP server with inspectable schema, examples, and constraints
 - tusq.dev can compare manifest versions with `tusq diff`, emit a review queue of drifted capabilities, and optionally fail on unapproved changes for CI enforcement
+- tusq.dev can generate deterministic, offline Markdown capability documentation from a manifest with `tusq docs`, so approval trail, governance metadata, examples, constraints, and provenance can be shared with reviewers without running the MCP endpoint
 - tusq.dev gives teams a governed path from existing SaaS code to AI-visible capability definitions without starting from prompts
 - V1 is self-hosted and terminal-native; teams can run the workflow locally
 

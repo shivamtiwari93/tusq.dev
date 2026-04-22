@@ -6,7 +6,7 @@
 
 - Publish the announcement and release notes with the same V1 framing: existing Node.js SaaS teams, reviewed manifest, approved tool compilation, describe-only MCP serve, explicit V1 boundary
 - Update the homepage and README entry points so the first screen a visitor sees matches the release story
-- Share one terminal-first post showing the launch workflow from `init` through `serve`, including `tusq approve --all --reviewer you@example.com` as the explicit governance step, plus a brief callout that `tusq diff` closes the loop when the codebase changes
+- Share one terminal-first post showing the launch workflow from `init` through `serve`, including `tusq approve --all --reviewer you@example.com` as the explicit governance step, plus a brief callout that `tusq diff` closes the loop when the codebase changes and `tusq docs --out capabilities.md` produces an offline Markdown review artifact for reviewers and adopters
 - Share one short operator-proof post: "your product logic already exists; the missing piece is reviewed AI exposure"
 - Share one short proof-path post: "supported repo -> reviewed manifest -> approved tool JSON -> describe-only MCP"
 - Use "try it locally from the repo" as the launch CTA until package distribution is confirmed
@@ -34,6 +34,7 @@
 - Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out approval state, governance metadata, `redaction`, and the `examples` / `constraints` payload that survive into MCP responses
 - Publish a short "how to try it today" post that points users to the repo workflow instead of a public package-manager claim
 - Publish a short "keeping exposure governed after change" post focused on `tusq diff`: how the review queue surfaces drifted capabilities, and how `--fail-on-unapproved-changes` turns it into a CI gate
+- Publish a short "share the review, not just the manifest" post focused on `tusq docs`: how `tusq docs --out docs/capabilities.md` generates a deterministic, offline Markdown packet showing approval state, governance metadata, redaction policy, examples, constraints, and provenance so reviewers who do not run the CLI can still audit the exposure surface
 
 ### Day 5-7
 
