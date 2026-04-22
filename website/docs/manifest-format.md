@@ -256,6 +256,38 @@ Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` p
 - `tusq compile` gates only on `approved: true`; approval metadata remains manifest-only audit context.
 - `redaction` propagates to compiled tools and MCP `tools/call` so runtime consumers can apply masking/retention policy.
 
+### PII Field-Name Redaction Hints (V1.6)
+
+`tusq manifest` automatically populates `redaction.pii_fields` by matching each `input_schema.properties` key name against a frozen canonical set of well-known PII field names. This is a pure, zero-dependency, in-memory extraction — no AST parsing, no value inspection, no network I/O.
+
+**Normalization rule:** each key is normalized with `toLowerCase()` then stripping `_` and `-`. The normalized form is looked up as a whole key in the canonical set. Substring and tail matches are forbidden.
+
+- `user_email` → normalizes to `useremail` → **matches** (in canonical set)
+- `email_template_id` → normalizes to `emailtemplateid` → **does NOT match** (not in canonical set)
+- Original casing is preserved in the output: `user_email` stays `user_email`, not `useremail`.
+
+**Canonical V1.6 set (36 normalized names, 9 categories):**
+
+| Category | Canonical names |
+|----------|----------------|
+| Email | `email`, `emailaddress`, `useremail` |
+| Phone | `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone` |
+| Government ID | `ssn`, `socialsecuritynumber`, `taxid`, `nationalid` |
+| Name | `firstname`, `lastname`, `fullname`, `middlename` |
+| Address | `streetaddress`, `zipcode`, `postalcode` |
+| Date of birth | `dateofbirth`, `dob`, `birthdate` |
+| Payment | `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban` |
+| Secrets | `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret` |
+| Network | `ipaddress` |
+
+**Invariants:**
+- `sensitivity_class` is NOT auto-escalated — it stays `"unknown"` in V1.6 regardless of `pii_fields` content.
+- `log_level`, `mask_in_traces`, and `retention_days` are NOT auto-populated.
+- Applies uniformly to Express, Fastify, and NestJS capabilities.
+- V1.6 canonical list is frozen. Any expansion requires its own ROADMAP milestone with a re-approval expectation.
+
+**This is a source-literal name hint, NOT runtime PII detection.** A `pii_fields` entry means the field's normalized name matches a canonical name. It does NOT prove the field carries PII at runtime, does NOT imply GDPR/HIPAA/PCI compliance, and must not be described as "PII detection" or "PII-validated." Final redaction posture remains the reviewer's responsibility.
+
 ## Version history and digests (V1)
 
 - `manifest_version` increments each time `tusq manifest` regenerates the file.

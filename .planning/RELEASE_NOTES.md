@@ -332,6 +332,43 @@ When a Fastify route declares a literal `schema: { body: { properties: {...}, re
 
 **All 87 acceptance criteria** (REQ-001–REQ-087) pass on HEAD b651135: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (7 scenarios)`.
 
+## PII Field-Name Redaction Hints (M25 — V1.6)
+
+`tusq manifest` now automatically populates `capability.redaction.pii_fields` by matching `input_schema.properties` key names against a frozen canonical set of well-known PII field names. No AST parsing, no value inspection, no external library, and no network I/O — the extractor is a pure in-memory function over the already-built `input_schema.properties` object.
+
+**How it works:**
+- Each property key from `input_schema.properties` is normalized: `toLowerCase()` then strip `_` and `-`.
+- The normalized key is looked up (whole-key only) in the `PII_CANONICAL_NAMES` frozen Set in `src/cli.js`.
+- Matched keys are returned in source-declaration order with their original casing preserved (`user_email` stays `user_email`, not `useremail`).
+- `pii_fields` is `[]` when no keys match — byte-identical to the V1 default.
+
+**Canonical V1.6 set (36 normalized names across 9 categories):**
+- Email: `email`, `emailaddress`, `useremail`
+- Phone: `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone`
+- Government ID: `ssn`, `socialsecuritynumber`, `taxid`, `nationalid`
+- Name: `firstname`, `lastname`, `fullname`, `middlename`
+- Address: `streetaddress`, `zipcode`, `postalcode`
+- Date of birth: `dateofbirth`, `dob`, `birthdate`
+- Payment: `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban`
+- Secrets: `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret`
+- Network: `ipaddress`
+
+**Key invariants:**
+- `user_email` matches (`useremail` is in the set); `email_template_id` does NOT match (`emailtemplateid` is not in the set). Whole-key match only — no substring, no tail match.
+- `sensitivity_class` is NOT auto-escalated — it remains `"unknown"` in V1.6 regardless of `pii_fields` content.
+- `log_level`, `mask_in_traces`, and `retention_days` are NOT auto-populated — they remain at V1 permissive defaults.
+- Applies uniformly across Express, Fastify, and NestJS capabilities (operates on the already-normalized `input_schema.properties`, not on source text).
+
+**Upgrade note — digest flip and re-approval:** Populating `pii_fields` on a capability that previously had `pii_fields: []` changes `capability_digest` (M13 hashes the full `redaction` object). Any affected capability will disappear from `tools/list` until explicitly re-approved via `tusq approve`. Use `tusq diff` to see which capabilities are affected before and after upgrading to M25. This is the correct governance path — it is intentional, not a bug.
+
+**Framing boundary** (SYSTEM_SPEC Constraint 16): A `pii_fields` entry means the field's normalized key matches a well-known PII name in the V1.6 set. It does NOT prove the field carries PII at runtime, does NOT imply GDPR/HIPAA/PCI compliance, and MUST NOT be described as "PII detection" or "PII-validated." Reviewers remain responsible for final redaction posture.
+
+**V1.6 canonical list is frozen.** Any expansion of `PII_CANONICAL_NAMES` is a material governance event that must land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
+
+**New eval scenario** — `pii-field-hint-extraction-determinism` extends the governed-cli eval harness to 8 scenarios. It runs `tusq scan` + `tusq manifest` three times on the pii-hint-sample fixture and asserts that POST /auth, POST /register, and GET /catalog produce the expected `pii_fields` arrays with identical ordering across all three runs.
+
+**All 93 acceptance criteria** (REQ-001–REQ-093) pass on HEAD ca29d17: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (8 scenarios)`.
+
 ## Known V1 Limits And Non-Claims
 
 - **Heuristic scanner:** Route extraction uses regex-based static analysis, not a full AST. Complex dynamic route registration patterns may be missed or produce low-confidence results. Users should review the manifest before compiling.
