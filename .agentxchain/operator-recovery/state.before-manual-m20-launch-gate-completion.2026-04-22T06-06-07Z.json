@@ -2,10 +2,31 @@
   "schema_version": "1.1",
   "run_id": "run_581c22fd7542f94e",
   "project_id": "tusq-dev",
-  "status": "completed",
+  "status": "active",
   "phase": "launch",
   "accepted_integration_ref": "git:c975bf993e98cb9553142ce249875f692f2b970c",
-  "active_turns": {},
+  "active_turns": {
+    "turn_166280b7877a801b": {
+      "turn_id": "turn_166280b7877a801b",
+      "run_id": "run_581c22fd7542f94e",
+      "assigned_role": "product_marketing",
+      "status": "dispatched",
+      "attempt": 1,
+      "assigned_at": "2026-04-22T06:05:36.751Z",
+      "deadline_at": "2026-04-22T06:25:36.752Z",
+      "runtime_id": "local-product-marketing",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "c975bf993e98cb9553142ce249875f692f2b970c",
+        "clean": true,
+        "captured_at": "2026-04-22T06:05:36.562Z",
+        "dirty_snapshot": {}
+      },
+      "assigned_sequence": 12,
+      "concurrent_with": [],
+      "dispatched_at": "2026-04-22T06:05:36.827Z"
+    }
+  },
   "turn_sequence": 12,
   "last_completed_turn_id": "turn_afcd0f5cfdb307bd",
   "blocked_on": null,
@@ -20,15 +41,21 @@
     "planning_signoff": "passed",
     "implementation_complete": "passed",
     "qa_ship_verdict": "passed",
-    "launch_ready": "passed"
+    "launch_ready": "pending"
   },
-  "budget_reservations": {},
+  "budget_reservations": {
+    "turn_166280b7877a801b": {
+      "reserved_usd": 2,
+      "role_id": "product_marketing",
+      "created_at": "2026-04-22T06:05:36.433Z"
+    }
+  },
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T05:22:18.137Z",
-  "phase_entered_at": "2026-04-22T06:06:07.000Z",
+  "phase_entered_at": "2026-04-22T05:56:51.000Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,

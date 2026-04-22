@@ -2,14 +2,16 @@
   "session_id": "session_cf2afe11a1c396e4",
   "run_id": "run_581c22fd7542f94e",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-22T06:06:07.000Z",
-  "checkpoint_reason": "operator_recovery_m20_launch_gate_completion",
-  "run_status": "completed",
+  "last_checkpoint_at": "2026-04-22T06:05:36.775Z",
+  "checkpoint_reason": "turn_assigned",
+  "run_status": "active",
   "phase": "launch",
   "last_phase": "launch",
-  "last_turn_id": "turn_afcd0f5cfdb307bd",
+  "last_turn_id": "turn_166280b7877a801b",
   "last_completed_turn_id": "turn_afcd0f5cfdb307bd",
-  "active_turn_ids": [],
+  "active_turn_ids": [
+    "turn_166280b7877a801b"
+  ],
   "last_role": "product_marketing",
   "pending_gate": null,
   "pending_run_completion": null,
@@ -21,6 +23,6 @@
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": ".agentxchain/dispatch/turns/turn_afcd0f5cfdb307bd"
+    "dispatch_dir": ".agentxchain/dispatch/turns/turn_166280b7877a801b"
   }
 }
