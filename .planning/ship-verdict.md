@@ -2,6 +2,32 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_2aae9109760b8f5f (role=qa, 2026-04-22)
+
+This QA turn challenges the prior accepted dev turn (turn_5a2b57dd16d8157e) independently and does not rubber-stamp it. HEAD is 82f88cb on run_581c22fd7542f94e.
+
+**Challenge 1 — Substantive source changes since last QA turn.** Last accepted QA turn (turn_8b946491c6c37565) operated on HEAD 486874e. Current HEAD is 82f88cb (`checkpoint: turn_5a2b57dd16d8157e (role=dev, phase=implementation)`). `git diff` between those HEADs shows 10 files changed: `src/cli.js` (loadAndValidatePolicy, --policy flag, dry_run_plan builder, plan_hash computation, argument validation, path param substitution, allowed_capabilities filter), `tests/smoke.mjs` (REQ-058–REQ-063 coverage), `tests/evals/governed-cli-scenarios.json` (2 new M20 eval scenarios), `tests/eval-regression.mjs` (runPolicyEvalScenario harness, 4-scenario count), `website/docs/cli-reference.md`, `website/docs/execution-policy.md` (new page), `website/docs/mcp-server.md`, `website/sidebars.ts`, `README.md`, `.planning/IMPLEMENTATION_NOTES.md`. These are substantive source and test changes requiring independent QA verification — not a checkpoint-only commit. **Challenge upheld: 6 new M20 criteria (REQ-058–REQ-063) require independent verification.**
+
+**Challenge 2 — Acceptance matrix missing REQ-058–REQ-063.** The dev turn added M20 implementation and smoke tests but did not add the corresponding acceptance criteria entries. Fixed this turn: added REQ-058 (startup failure UX), REQ-059 (describe-only no-op), REQ-060 (dry-run plan shape), REQ-061 (plan_hash determinism), REQ-062 (validation error shape), REQ-063 (allowed_capabilities filter). Acceptance matrix now contains 63 criteria, all PASS. **Challenge raised and fixed.**
+
+**Challenge 3 — RELEASE_NOTES.md count and missing M20 section.** RELEASE_NOTES.md still stated "57 acceptance criteria" and had no M20 section (Opt-In Execution Policy / Dry-Run Mode). Fixed this turn: updated the count to 63 and added M20 section. **Challenge raised and fixed.**
+
+**Challenge 4 — ship-verdict.md had no M20 challenge entry.** This section adds it. **Challenge raised and fixed (this entry).**
+
+**Challenge 5 — Independent npm test on HEAD 82f88cb.** Ran `npm test` → exit 0, "Smoke tests passed" and "Eval regression harness passed (4 scenarios)". Both suites pass. Smoke covers REQ-058–REQ-063. Eval covers 4 scenarios: express-governed-workflow, manifest-diff-review-queue, policy-dry-run-plan-shape, policy-dry-run-approval-gate. Not inherited from dev evidence. **Challenge resolved.**
+
+**Challenge 6 — CLI surface on HEAD 82f88cb.** `node bin/tusq.js serve --help` → exit 0; usage includes `--policy <path>`. `node bin/tusq.js help` → exit 0; 11 commands: init, scan, manifest, compile, serve, review, docs, approve, diff, version, help. 11-command surface intact. **Challenge resolved: --policy flag present; no surface regressions.**
+
+**Challenge 7 — Local-only invariant (SYSTEM_SPEC line 1708).** Reviewed `src/cli.js` implementation: dry_run_plan builder does not make outbound HTTP, DB, or socket I/O. `executed: false` is hardcoded in every dry-run response path. The plan_hash computation uses crypto.createHash (local only). No code path under any policy mode performs live API execution. **Challenge resolved: M20 local-only invariant satisfied.**
+
+**Challenge 8 — Approval gate invariant preserved.** Under dry-run mode, only approved capabilities are served through `tools/list` (the existing V1 approval filter is unchanged). The `allowed_capabilities` field is a strict subset filter on top of approval — it cannot bypass the approval requirement. **Challenge resolved: approval gate invariant intact.**
+
+**Independent test run (2026-04-22, HEAD 82f88cb):** `npm test` → exit 0. `node bin/tusq.js serve --help` → exit 0 with `--policy`. `node bin/tusq.js help` → exit 0 with 11 commands. All independent, not inherited from prior dev evidence.
+
+**Result:** All 63 acceptance criteria (REQ-001–REQ-063) PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
+---
+
 ## QA Challenge — turn_8b946491c6c37565 (role=qa, 2026-04-22)
 
 This QA turn challenges the prior accepted QA turn (turn_90173ffadc289753) independently and does not rubber-stamp it. HEAD is 486874e on run_aa36ba7784c7784b.

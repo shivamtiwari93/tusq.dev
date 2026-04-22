@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 57 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator).
+- All 63 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -143,10 +143,36 @@ The v0.1.0 manifest is designed to be usable by an LLM (or a human reviewer) on 
 
 Intended use: drop the generated Markdown into a wiki, PR description, or review ticket so stakeholders can read capability contracts without running the CLI.
 
+## Opt-In Execution Policy (M20 — V1.1)
+
+`tusq serve` now accepts an optional `--policy <path>` flag that loads a governance policy file from `.tusq/execution-policy.json` (or any explicit path). Without `--policy`, behavior is byte-for-byte identical to V1 describe-only. With `--policy`, the server enforces the declared mode:
+
+- **`mode: "describe-only"`** — No change to `tools/call` behavior. Identical to running without `--policy`. Useful for attaching reviewer/audit metadata to describe-only deployments.
+- **`mode: "dry-run"`** — `tools/call` returns a dry-run plan instead of the live schema response. The plan includes argument validation, path parameter substitution, method and path echoed from the compiled tool, a `plan_hash` (SHA-256 over canonical `{body, headers, method, path, path_params, query}`, sorted), and a `policy` echo (`mode`, `reviewer`, `approved_at`). `executed: false` is always present — no live API execution occurs under any policy mode.
+
+**Policy file format** (`.tusq/execution-policy.json`):
+```json
+{
+  "schema_version": "1.0",
+  "mode": "dry-run",
+  "allowed_capabilities": ["get_users_api_v1_users_id"],
+  "reviewer": "ops@example.com",
+  "approved_at": "2026-04-22T00:00:00Z"
+}
+```
+
+**Startup failure UX** — `tusq serve --policy <path>` exits 1 with actionable messages for: missing file, invalid JSON, unsupported `schema_version`, unknown `mode`, and invalid `allowed_capabilities` type.
+
+**Argument validation (V1.1 scope)** — Required field enforcement, primitive type checks (string/number/integer/boolean), and `additionalProperties: false` rejection. Returns JSON-RPC `-32602` with `data.validation_errors: [{path, reason}]` on failure. Object, array, and null typed parameters are not strictly validated in V1.1.
+
+**Approval gate invariant preserved** — `allowed_capabilities` is a strict subset filter on top of the existing approval gate. Only approved capabilities appear in `tools/list`; `allowed_capabilities` cannot bypass that requirement.
+
+**New eval scenarios** — Two new `tests/evals/governed-cli-scenarios.json` scenarios (`policy-dry-run-plan-shape`, `policy-dry-run-approval-gate`) extend the regression harness to 4 scenarios.
+
 ## Known V1 Limits And Non-Claims
 
 - **Heuristic scanner:** Route extraction uses regex-based static analysis, not a full AST. Complex dynamic route registration patterns may be missed or produce low-confidence results. Users should review the manifest before compiling.
-- **Describe-only MCP:** `tusq serve` returns capability schemas but does not proxy or execute live API calls. Full execution support is planned for V2.
+- **Describe-only and dry-run MCP:** `tusq serve` returns capability schemas and (with `--policy`) dry-run plans. Neither mode proxies or executes live API calls. Full execution support is planned for V2.
 - **No plugin API:** Framework support (Express, Fastify, NestJS) is hardcoded. Community framework plugins are deferred to V2.
 - **JavaScript/TypeScript only:** Python, Go, Java, and other ecosystems are not supported in V1.
 - **Non-interactive review:** `tusq review` prints to stdout only. An interactive TUI for in-terminal approval is planned for V1.1.
