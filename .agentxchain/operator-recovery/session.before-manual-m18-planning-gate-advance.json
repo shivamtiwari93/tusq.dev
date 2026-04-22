@@ -2,14 +2,16 @@
   "session_id": "session_e0c6a774050426be",
   "run_id": "run_0edfdeabceba9227",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-22T02:20:30.000Z",
-  "checkpoint_reason": "operator_recovery_m18_planning_gate_advance",
+  "last_checkpoint_at": "2026-04-22T02:20:10.737Z",
+  "checkpoint_reason": "turn_assigned",
   "run_status": "active",
-  "phase": "implementation",
-  "last_phase": "implementation",
-  "last_turn_id": "turn_aac96dbcf8170006",
+  "phase": "planning",
+  "last_phase": "planning",
+  "last_turn_id": "turn_58cf19976cbdbd41",
   "last_completed_turn_id": "turn_aac96dbcf8170006",
-  "active_turn_ids": [],
+  "active_turn_ids": [
+    "turn_58cf19976cbdbd41"
+  ],
   "last_role": "pm",
   "pending_gate": null,
   "pending_run_completion": null,
@@ -21,6 +23,6 @@
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": null
+    "dispatch_dir": ".agentxchain/dispatch/turns/turn_58cf19976cbdbd41"
   }
 }
