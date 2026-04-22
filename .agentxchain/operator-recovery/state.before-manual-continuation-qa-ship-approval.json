@@ -3,9 +3,30 @@
   "run_id": "run_1457f2049b5fc87d",
   "project_id": "tusq-dev",
   "status": "active",
-  "phase": "launch",
+  "phase": "qa",
   "accepted_integration_ref": "git:0a5a7363a299458c61892a013345ac7604c0dcf7",
-  "active_turns": {},
+  "active_turns": {
+    "turn_32490db319a6a9e2": {
+      "turn_id": "turn_32490db319a6a9e2",
+      "run_id": "run_1457f2049b5fc87d",
+      "assigned_role": "qa",
+      "status": "dispatched",
+      "attempt": 1,
+      "assigned_at": "2026-04-22T00:47:31.201Z",
+      "deadline_at": "2026-04-22T01:07:31.201Z",
+      "runtime_id": "local-qa",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "0a5a7363a299458c61892a013345ac7604c0dcf7",
+        "clean": true,
+        "captured_at": "2026-04-22T00:47:31.046Z",
+        "dirty_snapshot": {}
+      },
+      "assigned_sequence": 14,
+      "concurrent_with": [],
+      "dispatched_at": "2026-04-22T00:47:31.261Z"
+    }
+  },
   "turn_sequence": 14,
   "last_completed_turn_id": "turn_6098b7a0a7aec86b",
   "blocked_on": null,
@@ -19,16 +40,22 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
+    "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
-  "budget_reservations": {},
+  "budget_reservations": {
+    "turn_32490db319a6a9e2": {
+      "reserved_usd": 2,
+      "role_id": "qa",
+      "created_at": "2026-04-22T00:47:30.967Z"
+    }
+  },
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T00:07:43.982Z",
-  "phase_entered_at": "2026-04-22T00:48:00.000Z",
+  "phase_entered_at": "2026-04-22T00:45:17.643Z",
   "provenance": {
     "trigger": "continuation",
     "parent_run_id": "run_8543d07bd34cc982",
@@ -98,7 +125,7 @@
   },
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": "product_marketing",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
     "turn_id": "turn_6098b7a0a7aec86b",

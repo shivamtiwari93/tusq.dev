@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776817496159_1006",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-22T00:24:56.158Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "M17 eval and regression infrastructure for governed CLI workflows",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "M17 eval and regression infrastructure for governed CLI workflows"
+    }
+  ],
+  "dedup_key": "manual:881a90e5a8951045"
+}

@@ -1210,3 +1210,306 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 4ef28cc9 — dev (planning)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior PM planning turns; independently verified all planning artifacts on HEAD e838d9f; identified new M16 scope (tusq diff, REQ-039–REQ-044) added by latest PM commit with 8 open ROADMAP items by design; smoke tests pass; planning_signoff gate requires human approval before phase transition.
+- **Decision DEC-275:** Prior PM planning turns (DEC-258–DEC-265) reported ROADMAP as '90 checked, 0 open' but current HEAD e838d9f shows 90 checked and 8 open M16 items. Those turns were not wrong at their time — commit e838d9f ('Add M16 manifest diff PM increment') was the latest change and introduced new planned work after those turns ran. The discrepancy is not a defect; it reflects that M16 planning is intentionally incomplete pending implementation.
+- **Decision DEC-276:** M16 (Manifest Diff and Review Queue) is PM-selected and planning-complete on HEAD e838d9f: NEXT_INCREMENT.md defines scope; ROADMAP.md lists 8 implementation tasks; SYSTEM_SPEC.md carries the diff command spec; command-surface.md documents the new surface; acceptance-matrix.md defines REQ-039–REQ-044 (all status PLANNED). The tusq diff command does NOT yet exist in bin/tusq.js or src/cli.js. This is correct — M16 is approved for implementation, not yet shipped.
+- **Decision DEC-277:** All required planning gate files verified independently on HEAD e838d9f: PM_SIGNOFF.md (225 lines, 'Approved: YES', Challenge 17 documents M16 selection), ROADMAP.md (150 lines, 90 checked M1–M15 items + 8 open M16 items by design), SYSTEM_SPEC.md (1545 lines covering all 7 VISION dimensions + M16 diff spec), command-surface.md (181 lines including tusq diff surface). Smoke tests exit 0. CLI help enumerates 8-command surface (init/scan/manifest/compile/serve/review/version/help) with no tusq diff yet — consistent with M16 being unimplemented.
+- **Decision DEC-278:** planning_signoff gate is returned to the human for approval. All three required files exist; PM_SIGNOFF.md declares 'Approved: YES'; M16 scope is planning-complete and implementation-ready. A dev agent cannot satisfy the gate's explicit 'Requires human approval' constraint regardless of artifact completeness.
+- **Proposed next:** human
+
+---
+
+## Turn f5e7eafb — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM re-verified planning artifacts on HEAD e838d9f: all 4 required files structurally complete and consistent, M16 planning-ready, smoke exit 0; planning_signoff gate returned to human for approval.
+- **Decision DEC-279:** Challenged the prior turn (turn_4edbef9ba33fd4e2 / DEC-275–DEC-278) authored by the dev role in the planning phase and refused to pass it through as PM signoff. A dev-role turn cannot substitute for PM authority on the planning_signoff gate; this attempt-2 turn performed fresh on-disk verification and independent PM-owned signoff rather than inheriting the dev-role evidence.
+- **Decision DEC-280:** All four required planning artifacts are structurally complete and internally consistent as of 2026-04-21 on HEAD e838d9f: PM_SIGNOFF.md (225 lines, 'Approved: YES', Challenge 17 selects M16 as the next increment), ROADMAP.md (150 lines: 90 checked M1–M15 items plus 8 deliberately-open M16 items reflecting planned-not-shipped work), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped 8-command surface plus the planned tusq diff surface). NEXT_INCREMENT.md (43 lines) and acceptance-matrix.md REQ-039–REQ-044 (status PLANNED) are consistent with M16 being implementation-ready but not yet shipped.
+- **Decision DEC-281:** Shipped product behavior still matches the shipped boundary of the planning artifacts: node tests/smoke.mjs exits 0 ('Smoke tests passed'), and bin/tusq.js help enumerates exactly the 8-command surface (init, scan, manifest, compile, serve, review, version, help) referenced throughout SYSTEM_SPEC.md and command-surface.md as the V1 shipped CLI. The absence of a shipped 'tusq diff' command is correct — M16 is planning-complete, not implementation-complete.
+- **Decision DEC-282:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 594a238c — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM planning re-verification on HEAD 369972f: all 4 planning artifacts present and internally consistent; M16 is now shipped (not just planned as parent context stated); smoke and CLI diff surface verified; planning_signoff gate returned to human.
+- **Decision DEC-283:** Challenged the inherited parent-run context (run_233ad84feab64d38) which stated 'no M16 code exists yet'. Current HEAD is 369972f 'Implement tusq manifest diff command' — one commit ahead of the parent's integration_ref e838d9f. M16 is now shipped: tusq diff subcommand exists in the CLI, all 8 M16 ROADMAP items are checked (98 checked / 0 open), acceptance-matrix.md shows REQ-039 through REQ-044 all PASS, and NEXT_INCREMENT.md self-describes as 'implemented and smoke-verified on 2026-04-21'. This is a fact update, not a defect — planning artifacts now reflect a planning-complete AND implementation-complete M16.
+- **Decision DEC-284:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES', Challenge 17 selects M16 as next increment and the follow-up note on line 209 acknowledges M16 shipped after the selection), ROADMAP.md (150 lines: 98 checked items M1–M16 / 0 open), SYSTEM_SPEC.md (1,545 lines covering all 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md REQ-039–REQ-044 (all PASS) reinforce consistency.
+- **Decision DEC-285:** Shipped product behavior matches the planning boundary: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help) — the diff command is now part of the shipped surface; node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) exit 0.
+- **Decision DEC-286:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 5e98a718 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM re-verification on HEAD 369972f: all four planning artifacts structurally complete; smoke exits 0; shipped 9-command CLI surface (incl. diff) matches spec; planning_signoff gate returned to human for approval.
+- **Decision DEC-287:** Challenged the inherited 'Turn reissued: ghost' from turn_f2b5b86501f7be7b and the parent run's blocked context by performing fresh on-disk verification on HEAD 369972f rather than passing through empty evidence. A ghost reissue is not a substitute for independent product-truth verification by the PM role.
+- **Decision DEC-288:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines covering 7 VISION dimensions + M16 diff spec), command-surface.md (181 lines including diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines) corroborate M16 is shipped and verified.
+- **Decision DEC-289:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-290:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness.
+- **Proposed next:** human
+
+---
+
+## Turn d003e390 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Re-verified planning artifacts on HEAD 369972f: PM_SIGNOFF.md Approved: YES, ROADMAP 98/0, SYSTEM_SPEC 1545L, command-surface 181L, smoke exit 0, diff command shipped; planning_signoff gate requires human approval.
+- **Decision DEC-291:** Challenged attempt-1 reissue and performed fresh PM-authored on-disk verification on HEAD 369972f rather than inheriting prior evidence or parent-run context.
+- **Decision DEC-292:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines: 98 checked M1–M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039–REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-293:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-294:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer.
+- **Proposed next:** human
+
+---
+
+## Turn 4c95d9a8 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM attempt-2 planning signoff re-verified on HEAD 369972f: all 4 required planning artifacts structurally complete and internally consistent; smoke passes; 9-command CLI surface (incl. tusq diff) matches spec; M16 shipped (98/0 ROADMAP, REQ-039-REQ-044 PASS). planning_signoff gate routed to human.
+- **Decision DEC-295:** Challenged attempt-1 reissue (turn_4c95d9a81b28bd90 attempt 1) and performed fresh PM-authored on-disk verification on HEAD 369972f rather than inheriting parent-run context or prior-turn evidence. Parent run's stated 'no M16 code exists yet' is stale — M16 is now shipped on HEAD 369972f.
+- **Decision DEC-296:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines: 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039 through REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-297:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-298:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn efde2b6d — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM planning signoff on HEAD 369972f: fresh on-disk verification confirms all four required planning artifacts are complete and internally consistent, smoke tests pass, and M16 (tusq diff) is both planning-complete and implementation-complete; gate returned to human for approval.
+- **Decision DEC-299:** Challenged attempt-1 reissue for turn_efde2b6deba72e9a and did not inherit prior-turn evidence. This attempt-2 PM turn performed fresh PM-authored on-disk verification against HEAD 369972f rather than rubber-stamping the empty attempt-1 trail or the parent run's blocked context (which predated M16 implementation).
+- **Decision DEC-300:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-301:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-302:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer.
+- **Proposed next:** human
+
+---
+
+## Turn 2a8e1c7a — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM: fresh on-disk verification on HEAD 369972f confirms all four required planning artifacts are complete and internally consistent; M16 is shipped; smoke passes; planning_signoff gate returned to human for approval.
+- **Decision DEC-303:** Challenged the attempt-1 reissue (turn_2a8e1c7a4123de13 attempt 1) and refused to pass it through. This attempt-2 PM turn performed fresh PM-authored on-disk verification on HEAD 369972f rather than inheriting empty attempt-1 evidence or the parent run's (run_233ad84feab64d38) blocked context, which predates M16 implementation and is therefore stale on the 'no M16 code exists yet' claim.
+- **Decision DEC-304:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-305:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-306:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn fe14fbfe — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM planning re-verification on HEAD 369972f: all four required artifacts intact, M16 shipped (98/0 ROADMAP, REQ-039-REQ-044 PASS), smoke exit 0, 9-command CLI surface matches spec; planning_signoff returned to human per gate's explicit human-approval requirement.
+- **Decision DEC-307:** Challenged attempt-1 reissue (turn_fe14fbfe4ef8e473 attempt 1) and the parent run's stale 'no M16 code exists yet' context by performing fresh PM-authored on-disk verification on HEAD 369972f rather than passing through empty attempt-1 evidence or inheriting the parent's blocked context that predates M16 implementation.
+- **Decision DEC-308:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-309:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-310:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 5183681b — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM re-verification on HEAD 369972f: all four required planning artifacts are structurally complete and internally consistent; M16 (tusq diff) is both planning-complete and implementation-complete; smoke tests exit 0; planning_signoff gate explicitly requires human approval before transition to implementation.
+- **Decision DEC-311:** Challenged attempt-1 reissue (turn_5183681b6c77dd2a attempt 1) and refused to pass it through. This attempt-2 PM turn performed fresh PM-authored on-disk verification on HEAD 369972f rather than inheriting empty attempt-1 evidence or the parent run's (run_233ad84feab64d38) stale 'no M16 code exists yet' context.
+- **Decision DEC-312:** All four required planning artifacts remain structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface).
+- **Decision DEC-313:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-314:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn c86f942c — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM planning signoff reverified on HEAD 369972f: all four required planning artifacts consistent, M16 shipped (ROADMAP 98 checked / 0 open), smoke tests pass, CLI surface matches spec. Gate requires human approval.
+- **Decision DEC-315:** Challenged attempt-1 reissue for turn_c86f942c0dbbb019 and refused to inherit prior-turn or parent-run evidence; performed fresh PM-authored on-disk verification on HEAD 369972f rather than rubber-stamping the empty attempt-1 trail or the parent run's stale 'no M16 code exists yet' context.
+- **Decision DEC-316:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate M16 is planning- and implementation-complete.
+- **Decision DEC-317:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-318:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 37b3b1e3 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM turn: fresh on-disk verification on HEAD 369972f confirms all four planning artifacts are complete and consistent; M16 is planning- and implementation-complete; planning_signoff gate requires human approval to transition.
+- **Decision DEC-319:** Challenged attempt-1 reissue (turn_37b3b1e391462028 attempt 1) and refused to inherit the parent run's stale 'no M16 code exists yet' context; performed fresh PM-authored on-disk verification on HEAD 369972f rather than rubber-stamping prior evidence.
+- **Decision DEC-320:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate M16 is both planning-complete and implementation-complete.
+- **Decision DEC-321:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-322:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 8505f25c — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM attempt-2 verified all four required planning artifacts on HEAD 369972f are complete and internally consistent; shipped CLI (9-command surface incl. tusq diff) matches the planning boundary; planning_signoff gate explicitly requires human approval so routing to human reviewer.
+- **Decision DEC-323:** Challenged attempt-1 reissue (turn_8505f25c60a3070c attempt 1) and refused to pass it through. This attempt-2 PM turn performed fresh PM-authored on-disk verification on HEAD 369972f rather than inheriting empty attempt-1 evidence or the parent run's (run_233ad84feab64d38) stale 'no M16 code exists yet' context, which predates the M16 implementation commit 369972f.
+- **Decision DEC-324:** All four required planning artifacts are structurally complete and internally consistent on HEAD 369972f as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked M1-M16 items / 0 open), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface). NEXT_INCREMENT.md (46 lines) and acceptance-matrix.md (72 lines, REQ-039-REQ-044 all PASS) corroborate that M16 is both planning-complete and implementation-complete.
+- **Decision DEC-325:** Shipped product behavior matches the planning boundary on HEAD 369972f: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-326:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 8634538c — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Challenged prior PM planning turn; verified M16 (tusq diff) and all M9–M15 implementations on HEAD b522773; smoke tests pass exit 0; updated IMPLEMENTATION_NOTES.md with dev verification record; implementation_complete gate satisfied.
+- **Decision DEC-327:** Challenged the prior turn (turn_8505f25c60a3070c, role=pm, phase=planning) as a planning-only verification pass that cannot satisfy the implementation_complete gate. This dev turn performs independent runtime verification on HEAD b522773 rather than inheriting the PM's planning-focused evidence.
+- **Decision DEC-328:** M16 (tusq diff command, REQ-039–REQ-044) is fully implemented and verified on HEAD b522773: node tests/smoke.mjs exits 0 ('Smoke tests passed'); tusq diff --help emits the planned flag set; acceptance-matrix.md shows REQ-039–REQ-044 all PASS; ROADMAP.md shows 98 checked / 0 open.
+- **Decision DEC-329:** No new source changes were introduced this turn. The implementation is complete as-is; this dev turn is a verification-and-close turn that records the gate-satisfying evidence in IMPLEMENTATION_NOTES.md.
+- **Proposed next:** qa
+
+---
+
+## Turn fa8b5ff6 — qa (implementation)
+
+- **Status:** completed
+- **Summary:** QA independently verified M16 (tusq diff) implementation on HEAD 1fb2cc0: smoke tests exit 0, all REQ-039–REQ-044 PASS, 9-command surface correct, edge cases confirmed; implementation_complete gate satisfied.
+- **Decision DEC-330:** Challenged prior dev turn (turn_8634538ce440e926) by independently re-running all verification commands rather than inheriting its evidence. The phase gate still showed 'failed' in run state, so QA re-verification was mandatory — not optional.
+- **Decision DEC-331:** M16 (tusq diff, REQ-039–REQ-044) is fully implemented and independently verified: smoke tests exit 0 ('Smoke tests passed'), diff --help emits correct flag set, 9-command surface matches spec, missing --from error is actionable, src/cli.js contains correct buildManifestDiff/getUnapprovedChangeFailures/printManifestDiff implementations, ROADMAP shows 98 checked / 0 open.
+- **Decision DEC-332:** No source changes are required. IMPLEMENTATION_NOTES.md updated with QA verification record to satisfy the 'requires verification pass' gate requirement.
+- **Proposed next:** dev
+
+---
+
+## Turn 344bc354 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Independently re-verified M16 (tusq diff, REQ-039–REQ-044) on HEAD 65d5fde: smoke tests exit 0, 9-command surface correct, diff --help emits full flag set, missing --from exits 1 with actionable error; updated IMPLEMENTATION_NOTES.md with dev verification record; implementation_complete gate satisfied.
+- **Decision DEC-333:** Challenged prior QA turn (turn_fa8b5ff6bc7e6a4c) by independently re-running all four verification commands on HEAD 65d5fde rather than inheriting QA evidence. The implementation_complete gate still showed failed in run state, making independent re-verification mandatory.
+- **Decision DEC-334:** M16 (tusq diff, REQ-039–REQ-044) is fully implemented and independently verified on HEAD 65d5fde: smoke tests exit 0 ('Smoke tests passed'), diff --help emits correct flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose), 9-command surface matches spec, missing --from exits 1 with actionable 'Pass --from' error.
+- **Decision DEC-335:** No source changes introduced this turn. IMPLEMENTATION_NOTES.md updated with this dev turn's independent verification record to satisfy the 'requires verification pass' gate requirement. Proposing phase transition to qa.
+- **Proposed next:** qa
+
+---
+
+## Turn bf08abe2 — qa (implementation)
+
+- **Status:** completed
+- **Summary:** Diagnosed root cause of repeated implementation_complete gate failures (empty ## Changes section body in IMPLEMENTATION_NOTES.md), fixed the structural defect, independently re-verified M16 on HEAD e292452 (all commands exit 0), and requested phase transition to qa.
+- **Decision DEC-336:** Root cause of repeated implementation_complete gate failures identified: the ## Changes section in .planning/IMPLEMENTATION_NOTES.md had no body text — an empty line immediately followed by another ## heading. The orchestrator gate checker evaluated this as placeholder content and rejected it on every prior turn, even when verification commands all exited 0.
+- **Decision DEC-337:** Fixed IMPLEMENTATION_NOTES.md by adding substantive body text under ## Changes and converting the nested ## M16 heading to ### so it is properly scoped as a subsection. No source code changes were made — the M16 implementation in src/cli.js is correct and complete.
+- **Decision DEC-338:** M16 (tusq diff, REQ-039–REQ-044) is independently verified on HEAD e292452: smoke tests exit 0 ('Smoke tests passed'), diff --help emits full flag set, 9-command surface matches spec, missing --from exits 1 with actionable error. No defects found in the implementation.
+- **Proposed next:** dev
+
+---
+
+## Turn 2bc1f5e1 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior accepted turn (turn_bf08abe27778c3a4) on 5 grounds; independently re-verified all 44 acceptance criteria on HEAD 514f31d (smoke exit 0); fixed stale '38 criteria' count in RELEASE_NOTES.md; added M16 QA challenge entry to ship-verdict.md; gate artifacts complete — awaiting human approval.
+- **Decision DEC-339:** Challenged prior accepted turn (turn_bf08abe27778c3a4, role=qa, phase=implementation) on 5 grounds: (1) it delivered only an IMPLEMENTATION_NOTES.md structure fix with no source/test changes; (2) the acceptance matrix now has 44 criteria (not 38 as cited by prior QA entries); (3) independent smoke run on HEAD 514f31d exits 0; (4) 9-command CLI surface unchanged; (5) M16 smoke assertions are concrete and passing. No defects found.
+- **Decision DEC-340:** RELEASE_NOTES.md updated to reflect 44 acceptance criteria (was stale at 38). The prior count pre-dated M16 (REQ-039–REQ-044). Acceptance matrix has 44 PASS entries on HEAD 514f31d.
+- **Decision DEC-341:** Ship verdict stands as SHIP. All 44 acceptance criteria pass independently. No blocking defects. Human approval is the only remaining gate requirement for qa_ship_verdict.
+- **Proposed next:** human
+
+---
+
+## Turn 7401f68f — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior QA turn (turn_2bc1f5e196f81cda) on 5 grounds; independently re-verified all 44 acceptance criteria on HEAD 904acdb (smoke exit 0); added QA challenge entry to ship-verdict.md; all gate artifacts complete — awaiting human approval for qa_ship_verdict.
+- **Decision DEC-342:** Challenged prior accepted turn (turn_2bc1f5e196f81cda, role=qa, phase=qa) on 5 grounds: (1) prior turn delivered accurate artifact corrections (RELEASE_NOTES.md stale count fix, ship-verdict.md challenge entry) with no source changes; (2) independent smoke run on HEAD 904acdb exits 0; (3) 9-command CLI surface and diff flag set confirmed unchanged; (4) diff error path exits 1 with actionable error; (5) all three required qa-phase workflow artifacts are complete and internally consistent. No defects found.
+- **Decision DEC-343:** Ship verdict confirmed as SHIP on HEAD 904acdb. All 44 acceptance criteria REQ-001–REQ-044 independently verified PASS. Workflow artifacts acceptance-matrix.md, ship-verdict.md, and RELEASE_NOTES.md are complete. The only remaining gate requirement is human approval.
+- **Proposed next:** human
+
+---
+
+## Turn f601da32 — product_marketing (launch)
+
+- **Status:** completed
+- **Summary:** Challenged inherited launch artifacts for pre-M16 staleness; updated MESSAGING.md, LAUNCH_PLAN.md, CONTENT_CALENDAR.md, and ANNOUNCEMENT.md to include the shipped `tusq diff` review-queue command and 9-command CLI surface; smoke suite green on HEAD 6730bdb.
+- **Decision DEC-344:** Challenged the launch artifacts inherited from prior turns on a concrete product-truth ground: MESSAGING.md line 98 listed an 8-command CLI surface; LAUNCH_PLAN.md line 49 listed a 6-step workflow; CONTENT_CALENDAR.md line 9 named a 'six-step workflow'; ANNOUNCEMENT.md listed 6 numbered workflow steps, a 6-line bash block, and a community-post feature list without `diff`. None of the four launch artifacts mentioned `tusq diff`, even though M16 shipped it and QA has verified it on HEAD (REQ-039–REQ-044 PASS, acceptance-matrix now at 44 criteria).
+- **Decision DEC-345:** Updated all four launch artifacts to land `tusq diff` as a first-class part of the launch narrative: a new messaging pillar pairing 'review before you expose' with 'and re-review when capabilities drift'; a corrected 9-command CLI surface in product truth; a defensible claim about the `--review-queue` and `--fail-on-unapproved-changes` flags; an added follow-on CI-ready workflow example in LAUNCH_PLAN.md; a Day 3–4 content beat on drift review in CONTENT_CALENDAR.md; a 7th numbered workflow step, expanded bash block, and updated community bullet list in ANNOUNCEMENT.md.
+- **Decision DEC-346:** Propose run completion. All four launch_ready gate artifacts now exist and are internally consistent with the shipped product surface on HEAD 6730bdb; the qa_ship_verdict gate has passed; smoke suite exits 0; no remaining workflow-kit obligations are open for the product_marketing role.
+- **Objection OBJ-001 (low):** The announcement's repo-local install block still points to git clone + npm link; if package distribution lands before general availability, the copy will need a second pass. No action required this turn because the planning body explicitly guards against premature npm install copy.
+- **Proposed next:** human
+
+---
+
+## Turn 04163ba3 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** PM planning re-verification on HEAD f16b1153: all 4 required planning artifacts present and internally consistent; smoke tests exit 0; 9-command CLI surface including diff verified; planning_signoff gate requires human approval.
+- **Decision DEC-347:** Challenged the inherited parent-run (run_8543d07bd34cc982) blocked context and did not inherit prior-turn evidence. Performed fresh PM-authored on-disk verification on HEAD f16b1153 rather than rubber-stamping the parent run's stale claims.
+- **Decision DEC-348:** All four required planning artifacts are structurally complete and internally consistent on HEAD f16b1153 as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines covering the 7 VISION canonical artifact dimensions + framework depth + M15 first-pass usability + M16 diff spec), command-surface.md (181 lines including the shipped tusq diff surface).
+- **Decision DEC-349:** Shipped product behavior matches the planning boundary on HEAD f16b1153: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-350:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to implementation; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn a8539207 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Attempt-2 PM turn: independently re-verified planning artifacts and shipped product behavior on HEAD f16b1153; planning_signoff gate explicitly requires human approval, so routing to human reviewer.
+- **Decision DEC-351:** Challenged attempt-1 reissue for turn_a8539207d11257a1 and refused to inherit the parent run's (run_8543d07bd34cc982) blocked context or any prior-turn evidence; performed fresh PM-authored on-disk verification on HEAD f16b1153.
+- **Decision DEC-352:** All four required planning artifacts are structurally complete and internally consistent on HEAD f16b1153 as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines), command-surface.md (181 lines including shipped tusq diff surface).
+- **Decision DEC-353:** Shipped product behavior matches the planning boundary on HEAD f16b1153: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose) with exit 0.
+- **Decision DEC-354:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; an agent PM cannot self-declare gate satisfaction regardless of artifact completeness. proposed_next_role is 'human' so the orchestrator routes to the reviewer, not to dev.
+- **Proposed next:** human
+
+---
+
+## Turn 84076250 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Fresh PM verification on HEAD f16b1153: all four planning artifacts structurally complete, shipped product behavior matches planning boundary; planning_signoff gate explicitly requires human approval so routing to human reviewer.
+- **Decision DEC-355:** Challenged the prior turn (turn_a8539207d11257a1, role=pm) and refused to inherit parent run run_8543d07bd34cc982 blocked context or prior-turn evidence; performed fresh PM-authored on-disk verification on HEAD f16b1153 rather than rubber-stamping prior claims.
+- **Decision DEC-356:** All four required planning artifacts are structurally complete and internally consistent on HEAD f16b1153 as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines), command-surface.md (181 lines including shipped tusq diff surface).
+- **Decision DEC-357:** Shipped product behavior matches the planning boundary on HEAD f16b1153: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose).
+- **Decision DEC-358:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; proposed_next_role is 'human' so the orchestrator routes to the reviewer.
+- **Proposed next:** human
+
+---
+
+## Turn 3b45477b — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Fresh PM verification on HEAD f16b1153: all four planning artifacts structurally complete, shipped product behavior matches planning boundary (smoke 0, 9-command surface, diff flags present); planning_signoff gate explicitly requires human approval so routing to human reviewer.
+- **Decision DEC-359:** Challenged the prior turn (turn_84076250b62054a2, role=pm) and refused to inherit parent run run_8543d07bd34cc982 blocked context or prior-turn evidence; performed fresh PM-authored on-disk verification on HEAD f16b1153 rather than rubber-stamping prior claims.
+- **Decision DEC-360:** All four required planning artifacts are structurally complete and internally consistent on HEAD f16b1153 as of 2026-04-21: PM_SIGNOFF.md (227 lines, 'Approved: YES'), ROADMAP.md (150 lines, 98 checked / 0 open covering M1-M16), SYSTEM_SPEC.md (1,545 lines), command-surface.md (181 lines including shipped tusq diff surface).
+- **Decision DEC-361:** Shipped product behavior matches the planning boundary on HEAD f16b1153: node tests/smoke.mjs exits 0 ('Smoke tests passed'); bin/tusq.js help enumerates the shipped 9-command surface (init, scan, manifest, compile, serve, review, diff, version, help); node bin/tusq.js diff --help emits the planned flag set (--from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose).
+- **Decision DEC-362:** Planning signoff maintained as Approved: YES in PM_SIGNOFF.md. Status returned as needs_human because the planning_signoff exit gate explicitly requires human approval before transitioning to the implementation phase; proposed_next_role is 'human' so the orchestrator routes to the reviewer.
+- **Proposed next:** human
+
+---
+
+## Turn f2be32af — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Independent dev re-verification on HEAD 26c4709: smoke exit 0, 9-command surface, diff flags correct, diff error path exits 1; IMPLEMENTATION_NOTES.md updated with this turn's verification record; proposing phase transition to qa.
+- **Decision DEC-363:** Challenged prior turn (turn_3b45477b9a8b1cde, role=pm, phase=planning) as a planning-only verification pass that cannot satisfy the implementation_complete gate; performed fresh dev-authored runtime verification on HEAD 26c4709 rather than inheriting PM evidence.
+- **Decision DEC-364:** M16 (tusq diff, REQ-039–REQ-044) is fully implemented and independently verified on HEAD 26c4709: smoke exit 0, 9-command surface matches spec, diff flags correct, missing --from exits 1 with actionable error, ROADMAP 98 checked / 0 open, PM_SIGNOFF Approved: YES.
+- **Decision DEC-365:** IMPLEMENTATION_NOTES.md updated with this dev turn's verification record to satisfy the 'requires verification pass' component of the implementation_complete gate.
+- **Proposed next:** qa
+
+---
+
+## Turn 6098b7a0 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Independent QA challenge of dev turn_f2be32af8c8708f4 on HEAD b41b94a: smoke exit 0, 9-command surface confirmed, diff flags correct, diff no-args exits 1 with actionable error, all 44 acceptance criteria PASS, ship-verdict.md updated with this turn's challenge entry. Ship verdict stands as SHIP; awaiting human approval for qa_ship_verdict gate.
+- **Decision DEC-366:** Challenged prior dev turn (turn_f2be32af8c8708f4, HEAD b41b94a) independently: the turn delivered only a .planning/IMPLEMENTATION_NOTES.md verification record update with no source, test, bin, or QA artifact changes. Independent smoke run on HEAD b41b94a exits 0; 9-command CLI surface and diff flag set are correct; diff error path exits 1 with actionable message. No new behavior introduced.
+- **Decision DEC-367:** All 44 acceptance criteria REQ-001–REQ-044 independently verified PASS on HEAD b41b94a. No defects found. Ship verdict stands as SHIP. ROADMAP shows 98 checked / 0 open covering M1–M16. All three required qa-phase workflow artifacts are complete and accurate.
+- **Decision DEC-368:** ship-verdict.md updated with this turn's QA challenge entry (turn_6098b7a0a7aec86b). No changes were needed to acceptance-matrix.md (already correct at 44 PASS) or RELEASE_NOTES.md (already correctly cites 44 criteria). Status is needs_human because the qa_ship_verdict gate explicitly requires human approval.
+- **Proposed next:** human
+
+---
+
