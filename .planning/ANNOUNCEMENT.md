@@ -21,7 +21,7 @@ This release gives teams a concrete terminal workflow:
 1. initialize a repo with `tusq init`
 2. scan routes with `tusq scan`
 3. generate a reviewable `tusq.manifest.json`
-4. approve capabilities by editing the manifest
+4. approve capabilities with `tusq approve` (supports `--all`, `--reviewer <id>`, and `--dry-run` to preview changes) so the approval trail is recorded deliberately rather than edited by hand
 5. compile approved capabilities into JSON tool definitions
 6. expose those compiled tools through a local, describe-only MCP endpoint
 7. re-review drift with `tusq diff --review-queue` when the codebase or manifest changes, and optionally enforce `--fail-on-unapproved-changes` in CI
@@ -67,7 +67,7 @@ tusq diff --from previous.manifest.json --to tusq.manifest.json --review-queue
 tusq diff --from previous.manifest.json --to tusq.manifest.json --fail-on-unapproved-changes
 ```
 
-This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. Review is non-interactive and happens by editing the manifest directly. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
+This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. Review is non-interactive: `tusq review` prints a grouped stdout summary and `tusq approve` records who approved what and when, so the approval trail is a first-class CLI action rather than a hand-edit to the manifest. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
 
 We think that tradeoff is the right one for a first release. It proves the important part: teams can start from the product they already have and move toward an AI-visible capability surface without rebuilding the stack or hand-authoring every tool definition.
 
@@ -84,7 +84,7 @@ npm install
 npm link
 ```
 
-- Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → approve in the manifest → `tusq compile` → `tusq serve`
+- Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` (or approve a single capability by name) → `tusq compile` → `tusq serve`
 - When the codebase or manifest changes, run `tusq diff --from <old-manifest> --to tusq.manifest.json --review-queue` to see what drifted, and use `--fail-on-unapproved-changes` if you want a CI gate
 - Review `tusq.manifest.json` before approving any capability, especially approval state, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction`
 - After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
@@ -124,7 +124,7 @@ Shipping `tusq.dev v0.1.0` today.
 
 Current V1 scope:
 - Express, Fastify, NestJS
-- `init` / `scan` / `manifest` / `compile` / `review` / `serve` / `diff`
+- `init` / `scan` / `manifest` / `review` / `approve` / `compile` / `serve` / `diff`
 - reviewed `tusq.manifest.json`
 - explicit approval state and optional approval trail
 - visible governance metadata (`side_effect_class`, `sensitivity_class`, `auth_hints`)

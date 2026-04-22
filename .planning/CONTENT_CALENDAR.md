@@ -6,7 +6,7 @@
 
 - Publish the announcement and release notes with the same V1 framing: existing Node.js SaaS teams, reviewed manifest, approved tool compilation, describe-only MCP serve, explicit V1 boundary
 - Update the homepage and README entry points so the first screen a visitor sees matches the release story
-- Share one terminal-first post showing the launch workflow from `init` through `serve`, plus a brief callout that `tusq diff` closes the loop when the codebase changes
+- Share one terminal-first post showing the launch workflow from `init` through `serve`, including `tusq approve --all --reviewer you@example.com` as the explicit governance step, plus a brief callout that `tusq diff` closes the loop when the codebase changes
 - Share one short operator-proof post: "your product logic already exists; the missing piece is reviewed AI exposure"
 - Share one short proof-path post: "supported repo -> reviewed manifest -> approved tool JSON -> describe-only MCP"
 - Use "try it locally from the repo" as the launch CTA until package distribution is confirmed
@@ -25,7 +25,7 @@
 - Publish a "What v0.1.0 does and does not do" post to kill confusion around describe-only MCP and deferred execution
 - Publish a short "Who tusq.dev is for in v0.1.0" post so unsupported or hosted-first buyers self-select out early
 - Publish a short "why this starts from existing product code" post so the product wedge is clear before deeper architecture content
-- Publish a short "what you can verify in one session" post built around scan -> manifest -> approve -> compile -> describe-only MCP
+- Publish a short "what you can verify in one session" post built around scan -> manifest -> `tusq approve` -> compile -> describe-only MCP, calling out that approval is a governed CLI action with reviewer identity and timestamp rather than a manifest hand-edit
 - Share a short walkthrough of `tusq.manifest.json`, focusing on approvals, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, `redaction`, and how `examples` / `constraints` show up downstream
 
 ### Day 3-4

@@ -4,10 +4,10 @@
 
 - Previous launch framing leaned too hard on the internal category label "capability compiler" before qualifying the buyer problem
 - The last launch pass fixed most boundary issues, but it still let the governance inventory read like the headline instead of the proof
-- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16
+- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16, and the subsequent launch pass still framed approval as "edit the manifest by hand" even after `tusq approve` shipped in M18 with reviewer identity, timestamp, and audit-trail flags
 - Launch copy should instead start with the operator reality: an existing Express, Fastify, or NestJS product, pressure to make that product AI-visible, and a need to keep review and control intact
 - The category label still matters, but only after the audience, problem, proof sequence, and V1 boundary are clear
-- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, approved tool JSON out, describe-only MCP out, drift re-reviewed through `tusq diff`
+- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, governed `tusq approve` audit trail in, approved tool JSON out, describe-only MCP out, drift re-reviewed through `tusq diff`
 
 ## Audience
 
@@ -96,7 +96,8 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 ## Product Truth
 
 - Package version is `0.1.0`
-- The CLI surface is `init`, `scan`, `manifest`, `compile`, `serve`, `review`, `diff`, `version`, and `help`
+- The CLI surface is `init`, `scan`, `manifest`, `compile`, `serve`, `review`, `approve`, `diff`, `version`, and `help`
+- `tusq approve [capability] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]` sets `approved: true` on one or many capabilities and records `approved_by` / `approved_at` so approval is a first-class CLI action rather than a hand-edit
 - `tusq diff` compares two `tusq.manifest.json` versions and, with `--review-queue`, emits a structured queue of capabilities that need re-review; `--fail-on-unapproved-changes` turns that queue into a CI gate
 - Supported frameworks are Express, Fastify, and NestJS only
 - `tusq scan` uses static heuristics to detect routes and write `.tusq/scan.json`

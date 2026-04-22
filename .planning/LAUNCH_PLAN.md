@@ -5,6 +5,7 @@
 - The previous launch framing was directionally accurate but still too abstract at the top: it named tusq.dev as a "capability compiler" before it made the buyer pain operational
 - The previous pass also overloaded the first screen with governance detail before stating the proof path a buyer can verify in one session
 - The previous pass also described a six-step workflow that pre-dated M16 and left `tusq diff` out of the launch narrative entirely, even though the command is shipped and CI-ready on HEAD
+- A subsequent pass still wrote the approval step as "edit the manifest by hand" even after `tusq approve` shipped in M18 with explicit `--reviewer`, `--all`, `--dry-run`, and `--json` flags; launch copy must call that first-class command by name so the approval trail reads as a governed operator action, not a text-editor ritual
 - For launch, the first screen should answer four questions in order: who this is for, what problem it solves, what proof exists today, and where V1 stops
 - Governance detail stays important, but it should support the operator story rather than replace it
 - Re-review after change is part of the operator story: `tusq diff` turns manifest-version comparison into a review queue so governed exposure stays governed as the codebase evolves
@@ -44,13 +45,13 @@
 ### Must publish at launch
 
 - A launch announcement that names the release as `tusq.dev v0.1.0`
-- Messaging that stays inside the verified product boundary: scan, manifest, compile, review, describe-only MCP serve
+- Messaging that stays inside the verified product boundary: scan, manifest, review, approve (with reviewer identity and timestamp), compile, describe-only MCP serve, and diff-based drift re-review
 - A first-screen line in README and homepage hero that makes the buyer problem explicit before the category label
 - A first-screen line in README and homepage hero that also states the proof path before any metadata inventory appears
 - A simple terminal-first workflow example:
-  `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
+  `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` → `tusq compile` → `tusq serve`
 - A follow-on CI-ready example for repeat runs:
-  regenerate manifest → `tusq diff --from <old> --to <new> --review-queue` → re-approve drifted capabilities → `tusq diff --fail-on-unapproved-changes` in CI
+  regenerate manifest → `tusq diff --from <old> --to <new> --review-queue` → re-approve drifted capabilities with `tusq approve <capability> --reviewer <id>` → `tusq diff --fail-on-unapproved-changes` in CI
 - Release notes that spell out supported frameworks and deferred items
 - Website or landing-page copy that reflects the actual V1 surface instead of the full long-term vision
 - One sentence in every primary asset that explains what "governed" means in practice: inspect provenance, approval state, optional approval trail, mutation class, auth hints, sensitivity markers, redaction policy, and the describe-only usage context exposed through `examples` and `constraints`
