@@ -9,6 +9,6 @@
     "tusq": "bin/tusq.js"
   },
   "scripts": {
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs && node tests/eval-regression.mjs"
   }
 }

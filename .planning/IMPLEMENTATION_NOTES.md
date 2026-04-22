@@ -1,5 +1,17 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
+## Changes
+
+M17 adds a governed CLI eval/regression harness so tusq.dev can catch prompt-pack and workflow drift beyond the broad smoke suite. The implementation adds `tests/evals/governed-cli-scenarios.json` with versioned scenario contracts, `tests/eval-regression.mjs` with a deterministic local runner, and updates `package.json` so `npm test` runs both `tests/smoke.mjs` and the eval harness. The eval validates strict review gates, compiled tool metadata boundaries, schema source markers, redaction/default governance fields, manifest-only approval metadata boundaries, manifest diff review queues, and `--fail-on-unapproved-changes` CI behavior.
+
+### M17 Verification
+
+- `npm test` → exit 0.
+- `node tests/smoke.mjs` → "Smoke tests passed".
+- `node tests/eval-regression.mjs` → "Eval regression harness passed (2 scenarios)".
+- Acceptance matrix updated with REQ-045 through REQ-049.
+- ROADMAP updated with M17 completion checklist.
+
 ## Dev Turn turn_bacea73d62ee30fa — Independent Verification Pass (2026-04-21)
 
 ### Challenge To Prior Turn

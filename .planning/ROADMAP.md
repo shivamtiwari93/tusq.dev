@@ -140,6 +140,14 @@
 - [x] Add `--fail-on-unapproved-changes` to exit non-zero when added or changed capabilities are not approved
 - [x] Update `tusq help`, command reference docs, manifest docs, README examples, and smoke tests for the new diff workflow
 
+### M17: Governed CLI Eval/Regression Harness (~0.5 day)
+- [x] Add versioned eval scenarios for governed CLI workflows in `tests/evals/governed-cli-scenarios.json`
+- [x] Add an executable Node eval runner in `tests/eval-regression.mjs`
+- [x] Validate review-gate behavior for low-confidence/unapproved capabilities before compile
+- [x] Validate compiled tool-call metadata including auth hints, side-effect class, schema sources, examples, constraints, redaction, and manifest-only approval metadata boundaries
+- [x] Validate manifest diff review queues and CI failure behavior for changed unapproved capabilities
+- [x] Wire the eval harness into `npm test` alongside the existing smoke suite
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |

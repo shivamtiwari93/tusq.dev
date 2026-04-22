@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "scenarios": [
+    {
+      "id": "express-governed-workflow",
+      "fixture": "express-sample",
+      "framework": "express",
+      "expected_tools": [
+        {
+          "name": "get_users_users",
+          "side_effect_class": "read",
+          "auth_hints": [
+            "requireAuth"
+          ],
+          "returns_type": "array"
+        },
+        {
+          "name": "post_users_users",
+          "side_effect_class": "write",
+          "auth_hints": [
+            "requireAuth"
+          ],
+          "input_sources": [
+            "request_body"
+          ]
+        }
+      ],
+      "expected_review_gate_failure": "get_users_api_v1_users_id"
+    },
+    {
+      "id": "manifest-diff-review-queue",
+      "fixture": "express-sample",
+      "framework": "express",
+      "changed_capability": "post_users_users",
+      "expected_fields_changed": [
+        "description",
+        "approved",
+        "review_needed"
+      ]
+    }
+  ]
+}
