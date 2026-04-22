@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_65565d72e96362d1 (role=qa, 2026-04-21)
+
+This QA turn challenges the prior accepted eng_director turn (turn_3a7de9f0afe13e67) independently and does not rubber-stamp it. HEAD is f0e42d4 on run_0edfdeabceba9227.
+
+**Challenge 1 — Substantive source changes since last QA turn.** Last QA turn (turn_d86b8fb1c45a611a) operated on HEAD da6a968. Current HEAD is f0e42d4 (`Add governed manifest approval CLI`). `git diff da6a968..HEAD --stat` shows 30 files changed including `src/cli.js` (+112 lines — M18 `tusq approve` implementation) and `tests/smoke.mjs` (+47 lines — approve smoke tests). These are substantive source and test changes that require independent QA verification, not just rubber-stamping prior evidence. **Challenge upheld: 4 new criteria (REQ-050–REQ-053) require independent verification.**
+
+**Challenge 2 — Matrix count drift.** The acceptance matrix grew from 49 to 53 entries (REQ-050–REQ-053 added for M18 `tusq approve`), but RELEASE_NOTES.md still said "49 acceptance criteria". Fixed: RELEASE_NOTES.md updated to 53. **Challenge resolved: artifact now internally consistent.**
+
+**Challenge 3 — Independent npm test on HEAD f0e42d4.** Ran `npm test` → exit 0, "Smoke tests passed" and "Eval regression harness passed (2 scenarios)". REQ-049 plus all prior criteria independently re-verified PASS. **Challenge resolved.**
+
+**Challenge 4 — CLI surface on HEAD f0e42d4.** `node bin/tusq.js help` → exit 0; 10 commands: init, scan, manifest, compile, serve, review, approve, diff, version, help. `tusq approve --help` → exit 0; flags: capability-name, --all, --reviewer, --manifest, --dry-run, --json, --verbose per REQ-050. `tusq diff --help` → exit 0; flags intact. **Challenge resolved: approve command exposed correctly.**
+
+**Challenge 5 — diff error path on HEAD f0e42d4.** `node bin/tusq.js diff` (no args) → exit 1, "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison." **Challenge resolved: no regression.**
+
+**Challenge 6 — Workflow artifact accuracy on HEAD f0e42d4.** Acceptance matrix: 53 criteria, all PASS, 0 FAIL, 0 SKIP. ROADMAP: 110 checked / 0 open. PM_SIGNOFF: Approved: YES. RELEASE_NOTES.md: corrected to state 53 acceptance criteria. **Challenge resolved: all gate artifacts complete and accurate.**
+
+**Independent test run (2026-04-21, HEAD f0e42d4):** `npm test` → exit 0. Not inherited from prior QA or eng_director evidence.
+
+---
+
 ## QA Challenge — turn_d86b8fb1c45a611a (role=qa, 2026-04-21)
 
 This QA turn challenges the prior accepted QA turn (turn_07e9f20a4e140acf) independently and does not rubber-stamp it. HEAD is da6a968 on run_3c0710a95e02aed1.
