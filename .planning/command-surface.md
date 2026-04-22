@@ -267,6 +267,67 @@ Multiple strict failures produce one message line per offending name in the orde
 | Alignment statement, not safety gate | A strict PASS proves policy/manifest alignment at verify time only — NOT runtime reachability, NOT manifest freshness, NOT execution safety |
 | M22 parity preserved | M22 rejection messages are byte-identical whether `--strict` is set or not; `tusq serve --policy` is unchanged |
 
+## M24 Product CLI Surface
+
+M24 introduces NO new CLI command, NO new flag, and NO new subcommand. The operator-visible surface change is entirely in the shape of the generated `tusq.manifest.json` (and the downstream `tusq-tools/*.json` and MCP `tools/list` that inherit from it) for Fastify routes that declare a literal `schema.body` block. The scanner extends `extractFastifyRoutes` to capture declared field shapes into `input_schema.properties` and flip `additionalProperties` to `false`. All other extractor paths (Express, NestJS, Fastify-without-schema, Fastify-with-non-literal-schema) produce byte-identical manifests pre- and post-M24.
+
+| Commands exercised | How M24 surfaces |
+|--------------------|------------------|
+| `tusq scan <path>` | The in-memory `scan.routes[i]` record carries a new `schema_fields` field when a Fastify route matches the literal-schema pattern; persisted `.tusq/scan.json` inherits the already-populated `input_schema` shape (no new top-level key) |
+| `tusq manifest` | For Fastify routes with extracted schema fields, `capability.input_schema.properties` is populated with declared field names in source-literal order, `input_schema.required` carries declared names, `input_schema.additionalProperties` is `false`, and `input_schema.source` is `fastify_schema_body` |
+| `tusq compile` | Compiled tool `parameters` inherits the populated `input_schema` shape; agents see real field names |
+| `tusq serve` | MCP `tools/list` / `tools/call` inherit the populated shape; agents receive correct field names in `tools/list` responses |
+| `tusq diff` | An M24-driven change in `input_schema` flips the per-capability `capability_digest` (M13); the diff review queue surfaces the change for explicit re-approval |
+
+### Manifest Output Shape Under M24
+
+| Capability situation | `input_schema` shape (post-M24) |
+|----------------------|-------------------------------|
+| Fastify route with literal `schema.body` block, top-level properties and required | `{ type: "object", properties: {<name>: {type: <string\|number\|integer\|boolean\|object\|array>}, ...}, required: [<names>], additionalProperties: false, source: "fastify_schema_body" }` |
+| Fastify route with `schema` that does not parse as literal object (e.g., `schema: sharedSchema`) | Byte-identical to HEAD `35b7c9c` — M15 fall-back with `source: "framework_schema_hint"` |
+| Fastify route with `schema` present but no `body` key | Byte-identical to HEAD `35b7c9c` |
+| Fastify route with no `schema:` | Byte-identical to HEAD `35b7c9c` |
+| Express route (any form) | Byte-identical to HEAD `35b7c9c` |
+| NestJS route (any form) | Byte-identical to HEAD `35b7c9c` |
+
+### Confidence Score Extension
+
+| Route situation | Score bump from M24 |
+|-----------------|---------------------|
+| Fastify route with `schema_fields` captured | +0.04 on top of existing `schema_hint` +0.14 (capped at 0.95) |
+| Fastify route with `schema_hint: true` only (literal extraction failed) | No M24 change — existing +0.14 |
+| Any other route | No M24 change |
+
+### Source Metadata Tag
+
+| `input_schema.source` | When emitted |
+|-----------------------|--------------|
+| `fastify_schema_body` | M24 literal extraction succeeded; fields are what the source declares |
+| `framework_schema_hint` | Only `schema_hint` boolean detected; fields not declared in manifest |
+| `request_body` | Heuristic-only shape (no framework schema keyword detected) |
+
+### Failure UX
+
+M24 extraction either succeeds completely or produces no `schema_fields` at all. There is no operator-visible failure path — a malformed or non-literal Fastify schema does not cause `tusq scan` or `tusq manifest` to exit non-zero; the route silently falls back to M15 behavior. Reviewers distinguish the two outcomes by inspecting `input_schema.source` in the generated manifest.
+
+| Situation | Operator sees |
+|-----------|---------------|
+| Fastify literal `schema.body` parsed successfully | `input_schema.source: "fastify_schema_body"` with populated `properties` |
+| Fastify `schema` present but not a literal object | `input_schema.source: "framework_schema_hint"` with empty `properties` (same as pre-M24) |
+| No Fastify `schema` keyword | `input_schema.source: "request_body"` (same as pre-M24) |
+
+### M24 Local-Only Invariants
+
+| Invariant | How it shows up at the scanner |
+|-----------|--------------------------------|
+| Static-only extraction | No `require('fastify')`, no `eval`, no `new Function`, no `ts-node`; regex + balanced-brace matching only |
+| Zero new dependencies | `package.json` MUST NOT gain `ajv`, `fastify`, `@sinclair/typebox`, or any validator runtime in V1.5 |
+| Graceful degradation | Any parse ambiguity drops the entire `schema_fields` record; partial extraction is forbidden |
+| Deterministic output | Property key order is source-literal (declaration order); repeated `tusq scan` + `tusq manifest` runs produce byte-identical manifests |
+| Non-Fastify fixtures untouched | Express and NestJS fixtures produce byte-identical manifests before and after M24 (a smoke test asserts this invariant) |
+| Path param authority preserved | When a Fastify body field name collides with a path parameter, the path parameter wins in `input_schema.properties` |
+| Source-literal framing | Manifest `input_schema.source: "fastify_schema_body"` tags the shape as "what the source declares," not "what the runtime enforces"; docs do not use "validator-backed" framing |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

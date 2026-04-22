@@ -2157,6 +2157,126 @@ A dedicated smoke/eval scenario enforces two parity invariants:
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-075 through REQ-080-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M24: Opt-In Fastify Schema Body-Field Extraction
+
+### Purpose
+
+VISION.md line 72 requires manifests that are "usable on first pass for real codebases, not toy examples." M15 addressed four of the first-pass usability gaps (path parameter extraction, smart domain inference, rich descriptions, honest confidence penalty). One gap remained: a Fastify route can declare a literal JSON-Schema `body` directly in its route-options object, and the V1.4 scanner discards that shape entirely — the existing `schema_hint` boolean detects only *presence* of the keyword `schema:` and never extracts the declared fields. An LLM receiving a manifest generated from a well-schema'd Fastify codebase sees `input_schema: { type: "object", additionalProperties: true }` and has no idea what fields to send, even though the source literally told the scanner which fields are required and what their types are.
+
+M24 closes that gap for the deterministic case: when the Fastify route's `schema` value is a literal object, and the `body` key inside it is a literal object with `properties` and (optionally) `required`, the extractor captures the declared top-level field shapes into the manifest's `input_schema`. No library is imported; no code is evaluated; nothing about non-Fastify extractors changes.
+
+### Scope Boundary
+
+M24 ships exactly one extraction path: literal Fastify `schema.body` → manifest `input_schema.properties` (plus `input_schema.required` and `input_schema.additionalProperties: false`). Everything else is explicitly out of scope for V1.5:
+
+| In-scope for M24 | Out-of-scope for V1.5 |
+|------------------|-----------------------|
+| Fastify route-options object containing a literal `schema: { body: { properties, required } }` block | Express-validator chain expressions (`body('x').isEmail()`) |
+| Top-level primitive types on each property (`string`, `number`, `integer`, `boolean`, `object`, `array`) | Joi / Zod / Yup schema detection |
+| Top-level `required` array literal | NestJS class-validator DTO decorators (`@IsEmail()`, `@IsNotEmpty()`) |
+| Graceful degradation to M15 behavior on any parse ambiguity | Nested property descent below one level (`properties.address.properties.zip`) |
+| Additive confidence bump (+0.04) when extraction succeeds | Format validation (`format: "email"`, `pattern: "^[a-z]+$"`, `enum`, `oneOf`, `anyOf`) |
+| Fastify `schema.params` and `schema.querystring` extraction | Runtime validator execution or import |
+
+### Extraction Rules
+
+The Fastify extractor (`extractFastifyRoutes` in `src/cli.js`) runs the following algorithm **in addition to** the existing `schema_hint` detection:
+
+1. Locate the route-options object for each route registration (existing pattern).
+2. Within the options object, regex-locate `schema\s*:\s*\{`; if not found, emit no `schema_fields` and fall back to M15 behavior.
+3. Balanced-brace-match forward from the `{` to find the end of the schema block; if the braces do not balance within the options block, fall back.
+4. Inside the schema block, regex-locate `body\s*:\s*\{`; if not found, fall back.
+5. Balanced-brace-match the body block; inside it, regex-locate `properties\s*:\s*\{` and balanced-brace-match the properties block.
+6. Within the properties block, iterate top-level `<name>\s*:\s*\{` entries in **source order**. For each entry, balanced-brace-match the value block and extract the `type` string literal (one of `string|number|integer|boolean|object|array`). If no `type` is present, default to `"string"` (the Fastify default for an under-specified property).
+7. Within the body block, regex-locate `required\s*:\s*\[` and balanced-bracket-match; parse the resulting array literal for string items.
+8. If any step fails parse, the entire `schema_fields` record is dropped — the route falls back to M15 behavior byte-for-byte. Partial extraction is never emitted.
+
+### Pipeline Propagation
+
+```
+tests/fixtures/fastify-sample/src/server.ts
+   └─ extractFastifyRoutes()                                                 # M24; captures schema_fields when the pattern matches
+      └─ finalizeRouteInference()                                            # merges schema_fields.body into input_schema
+         └─ buildInputSchema()                                               # flips additionalProperties: false when schema_fields present
+            └─ scanObject.routes[i].input_schema { properties, required, source: "fastify_schema_body", additionalProperties: false }
+               └─ tusq.manifest.json capability.input_schema                 # same shape; schema_fields is not preserved, only the merged input_schema
+                  └─ tusq-tools/*.json parameters                            # inherits the merged shape; agents see real field names
+                     └─ MCP tools/list                                       # agents see real field names on callable tools
+```
+
+No new artifact shape is introduced. `schema_fields` lives only on the in-memory route record during manifest generation; the persisted artifact is the existing `input_schema` shape, now populated with real field names for Fastify routes that declare them.
+
+### Confidence Model Extension
+
+The existing `scoreConfidence()` branches are preserved verbatim. One additive branch is added: when `schema_fields` is captured, score += 0.04 (capped at 0.95). The existing `+0.14` for `schema_hint` is unchanged. A route with both a schema hint and captured schema fields therefore gains +0.18 total from the schema signal, reflecting the stronger grounding.
+
+Routes without `schema_fields` capture the existing confidence behavior byte-for-byte.
+
+### Source Metadata Tag
+
+The manifest capability's `input_schema.source` field (already present at `src/cli.js:2552`) takes a new enumerated value under M24:
+
+| `input_schema.source` | When emitted | Meaning |
+|-----------------------|--------------|---------|
+| `fastify_schema_body` | Fastify route with a literal `schema.body` block, successful M24 extraction | The declared body field shapes were captured verbatim from source; `additionalProperties` is `false` |
+| `framework_schema_hint` | Fastify/Nest route with a non-extractable `schema:` reference (shared constant, computed object) | Only `schema_hint` was detected; fields are not declared in the manifest; M15/M24 fall-back path |
+| `request_body` | Express-style handler body access without a schema declaration | Heuristic shape only; `additionalProperties: true` |
+
+A reviewer can tell at a glance whether the manifest's `input_schema` shape is "what the source declares" or "what the heuristic guessed."
+
+### Default Behavior Preservation Table
+
+| Input | Pre-M24 manifest output | Post-M24 manifest output |
+|-------|-------------------------|--------------------------|
+| Fastify route with literal `schema.body` | `input_schema: { type: "object", additionalProperties: true, source: "framework_schema_hint" }` | `input_schema: { type: "object", properties: {...}, required: [...], additionalProperties: false, source: "fastify_schema_body" }` |
+| Fastify route with `schema: sharedSchema` (non-literal) | `input_schema: { ..., source: "framework_schema_hint" }` | Byte-identical to pre-M24 |
+| Fastify route with no `schema:` | `input_schema: { ..., source: "request_body" }` | Byte-identical to pre-M24 |
+| Express route (any form) | current `input_schema` | Byte-identical to pre-M24 |
+| NestJS route (any form) | current `input_schema` | Byte-identical to pre-M24 |
+
+The only observable manifest change is on Fastify routes whose `schema.body` parses as a literal object with a literal `properties` block.
+
+### Local-Only Invariants
+
+| Invariant | How it shows up during scan/manifest |
+|-----------|--------------------------------------|
+| No dynamic evaluation | The extractor uses regex + balanced-brace matching on source text; no `require('fastify')`, no `eval`, no `new Function`, no `ts-node` |
+| No network I/O | Scanner remains filesystem-only; no downloads, no registry lookups, no telemetry |
+| No validator framework import | `src/cli.js` does NOT add a dependency on `ajv`, `fastify`, `@sinclair/typebox`, or any JSON-Schema runtime; M24 ships with zero new `package.json` entries |
+| Graceful degradation | Any parse ambiguity falls back to M15 behavior byte-for-byte; partial schema extraction is forbidden |
+| Deterministic output | Property key order is source-literal (declaration order); repeated runs produce byte-identical manifests |
+| Path param authority | When a Fastify schema body field name collides with an M15 path parameter name, the path parameter wins (path is authoritative URL shape; body is authoritative payload shape) |
+
+### V1.5 Limitations
+
+| Limitation | Rationale | V2 Plan |
+|------------|-----------|---------|
+| Fastify only | Fastify's `schema` is literal JSON Schema by convention — the only deterministic case in the Node ecosystem. Express-validator, Joi, and Zod require chain-expression or AST parsing that is out of scope for a regex-based extractor | V2 `tusq scan --plugin express-validator` adds express-validator chain inference via an opt-in plugin; Joi/Zod follow the same plugin pattern |
+| Body only (no `params`, no `querystring`, no `headers`) | Path params are already M15-extracted into `input_schema.properties`; extracting `schema.params` on top would create duplicate/conflicting shapes. `querystring` and `headers` are lower-value for first-pass usability | V2 may extract `schema.querystring` into a separate `query_schema` field on the capability; `schema.params` stays path-derived |
+| Top-level fields only | One level of traversal covers the common case (flat request bodies); nested descent introduces recursion-depth policy and cycle handling that is out of scope for V1.5 | V2 plugin interface can descend deeper with explicit depth limits |
+| No format validation | `format`, `pattern`, `enum`, `oneOf`, `anyOf`, `const`, `minLength`, `maxLength` are dropped by V1.5 — only `type` is preserved | V2 extracts the full JSON Schema subset and propagates it through `tools/call` for dry-run argument validation |
+| No runtime validator execution | M24 is static-analysis-only; whether the Fastify runtime would actually accept a given payload is not proven by the manifest | V2 dry-run execution (`tusq serve --policy` under a future `mode: "validate"`) can invoke a JSON-Schema validator against the manifest shape |
+| No diff-aware re-approval on `input_schema` change | A capability's `capability_digest` already includes `input_schema` (see M13), so an M24-driven shape change will flip the digest and require re-approval; M24 does not ship a one-click "accept new shape" workflow | V2 `tusq approve --schema-changes` may add a targeted approval path for schema-only drift |
+
+### Approval-Gate Invariant Preservation
+
+M24 does not alter the approval-gate invariant set first stated in the M20 section. For clarity:
+
+1. A capability whose `input_schema` changes under M24 (from permissive placeholder to declared-field shape) MUST have its `capability_digest` re-computed; M13 semantics propagate verbatim. A reviewer MUST explicitly re-approve the capability for it to appear in `tools/list`.
+2. `tools/list` continues to filter by `approved: true`. A newly-populated `input_schema` does NOT implicitly approve the capability; if approval was previously granted on a less-specific shape, M13 diff detection will surface the change for re-approval.
+3. M24 does NOT change `tusq serve` behavior. The `input_schema` is passed through to `tools/list` and `tools/call` unchanged; under `--policy` dry-run, the narrow four-rule validator (see M20) operates against the new shape just as it operated against the old.
+
+### Docs and Tests Required Before Implementation
+
+- `README.md` — add a one-line note under the manifest-format section that Fastify routes with a literal `schema.body` block emit declared field shapes in `input_schema.properties`; name the `fastify_schema_body` source tag explicitly; do NOT use the phrase "validator-backed."
+- `website/docs/manifest-format.md` — add a "Fastify schema body extraction" subsection documenting the extraction rules, the `source: "fastify_schema_body"` tag, the `additionalProperties: false` flip, the fall-back semantics when the schema is non-literal, and the V1.5 boundary (Fastify only, body only, top-level only, no format validation).
+- `website/docs/frameworks.md` — extend the Fastify row to name "literal `schema.body` extraction" as a captured signal; link to the manifest-format subsection.
+- `tests/smoke.mjs` — add coverage for: (a) Fastify route with literal `schema.body` produces `input_schema.properties` with declared field names in declaration order, `additionalProperties: false`, `source: "fastify_schema_body"`; (b) Fastify route with `schema: sharedSchema` (non-literal reference) produces byte-identical output to HEAD `35b7c9c` (M15 fall-back preserved); (c) Fastify route with `schema` present but no `body` key produces M15 fall-back output; (d) Fastify route combining a body schema and a path parameter surfaces both in `input_schema.properties` with path param winning on name collision; (e) Express fixture manifest is byte-identical pre/post-M24; (f) NestJS fixture manifest is byte-identical pre/post-M24; (g) repeated manifest generations on the Fastify fixture produce byte-identical property ordering.
+- `tests/fixtures/fastify-sample/src/server.ts` — extend the existing Fastify sample to include at least one route with a literal `schema.body` block exercising `string`, `number`, `boolean` types, a `required` array, and a property name that collides with a path parameter. Add at least one route with `schema: sharedSchema` (non-literal reference) to exercise the fall-back path.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario asserting that the Fastify fixture manifest contains `input_schema.properties` with expected keys in declaration order, `additionalProperties: false` on the Fastify route, and that repeated runs (repeat_runs=3) produce byte-identical property ordering.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-081 through REQ-086-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2171,3 +2291,5 @@ The dev role is accountable for implementing all items above. The QA role is acc
 10. **M22 local-only invariant** — `tusq policy verify` MUST NOT perform any network, manifest, or target-product I/O in V1.3. Its side effects are limited to reading the policy file path, writing to stdout/stderr, and exiting 0 or 1. It never binds a TCP port, never starts an MCP server, never reads `tusq.manifest.json`, and never invokes a compiled tool.
 11. **M23 opt-in-strict invariant** — Strict manifest-aware verification is opt-in via the `--strict` flag on `tusq policy verify`. The default `tusq policy verify` path (no flag) MUST remain byte-for-byte identical to the M22 behavior: no manifest file is opened, no manifest path is resolved, and no new failure mode is exposed. `--strict` is never default, never inferred from filesystem state (e.g., presence of `tusq.manifest.json`), and never toggled by any other flag. `--manifest <path>` is only consulted when `--strict` is set and passing `--manifest` without `--strict` MUST exit 1 with `--manifest requires --strict` before any file is read.
 12. **M23 least-privilege-validation invariant** — A passing `tusq policy verify --strict` run is strictly a policy/manifest alignment statement at verify time: every name in `allowed_capabilities` exists in the referenced manifest, is `approved: true`, and is not blocked on review. It is NOT a runtime safety gate. Strict mode MUST NOT be documented, described, or framed as an "execution safety check," a "pre-flight for serve --policy," a "manifest freshness check," a "runtime reachability probe," or any phrase that implies a PASS makes execution safe. Strict mode performs exactly two local filesystem reads (the policy file and the manifest file), writes to stdout/stderr, and exits 0 or 1. It never binds a TCP port, never opens a network socket, never executes any capability, never mutates the manifest, and never reads any other file.
+13. **M24 static-literal-extraction invariant** — Fastify `schema.body` extraction is strictly static: the extractor reads source bytes via `fs.readFile` and applies regex + balanced-brace matching on the literal text. It MUST NOT import `fastify`, `ajv`, `@sinclair/typebox`, or any validator runtime; MUST NOT evaluate source code via `require`, `eval`, `new Function`, or `ts-node`; and MUST NOT make any network I/O. When the `schema` value is not a literal object, when `body` is not a literal object, when `properties` is absent, or when any brace/bracket is unbalanced, the extractor MUST drop the entire `schema_fields` record and fall back to M15 behavior byte-for-byte. Partial extraction is forbidden. Manifest output for non-Fastify fixtures and for Fastify routes without a literal `schema.body` block MUST be byte-for-byte identical to HEAD `35b7c9c`.
+14. **M24 source-literal-framing invariant** — The extracted `input_schema` shape represents "what the source declares," NOT "what the Fastify runtime would validate." The manifest `input_schema.source` field tags the extraction as `fastify_schema_body`, and docs/README/CLI-help/launch artifacts MUST NOT describe it as "validator-backed," "runtime-validated," "ajv-validated," or any phrase that implies the manifest shape is enforced at runtime by the framework. The defensible framing is "the declared body schema as it appears literally in source." M24 does NOT invoke any JSON-Schema validator; propagation to `tools/call` dry-run validation continues to use the narrow four-rule validator specified under M20. Any future runtime-enforced validation lands under a separate milestone with its own constraint entry.
