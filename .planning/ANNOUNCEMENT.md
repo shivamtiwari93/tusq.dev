@@ -28,10 +28,11 @@ This release gives teams a concrete terminal workflow:
 8. share a deterministic, offline review artifact with `tusq docs --out docs/capabilities.md`, which renders approval state, governance metadata, redaction policy, examples, constraints, and provenance directly from the manifest
 9. optionally activate an opt-in dry-run with `tusq serve --policy .tusq/execution-policy.json`; when the reviewer-signed policy file sets `mode: "dry-run"`, MCP `tools/call` validates arguments and returns `executed: false`, a policy echo, and a `dry_run_plan` with a deterministic `plan_hash` — still no live API execution, just a plan preview reviewers can audit
 10. scaffold that policy file in one step with `tusq policy init` (safe default `mode: "describe-only"`; opt-in `--mode dry-run`), using flags `--reviewer`, `--allowed-capabilities`, `--out`, `--force`, `--dry-run`, `--json`, and `--verbose` to control the emitted `.tusq/execution-policy.json` — the generated file is validator-round-trip-safe, so `tusq serve --policy` will accept it on the first run without hand-editing
+11. verify any `.tusq/execution-policy.json` as a CI pre-flight gate with `tusq policy verify <path> [--json]`, which reuses the exact same validator that `tusq serve --policy` calls at startup — exit `0` with a PASS line (and a `{ ok: true, mode, path }` JSON result under `--json`) means the server will accept the file; exit `1` prints the same validator error message the server would emit, so the "edit, restart server, read traceback, edit again" loop collapses into a single no-server check
 
 What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls (even under `--policy` with `mode: "dry-run"`, `tools/call` always returns `executed: false` and makes no outbound request to the target product), does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
-The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, an inspectable describe-only MCP surface, an offline, deterministic Markdown capability review packet from `tusq docs`, an opt-in dry-run response shape under `tusq serve --policy` that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — no live execution was added — and one-step scaffolding of the governance artifact itself via `tusq policy init`, which writes a validator-round-trip-safe `.tusq/execution-policy.json` and defaults to the safe `mode: "describe-only"` unless a reviewer opts into `--mode dry-run`.
+The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, an inspectable describe-only MCP surface, an offline, deterministic Markdown capability review packet from `tusq docs`, an opt-in dry-run response shape under `tusq serve --policy` that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — no live execution was added — one-step scaffolding of the governance artifact itself via `tusq policy init`, which writes a validator-round-trip-safe `.tusq/execution-policy.json` and defaults to the safe `mode: "describe-only"` unless a reviewer opts into `--mode dry-run`, and a no-server `tusq policy verify` CI pre-flight that reuses the exact `loadAndValidatePolicy()` function `tusq serve --policy` uses — a PASS provably means the server will accept the same file, without starting an HTTP server or making any network call.
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
@@ -69,6 +70,9 @@ tusq docs --out docs/capabilities.md
 # optionally scaffold the reviewer-signed execution policy in one step
 # (safe default mode is "describe-only"; opt into dry-run explicitly):
 tusq policy init --mode dry-run --reviewer you@example.com
+# verify the policy as a CI pre-flight; PASS proves serve --policy will accept it
+# (no HTTP server is started, no network I/O is performed):
+tusq policy verify .tusq/execution-policy.json --json
 # then activate opt-in dry-run argument validation and plan emission:
 tusq serve --policy .tusq/execution-policy.json
 # later, when the codebase changes, re-review drift:
@@ -96,7 +100,7 @@ npm link
 
 - Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` (or approve a single capability by name) → `tusq compile` → `tusq serve`
 - Generate a shareable review packet with `tusq docs --out docs/capabilities.md`; the output is deterministic and offline, so it can be checked in, diffed, and circulated to reviewers who do not run the CLI
-- For reviewers who want argument validation plus a plan preview before any future execution step exists, scaffold the policy in one step with `tusq policy init --mode dry-run --reviewer you@example.com` (or pass `--allowed-capabilities name,...` to scope the dry-run surface); add `--dry-run` to preview the emitted JSON without writing, or omit `--mode` entirely to accept the safe default `mode: "describe-only"`. Then start the server with `tusq serve --policy .tusq/execution-policy.json`; every `tools/call` still returns `executed: false`, and the `dry_run_plan.plan_hash` is stable across runs for identical validated inputs
+- For reviewers who want argument validation plus a plan preview before any future execution step exists, scaffold the policy in one step with `tusq policy init --mode dry-run --reviewer you@example.com` (or pass `--allowed-capabilities name,...` to scope the dry-run surface); add `--dry-run` to preview the emitted JSON without writing, or omit `--mode` entirely to accept the safe default `mode: "describe-only"`. Before starting the server, confirm the policy would be accepted with `tusq policy verify .tusq/execution-policy.json --json` — exit `0` with `{ ok: true, mode, path }` means `tusq serve --policy` will accept the same file, and `tusq policy verify` starts no server and makes no network call, so it is safe to drop into a CI pre-flight step. Then start the server with `tusq serve --policy .tusq/execution-policy.json`; every `tools/call` still returns `executed: false`, and the `dry_run_plan.plan_hash` is stable across runs for identical validated inputs
 - When the codebase or manifest changes, run `tusq diff --from <old-manifest> --to tusq.manifest.json --review-queue` to see what drifted, and use `--fail-on-unapproved-changes` if you want a CI gate
 - Review `tusq.manifest.json` before approving any capability, especially approval state, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction`
 - After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
@@ -112,7 +116,7 @@ npm link
 
 It scans supported Node.js SaaS backends (`Express`, `Fastify`, `NestJS`), generates a reviewable `tusq.manifest.json`, compiles approved capabilities into JSON tool defs, and exposes them through a local describe-only MCP endpoint.
 
-This release proves repo → reviewed manifest → approved tool JSON → inspectable describe-only MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution. `tusq serve --policy` is available as an opt-in dry-run that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — still no live execution. `tusq policy init` scaffolds the reviewer-signed `.tusq/execution-policy.json` in one step (default `mode: "describe-only"`, opt-in `--mode dry-run`), and the generated file is validator-round-trip-safe. `tusq diff` closes the loop when code changes by emitting a review queue of drifted capabilities that can gate CI.
+This release proves repo → reviewed manifest → approved tool JSON → inspectable describe-only MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution. `tusq serve --policy` is available as an opt-in dry-run that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — still no live execution. `tusq policy init` scaffolds the reviewer-signed `.tusq/execution-policy.json` in one step (default `mode: "describe-only"`, opt-in `--mode dry-run`), and the generated file is validator-round-trip-safe. `tusq policy verify` adds a no-server CI pre-flight that reuses the exact `loadAndValidatePolicy()` the server uses — PASS proves `tusq serve --policy` will accept the same file. `tusq diff` closes the loop when code changes by emitting a review queue of drifted capabilities that can gate CI.
 
 Best fit: teams with an existing supported backend, not teams looking for hosted agents on day one.
 
@@ -136,7 +140,7 @@ Shipping `tusq.dev v0.1.0` today.
 
 Current V1 scope:
 - Express, Fastify, NestJS
-- `init` / `scan` / `manifest` / `review` / `approve` / `compile` / `serve` / `diff` / `docs` / `policy init`
+- `init` / `scan` / `manifest` / `review` / `approve` / `compile` / `serve` / `diff` / `docs` / `policy init` / `policy verify`
 - reviewed `tusq.manifest.json`
 - explicit approval state and optional approval trail
 - visible governance metadata (`side_effect_class`, `sensitivity_class`, `auth_hints`)
@@ -145,6 +149,7 @@ Current V1 scope:
 - approved capability compilation
 - local describe-only MCP server (default); opt-in dry-run via `tusq serve --policy` with a reviewer-signed `.tusq/execution-policy.json` that emits a validated `dry_run_plan` carrying `executed: false` and a deterministic `plan_hash`
 - one-step scaffolding of `.tusq/execution-policy.json` via `tusq policy init` with safe default `mode: "describe-only"`, opt-in `--mode dry-run`, and validator-round-trip safety against `tusq serve --policy`
+- no-server CI pre-flight validation of `.tusq/execution-policy.json` via `tusq policy verify` (optionally `--json`), which reuses `loadAndValidatePolicy()` byte-for-byte and exits `0` on PASS / `1` on fail with the server's own error shape
 - manifest-version diff with review-queue output and `--fail-on-unapproved-changes` CI gate
 - offline deterministic Markdown capability documentation via `tusq docs`
 - repo-local evaluation path for launch
