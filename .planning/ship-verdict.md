@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_d86b8fb1c45a611a (role=qa, 2026-04-21)
+
+This QA turn challenges the prior accepted QA turn (turn_07e9f20a4e140acf) independently and does not rubber-stamp it. HEAD is da6a968 on run_3c0710a95e02aed1.
+
+**Challenge 1 — HEAD diff from prior QA turn.** Prior turn (turn_07e9f20a4e140acf) operated on HEAD 96bda16. Current HEAD is da6a968 (`checkpoint: turn_07e9f20a4e140acf (role=qa, phase=qa)`). `git diff 96bda16..da6a968 --stat` shows only 2 files changed: `.planning/RELEASE_NOTES.md` (1-line count fix, 44→49) and `.planning/ship-verdict.md` (+18 lines, the QA challenge entry). No source, test, or binary changes between the two HEADs. **Challenge resolved: prior evidence remains valid for source/test surface; this turn re-verifies independently regardless.**
+
+**Challenge 2 — Independent smoke run on HEAD da6a968.** Ran `node tests/smoke.mjs` → exit 0, "Smoke tests passed". Not inherited from prior QA evidence. All 44 prior acceptance criteria REQ-001–REQ-044 remain covered. **Challenge resolved: 44 prior criteria independently re-verified PASS.**
+
+**Challenge 3 — Independent eval regression run on HEAD da6a968.** Ran `node tests/eval-regression.mjs` → exit 0, "Eval regression harness passed (2 scenarios)". REQ-045–REQ-049 independently re-verified PASS. **Challenge resolved.**
+
+**Challenge 4 — Independent npm test on HEAD da6a968.** Ran `npm test` → exit 0, both "Smoke tests passed" and "Eval regression harness passed (2 scenarios)" emitted. REQ-049 (npm test runs both suites) confirmed. **Challenge resolved.**
+
+**Challenge 5 — CLI surface and diff flag set on HEAD da6a968.** `node bin/tusq.js help` → exit 0; 9 commands: init, scan, manifest, compile, serve, review, diff, version, help. `node bin/tusq.js diff --help` → exit 0; flags: --from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose. `node bin/tusq.js diff` (no args) → exit 1, "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison." **Challenge resolved: no surface drift.**
+
+**Challenge 6 — Workflow artifact accuracy on HEAD da6a968.** Acceptance matrix: 49 criteria, all PASS, 0 FAIL. ROADMAP: 104 checked / 0 open. PM_SIGNOFF: Approved: YES. RELEASE_NOTES.md: states 49 acceptance criteria (corrected from 44 in prior turn). **Challenge resolved: all gate artifacts complete and accurate.**
+
+**Independent test run (2026-04-21, HEAD da6a968):** `node tests/smoke.mjs` → exit 0. `node tests/eval-regression.mjs` → exit 0. `npm test` → exit 0. All independent, not inherited from prior evidence.
+
+---
+
 ## QA Challenge — turn_07e9f20a4e140acf (role=qa, 2026-04-21)
 
 This QA turn challenges the prior accepted QA turn (turn_afcc6dfa7b4ddb93) independently and does not rubber-stamp it. HEAD is 96bda16 on run_3c0710a95e02aed1.
