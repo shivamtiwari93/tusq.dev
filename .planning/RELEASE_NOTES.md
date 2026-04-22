@@ -62,7 +62,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 74 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init + REQ-070–REQ-074 policy verify command / tusq policy verify).
+- All 80 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init + REQ-070–REQ-074 policy verify command / tusq policy verify + REQ-075–REQ-080 policy strict verify / tusq policy verify --strict).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -245,7 +245,65 @@ Failure:
 
 **Parity guarantee** (REQ-074) — `tusq policy verify` and `tusq serve --policy` call `loadAndValidatePolicy()` without modification. Every error message emitted by `verify` is byte-identical to the error emitted by `serve --policy` for the same bad fixture. There is no standalone re-implementation of validation logic.
 
-**All 74 acceptance criteria** (REQ-001–REQ-074) pass on HEAD 3e95062: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (5 scenarios)`.
+## Policy Strict Verify (M23 — V1.4)
+
+`tusq policy verify --strict` adds an opt-in, manifest-aware capability cross-reference layer on top of the M22 validator. It is a CI/review-layer gate, not a server-startup gate — `tusq serve --policy` is not affected by this flag.
+
+**Why it matters** — M22 `tusq policy verify` confirms the policy file is structurally valid. It does not confirm that the capabilities named in `allowed_capabilities` are actually present and approved in `tusq.manifest.json`. M23 closes that gap: `--strict` reads the manifest and cross-references each `allowed_capabilities` entry against the manifest's approval state, so a `--strict` PASS means the policy is valid **and** every named capability is present, approved, and not flagged for review.
+
+**Usage:**
+```
+tusq policy verify [--policy <path>] --strict [--manifest <path>] [--json] [--verbose]
+```
+
+The `--manifest` flag is only valid under `--strict`. Using `--manifest` without `--strict` exits 1 with `--manifest requires --strict` before any file read (SYSTEM_SPEC Constraint 11). Default manifest path is `tusq.manifest.json` in the current directory.
+
+**Strict check logic** — Three failure reasons, emitted for each failing `allowed_capabilities` entry in declaration order:
+- `not_in_manifest` — capability name is absent from `manifest.capabilities`
+- `not_approved` — capability is present but `approved: false`
+- `requires_review` — capability is present and approved but `review_needed: true`
+
+If `allowed_capabilities` is unset or null, the strict check passes trivially without opening the manifest. An empty array also passes trivially.
+
+**Exit behavior under `--strict`:**
+- Exit 0: policy is structurally valid **and** all allowed capabilities are approved in the manifest. Output: `Policy valid (strict): <path> (mode: <mode>, reviewer: <reviewer>, allowed_capabilities: N, manifest: <manifest_path>)`
+- Exit 1: policy is invalid, OR one or more allowed capabilities fail the manifest cross-reference. Each failing entry is emitted as `Strict policy verify failed: <reason>: <name>`.
+
+**`--strict --json` output shapes:**
+
+Success:
+```json
+{
+  "valid": true,
+  "strict": true,
+  "path": "/path/to/execution-policy.json",
+  "manifest_path": "/path/to/tusq.manifest.json",
+  "manifest_version": 1,
+  "approved_allowed_capabilities": 1,
+  "policy": { "schema_version": "1.0", "mode": "describe-only", ... }
+}
+```
+
+Failure:
+```json
+{
+  "valid": false,
+  "strict": true,
+  "path": "/path/to/execution-policy.json",
+  "manifest_path": "/path/to/tusq.manifest.json",
+  "strict_errors": [
+    { "name": "cap_unapproved", "reason": "not_approved" }
+  ]
+}
+```
+
+**M22 parity invariant** (SYSTEM_SPEC Constraint 9) — The default `tusq policy verify` code path (no `--strict`) is byte-for-byte identical to M22. The `--strict` flag is always opt-in; it is never inferred from the presence of a manifest file. M22 validation always runs first on the `--strict` path; strict checks only execute after M22 validation passes.
+
+**What strict PASS does NOT claim** (SYSTEM_SPEC Constraint 12) — A strict PASS is a policy/manifest alignment statement at verify time only. It does not imply runtime safety, execution pre-flight, manifest freshness, or reachability of any capability at serve time. `tusq serve --policy` continues to silently drop unlisted/unapproved capabilities from `tools/list` as specified in M20, regardless of what `policy verify --strict` found at verify time.
+
+**New eval scenario** — `policy-strict-verify-determinism` extends the governed-cli eval harness to 6 scenarios. It runs `policy verify --strict --json` three times and asserts that `strict_errors` name ordering is identical across all runs, confirming deterministic output from the Map-based capability lookup and declaration-order iteration over `allowed_capabilities`.
+
+**All 80 acceptance criteria** (REQ-001–REQ-080) pass on HEAD 72722fa: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (6 scenarios)`.
 
 ## Known V1 Limits And Non-Claims
 
