@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776823886821_8c6e",
+  "event_id": "evt_1776823886820_f68e",
+  "status": "superseded",
+  "priority": "p0",
+  "template": "cli-tool",
+  "charter": "Implement the next tusq.dev increment from VISION.md and existing M12 V2 planning: replace manual manifest approval edits with a governed repo-local tusq approve workflow. Add a CLI command that approves selected capabilities in tusq.manifest.json, records approved_by and approved_at, supports list/dry-run/json behavior where appropriate, and preserves existing review/compile boundaries. This is new product work beyond M17; do not treat existing M1-M17 artifacts as sufficient.",
+  "acceptance_contract": [
+    "Adds tusq approve command and help surface",
+    "Can approve one capability by name with reviewer identity and timestamp",
+    "Can approve all review-needed or unapproved capabilities intentionally",
+    "Supports dry-run or json output for auditability",
+    "Updates smoke or eval coverage and docs/planning artifacts"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-22T02:11:26.819Z",
+  "updated_at": "2026-04-22T02:11:26.823Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-22T02:11:26.819Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-22T02:11:26.822Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "superseded",
+      "at": "2026-04-22T02:11:26.823Z",
+      "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
+      "approver": "operator"
+    }
+  ],
+  "approved_run_id": "run_3c0710a95e02aed1",
+  "approved_by": "operator",
+  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+}
