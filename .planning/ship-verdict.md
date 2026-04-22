@@ -2,6 +2,24 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_fc91760b6fd1ad00 (role=qa, 2026-04-21)
+
+This QA turn challenges the prior accepted QA turn (turn_65565d72e96362d1) independently and does not rubber-stamp it. HEAD is 354d46a on run_0edfdeabceba9227.
+
+**Challenge 1 — HEAD diff from prior QA turn.** Prior turn (turn_65565d72e96362d1) operated on HEAD f0e42d4. Current HEAD is 354d46a (`checkpoint: turn_65565d72e96362d1 (role=qa, phase=qa)`). `git diff f0e42d4..HEAD --stat` shows only 2 files changed: `.planning/RELEASE_NOTES.md` (count correction 49→53) and `.planning/ship-verdict.md` (+20 lines, the QA challenge entry). No source, test, or binary changes between the two HEADs. **Challenge resolved: prior source evidence remains valid; this turn re-verifies independently regardless.**
+
+**Challenge 2 — Independent npm test on HEAD 354d46a.** Ran `npm test` → exit 0, "Smoke tests passed" and "Eval regression harness passed (2 scenarios)". Both suites pass. No regression introduced by the checkpoint commit. **Challenge resolved.**
+
+**Challenge 3 — CLI surface on HEAD 354d46a.** `node bin/tusq.js help` → exit 0; 10 commands: init, scan, manifest, compile, serve, review, approve, diff, version, help. `tusq approve --help` → exit 0; flags: capability-name, --all, --reviewer, --manifest, --dry-run, --json, --verbose. `tusq diff --help` → exit 0; flags intact. **Challenge resolved: no CLI regression.**
+
+**Challenge 4 — diff error path on HEAD 354d46a.** `node bin/tusq.js diff` (no args) → exit 1, "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison." **Challenge resolved: no regression.**
+
+**Challenge 5 — Workflow artifact accuracy on HEAD 354d46a.** Acceptance matrix: 53 criteria, all PASS, 0 FAIL, 0 SKIP. ROADMAP: 110 checked / 0 open. PM_SIGNOFF: Approved: YES. RELEASE_NOTES.md: states 53 acceptance criteria. **Challenge resolved: all gate artifacts complete and accurate.**
+
+**Independent test run (2026-04-21, HEAD 354d46a):** `npm test` → exit 0. Not inherited from prior QA evidence.
+
+---
+
 ## QA Challenge — turn_65565d72e96362d1 (role=qa, 2026-04-21)
 
 This QA turn challenges the prior accepted eng_director turn (turn_3a7de9f0afe13e67) independently and does not rubber-stamp it. HEAD is f0e42d4 on run_0edfdeabceba9227.
