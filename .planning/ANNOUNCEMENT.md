@@ -24,6 +24,7 @@ This release gives teams a concrete terminal workflow:
 4. approve capabilities by editing the manifest
 5. compile approved capabilities into JSON tool definitions
 6. expose those compiled tools through a local, describe-only MCP endpoint
+7. re-review drift with `tusq diff --review-queue` when the codebase or manifest changes, and optionally enforce `--fail-on-unapproved-changes` in CI
 
 What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls, does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
@@ -60,6 +61,10 @@ tusq manifest
 # edit tusq.manifest.json and set approved: true
 tusq compile
 tusq serve
+# later, when the codebase changes, re-review drift:
+tusq diff --from previous.manifest.json --to tusq.manifest.json --review-queue
+# and gate CI on unapproved drift:
+tusq diff --from previous.manifest.json --to tusq.manifest.json --fail-on-unapproved-changes
 ```
 
 This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. Review is non-interactive and happens by editing the manifest directly. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
@@ -80,6 +85,7 @@ npm link
 ```
 
 - Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → approve in the manifest → `tusq compile` → `tusq serve`
+- When the codebase or manifest changes, run `tusq diff --from <old-manifest> --to tusq.manifest.json --review-queue` to see what drifted, and use `--fail-on-unapproved-changes` if you want a CI gate
 - Review `tusq.manifest.json` before approving any capability, especially approval state, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction`
 - After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
 - Treat the first run as an inspection workflow: check confidence, domain grouping, provenance, and the describe-only MCP output
@@ -94,7 +100,7 @@ npm link
 
 It scans supported Node.js SaaS backends (`Express`, `Fastify`, `NestJS`), generates a reviewable `tusq.manifest.json`, compiles approved capabilities into JSON tool defs, and exposes them through a local describe-only MCP endpoint.
 
-This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution.
+This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution. `tusq diff` closes the loop when code changes by emitting a review queue of drifted capabilities that can gate CI.
 
 Best fit: teams with an existing supported backend, not teams looking for hosted agents on day one.
 
@@ -118,7 +124,7 @@ Shipping `tusq.dev v0.1.0` today.
 
 Current V1 scope:
 - Express, Fastify, NestJS
-- `init` / `scan` / `manifest` / `compile` / `review` / `serve`
+- `init` / `scan` / `manifest` / `compile` / `review` / `serve` / `diff`
 - reviewed `tusq.manifest.json`
 - explicit approval state and optional approval trail
 - visible governance metadata (`side_effect_class`, `sensitivity_class`, `auth_hints`)
@@ -126,6 +132,7 @@ Current V1 scope:
 - inspectable `examples` and `constraints` in describe-only `tools/call`
 - approved capability compilation
 - local describe-only MCP server
+- manifest-version diff with review-queue output and `--fail-on-unapproved-changes` CI gate
 - repo-local evaluation path for launch
 
 Explicitly not in V1:

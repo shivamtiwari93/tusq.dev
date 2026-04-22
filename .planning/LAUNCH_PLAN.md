@@ -4,8 +4,10 @@
 
 - The previous launch framing was directionally accurate but still too abstract at the top: it named tusq.dev as a "capability compiler" before it made the buyer pain operational
 - The previous pass also overloaded the first screen with governance detail before stating the proof path a buyer can verify in one session
+- The previous pass also described a six-step workflow that pre-dated M16 and left `tusq diff` out of the launch narrative entirely, even though the command is shipped and CI-ready on HEAD
 - For launch, the first screen should answer four questions in order: who this is for, what problem it solves, what proof exists today, and where V1 stops
 - Governance detail stays important, but it should support the operator story rather than replace it
+- Re-review after change is part of the operator story: `tusq diff` turns manifest-version comparison into a review queue so governed exposure stays governed as the codebase evolves
 
 ## Launch Goals
 
@@ -47,6 +49,8 @@
 - A first-screen line in README and homepage hero that also states the proof path before any metadata inventory appears
 - A simple terminal-first workflow example:
   `tusq init` → `tusq scan .` → `tusq manifest` → edit approvals → `tusq compile` → `tusq serve`
+- A follow-on CI-ready example for repeat runs:
+  regenerate manifest → `tusq diff --from <old> --to <new> --review-queue` → re-approve drifted capabilities → `tusq diff --fail-on-unapproved-changes` in CI
 - Release notes that spell out supported frameworks and deferred items
 - Website or landing-page copy that reflects the actual V1 surface instead of the full long-term vision
 - One sentence in every primary asset that explains what "governed" means in practice: inspect provenance, approval state, optional approval trail, mutation class, auth hints, sensitivity markers, redaction policy, and the describe-only usage context exposed through `examples` and `constraints`

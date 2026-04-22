@@ -6,7 +6,7 @@
 
 - Publish the announcement and release notes with the same V1 framing: existing Node.js SaaS teams, reviewed manifest, approved tool compilation, describe-only MCP serve, explicit V1 boundary
 - Update the homepage and README entry points so the first screen a visitor sees matches the release story
-- Share one terminal-first post showing the six-step workflow from `init` to `serve`
+- Share one terminal-first post showing the launch workflow from `init` through `serve`, plus a brief callout that `tusq diff` closes the loop when the codebase changes
 - Share one short operator-proof post: "your product logic already exists; the missing piece is reviewed AI exposure"
 - Share one short proof-path post: "supported repo -> reviewed manifest -> approved tool JSON -> describe-only MCP"
 - Use "try it locally from the repo" as the launch CTA until package distribution is confirmed
@@ -33,6 +33,7 @@
 - Post a framework-specific example using one supported stack, ideally Express first because it is easiest to recognize
 - Publish a short clip or screenshot sequence of manifest review plus `tools/list` and describe-only `tools/call`, calling out approval state, governance metadata, `redaction`, and the `examples` / `constraints` payload that survive into MCP responses
 - Publish a short "how to try it today" post that points users to the repo workflow instead of a public package-manager claim
+- Publish a short "keeping exposure governed after change" post focused on `tusq diff`: how the review queue surfaces drifted capabilities, and how `--fail-on-unapproved-changes` turns it into a CI gate
 
 ### Day 5-7
 
