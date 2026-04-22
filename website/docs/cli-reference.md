@@ -225,6 +225,87 @@ tusq policy verify && tusq serve --policy .tusq/execution-policy.json
 
 See [Execution Policy](./execution-policy.md) for the full policy schema and mode semantics.
 
+### `tusq policy verify --strict` (manifest-aware)
+
+When `--strict` is set, the verifier additionally reads `tusq.manifest.json` (or a path passed via `--manifest`) and cross-references every name in the policy's `allowed_capabilities` array against the manifest's approval-gated set. This is an opt-in CI/review-layer gate; default behavior is byte-for-byte identical to M22.
+
+```bash
+tusq policy verify [--policy <path>]
+                   [--strict [--manifest <path>]]
+                   [--json]
+                   [--verbose]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--strict` | Additionally cross-reference `allowed_capabilities` against the manifest | Disabled (M22 behavior) |
+| `--manifest <path>` | Path to the manifest file consulted under `--strict` (requires `--strict`) | `tusq.manifest.json` |
+
+Under `--strict`, the flag evaluation order is:
+
+1. If `--manifest` is set without `--strict`, exit 1 with `--manifest requires --strict` before reading any file.
+2. Run the M22 policy-file validator. If it fails, exit 1 with the M22 message. Strict checks do not run on a policy that fails M22 validation.
+3. If `--strict` is set, read the manifest and cross-check every name in `allowed_capabilities`. On any failure, exit 1.
+4. On full success, emit the success output and exit 0.
+
+Strict-mode failure messages:
+
+| Failure | Message |
+|---------|---------|
+| `--manifest` without `--strict` | `--manifest requires --strict` |
+| Manifest file missing | `Manifest not found: <path>` |
+| Manifest file unreadable | `Could not read manifest file: <path>: <OS error>` |
+| Manifest file not valid JSON | `Invalid manifest JSON at: <path>: <parser message>` |
+| Manifest has no `capabilities` array | `Invalid manifest shape at: <path>: missing capabilities array` |
+| Capability not in manifest | `Strict policy verify failed: allowed capability not found in manifest: <name>` |
+| Capability present but `approved: false` | `Strict policy verify failed: allowed capability not approved: <name>` |
+| Capability present, approved, but `review_needed: true` | `Strict policy verify failed: allowed capability requires review: <name>` |
+
+With `--strict --json` on success:
+
+```json
+{
+  "valid": true,
+  "strict": true,
+  "path": ".tusq/execution-policy.json",
+  "manifest_path": "tusq.manifest.json",
+  "manifest_version": 2,
+  "policy": {
+    "schema_version": "1.0",
+    "mode": "dry-run",
+    "reviewer": "ops@example.com",
+    "approved_at": "2026-04-22T05:20:21.000Z",
+    "allowed_capabilities": ["get_users_users"]
+  },
+  "approved_allowed_capabilities": 1
+}
+```
+
+With `--strict --json` on failure:
+
+```json
+{
+  "valid": false,
+  "strict": true,
+  "path": ".tusq/execution-policy.json",
+  "manifest_path": "tusq.manifest.json",
+  "error": "Strict policy verify failed: allowed capability not approved: get_users_users",
+  "strict_errors": [
+    { "name": "get_users_users", "reason": "not_approved" }
+  ]
+}
+```
+
+**What a strict PASS does NOT prove:** a PASS is a policy/manifest alignment statement at verify time only — every name in `allowed_capabilities` exists in the manifest, is `approved: true`, and is not blocked on review. It is NOT an execution safety check, NOT a runtime gate, NOT a manifest freshness check, and NOT a pre-flight for `tusq serve --policy`. A strict PASS does not change what `tools/list` returns, does not authorize capability execution, and does not substitute for any approval workflow.
+
+Canonical scaffold → verify → serve workflow:
+
+```bash
+tusq policy init --mode dry-run --reviewer ops@example.com
+tusq policy verify --strict --json
+tusq serve --policy .tusq/execution-policy.json
+```
+
 ## `tusq version`
 
 Print the current version.

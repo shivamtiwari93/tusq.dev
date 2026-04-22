@@ -1133,6 +1133,193 @@ async function run() {
     }
   }
 
+  // ─── M23: tusq policy verify --strict (manifest-aware) ──────────────────────
+
+  // Build strict-mode fixtures in a temp subdir
+  const m23TmpDir = path.join(os.tmpdir(), `tusq-m23-smoke-${Date.now()}`);
+  await fs.mkdir(path.join(m23TmpDir, '.tusq'), { recursive: true });
+
+  // Minimal manifest with three capabilities:
+  //   cap_approved     : approved: true,  review_needed: false  → strict PASS
+  //   cap_unapproved   : approved: false, review_needed: false  → strict FAIL (not_approved)
+  //   cap_needs_review : approved: true,  review_needed: true   → strict FAIL (requires_review)
+  const m23ManifestContent = JSON.stringify({
+    schema_version: '1.0',
+    manifest_version: 3,
+    capabilities: [
+      { name: 'cap_approved',     approved: true,  review_needed: false },
+      { name: 'cap_unapproved',   approved: false, review_needed: false },
+      { name: 'cap_needs_review', approved: true,  review_needed: true  }
+    ]
+  }, null, 2);
+  const m23ManifestPath = path.join(m23TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m23ManifestPath, m23ManifestContent, 'utf8');
+
+  const m23BasePolicy = { schema_version: '1.0', mode: 'describe-only', reviewer: 'ci@example.com', approved_at: '2026-01-01T00:00:00Z' };
+
+  const m23PassPolicyPath = path.join(m23TmpDir, '.tusq', 'm23-pass-policy.json');
+  await fs.writeFile(m23PassPolicyPath, JSON.stringify({ ...m23BasePolicy, allowed_capabilities: ['cap_approved'] }, null, 2), 'utf8');
+
+  const m23MissingCapPolicyPath = path.join(m23TmpDir, '.tusq', 'm23-missing-cap-policy.json');
+  await fs.writeFile(m23MissingCapPolicyPath, JSON.stringify({ ...m23BasePolicy, allowed_capabilities: ['cap_does_not_exist'] }, null, 2), 'utf8');
+
+  const m23UnapprovedCapPolicyPath = path.join(m23TmpDir, '.tusq', 'm23-unapproved-cap-policy.json');
+  await fs.writeFile(m23UnapprovedCapPolicyPath, JSON.stringify({ ...m23BasePolicy, allowed_capabilities: ['cap_unapproved'] }, null, 2), 'utf8');
+
+  const m23ReviewCapPolicyPath = path.join(m23TmpDir, '.tusq', 'm23-review-cap-policy.json');
+  await fs.writeFile(m23ReviewCapPolicyPath, JSON.stringify({ ...m23BasePolicy, allowed_capabilities: ['cap_needs_review'] }, null, 2), 'utf8');
+
+  const m23UnsetCapPolicyPath = path.join(m23TmpDir, '.tusq', 'm23-unset-cap-policy.json');
+  await fs.writeFile(m23UnsetCapPolicyPath, JSON.stringify(m23BasePolicy, null, 2), 'utf8');
+
+  const m23BadManifestPath = path.join(m23TmpDir, 'tusq.manifest.bad.json');
+  await fs.writeFile(m23BadManifestPath, '{not: valid json', 'utf8');
+
+  // (a) Default tusq policy verify (no --strict) must not read the manifest even when it exists
+  const m23DefaultVerifyResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath],
+    { cwd: m23TmpDir, expectedStatus: 0 }
+  );
+  if (!m23DefaultVerifyResult.stdout.includes('Policy valid:')) {
+    throw new Error(`M23(a): expected 'Policy valid:' in stdout (no --strict): ${m23DefaultVerifyResult.stdout}`);
+  }
+  if (m23DefaultVerifyResult.stdout.includes('strict') || m23DefaultVerifyResult.stdout.includes('manifest')) {
+    throw new Error(`M23(a): default verify leaked manifest/strict output: ${m23DefaultVerifyResult.stdout}`);
+  }
+
+  // (b) --strict exit 0 on a policy whose allowed_capabilities are approved in the manifest
+  const m23StrictPassResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath, '--strict', '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 0 }
+  );
+  if (!m23StrictPassResult.stdout.includes('Policy valid (strict):')) {
+    throw new Error(`M23(b): expected 'Policy valid (strict):' in stdout: ${m23StrictPassResult.stdout}`);
+  }
+
+  // (c) --strict exit 1 when an allowed capability is absent from the manifest
+  const m23MissingCapResult = runCli(
+    ['policy', 'verify', '--policy', m23MissingCapPolicyPath, '--strict', '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23MissingCapResult.stderr.includes('Strict policy verify failed: allowed capability not found in manifest: cap_does_not_exist')) {
+    throw new Error(`M23(c): expected not-found message in stderr: ${m23MissingCapResult.stderr}`);
+  }
+
+  // (d) --strict exit 1 when an allowed capability is present but not approved
+  const m23UnapprovedResult = runCli(
+    ['policy', 'verify', '--policy', m23UnapprovedCapPolicyPath, '--strict', '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23UnapprovedResult.stderr.includes('Strict policy verify failed: allowed capability not approved: cap_unapproved')) {
+    throw new Error(`M23(d): expected not-approved message in stderr: ${m23UnapprovedResult.stderr}`);
+  }
+
+  // (e) --strict exit 1 when an allowed capability has review_needed: true
+  const m23ReviewResult = runCli(
+    ['policy', 'verify', '--policy', m23ReviewCapPolicyPath, '--strict', '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23ReviewResult.stderr.includes('Strict policy verify failed: allowed capability requires review: cap_needs_review')) {
+    throw new Error(`M23(e): expected requires-review message in stderr: ${m23ReviewResult.stderr}`);
+  }
+
+  // (f) --strict exit 1 when the manifest file is missing
+  const m23MissingManifestPath = path.join(m23TmpDir, 'nonexistent.manifest.json');
+  const m23MissingManifestResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath, '--strict', '--manifest', m23MissingManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23MissingManifestResult.stderr.includes(`Manifest not found: ${m23MissingManifestPath}`)) {
+    throw new Error(`M23(f): expected 'Manifest not found:' in stderr: ${m23MissingManifestResult.stderr}`);
+  }
+
+  // (g) --strict --json success shape
+  const m23JsonSuccessResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath, '--strict', '--manifest', m23ManifestPath, '--json'],
+    { cwd: m23TmpDir, expectedStatus: 0 }
+  );
+  let m23JsonSuccess;
+  try {
+    m23JsonSuccess = JSON.parse(m23JsonSuccessResult.stdout);
+  } catch {
+    throw new Error(`M23(g): --strict --json success output is not valid JSON: ${m23JsonSuccessResult.stdout}`);
+  }
+  if (!m23JsonSuccess.valid || !m23JsonSuccess.strict || m23JsonSuccess.manifest_path !== m23ManifestPath
+      || m23JsonSuccess.manifest_version !== 3 || m23JsonSuccess.approved_allowed_capabilities !== 1) {
+    throw new Error(`M23(g): --strict --json success shape mismatch: ${JSON.stringify(m23JsonSuccess)}`);
+  }
+
+  // (g) --strict --json failure shape
+  const m23JsonFailResult = runCli(
+    ['policy', 'verify', '--policy', m23MissingCapPolicyPath, '--strict', '--manifest', m23ManifestPath, '--json'],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  let m23JsonFail;
+  try {
+    m23JsonFail = JSON.parse(m23JsonFailResult.stdout);
+  } catch {
+    throw new Error(`M23(g): --strict --json failure output is not valid JSON: ${m23JsonFailResult.stdout}`);
+  }
+  if (m23JsonFail.valid !== false || !m23JsonFail.strict || !Array.isArray(m23JsonFail.strict_errors)
+      || m23JsonFail.strict_errors.length !== 1 || m23JsonFail.strict_errors[0].reason !== 'not_in_manifest') {
+    throw new Error(`M23(g): --strict --json failure shape mismatch: ${JSON.stringify(m23JsonFail)}`);
+  }
+
+  // (h) --strict with allowed_capabilities unset passes on a populated manifest
+  const m23UnsetCapStrictResult = runCli(
+    ['policy', 'verify', '--policy', m23UnsetCapPolicyPath, '--strict', '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 0 }
+  );
+  if (!m23UnsetCapStrictResult.stdout.includes('Policy valid (strict):')) {
+    throw new Error(`M23(h): expected 'Policy valid (strict):' for unset allowed_capabilities: ${m23UnsetCapStrictResult.stdout}`);
+  }
+
+  // (i) --strict exit 1 when manifest is malformed JSON
+  const m23BadManifestResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath, '--strict', '--manifest', m23BadManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23BadManifestResult.stderr.includes(`Invalid manifest JSON at: ${m23BadManifestPath}`)) {
+    throw new Error(`M23(i): expected 'Invalid manifest JSON at:' in stderr: ${m23BadManifestResult.stderr}`);
+  }
+
+  // (j) --manifest without --strict exits 1 with '--manifest requires --strict'
+  const m23ManifestWithoutStrictResult = runCli(
+    ['policy', 'verify', '--policy', m23PassPolicyPath, '--manifest', m23ManifestPath],
+    { cwd: m23TmpDir, expectedStatus: 1 }
+  );
+  if (!m23ManifestWithoutStrictResult.stderr.includes('--manifest requires --strict')) {
+    throw new Error(`M23(j): expected '--manifest requires --strict' in stderr: ${m23ManifestWithoutStrictResult.stderr}`);
+  }
+
+  // (k) M22 parity under --strict: every M22 failure fixture produces identical messages
+  //     under 'tusq policy verify' and 'tusq policy verify --strict'
+  const m22ParityWithStrictFixtures = [
+    { path: m22BadJsonPolicyPath, expectedMsg: 'Invalid policy JSON at:' },
+    { path: m22BadVersionPolicyPath, expectedMsg: 'Unsupported policy schema_version:' },
+    { path: m22BadModePolicyPath, expectedMsg: 'Unknown policy mode:' },
+    { path: m22BadCapPolicyPath, expectedMsg: 'Invalid allowed_capabilities in policy:' }
+  ];
+  for (const fixture of m22ParityWithStrictFixtures) {
+    const withoutStrict = runCli(['policy', 'verify', '--policy', fixture.path], { cwd: expressProject, expectedStatus: 1 });
+    const withStrict = runCli(
+      ['policy', 'verify', '--policy', fixture.path, '--strict', '--manifest', m23ManifestPath],
+      { cwd: expressProject, expectedStatus: 1 }
+    );
+    if (!withoutStrict.stderr.includes(fixture.expectedMsg)) {
+      throw new Error(`M23(k): verify (no --strict) missing '${fixture.expectedMsg}': ${withoutStrict.stderr}`);
+    }
+    if (!withStrict.stderr.includes(fixture.expectedMsg)) {
+      throw new Error(`M23(k): verify --strict missing '${fixture.expectedMsg}': ${withStrict.stderr}`);
+    }
+    if (withoutStrict.stderr.trim() !== withStrict.stderr.trim()) {
+      throw new Error(`M23(k): M22 parity broken under --strict for ${fixture.path}:\nno-strict: ${withoutStrict.stderr}\n--strict:   ${withStrict.stderr}`);
+    }
+  }
+
+  // Cleanup m23 temp dir
+  await fs.rm(m23TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 

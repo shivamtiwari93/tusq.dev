@@ -1448,11 +1448,25 @@ function cmdPolicy(args) {
 function cmdPolicyVerify(args) {
   const { opts, positionals } = parseCommandArgs('policy verify', args, {
     policy: 'value',
+    strict: 'boolean',
+    manifest: 'value',
     json: 'boolean'
   });
 
   if (opts.help || positionals.length > 0) {
     printCommandHelp('policy verify');
+    return;
+  }
+
+  // Constraint 11: --manifest without --strict exits 1 before any file is read
+  if (opts.manifest && !opts.strict) {
+    const msg = '--manifest requires --strict';
+    if (opts.json) {
+      process.stdout.write(`${JSON.stringify({ valid: false, error: msg }, null, 2)}\n`);
+    } else {
+      process.stderr.write(`${msg}\n`);
+    }
+    process.exit(1);
     return;
   }
 
@@ -1471,7 +1485,12 @@ function cmdPolicyVerify(args) {
   } catch (e) {
     const message = e instanceof CliError ? e.message : String(e);
     if (opts.json) {
-      process.stdout.write(`${JSON.stringify({ valid: false, path: policyPath, error: message }, null, 2)}\n`);
+      const out = { valid: false, path: policyPath, error: message };
+      if (opts.strict) {
+        out.strict = true;
+        out.strict_errors = [];
+      }
+      process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
     } else {
       process.stderr.write(`${message}\n`);
     }
@@ -1479,6 +1498,135 @@ function cmdPolicyVerify(args) {
     return;
   }
 
+  // Strict mode: manifest-aware cross-reference (M23)
+  if (opts.strict) {
+    const manifestPath = opts.manifest
+      ? path.resolve(root, opts.manifest)
+      : path.join(root, 'tusq.manifest.json');
+
+    if (opts.verbose) {
+      process.stderr.write(`Resolved manifest path: ${manifestPath}\n`);
+    }
+
+    let manifestRaw;
+    try {
+      manifestRaw = require('fs').readFileSync(manifestPath, 'utf8');
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        const msg = `Manifest not found: ${manifestPath}`;
+        if (opts.json) {
+          process.stdout.write(`${JSON.stringify({ valid: false, strict: true, path: policyPath, manifest_path: manifestPath, error: msg, strict_errors: [] }, null, 2)}\n`);
+        } else {
+          process.stderr.write(`${msg}\n`);
+        }
+        process.exit(1);
+        return;
+      }
+      const msg = `Could not read manifest file: ${manifestPath}: ${e.message}`;
+      if (opts.json) {
+        process.stdout.write(`${JSON.stringify({ valid: false, strict: true, path: policyPath, manifest_path: manifestPath, error: msg, strict_errors: [] }, null, 2)}\n`);
+      } else {
+        process.stderr.write(`${msg}\n`);
+      }
+      process.exit(1);
+      return;
+    }
+
+    let manifest;
+    try {
+      manifest = JSON.parse(manifestRaw);
+    } catch (e) {
+      const msg = `Invalid manifest JSON at: ${manifestPath}: ${e.message}`;
+      if (opts.json) {
+        process.stdout.write(`${JSON.stringify({ valid: false, strict: true, path: policyPath, manifest_path: manifestPath, error: msg, strict_errors: [] }, null, 2)}\n`);
+      } else {
+        process.stderr.write(`${msg}\n`);
+      }
+      process.exit(1);
+      return;
+    }
+
+    if (!Array.isArray(manifest.capabilities)) {
+      const msg = `Invalid manifest shape at: ${manifestPath}: missing capabilities array`;
+      if (opts.json) {
+        process.stdout.write(`${JSON.stringify({ valid: false, strict: true, path: policyPath, manifest_path: manifestPath, error: msg, strict_errors: [] }, null, 2)}\n`);
+      } else {
+        process.stderr.write(`${msg}\n`);
+      }
+      process.exit(1);
+      return;
+    }
+
+    // Build lookup map: name → capability entry
+    const capabilityMap = new Map();
+    for (const cap of manifest.capabilities) {
+      capabilityMap.set(cap.name, cap);
+    }
+
+    // strict check: allowed_capabilities null/unset passes trivially
+    const allowedCaps = policy.allowed_capabilities;
+    const strictErrors = [];
+
+    if (Array.isArray(allowedCaps) && allowedCaps.length > 0) {
+      for (const name of allowedCaps) {
+        const cap = capabilityMap.get(name);
+        if (!cap) {
+          strictErrors.push({ name, reason: 'not_in_manifest' });
+        } else if (!cap.approved) {
+          strictErrors.push({ name, reason: 'not_approved' });
+        } else if (cap.review_needed) {
+          strictErrors.push({ name, reason: 'requires_review' });
+        }
+      }
+    }
+
+    if (strictErrors.length > 0) {
+      const firstMsg = strictErrorMessage(strictErrors[0]);
+      if (opts.json) {
+        process.stdout.write(`${JSON.stringify({
+          valid: false,
+          strict: true,
+          path: policyPath,
+          manifest_path: manifestPath,
+          error: firstMsg,
+          strict_errors: strictErrors
+        }, null, 2)}\n`);
+      } else {
+        for (const se of strictErrors) {
+          process.stderr.write(`${strictErrorMessage(se)}\n`);
+        }
+      }
+      process.exit(1);
+      return;
+    }
+
+    // Strict success
+    const approvedAllowedCapabilities = Array.isArray(allowedCaps) ? allowedCaps.length : null;
+    if (opts.json) {
+      const out = {
+        valid: true,
+        strict: true,
+        path: policyPath,
+        manifest_path: manifestPath,
+        manifest_version: manifest.manifest_version !== undefined ? manifest.manifest_version : null,
+        policy: {
+          schema_version: policy.schema_version,
+          mode: policy.mode,
+          reviewer: policy.reviewer,
+          approved_at: policy.approved_at,
+          allowed_capabilities: policy.allowed_capabilities !== undefined ? policy.allowed_capabilities : null
+        },
+        approved_allowed_capabilities: approvedAllowedCapabilities
+      };
+      process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
+    } else {
+      const capCount = Array.isArray(allowedCaps) ? String(allowedCaps.length) : 'unset';
+      process.stdout.write(`Policy valid (strict): ${policyPath} (mode: ${policy.mode}, reviewer: ${policy.reviewer}, allowed_capabilities: ${capCount}, manifest: ${manifestPath})\n`);
+    }
+    return;
+  }
+
+  // Default M22 path (no --strict)
   const capCount = Array.isArray(policy.allowed_capabilities)
     ? String(policy.allowed_capabilities.length)
     : 'unset';
@@ -1499,6 +1647,16 @@ function cmdPolicyVerify(args) {
   } else {
     process.stdout.write(`Policy valid: ${policyPath} (mode: ${policy.mode}, reviewer: ${policy.reviewer}, allowed_capabilities: ${capCount})\n`);
   }
+}
+
+function strictErrorMessage(se) {
+  if (se.reason === 'not_in_manifest') {
+    return `Strict policy verify failed: allowed capability not found in manifest: ${se.name}`;
+  }
+  if (se.reason === 'not_approved') {
+    return `Strict policy verify failed: allowed capability not approved: ${se.name}`;
+  }
+  return `Strict policy verify failed: allowed capability requires review: ${se.name}`;
 }
 
 function cmdPolicyInit(args) {
@@ -1723,7 +1881,7 @@ function printCommandHelp(command) {
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
-    'policy verify': 'Usage: tusq policy verify [--policy <path>] [--json] [--verbose]'
+    'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]'
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }

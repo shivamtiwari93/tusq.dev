@@ -22,6 +22,42 @@ echo $?   # 0 = valid, 1 = invalid
 
 `tusq policy verify` shares `loadAndValidatePolicy()` with `tusq serve --policy`. A policy that passes `verify` will start `serve`; a policy that fails `verify` will fail `serve` startup with the same error message. Run `verify` in pre-commit hooks or CI before invoking `serve`.
 
+## Strict verification (opt-in)
+
+Once a `tusq.manifest.json` exists and capabilities have been approved, use `tusq policy verify --strict` (V1.4) to cross-reference the policy's `allowed_capabilities` against the manifest's approval-gated set:
+
+```bash
+# Strict verify using the default manifest path (tusq.manifest.json)
+tusq policy verify --strict
+
+# Strict verify against a non-default manifest
+tusq policy verify --strict --manifest path/to/tusq.manifest.json
+
+# Machine-readable output for CI
+tusq policy verify --strict --json
+echo $?   # 0 = aligned, 1 = not aligned (or policy invalid)
+```
+
+`--strict` is strictly opt-in. The default `tusq policy verify` path remains byte-for-byte identical to V1.3 — no manifest file is opened, no new failure mode is exposed, and `--strict` is never inferred from filesystem state.
+
+Under `--strict`, every name in `allowed_capabilities` must:
+
+1. Exist as a capability in the manifest (`name` match)
+2. Have `approved: true`
+3. NOT have `review_needed: true`
+
+If `allowed_capabilities` is unset (meaning "all approved capabilities in the manifest are allowed"), the strict check passes trivially — an unset list cannot name a capability that does not exist.
+
+**What a strict PASS does NOT prove:** a PASS is a policy/manifest alignment statement at verify time only. It is NOT a runtime safety gate, NOT an execution safety check, NOT a manifest freshness check, and NOT a substitute for `tusq serve --policy`'s at-serve-time approval filter. `tusq serve --policy` does not enforce strict checks; it silently drops unlisted/unapproved capabilities from `tools/list` per the M20 contract regardless of whether strict verify has been run.
+
+Recommended scaffold → verify → serve workflow in CI:
+
+```bash
+tusq policy init --mode dry-run --reviewer ops@example.com
+tusq policy verify --strict --json
+tusq serve --policy .tusq/execution-policy.json
+```
+
 ## Authoring a policy file
 
 The recommended path is `tusq policy init` (V1.2). It generates a valid policy file without requiring you to know the schema:

@@ -728,3 +728,79 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 | `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (5 scenarios)" |
 
 **Gate satisfaction:** M21 implementation is complete and verified. All M21 smoke coverage (REQ-064–REQ-068) passes. 5 eval scenarios pass (up from 4, adding `policy-init-generator-round-trip`). No live API execution was added. Generated policies pass `loadAndValidatePolicy()` byte-for-byte. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
+## M23 Implementation Record — Opt-In Strict Policy Verifier (Manifest-Aware) (2026-04-22)
+
+**Turn:** turn_6c5a861e00f1654d
+**HEAD:** 35c2298 (workspace dirty on implementation changes)
+
+**Challenge of prior PM turn:** The prior accepted PM turn (turn_eb823bec079b08b3, role=pm) added smoke checklist items (i), (j), (k) to ROADMAP.md and performed planning artifact verification only — it cannot satisfy the `implementation_complete` gate. This dev turn challenges that claim and performs fresh independent dev-authored implementation and runtime verification. Baseline re-confirmed: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (5 scenarios)" on HEAD 35c2298 before any M23 changes.
+
+The PM turn correctly identified that SYSTEM_SPEC had 12 smoke items while ROADMAP originally had only 8, and fixed the gap. The manifest fixture shape (top-level `capabilities` array with `name`, `approved`, `review_needed`) was independently confirmed against `tests/fixtures/express-sample/tusq.manifest.json`. All PM planning claims were verifiable against committed artifacts — no planning drift found.
+
+**Scope:** Implemented M23 `tusq policy verify --strict` — an opt-in manifest-aware extension of the M22 policy verifier that cross-references the policy's `allowed_capabilities` against the manifest's approval-gated set.
+
+### Changes shipped
+
+**`src/cli.js`:**
+- Extended `cmdPolicyVerify(args)` to parse two new flags: `--strict` (boolean) and `--manifest <path>` (value).
+- Added Constraint 11 guard at the top of the function: if `--manifest` is set without `--strict`, emit `--manifest requires --strict` and exit 1 before any file is read.
+- M22 policy-file validator (`loadAndValidatePolicy()`) still runs first; on M22 failure, strict checks are NOT run (preserving M22 parity invariant). M22 `--json` failure shape now includes `strict: true` and `strict_errors: []` when `--strict` was set.
+- Under `--strict`, resolved manifest path (default `tusq.manifest.json`; overridable via `--manifest`). Manifest read and parse with distinct error messages per failure class:
+  - `ENOENT` → `Manifest not found: <path>`
+  - Other read error → `Could not read manifest file: <path>: <OS error>`
+  - Invalid JSON → `Invalid manifest JSON at: <path>: <parser message>`
+  - Missing `capabilities` array → `Invalid manifest shape at: <path>: missing capabilities array`
+- Built a `Map<name, capability>` from the manifest for O(1) lookup; iterates `allowed_capabilities` in declaration order to produce deterministic `strict_errors` ordering.
+- Strict check rules per SYSTEM_SPEC: null/unset `allowed_capabilities` passes trivially; empty array passes trivially; non-empty array checks each name for existence (`not_in_manifest`), `approved: true` (`not_approved`), and `review_needed !== true` (`requires_review`).
+- Multiple strict failures produce one message per name in `allowed_capabilities` order (not deduplicated across rules for a single name, per spec).
+- Strict `--json` success shape: `{ valid: true, strict: true, path, manifest_path, manifest_version, policy, approved_allowed_capabilities }`.
+- Strict `--json` failure shape: `{ valid: false, strict: true, path, manifest_path, error, strict_errors: [{name, reason}] }`.
+- Non-strict human-readable success: `Policy valid (strict): <path> (mode: ..., reviewer: ..., allowed_capabilities: ..., manifest: <manifest_path>)`.
+- Default M22 path (no `--strict`) is unchanged byte-for-byte; no manifest I/O occurs even if `tusq.manifest.json` exists at the default path.
+- Added `strictErrorMessage(se)` helper for consistent strict failure messages.
+- Updated `printCommandHelp` entry for `'policy verify'` to include `[--strict [--manifest <path>]]`.
+
+**`tests/smoke.mjs`:**
+- Added M23 smoke block covering all 11 items from ROADMAP/SYSTEM_SPEC smoke checklist (a)–(k):
+  - (a) Default `tusq policy verify` (no `--strict`) does not emit manifest/strict output even when `tusq.manifest.json` exists at the CWD default path.
+  - (b) `--strict` exit 0 on a policy whose `allowed_capabilities` are all approved in the manifest.
+  - (c) `--strict` exit 1 with `not found in manifest` message when a capability is absent.
+  - (d) `--strict` exit 1 with `not approved` message when a capability is present but `approved: false`.
+  - (e) `--strict` exit 1 with `requires review` message when a capability has `review_needed: true`.
+  - (f) `--strict` exit 1 with `Manifest not found:` when the manifest file is missing.
+  - (g) `--strict --json` success shape validated (all required fields including `manifest_version` and `approved_allowed_capabilities`); `--strict --json` failure shape validated (including `strict_errors` array with correct `reason`).
+  - (h) `--strict` with `allowed_capabilities` unset passes trivially on a populated manifest.
+  - (i) `--strict` exit 1 with `Invalid manifest JSON at:` on malformed manifest.
+  - (j) `--manifest` without `--strict` exits 1 with `--manifest requires --strict` before any file read.
+  - (k) M22 parity: every M22 failure fixture produces byte-identical stderr under `tusq policy verify` and `tusq policy verify --strict` (strict checks never run when M22 validation fails first).
+- All fixtures created in a `os.tmpdir()` temp dir; temp dir cleaned up after the M23 block.
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `policy-strict-verify-determinism` scenario: defines a manifest with 4 capabilities (1 passing, 1 unapproved, 1 requires-review, 1 absent) and a 5-capability `strict_policy_caps` list; specifies `expected_strict_error_order` and `repeat_runs: 3`.
+
+**`tests/eval-regression.mjs`:**
+- Added `runStrictDeterminismScenario(tmpRoot, scenario)`: creates manifest and policy fixtures in a temp project dir, runs `policy verify --strict --json` `repeat_runs` times, asserts `strict_errors` names array is identical across all runs, and on the first run asserts the order matches `expected_strict_error_order`.
+- Added routing for `'policy-strict-verify-determinism'` in the main dispatch loop.
+
+**`website/docs/cli-reference.md`:**
+- Added `### \`tusq policy verify --strict\` (manifest-aware)` subsection under the existing `## \`tusq policy verify\`` section: synopsis table, flag evaluation order, failure-messages table, JSON shapes for success and failure, a "what a strict PASS does NOT prove" callout, and canonical scaffold → verify → serve workflow.
+
+**`website/docs/execution-policy.md`:**
+- Added `## Strict verification (opt-in)` section immediately after the "Verifying a policy file" section: covers the full flag surface, when to use `--strict`, the three strict-check rules, what a strict PASS does NOT prove (Constraint 12 language), and the recommended CI workflow.
+
+**`README.md`:**
+- Updated `tusq policy verify` in the CLI list to note `--strict` and the alignment-statement framing.
+- Updated step 9 in the Core workflow to include `--strict` and the alignment-statement callout.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js policy verify --help` | Exit 0; `[--strict [--manifest <path>]]` appears in usage string |
+| `node bin/tusq.js help` | Exit 0; 12-command surface unchanged |
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (6 scenarios)" |
+
+**Gate satisfaction:** M23 implementation is complete and verified. All 12 M23 smoke items (a)–(k) pass. 6 eval scenarios pass (up from 5, adding `policy-strict-verify-determinism`). Default M22 behavior is byte-for-byte unchanged. No network, manifest (except under `--strict`), or target-product I/O was added. Constraint 11 (opt-in-strict invariant) and Constraint 12 (least-privilege-validation invariant) are satisfied. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.

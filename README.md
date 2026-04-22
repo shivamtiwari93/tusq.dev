@@ -23,7 +23,7 @@ If you are evaluating the release, the proof path is simple: scan a supported re
 - `tusq approve`
 - `tusq diff`
 - `tusq policy init`
-- `tusq policy verify`
+- `tusq policy verify` (add `--strict` for manifest-aware alignment check; a PASS is a policy/manifest alignment statement, not a runtime execution safety guarantee)
 - `tusq serve`
 
 ## V1 Boundary
@@ -147,7 +147,7 @@ The accurate launch workflow is:
 6. run `tusq docs --out capability-docs.md` to create local Markdown docs for review and adoption
 7. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
 8. run `tusq policy init` to generate `.tusq/execution-policy.json` (add `--mode dry-run` for dry-run argument validation)
-9. run `tusq policy verify` to validate the policy file before serving (use in pre-commit hooks or CI: exits 0 if valid, 1 if not)
+9. run `tusq policy verify` to validate the policy file before serving (use in pre-commit hooks or CI: exits 0 if valid, 1 if not); add `--strict` to additionally cross-reference `allowed_capabilities` against the manifest's approval-gated set — a strict PASS is an alignment statement, not a runtime execution safety guarantee
 10. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
 11. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission
 

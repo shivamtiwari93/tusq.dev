@@ -358,6 +358,60 @@ async function runPolicyInitGeneratorScenario(tmpRoot, scenario) {
   }
 }
 
+async function runStrictDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(path.join(project, '.tusq'), { recursive: true });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    capabilities: scenario.strict_manifest_capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  const policy = {
+    schema_version: '1.0',
+    mode: 'describe-only',
+    reviewer: 'eval-strict@example.com',
+    approved_at: '2026-01-01T00:00:00Z',
+    allowed_capabilities: scenario.strict_policy_caps
+  };
+  const policyPath = path.join(project, '.tusq', 'strict-eval-policy.json');
+  await writeJson(policyPath, policy);
+
+  const repeatRuns = scenario.repeat_runs || 3;
+  let referenceOutput = null;
+
+  for (let i = 0; i < repeatRuns; i++) {
+    const result = runCli(
+      ['policy', 'verify', '--policy', policyPath, '--strict', '--manifest', manifestPath, '--json'],
+      { cwd: project, expectedStatus: 1 }
+    );
+    let parsed;
+    try {
+      parsed = JSON.parse(result.stdout);
+    } catch {
+      fail(`${scenario.id}: run ${i + 1} produced non-JSON stdout: ${result.stdout}`);
+    }
+    if (!Array.isArray(parsed.strict_errors)) {
+      fail(`${scenario.id}: run ${i + 1} missing strict_errors array`);
+    }
+
+    const names = parsed.strict_errors.map((e) => e.name);
+    if (referenceOutput === null) {
+      referenceOutput = JSON.stringify(names);
+      // Verify expected order matches first run
+      const expected = scenario.expected_strict_error_order;
+      if (JSON.stringify(names) !== JSON.stringify(expected)) {
+        fail(`${scenario.id}: strict_errors order mismatch. Expected ${JSON.stringify(expected)}, got ${JSON.stringify(names)}`);
+      }
+    } else if (JSON.stringify(names) !== referenceOutput) {
+      fail(`${scenario.id}: strict_errors ordering is non-deterministic across runs. Run 1: ${referenceOutput}, run ${i + 1}: ${JSON.stringify(names)}`);
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -371,6 +425,8 @@ async function run() {
       await runPolicyEvalScenario(tmpRoot, scenario);
     } else if (scenario.id === 'policy-init-generator-round-trip') {
       await runPolicyInitGeneratorScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'policy-strict-verify-determinism') {
+      await runStrictDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
