@@ -2,14 +2,16 @@
   "session_id": "session_57a3d608e444c21e",
   "run_id": "run_6f7de37a12ffe67e",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-22T07:00:49.000Z",
-  "checkpoint_reason": "operator_recovery_m21_qa_gate_advance",
+  "last_checkpoint_at": "2026-04-22T07:00:32.065Z",
+  "checkpoint_reason": "turn_assigned",
   "run_status": "active",
-  "phase": "launch",
-  "last_phase": "launch",
-  "last_turn_id": "turn_8fa593ad7654ffa5",
+  "phase": "qa",
+  "last_phase": "qa",
+  "last_turn_id": "turn_8e2fca04bf8ce263",
   "last_completed_turn_id": "turn_8fa593ad7654ffa5",
-  "active_turn_ids": [],
+  "active_turn_ids": [
+    "turn_8e2fca04bf8ce263"
+  ],
   "last_role": "qa",
   "pending_gate": null,
   "pending_run_completion": null,
@@ -21,6 +23,6 @@
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": ".agentxchain/dispatch/turns/turn_8fa593ad7654ffa5"
+    "dispatch_dir": ".agentxchain/dispatch/turns/turn_8e2fca04bf8ce263"
   }
 }
