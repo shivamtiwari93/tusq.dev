@@ -2,6 +2,32 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_8fa593ad7654ffa5 (role=qa, 2026-04-22)
+
+This QA turn challenges the prior accepted dev turn (turn_51236e29fbc05bf8) independently and does not rubber-stamp it. HEAD is 91ee4dc on run_6f7de37a12ffe67e.
+
+**Challenge 1 — Substantive source changes since last QA turn.** Last accepted QA turn (turn_2aae9109760b8f5f) operated on HEAD 82f88cb. Current HEAD is 91ee4dc (`checkpoint: turn_51236e29fbc05bf8 (role=dev, phase=implementation)`). The dev turn added M21 `tusq policy init` implementation across 8 files: `src/cli.js` (cmdPolicy dispatcher and cmdPolicyInit function), `tests/smoke.mjs` (REQ-064–REQ-068 M21 coverage), `tests/evals/governed-cli-scenarios.json` (policy-init-generator-round-trip scenario), `tests/eval-regression.mjs` (5-scenario count), `website/docs/cli-reference.md`, `website/docs/execution-policy.md`, `README.md`, `.planning/IMPLEMENTATION_NOTES.md`. These are substantive source and test changes requiring independent QA verification. **Challenge upheld: 6 new M21 criteria (REQ-064–REQ-069) require independent verification.**
+
+**Challenge 2 — Acceptance matrix missing REQ-064–REQ-069.** The dev turn added M21 implementation and smoke tests but did not add the corresponding acceptance criteria entries. Fixed this turn: added REQ-064 (help surface and default generation), REQ-065 (--mode, --allowed-capabilities, error exits), REQ-066 (file-conflict protection and --force), REQ-067 (--dry-run no-write), REQ-068 (validator round-trip), REQ-069 (policy-init-generator-round-trip eval scenario). Acceptance matrix now contains 69 criteria, all PASS. **Challenge raised and fixed.**
+
+**Challenge 3 — RELEASE_NOTES.md missing M21 section.** RELEASE_NOTES.md had no `tusq policy init` section even though M21 was delivered. Fixed this turn: added M21 Policy Scaffold Generator section. **Challenge raised and fixed.**
+
+**Challenge 4 — ship-verdict.md had no M21 challenge entry.** This section adds it. **Challenge raised and fixed (this entry).**
+
+**Challenge 5 — Independent npm test on HEAD 91ee4dc.** Ran `npm test` → exit 0, "Smoke tests passed" and "Eval regression harness passed (5 scenarios)". Both suites pass. Smoke covers REQ-064–REQ-068. Eval covers 5 scenarios: express-governed-workflow, manifest-diff-review-queue, policy-dry-run-plan-shape, policy-dry-run-approval-gate, policy-init-generator-round-trip. Not inherited from dev evidence. **Challenge resolved.**
+
+**Challenge 6 — CLI surface on HEAD 91ee4dc.** `node bin/tusq.js help` → exit 0; 12 commands: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, version, help. `node bin/tusq.js policy init --help` → exit 0 with full flag synopsis (--mode, --reviewer, --allowed-capabilities, --out, --force, --dry-run, --json, --verbose). **Challenge resolved: 12-command surface intact, policy command and policy init subcommand exposed.**
+
+**Challenge 7 — M21 safe-default invariant (SYSTEM_SPEC Constraint 8).** Default mode is `describe-only`; dry-run requires explicit `--mode dry-run`. Verified: default generation without flags produces `mode:"describe-only"`. No code path in the generator defaults to dry-run. **Challenge resolved: SYSTEM_SPEC Constraint 8 satisfied.**
+
+**Challenge 8 — Generator/validator alignment invariant (SYSTEM_SPEC Constraint 7).** Generated policy files must pass `loadAndValidatePolicy()` byte-for-byte. REQ-068 round-trip smoke test confirms: `tusq policy init --mode dry-run` output starts `tusq serve --policy <generated>` successfully. **Challenge resolved: generator cannot drift from the M20 validator.**
+
+**Independent test run (2026-04-22, HEAD 91ee4dc):** `npm test` → exit 0. `node bin/tusq.js help` → exit 0 with 12 commands including `policy`. `node bin/tusq.js policy init --help` → exit 0. `node bin/tusq.js policy init --mode live-fire --out /tmp/bad.json` → exit 1 with `Unknown policy mode: live-fire`. All independent, not inherited from prior dev evidence.
+
+**Result:** All 69 acceptance criteria (REQ-001–REQ-069) PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
+---
+
 ## QA Challenge — turn_2aae9109760b8f5f (role=qa, 2026-04-22)
 
 This QA turn challenges the prior accepted dev turn (turn_5a2b57dd16d8157e) independently and does not rubber-stamp it. HEAD is 82f88cb on run_581c22fd7542f94e.

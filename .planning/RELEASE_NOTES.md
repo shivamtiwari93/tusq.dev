@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 63 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode).
+- All 69 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -168,6 +168,29 @@ Intended use: drop the generated Markdown into a wiki, PR description, or review
 **Approval gate invariant preserved** — `allowed_capabilities` is a strict subset filter on top of the existing approval gate. Only approved capabilities appear in `tools/list`; `allowed_capabilities` cannot bypass that requirement.
 
 **New eval scenarios** — Two new `tests/evals/governed-cli-scenarios.json` scenarios (`policy-dry-run-plan-shape`, `policy-dry-run-approval-gate`) extend the regression harness to 4 scenarios.
+
+## Policy Scaffold Generator (M21 — V1.2)
+
+`tusq policy init` generates a valid `.tusq/execution-policy.json` file that passes the M20 `loadAndValidatePolicy()` validator without any manual JSON authoring:
+
+```
+tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] \
+  [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run]
+```
+
+**Default behavior** — Running `tusq policy init` without flags produces a `mode:"describe-only"` policy (SYSTEM_SPEC Constraint 8: describe-only is always the safe default). The `approved_at` field is stamped at generation time as ISO-8601 and is not overridable from the CLI. The `reviewer` field is resolved from the `TUSQ_REVIEWER` environment variable, then `TUSQ_REVIEWER_ID`, then falls back to `"unknown"`.
+
+**Flag surface:**
+- `--mode dry-run` — generates a dry-run policy instead of describe-only
+- `--allowed-capabilities a,b` — comma-separated list; trimmed, deduplicated, and validated (exits 1 on empty result)
+- `--out <path>` — output path (defaults to `.tusq/execution-policy.json`)
+- `--force` — overwrite an existing file; without this flag, exits 1 with `Policy file already exists:` if the target already exists
+- `--dry-run` — prints the generated JSON to stdout and does NOT write the file
+- `--json` / `--verbose` — standard output format flags
+
+**Generator/validator alignment** (SYSTEM_SPEC Constraint 7) — Generated files pass `loadAndValidatePolicy()` byte-for-byte. The M21 round-trip smoke test (REQ-068) confirms this invariant: it generates a dry-run policy then starts `tusq serve --policy <generated>` to verify the server accepts the output.
+
+**New eval scenario** — `policy-init-generator-round-trip` extends the governed-cli eval harness to 5 scenarios, asserting that a generated dry-run policy produces the same `tools/call dry_run_plan` shape as a hand-authored policy.
 
 ## Known V1 Limits And Non-Claims
 
