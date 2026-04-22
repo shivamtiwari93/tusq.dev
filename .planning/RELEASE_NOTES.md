@@ -62,7 +62,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 80 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init + REQ-070–REQ-074 policy verify command / tusq policy verify + REQ-075–REQ-080 policy strict verify / tusq policy verify --strict).
+- All 87 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator + REQ-058–REQ-063 opt-in execution policy / dry-run mode + REQ-064–REQ-069 policy scaffold generator / tusq policy init + REQ-070–REQ-074 policy verify command / tusq policy verify + REQ-075–REQ-080 policy strict verify / tusq policy verify --strict + REQ-081–REQ-087 Fastify schema body-field extraction).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -304,6 +304,33 @@ Failure:
 **New eval scenario** — `policy-strict-verify-determinism` extends the governed-cli eval harness to 6 scenarios. It runs `policy verify --strict --json` three times and asserts that `strict_errors` name ordering is identical across all runs, confirming deterministic output from the Map-based capability lookup and declaration-order iteration over `allowed_capabilities`.
 
 **All 80 acceptance criteria** (REQ-001–REQ-080) pass on HEAD 72722fa: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (6 scenarios)`.
+
+## Fastify Schema Body-Field Extraction (M24 — V1.5)
+
+When a Fastify route declares a literal `schema: { body: { properties: {...}, required: [...] } }` block in its route-options object, `tusq scan` now captures the declared top-level field shapes and merges them into `input_schema.properties`.
+
+**What changes for Fastify routes with a literal body schema:**
+- `input_schema.source` is set to `fastify_schema_body` (previously `framework_schema_hint` or `request_body`).
+- `input_schema.additionalProperties` is `false` (previously `true`), indicating the body shape is fully declared.
+- `input_schema.properties` includes the declared field names with their types in declaration order.
+- `input_schema.required` includes the declared required fields.
+- A `capability_digest` change from the new `input_schema` shape will appear in `tusq diff` output, requiring re-approval via `tusq approve` before recompiling.
+
+**Path-parameter collision rule:** When a body schema declares a field with the same name as a path parameter (e.g. `PUT /items/:id` with `body.properties.id`), the path parameter wins. The path parameter entry (`source: 'path'`, `type: 'string'`) is preserved; the body-declared field is silently dropped.
+
+**Fall-back behavior (byte-for-byte M15):** Any of the following causes the extractor to fall back to M15 behavior with no schema_fields:
+- `schema` is a variable reference (not a literal object)
+- `body` key is absent from the schema object
+- `properties` key is absent from the body object
+- Any brace is unbalanced in the options block
+
+**What does NOT change:** Express and NestJS routes produce byte-identical manifests before and after M24 — the extraction is Fastify-only. Routes that fall back to M15 behavior also produce byte-identical manifests.
+
+**Framing boundary** (SYSTEM_SPEC Constraint 14): `fastify_schema_body` means "the declared body schema as it appears literally in source." It does NOT mean the shape is validator-backed, runtime-enforced by Fastify, or ajv-validated. The manifest documents what the source declares; Fastify at runtime may enforce additional constraints not visible to the static extractor.
+
+**New eval scenario** — `fastify-schema-body-extraction-determinism` extends the governed-cli eval harness to 7 scenarios. It runs `tusq scan` three times on the Fastify fixture and asserts that POST /items produces `source: 'fastify_schema_body'`, `additionalProperties: false`, and identical property key ordering (`name`, `price`, `active`) across all three runs.
+
+**All 87 acceptance criteria** (REQ-001–REQ-087) pass on HEAD b651135: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (7 scenarios)`.
 
 ## Known V1 Limits And Non-Claims
 

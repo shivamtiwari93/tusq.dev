@@ -2,6 +2,41 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_f5768367a963d0ff (role=qa, 2026-04-22)
+
+This QA turn challenges the prior accepted dev turn (turn_01be3ee8e55dfe43) independently and does not rubber-stamp it. HEAD is b651135 on run_035dd2c2b8e4b821.
+
+**Challenge 1 — Substantive source changes since last QA turn.** Last accepted QA turn (turn_e2e63fc4e6a7eaff) operated on HEAD 72722fa. Current HEAD is b651135 (`checkpoint: turn_01be3ee8e55dfe43 (role=dev, phase=implementation)`). The dev turn added M24 Fastify schema body-field extraction across 8 files: `src/cli.js` (`extractBalancedBlock()`, `extractFastifySchemaBody()`, extended `extractFastifyRoutes()` patterns, `scoreConfidence()` +0.04 boost, `buildInputSchema()` schema_fields merge), `tests/fixtures/fastify-sample/src/server.ts` (3 new routes: POST /items, PUT /items/:id, GET /catalog), `tests/smoke.mjs` (7 M24 smoke items a-g + NestJS M24-f), `tests/evals/governed-cli-scenarios.json` (fastify-schema-body-extraction-determinism scenario), `tests/eval-regression.mjs` (7-scenario count + runFastifySchemaExtractionScenario()), `website/docs/manifest-format.md`, `website/docs/frameworks.md`, `.planning/IMPLEMENTATION_NOTES.md`. These are substantive source and test changes requiring independent QA verification. **Challenge upheld: 7 new M24 criteria (REQ-081–REQ-087) require independent verification.**
+
+**Challenge 2 — Acceptance matrix missing REQ-081–REQ-087.** The dev turn added M24 implementation and smoke tests but did not add the corresponding acceptance criteria entries. Fixed this turn: added REQ-081 (literal schema.body extraction — source tag, additionalProperties:false, declaration order, required merging), REQ-082 (path-param collision — path param wins), REQ-083 (fall-back for no-body-key, no-properties, and non-literal schema expressions), REQ-084 (Express and NestJS fixture parity — zero fastify_schema_body tags), REQ-085 (+0.04 confidence boost for schema_fields), REQ-086 (repeated manifest generation — byte-identical property ordering), REQ-087 (fastify-schema-body-extraction-determinism eval scenario + 7-scenario count). Acceptance matrix now contains 87 criteria, all PASS. **Challenge raised and fixed.**
+
+**Challenge 3 — RELEASE_NOTES.md missing M24 section.** RELEASE_NOTES.md had no Fastify Schema Body-Field Extraction section even though M24 was delivered. Fixed this turn: added M24 section. **Challenge raised and fixed.**
+
+**Challenge 4 — ship-verdict.md had no M24 challenge entry.** This section adds it. **Challenge raised and fixed (this entry).**
+
+**Challenge 5 — ROADMAP.md M24 items still unchecked.** The dev turn shipped all 15 M24 ROADMAP items but did not mark them `[x]`. Fixed this turn: all 15 M24 items marked checked. **Challenge raised and fixed.**
+
+**Challenge 6 — Independent verification of REQ-081–REQ-087.** Ran the following commands independently (not inherited from dev evidence):
+- `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (7 scenarios)`. 7-scenario count confirms `fastify-schema-body-extraction-determinism` is present and passing (REQ-087 eval).
+- `node bin/tusq.js help` → exit 0; 12 commands intact — no surface regression from M24 (no new command added, M24 is a scanner-only increment).
+- Code inspection of `src/cli.js`: `extractFastifySchemaBody()` returns `null` (falls back to M15) on any parse failure — all 8 algorithm steps implement the SYSTEM_SPEC Constraint 13 static-literal requirement. `buildInputSchema()` skips body fields that collide with path param names via a `pathParamNames` Set (REQ-082 invariant). `scoreConfidence()` line 2341–2342: `if (route.schema_fields) { score += 0.04; }` is the only change to that function (REQ-085 invariant).
+- Code inspection of `website/docs/manifest-format.md` lines 92–131: `fastify_schema_body` source tag documented; explicit statement "it does NOT mean the shape is validator-backed or runtime-enforced by Fastify" satisfies SYSTEM_SPEC Constraint 14 (source-literal-framing). `website/docs/frameworks.md` lines 27–38: "Fastify: literal schema-body extraction (V1.5)" subsection present.
+**Challenge resolved: all 7 new M24 criteria independently verified PASS.**
+
+**Challenge 7 — Constraint 13 invariant: no framework import, no eval.** Verified: `src/cli.js` `extractFastifySchemaBody()` and `extractBalancedBlock()` use only regex, string iteration, and index arithmetic — no `require('fastify')`, no `eval`, no `ts-node`. Any parse ambiguity returns `null` and the caller falls back to M15. **Challenge resolved: SYSTEM_SPEC Constraint 13 strictly satisfied.**
+
+**Challenge 8 — Constraint 14 framing invariant: no "validator-backed" overclaim.** Verified: `website/docs/manifest-format.md` line 131 explicitly states `fastify_schema_body` means "the declared body schema as it appears literally in source" and "does NOT mean the shape is validator-backed or runtime-enforced". `website/docs/frameworks.md` line 38 states the source tag "does NOT imply the shape is runtime-validated by Fastify or ajv". **Challenge resolved: SYSTEM_SPEC Constraint 14 satisfied in all updated docs.**
+
+**Challenge 9 — 5-route fixture count.** Smoke test line 539–540 asserts `fastifyScan.route_count !== 5`. The three new routes (POST /items, PUT /items/:id, GET /catalog) are present in `tests/fixtures/fastify-sample/src/server.ts`. **Challenge resolved: fixture extended correctly.**
+
+**Challenge 10 — Full npm test on HEAD b651135.** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (7 scenarios)`. Not inherited from dev evidence (REQ-087 eval independently confirmed). **Challenge resolved: no regression.**
+
+**Independent test run (2026-04-22, HEAD b651135):** `npm test` → exit 0. `node bin/tusq.js help` → exit 0 with 12 commands. Code inspection of `src/cli.js`, `website/docs/manifest-format.md`, `website/docs/frameworks.md` performed. All independent, not inherited from prior dev evidence.
+
+**Result:** All 87 acceptance criteria (REQ-001–REQ-087) PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
+---
+
 ## QA Challenge — turn_e2e63fc4e6a7eaff (role=qa, 2026-04-22)
 
 This QA turn challenges the prior accepted dev turn (turn_6c5a861e00f1654d) independently and does not rubber-stamp it. HEAD is 72722fa on run_f05bf0739a9321f9.
