@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_9bbdbe0e2b29db36",
+  "run_id": "run_f05bf0739a9321f9",
   "project_id": "tusq-dev",
-  "status": "active",
+  "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:ae6af4e3361db3008ccc3643e4df4096799401f0",
+  "accepted_integration_ref": "git:d894285023459e788602bc55a0983d8443d39d7b",
   "active_turns": {},
-  "turn_sequence": 10,
-  "last_completed_turn_id": "turn_68af2a6913d78042",
+  "turn_sequence": 14,
+  "last_completed_turn_id": "turn_cf34310e71220cf6",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -20,20 +20,20 @@
     "planning_signoff": "passed",
     "implementation_complete": "passed",
     "qa_ship_verdict": "passed",
-    "launch_ready": "pending"
+    "launch_ready": "passed"
   },
   "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-22T07:24:16.543Z",
-  "phase_entered_at": "2026-04-22T07:54:00.000Z",
+  "created_at": "2026-04-22T08:13:10.525Z",
+  "phase_entered_at": "2026-04-22T09:18:30.000Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
-    "trigger_reason": "Derive and execute the next VISION-aligned tusq.dev increment after M21. Focus on tightening governance around execution-policy artifacts while preserving the local/offline/no-live-execution boundary.",
-    "intake_intent_id": "intent_1776842486123_1c47",
+    "trigger_reason": "Derive and execute the next VISION-aligned tusq.dev increment after M22. Focus on least-privilege/governance checks by adding an opt-in strict policy verifier that cross-checks execution-policy allowed_capabilities against a local tusq manifest while preserving local/offline/no-live-execution defaults.",
+    "intake_intent_id": "intent_1776845528444_0f0e",
     "created_by": "operator"
   },
   "inherited_context": null,
@@ -42,11 +42,11 @@
   "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_68af2a6913d78042",
+    "turn_id": "turn_cf34310e71220cf6",
     "role": "product_marketing",
-    "phase": "qa",
-    "checkpoint_sha": "ae6af4e3361db3008ccc3643e4df4096799401f0",
-    "checkpointed_at": "2026-04-22T07:51:35.391Z",
+    "phase": "launch",
+    "checkpoint_sha": "d894285023459e788602bc55a0983d8443d39d7b",
+    "checkpointed_at": "2026-04-22T09:26:51.687Z",
     "intent_id": null
   },
   "non_progress_signature": null,

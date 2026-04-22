@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776842486123_e1a8",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-22T07:21:26.122Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "M22: add repo-local execution-policy verification UX so users can validate a .tusq/execution-policy.json against the current policy schema and optionally against compiled tools/approval boundaries without starting the MCP server or executing target-product I/O.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "M22: add repo-local execution-policy verification UX so users can validate a .tusq/execution-policy.json against the current policy schema and optionally against compiled tools/approval boundaries without starting the MCP server or executing target-product I/O."
+    }
+  ],
+  "dedup_key": "manual:7b2ea88a550791b7"
+}

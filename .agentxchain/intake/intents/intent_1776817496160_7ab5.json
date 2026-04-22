@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "intent_id": "intent_1776817496160_7ab5",
   "event_id": "evt_1776817496159_1006",
-  "status": "superseded",
+  "status": "suppressed",
   "priority": "p0",
   "template": "cli-tool",
   "charter": "Derive and deliver the next tusq.dev increment from VISION.md: build an eval/regression harness for governed CLI workflows so tusq can validate prompt-pack behavior, tool-call expectations, permission/schema regressions, and drift across sample SaaS capability tasks.",
@@ -17,7 +17,7 @@
   "requires_human_start": true,
   "target_run": null,
   "created_at": "2026-04-22T00:24:56.158Z",
-  "updated_at": "2026-04-22T00:24:56.164Z",
+  "updated_at": "2026-04-22T01:39:33.388Z",
   "history": [
     {
       "from": null,
@@ -37,9 +37,38 @@
       "at": "2026-04-22T00:24:56.164Z",
       "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
       "approver": "codex-beta-tester"
+    },
+    {
+      "from": "superseded",
+      "to": "approved",
+      "at": "2026-04-22T01:40:00.000Z",
+      "reason": "operator recovery: superseded state was incorrect because no M17 eval/regression planning artifacts were created",
+      "approver": "codex-beta-tester"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-22T01:37:15.129Z",
+      "reason": "generated 3 planning artifact(s) from template \"cli-tool\"",
+      "artifacts": [
+        ".planning/command-surface.md",
+        ".planning/platform-support.md",
+        ".planning/distribution-checklist.md"
+      ]
+    },
+    {
+      "from": "planned",
+      "to": "suppressed",
+      "at": "2026-04-22T01:39:33.388Z",
+      "reason": "stale: approved under run run_1457f2049b5fc87d, archived on run run_3c0710a95e02aed1 initialization"
     }
   ],
   "approved_run_id": "run_1457f2049b5fc87d",
   "approved_by": "codex-beta-tester",
-  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+  "archived_reason": "stale: approved under run run_1457f2049b5fc87d, archived on run run_3c0710a95e02aed1 initialization",
+  "planning_artifacts": [
+    ".planning/command-surface.md",
+    ".planning/platform-support.md",
+    ".planning/distribution-checklist.md"
+  ]
 }

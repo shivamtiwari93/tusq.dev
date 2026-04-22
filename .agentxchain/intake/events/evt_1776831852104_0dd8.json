@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776831852104_0dd8",
+  "source": "manual",
+  "category": "product_increment",
+  "created_at": "2026-04-22T04:24:12.103Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "title": "M19 capability documentation generator",
+    "description": "Add a repo-local tusq docs command that generates Markdown capability documentation and review artifacts from tusq.manifest.json, covering capability names, descriptions, approval state, side_effect_class, sensitivity_class, auth_hints, provenance, examples, constraints, redaction, and manifest version metadata."
+  },
+  "evidence": [
+    {
+      "type": "file",
+      "value": ".planning/VISION.md",
+      "summary": "VISION.md calls for documentation and adoption surfaces: generated capability docs, examples, permission docs, and review artifacts. Current CLI has review output but no generated docs artifact."
+    }
+  ],
+  "dedup_key": "manual:8aa271fa92e718f3"
+}

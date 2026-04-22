@@ -1,26 +1,26 @@
 {
-  "session_id": "session_77cbe9d0a9c9c9f2",
-  "run_id": "run_9bbdbe0e2b29db36",
+  "session_id": "session_cbc85a1f86bc8554",
+  "run_id": "run_f05bf0739a9321f9",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-22T07:54:00.000Z",
-  "checkpoint_reason": "operator_recovery_m22_qa_gate_advance",
-  "run_status": "active",
+  "last_checkpoint_at": "2026-04-22T09:29:00.000Z",
+  "checkpoint_reason": "operator_completed_launch_ready",
+  "run_status": "completed",
   "phase": "launch",
   "last_phase": "launch",
-  "last_turn_id": "turn_68af2a6913d78042",
-  "last_completed_turn_id": "turn_68af2a6913d78042",
+  "last_turn_id": "turn_cf34310e71220cf6",
+  "last_completed_turn_id": "turn_cf34310e71220cf6",
   "active_turn_ids": [],
   "last_role": "product_marketing",
   "pending_gate": null,
   "pending_run_completion": null,
   "blocked": false,
   "baseline_ref": {
-    "git_head": "ae6af4e3361db3008ccc3643e4df4096799401f0",
+    "git_head": "d894285023459e788602bc55a0983d8443d39d7b",
     "git_branch": "main",
     "workspace_dirty": false
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": ".agentxchain/dispatch/turns/turn_68af2a6913d78042"
+    "dispatch_dir": null
   }
 }
