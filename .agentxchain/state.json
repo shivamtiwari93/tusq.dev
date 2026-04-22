@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_aa36ba7784c7784b",
+  "run_id": "run_581c22fd7542f94e",
   "project_id": "tusq-dev",
-  "status": "completed",
-  "phase": "launch",
-  "accepted_integration_ref": "git:8ed5ec6db0399ea78dbedd3d98031f69a0035a93",
+  "status": "active",
+  "phase": "planning",
+  "accepted_integration_ref": null,
   "active_turns": {},
-  "turn_sequence": 17,
-  "last_completed_turn_id": "turn_374e0472fe2f3523",
+  "turn_sequence": 0,
+  "last_completed_turn_id": null,
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -17,38 +17,25 @@
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "passed",
-    "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
-    "launch_ready": "passed"
+    "planning_signoff": "pending",
+    "implementation_complete": "pending",
+    "qa_ship_verdict": "pending",
+    "launch_ready": "pending"
   },
   "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-22T04:27:41.741Z",
-  "phase_entered_at": "2026-04-22T05:07:00.000Z",
+  "created_at": "2026-04-22T05:22:18.137Z",
+  "phase_entered_at": "2026-04-22T05:22:18.137Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
-    "trigger_reason": "M19: implement a repo-local capability documentation generator for tusq.dev. Add a tusq docs command that reads tusq.manifest.json and emits Markdown review/adoption documentation for capabilities, including approval state, side_effect_class, sensitivity_class, auth_hints, provenance, examples, constraints, redaction, and manifest version metadata. Keep it local/offline and do not add live execution semantics.",
-    "intake_intent_id": "intent_1776831852105_7679",
+    "trigger_reason": "M20: derive and implement the next VISION-aligned tusq.dev increment: an opt-in local execution-policy scaffold for the MCP serve path. The goal is to move beyond describe-only toward safe execution wrappers without live product side effects: validate tools/call arguments against approved compiled tool schemas, require explicit opt-in policy, and return auditable dry-run execution plans/metadata. Keep all work repo-local/offline and governed.",
+    "intake_intent_id": "intent_1776835221317_7398",
     "created_by": "operator"
   },
   "inherited_context": null,
-  "repo_decisions": null,
-  "last_completed_turn": {
-    "turn_id": "turn_374e0472fe2f3523",
-    "role": "product_marketing",
-    "phase": "launch",
-    "checkpoint_sha": "8ed5ec6db0399ea78dbedd3d98031f69a0035a93",
-    "checkpointed_at": "2026-04-22T05:19:02.059Z",
-    "intent_id": null
-  },
-  "delegation_queue": [],
-  "next_recommended_role": null,
-  "pending_delegation_review": null,
-  "non_progress_signature": null,
-  "non_progress_count": 0
+  "repo_decisions": null
 }
