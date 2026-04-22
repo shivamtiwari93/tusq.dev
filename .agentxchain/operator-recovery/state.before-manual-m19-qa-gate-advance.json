@@ -2,14 +2,25 @@
   "schema_version": "1.1",
   "run_id": "run_aa36ba7784c7784b",
   "project_id": "tusq-dev",
-  "status": "active",
-  "phase": "launch",
+  "status": "blocked",
+  "phase": "qa",
   "accepted_integration_ref": "git:7356d03694180e4c7e26de11b01a4b84da92fc61",
   "active_turns": {},
   "turn_sequence": 12,
   "last_completed_turn_id": "turn_8b946491c6c37565",
-  "blocked_on": null,
-  "blocked_reason": null,
+  "blocked_on": "human:qa_ship_verdict gate requires explicit human approval before transitioning to the launch phase. All 57 acceptance criteria PASS, npm test exits 0, ship verdict is SHIP. Human approver must review .planning/ship-verdict.md, .planning/acceptance-matrix.md, and .planning/RELEASE_NOTES.md before gate advances.",
+  "blocked_reason": {
+    "category": "needs_human",
+    "recovery": {
+      "typed_reason": "needs_human",
+      "owner": "human",
+      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
+      "turn_retained": false,
+      "detail": "qa_ship_verdict gate requires explicit human approval before transitioning to the launch phase. All 57 acceptance criteria PASS, npm test exits 0, ship verdict is SHIP. Human approver must review .planning/ship-verdict.md, .planning/acceptance-matrix.md, and .planning/RELEASE_NOTES.md before gate advances."
+    },
+    "blocked_at": "2026-04-22T05:05:36.996Z",
+    "turn_id": "turn_8b946491c6c37565"
+  },
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -19,7 +30,7 @@
   "phase_gate_status": {
     "planning_signoff": "passed",
     "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
+    "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
   "budget_reservations": {},
@@ -28,7 +39,7 @@
     "remaining_usd": 50
   },
   "created_at": "2026-04-22T04:27:41.741Z",
-  "phase_entered_at": "2026-04-22T05:07:00.000Z",
+  "phase_entered_at": "2026-04-22T04:57:13.180Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
@@ -47,7 +58,7 @@
     "intent_id": null
   },
   "delegation_queue": [],
-  "next_recommended_role": "product_marketing",
+  "next_recommended_role": null,
   "pending_delegation_review": null,
   "non_progress_signature": null,
   "non_progress_count": 0
