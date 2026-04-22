@@ -656,6 +656,255 @@ async function run() {
   serveProc.kill('SIGINT');
   await stop;
 
+  // REQ-058: M20 policy startup failure — missing policy file exits 1
+  const missingPolicyResult = runCli(
+    ['serve', '--port', '32170', '--policy', '/nonexistent/policy.json'],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!missingPolicyResult.stderr.includes('Policy file not found:')) {
+    throw new Error(`Expected 'Policy file not found:' on missing policy: ${missingPolicyResult.stderr}`);
+  }
+
+  // REQ-058: invalid JSON policy exits 1
+  const badPolicyPath = path.join(expressProject, '.tusq', 'bad-policy.json');
+  await fs.mkdir(path.join(expressProject, '.tusq'), { recursive: true });
+  await fs.writeFile(badPolicyPath, 'not json', 'utf8');
+  const badJsonResult = runCli(
+    ['serve', '--port', '32170', '--policy', badPolicyPath],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!badJsonResult.stderr.includes('Invalid policy JSON at:')) {
+    throw new Error(`Expected 'Invalid policy JSON at:' on bad JSON policy: ${badJsonResult.stderr}`);
+  }
+
+  // REQ-058: unsupported schema_version exits 1
+  const badVersionPolicyPath = path.join(expressProject, '.tusq', 'version-policy.json');
+  await fs.writeFile(badVersionPolicyPath, JSON.stringify({ schema_version: '99.0', mode: 'dry-run' }), 'utf8');
+  const badVersionResult = runCli(
+    ['serve', '--port', '32170', '--policy', badVersionPolicyPath],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!badVersionResult.stderr.includes('Unsupported policy schema_version:')) {
+    throw new Error(`Expected 'Unsupported policy schema_version:' on bad version: ${badVersionResult.stderr}`);
+  }
+
+  // REQ-058: unknown mode exits 1
+  const badModePolicyPath = path.join(expressProject, '.tusq', 'mode-policy.json');
+  await fs.writeFile(badModePolicyPath, JSON.stringify({ schema_version: '1.0', mode: 'live-fire' }), 'utf8');
+  const badModeResult = runCli(
+    ['serve', '--port', '32170', '--policy', badModePolicyPath],
+    { cwd: expressProject, expectedStatus: 1 }
+  );
+  if (!badModeResult.stderr.includes('Unknown policy mode:')) {
+    throw new Error(`Expected 'Unknown policy mode:' on bad mode: ${badModeResult.stderr}`);
+  }
+
+  // Re-compile now that all capabilities are approved so dry-run tests have full tool set with method+path
+  runCli(['compile', '--verbose'], { cwd: expressProject });
+
+  // REQ-059: policy-on dry-run mode — describe-only policy is a no-op
+  const describeOnlyPolicyPath = path.join(expressProject, '.tusq', 'describe-only-policy.json');
+  await fs.writeFile(describeOnlyPolicyPath, JSON.stringify({
+    schema_version: '1.0',
+    mode: 'describe-only',
+    reviewer: 'ops@example.com',
+    approved_at: '2026-04-22T05:20:21Z'
+  }, null, 2), 'utf8');
+
+  const describeOnlyPort = 32171;
+  const describeOnlyProc = spawn('node', [cli, 'serve', '--port', String(describeOnlyPort), '--policy', describeOnlyPolicyPath], {
+    cwd: expressProject,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  await waitForReady(describeOnlyProc);
+
+  const describeOnlyCall = await requestRpc(describeOnlyPort, {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: { name: 'get_users_users' }
+  });
+  if (!describeOnlyCall.result || !describeOnlyCall.result.schema) {
+    throw new Error(`Expected describe-only policy to return V1 schema response: ${JSON.stringify(describeOnlyCall)}`);
+  }
+  if ('executed' in describeOnlyCall.result) {
+    throw new Error(`Expected describe-only policy to not include executed field: ${JSON.stringify(describeOnlyCall.result)}`);
+  }
+
+  const describeOnlyStop = new Promise((resolve, reject) => {
+    describeOnlyProc.on('exit', (code) => { if (code === 0) resolve(); else reject(new Error(`serve exited with code ${code}`)); });
+  });
+  describeOnlyProc.kill('SIGINT');
+  await describeOnlyStop;
+
+  // REQ-059 + REQ-060: policy-on dry-run mode with valid arguments returns plan with executed:false
+  const dryRunPolicyPath = path.join(expressProject, '.tusq', 'dry-run-policy.json');
+  await fs.writeFile(dryRunPolicyPath, JSON.stringify({
+    schema_version: '1.0',
+    mode: 'dry-run',
+    reviewer: 'ops@example.com',
+    approved_at: '2026-04-22T05:20:21Z'
+  }, null, 2), 'utf8');
+
+  const dryRunPort = 32172;
+  const dryRunProc = spawn('node', [cli, 'serve', '--port', String(dryRunPort), '--policy', dryRunPolicyPath], {
+    cwd: expressProject,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  await waitForReady(dryRunProc);
+
+  // tools/list must be identical under dry-run policy (V1 behavior unchanged)
+  const dryRunList = await requestRpc(dryRunPort, { jsonrpc: '2.0', id: 1, method: 'tools/list' });
+  if (!dryRunList.result || !Array.isArray(dryRunList.result.tools) || dryRunList.result.tools.length === 0) {
+    throw new Error(`Expected tools/list to work under dry-run policy: ${JSON.stringify(dryRunList)}`);
+  }
+
+  // tools/call with valid path param argument returns dry-run plan
+  const dryRunCallResponse = await requestRpc(dryRunPort, {
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_api_v1_users_id',
+      arguments: { id: '42' }
+    }
+  });
+  if (!dryRunCallResponse.result) {
+    throw new Error(`Expected dry-run tools/call to succeed: ${JSON.stringify(dryRunCallResponse)}`);
+  }
+  if (dryRunCallResponse.result.executed !== false) {
+    throw new Error(`Expected executed:false in dry-run response: ${JSON.stringify(dryRunCallResponse.result)}`);
+  }
+  if (!dryRunCallResponse.result.dry_run_plan) {
+    throw new Error(`Expected dry_run_plan in dry-run response: ${JSON.stringify(dryRunCallResponse.result)}`);
+  }
+  if (dryRunCallResponse.result.dry_run_plan.path !== '/api/v1/users/42') {
+    throw new Error(`Expected path param substitution /api/v1/users/42, got ${dryRunCallResponse.result.dry_run_plan.path}`);
+  }
+  if (dryRunCallResponse.result.dry_run_plan.method !== 'GET') {
+    throw new Error(`Expected method=GET in dry_run_plan: ${JSON.stringify(dryRunCallResponse.result.dry_run_plan)}`);
+  }
+  if (!dryRunCallResponse.result.dry_run_plan.plan_hash || !/^[a-f0-9]{64}$/.test(dryRunCallResponse.result.dry_run_plan.plan_hash)) {
+    throw new Error(`Expected plan_hash to be a 64-char SHA-256 hex: ${JSON.stringify(dryRunCallResponse.result.dry_run_plan)}`);
+  }
+  if (!dryRunCallResponse.result.policy || dryRunCallResponse.result.policy.mode !== 'dry-run') {
+    throw new Error(`Expected policy echo in dry-run response: ${JSON.stringify(dryRunCallResponse.result)}`);
+  }
+  if (dryRunCallResponse.result.policy.reviewer !== 'ops@example.com') {
+    throw new Error(`Expected policy.reviewer echo: ${JSON.stringify(dryRunCallResponse.result.policy)}`);
+  }
+  if (dryRunCallResponse.result.dry_run_plan.path_params.id !== '42') {
+    throw new Error(`Expected path_params.id='42': ${JSON.stringify(dryRunCallResponse.result.dry_run_plan)}`);
+  }
+
+  // REQ-061: plan_hash determinism — same arguments produce same hash
+  const dryRunCallResponse2 = await requestRpc(dryRunPort, {
+    jsonrpc: '2.0',
+    id: 3,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_api_v1_users_id',
+      arguments: { id: '42' }
+    }
+  });
+  if (dryRunCallResponse2.result.dry_run_plan.plan_hash !== dryRunCallResponse.result.dry_run_plan.plan_hash) {
+    throw new Error(`Expected plan_hash to be deterministic for identical inputs: got ${dryRunCallResponse.result.dry_run_plan.plan_hash} vs ${dryRunCallResponse2.result.dry_run_plan.plan_hash}`);
+  }
+
+  // Different argument value must produce a different hash
+  const dryRunCallResponse3 = await requestRpc(dryRunPort, {
+    jsonrpc: '2.0',
+    id: 4,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_api_v1_users_id',
+      arguments: { id: '99' }
+    }
+  });
+  if (dryRunCallResponse3.result.dry_run_plan.plan_hash === dryRunCallResponse.result.dry_run_plan.plan_hash) {
+    throw new Error(`Expected different plan_hash for different arguments`);
+  }
+
+  // REQ-062: validation failure — missing required argument returns -32602 with validation_errors
+  const validationFailResponse = await requestRpc(dryRunPort, {
+    jsonrpc: '2.0',
+    id: 5,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_api_v1_users_id',
+      arguments: {}
+    }
+  });
+  if (!validationFailResponse.error || validationFailResponse.error.code !== -32602) {
+    throw new Error(`Expected -32602 for missing required argument: ${JSON.stringify(validationFailResponse)}`);
+  }
+  if (!validationFailResponse.error.data || !Array.isArray(validationFailResponse.error.data.validation_errors)) {
+    throw new Error(`Expected data.validation_errors array: ${JSON.stringify(validationFailResponse.error)}`);
+  }
+  const idError = validationFailResponse.error.data.validation_errors.find((e) => e.path === '/id');
+  if (!idError || idError.reason !== 'required field missing') {
+    throw new Error(`Expected validation_errors entry for /id: ${JSON.stringify(validationFailResponse.error.data.validation_errors)}`);
+  }
+
+  // REQ-063: allowed_capabilities filter — capability not in list returns -32602
+  const allowedPolicyPath = path.join(expressProject, '.tusq', 'allowed-policy.json');
+  await fs.writeFile(allowedPolicyPath, JSON.stringify({
+    schema_version: '1.0',
+    mode: 'dry-run',
+    allowed_capabilities: ['get_users_users'],
+    reviewer: 'ops@example.com',
+    approved_at: '2026-04-22T05:20:21Z'
+  }, null, 2), 'utf8');
+
+  const allowedPort = 32173;
+  const allowedProc = spawn('node', [cli, 'serve', '--port', String(allowedPort), '--policy', allowedPolicyPath], {
+    cwd: expressProject,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  await waitForReady(allowedProc);
+
+  const notPermittedResponse = await requestRpc(allowedPort, {
+    jsonrpc: '2.0',
+    id: 6,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_api_v1_users_id',
+      arguments: { id: '42' }
+    }
+  });
+  if (!notPermittedResponse.error || notPermittedResponse.error.code !== -32602) {
+    throw new Error(`Expected -32602 for capability not in allowed_capabilities: ${JSON.stringify(notPermittedResponse)}`);
+  }
+  if (!notPermittedResponse.error.data || notPermittedResponse.error.data.reason !== 'capability not permitted under current policy') {
+    throw new Error(`Expected data.reason for not-permitted capability: ${JSON.stringify(notPermittedResponse.error)}`);
+  }
+
+  // Permitted capability still works under allowed policy
+  const permittedResponse = await requestRpc(allowedPort, {
+    jsonrpc: '2.0',
+    id: 7,
+    method: 'tools/call',
+    params: {
+      name: 'get_users_users',
+      arguments: {}
+    }
+  });
+  if (!permittedResponse.result || permittedResponse.result.executed !== false) {
+    throw new Error(`Expected dry-run plan for permitted capability: ${JSON.stringify(permittedResponse)}`);
+  }
+
+  const allowedStop = new Promise((resolve, reject) => {
+    allowedProc.on('exit', (code) => { if (code === 0) resolve(); else reject(new Error(`serve exited with code ${code}`)); });
+  });
+  allowedProc.kill('SIGINT');
+  await allowedStop;
+
+  const dryRunStop = new Promise((resolve, reject) => {
+    dryRunProc.on('exit', (code) => { if (code === 0) resolve(); else reject(new Error(`serve exited with code ${code}`)); });
+  });
+  dryRunProc.kill('SIGINT');
+  await dryRunStop;
+
   console.log('Smoke tests passed');
 }
 

@@ -525,3 +525,74 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 | `cd website && npm run build` | Exit 0; Docusaurus build succeeds |
 
 **Gate satisfaction:** M19 implementation is complete and verified. `implementation_complete` can advance to QA.
+
+---
+
+## M20 Implementation Record — Opt-In Local Execution Policy Scaffold (2026-04-22)
+
+**Turn:** turn_5a2b57dd16d8157e
+**HEAD:** d3589c0 (workspace dirty)
+
+**Challenge of prior turn:** The prior accepted turn (turn_33545c65a9905eff, role=pm, phase=planning) performed planning artifact verification only — it cannot satisfy the `implementation_complete` gate. Fresh independent dev-authored implementation and runtime verification performed.
+
+**Scope:** Implemented M20 opt-in dry-run execution policy scaffold per SYSTEM_SPEC.md §M20 and command-surface.md §M20 Product CLI Surface.
+
+### Changes shipped
+
+**`src/cli.js`:**
+- Added `method` and `path` fields to compiled tool artifacts in `cmdCompile` (from manifest capability).
+- Added `--policy <path>` flag to `cmdServe` via `parseCommandArgs` spec.
+- Updated `printCommandHelp` serve entry to include `--policy <path>`.
+- Updated startup message to reflect active mode (`describe-only` vs `dry-run policy`).
+- Added `loadAndValidatePolicy(policyPath)` — validates schema_version, mode, and allowed_capabilities shape; exits 1 with actionable messages on all failure modes (missing file, invalid JSON, unsupported version, unknown mode, invalid allowed_capabilities).
+- Added `validateArguments(args, schema)` — enforces required fields, primitive type checks, and additionalProperties:false rejection; returns `{valid, errors}`.
+- Added `checkPrimitiveType(value, type)` — handles string/number/integer/boolean; returns true for object/array/null (not validated in V1.1).
+- Added `substitutePathParams(rawPath, args, schema)` — replaces `:param` tokens in path using source=path properties.
+- Added `extractPathParams(args, schema)` — builds path_params map from source=path properties.
+- Added `extractBodyArgs(args, schema)` — builds body map from non-path-param properties.
+- Added `computePlanHash(planFields)` — SHA-256 over canonical JSON of `{body, headers, method, path, path_params, query}`.
+- Updated `tools/call` handler: when policy is active with `mode: "dry-run"`, runs allowed_capabilities check, argument validation, and builds dry_run_plan response with `executed: false`, `policy` echo, `dry_run_plan` object, and `plan_hash`.
+- `executed: false` is always present; no outbound HTTP, DB, or socket I/O added (M20 local-only invariant satisfied).
+
+**`tests/smoke.mjs`:**
+- Added REQ-058: policy startup failure assertions (missing file, bad JSON, unsupported version, unknown mode).
+- Added REQ-059: policy-on describe-only mode (V1 response unchanged, no `executed` field).
+- Added REQ-059+REQ-060: policy-on dry-run mode with valid path param argument (`get_users_api_v1_users_id` with `{id: "42"}`); asserts `executed: false`, `dry_run_plan`, path substitution `/api/v1/users/42`, `method: "GET"`, SHA-256 plan_hash, policy echo with reviewer.
+- Added REQ-061: plan_hash determinism (same args → same hash, different args → different hash).
+- Added REQ-062: validation failure with missing required argument returns -32602 with `data.validation_errors` containing `{path: "/id", reason: "required field missing"}`.
+- Added REQ-063: allowed_capabilities filter — capability not in list returns -32602 with `data.reason: "capability not permitted under current policy"`; permitted capability returns dry-run plan.
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `policy-dry-run-plan-shape` scenario: full workflow → dry-run policy → tools/call with path param → assert method, path substitution, path_params, plan_hash shape.
+- Added `policy-dry-run-approval-gate` scenario: unknown tool under dry-run policy → assert -32602.
+
+**`tests/eval-regression.mjs`:**
+- Added `import { spawn }` and `import http` for async server-based eval support.
+- Added `requestRpc`, `waitForReady` helpers.
+- Added `runPolicyEvalScenario` function: sets up project, approves all, compiles, writes policy file, starts server with `--policy`, runs assertions, stops server with SIGINT.
+- Added handlers for `policy-dry-run-plan-shape` and `policy-dry-run-approval-gate` scenario types.
+
+**`website/docs/cli-reference.md`:**
+- Updated `tusq serve` section with `--policy <path>` flag table and link to execution-policy.md.
+
+**`website/docs/execution-policy.md`** (new):
+- Full policy file shape, modes, allowed_capabilities semantics, dry-run response example, validation failure example, validation rules table, startup failure UX table, invariants, and V1.1 limitations.
+
+**`website/docs/mcp-server.md`:**
+- Added dry-run mode section with `tusq serve --policy` example and key properties.
+
+**`website/sidebars.ts`:**
+- Added `execution-policy` to Guides category.
+
+**`README.md`:**
+- Added step 9 for `tusq serve --policy` with policy file prerequisite note.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js serve --help` | Exit 0; prints `Usage: tusq serve [--port <n>] [--policy <path>] [--verbose]` |
+| `node bin/tusq.js help` | Exit 0; 11-command surface unchanged |
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (4 scenarios)" |
+
+**Gate satisfaction:** M20 implementation is complete and verified. All REQ-058–REQ-063 smoke assertions pass. 4 eval scenarios pass (up from 2). `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.

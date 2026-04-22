@@ -15,7 +15,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Guides',
-      items: ['frameworks', 'mcp-server'],
+      items: ['frameworks', 'mcp-server', 'execution-policy'],
     },
     {
       type: 'category',

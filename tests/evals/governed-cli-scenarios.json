@@ -37,6 +37,36 @@
         "approved",
         "review_needed"
       ]
+    },
+    {
+      "id": "policy-dry-run-plan-shape",
+      "fixture": "express-sample",
+      "framework": "express",
+      "policy": {
+        "schema_version": "1.0",
+        "mode": "dry-run",
+        "allowed_capabilities": ["get_users_api_v1_users_id"],
+        "reviewer": "eval@example.com",
+        "approved_at": "2026-04-22T05:20:21Z"
+      },
+      "dry_run_tool": "get_users_api_v1_users_id",
+      "dry_run_arguments": { "id": "eval-42" },
+      "expected_plan_method": "GET",
+      "expected_plan_path": "/api/v1/users/eval-42",
+      "expected_path_params": { "id": "eval-42" }
+    },
+    {
+      "id": "policy-dry-run-approval-gate",
+      "fixture": "express-sample",
+      "framework": "express",
+      "policy": {
+        "schema_version": "1.0",
+        "mode": "dry-run",
+        "reviewer": "eval@example.com",
+        "approved_at": "2026-04-22T05:20:21Z"
+      },
+      "unapproved_tool": "get_users_api_v1_users_id",
+      "expected_error_code": -32602
     }
   ]
 }

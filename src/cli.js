@@ -454,6 +454,8 @@ function cmdCompile(args) {
   const tools = approved.map((capability) => ({
     name: capability.name,
     description: capability.description,
+    method: capability.method || null,
+    path: capability.path || null,
     parameters: capability.input_schema || { type: 'object', additionalProperties: true },
     returns: capability.output_schema || { type: 'object', additionalProperties: true },
     side_effect_class: capability.side_effect_class,
@@ -491,7 +493,8 @@ function cmdCompile(args) {
 
 function cmdServe(args) {
   const { opts, positionals } = parseCommandArgs('serve', args, {
-    port: 'value'
+    port: 'value',
+    policy: 'value'
   });
 
   if (opts.help) {
@@ -500,7 +503,7 @@ function cmdServe(args) {
   }
 
   if (positionals.length > 0) {
-    throw new CliError('Usage: tusq serve [--port <n>]', 1);
+    throw new CliError('Usage: tusq serve [--port <n>] [--policy <path>] [--verbose]', 1);
   }
 
   const port = opts.port ? Number(opts.port) : 3100;
@@ -512,7 +515,13 @@ function cmdServe(args) {
   const config = readProjectConfig(root);
   const toolsDir = path.resolve(root, (config.output && config.output.tools_dir) || 'tusq-tools');
 
+  const policy = opts.policy ? loadAndValidatePolicy(path.resolve(root, opts.policy)) : null;
+
   if (!fs.existsSync(toolsDir)) {
+    const manifestPath = path.resolve(root, (config.output && config.output.manifest_file) || 'tusq.manifest.json');
+    if (policy && !fs.existsSync(manifestPath)) {
+      throw new CliError('Missing manifest: run `tusq manifest` first, then `tusq compile`.', 1);
+    }
     throw new CliError('No compiled tools found. Run `tusq compile` first.', 1);
   }
 
@@ -526,6 +535,10 @@ function cmdServe(args) {
     if (tool && tool.name) {
       tools.set(tool.name, tool);
     }
+  }
+
+  if (opts.verbose && policy) {
+    process.stderr.write(`Policy loaded: mode=${policy.mode}${policy.allowed_capabilities ? `, allowed=${policy.allowed_capabilities.join(',')}` : ''}\n`);
   }
 
   const server = http.createServer((req, res) => {
@@ -584,6 +597,75 @@ function cmdServe(args) {
           });
           return;
         }
+
+        if (policy && policy.mode === 'dry-run') {
+          if (policy.allowed_capabilities && !policy.allowed_capabilities.includes(params.name)) {
+            respondRpcJson(res, id, null, {
+              code: -32602,
+              message: `Tool not permitted: ${params.name}`,
+              data: { reason: 'capability not permitted under current policy' }
+            });
+            return;
+          }
+
+          const callArgs = params.arguments && typeof params.arguments === 'object' ? params.arguments : {};
+          const validation = validateArguments(callArgs, tool.parameters);
+          if (!validation.valid) {
+            respondRpcJson(res, id, null, {
+              code: -32602,
+              message: `Invalid arguments for tool: ${params.name}`,
+              data: { validation_errors: validation.errors }
+            });
+            return;
+          }
+
+          const rawPath = tool.path || '/';
+          const resolvedPath = substitutePathParams(rawPath, callArgs, tool.parameters);
+          const pathParams = extractPathParams(callArgs, tool.parameters);
+          const bodyArgs = extractBodyArgs(callArgs, tool.parameters);
+          const planFields = {
+            method: tool.method || 'GET',
+            path: resolvedPath,
+            path_params: pathParams,
+            query: {},
+            body: Object.keys(bodyArgs).length > 0 ? bodyArgs : null,
+            headers: { Accept: 'application/json' }
+          };
+          const planHash = computePlanHash(planFields);
+          const authHints = tool.auth_hints || [];
+
+          const dryRunResult = {
+            name: tool.name,
+            description: tool.description,
+            executed: false,
+            policy: {
+              mode: policy.mode,
+              reviewer: policy.reviewer || null,
+              approved_at: policy.approved_at || null
+            },
+            dry_run_plan: {
+              method: planFields.method,
+              path: planFields.path,
+              path_params: planFields.path_params,
+              query: planFields.query,
+              body: planFields.body,
+              headers: planFields.headers,
+              auth_context: { hints: authHints, required: authHints.length > 0 },
+              side_effect_class: tool.side_effect_class,
+              sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
+              redaction: normalizeRedaction(tool.redaction),
+              plan_hash: planHash,
+              evaluated_at: new Date().toISOString()
+            },
+            schema: {
+              parameters: tool.parameters,
+              returns: tool.returns
+            }
+          };
+          respondRpcJson(res, id, dryRunResult);
+          return;
+        }
+
         const result = {
           name: tool.name,
           description: tool.description,
@@ -621,7 +703,8 @@ function cmdServe(args) {
   });
 
   server.listen(port, '127.0.0.1', () => {
-    process.stdout.write(`MCP describe-only server listening on http://127.0.0.1:${port}\n`);
+    const modeLabel = policy && policy.mode === 'dry-run' ? 'dry-run policy' : 'describe-only';
+    process.stdout.write(`MCP ${modeLabel} server listening on http://127.0.0.1:${port}\n`);
   });
 
   process.on('SIGINT', () => {
@@ -1288,6 +1371,149 @@ function summarizeProvenanceForReview(provenance) {
   return `${location}${handler}${framework}`;
 }
 
+function loadAndValidatePolicy(policyPath) {
+  if (!fs.existsSync(policyPath)) {
+    throw new CliError(`Policy file not found: ${policyPath}`, 1);
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(policyPath, 'utf8');
+  } catch (e) {
+    throw new CliError(`Could not read policy file: ${policyPath}: ${e.message}`, 1);
+  }
+
+  let policy;
+  try {
+    policy = JSON.parse(raw);
+  } catch (e) {
+    throw new CliError(`Invalid policy JSON at: ${policyPath}: ${e.message}`, 1);
+  }
+
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) {
+    throw new CliError(`Invalid policy JSON at: ${policyPath}: expected object`, 1);
+  }
+
+  const SUPPORTED_POLICY_VERSIONS = ['1.0'];
+  if (!SUPPORTED_POLICY_VERSIONS.includes(policy.schema_version)) {
+    throw new CliError(
+      `Unsupported policy schema_version: ${policy.schema_version}. Supported: ${SUPPORTED_POLICY_VERSIONS.join(', ')}`,
+      1
+    );
+  }
+
+  const ALLOWED_POLICY_MODES = ['describe-only', 'dry-run'];
+  if (!ALLOWED_POLICY_MODES.includes(policy.mode)) {
+    throw new CliError(
+      `Unknown policy mode: ${policy.mode}. Allowed: ${ALLOWED_POLICY_MODES.join(', ')}`,
+      1
+    );
+  }
+
+  if (policy.allowed_capabilities !== undefined && policy.allowed_capabilities !== null) {
+    if (!Array.isArray(policy.allowed_capabilities) ||
+        !policy.allowed_capabilities.every((c) => typeof c === 'string')) {
+      throw new CliError(
+        `Invalid allowed_capabilities in policy: ${JSON.stringify(policy.allowed_capabilities)}`,
+        1
+      );
+    }
+  }
+
+  return policy;
+}
+
+function validateArguments(args, schema) {
+  if (!schema || typeof schema !== 'object') {
+    return { valid: true, errors: [] };
+  }
+
+  const errors = [];
+  const properties = schema.properties || {};
+  const required = Array.isArray(schema.required) ? schema.required : [];
+
+  for (const field of required) {
+    if (!Object.prototype.hasOwnProperty.call(args, field) || args[field] === undefined) {
+      errors.push({ path: `/${field}`, reason: 'required field missing' });
+    }
+  }
+
+  for (const [field, value] of Object.entries(args)) {
+    const propSchema = properties[field];
+    if (!propSchema) {
+      if (schema.additionalProperties === false) {
+        errors.push({ path: `/${field}`, reason: 'unknown property' });
+      }
+      continue;
+    }
+    if (propSchema.type && value !== null && value !== undefined) {
+      if (!checkPrimitiveType(value, propSchema.type)) {
+        const actualType = Array.isArray(value) ? 'array' : typeof value;
+        errors.push({ path: `/${field}`, reason: `expected ${propSchema.type}, got ${actualType}` });
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+function checkPrimitiveType(value, type) {
+  if (type === 'string') return typeof value === 'string';
+  if (type === 'number') return typeof value === 'number';
+  if (type === 'integer') return Number.isInteger(value);
+  if (type === 'boolean') return typeof value === 'boolean';
+  return true;
+}
+
+function substitutePathParams(rawPath, args, schema) {
+  const properties = (schema && schema.properties) || {};
+  let result = rawPath;
+  for (const [field, propSchema] of Object.entries(properties)) {
+    if (propSchema && propSchema.source === 'path') {
+      const value = args[field];
+      if (value !== undefined) {
+        result = result.replace(`:${field}`, String(value));
+      }
+    }
+  }
+  return result;
+}
+
+function extractPathParams(args, schema) {
+  const properties = (schema && schema.properties) || {};
+  const out = {};
+  for (const [field, propSchema] of Object.entries(properties)) {
+    if (propSchema && propSchema.source === 'path' && Object.prototype.hasOwnProperty.call(args, field)) {
+      out[field] = String(args[field]);
+    }
+  }
+  return out;
+}
+
+function extractBodyArgs(args, schema) {
+  const properties = (schema && schema.properties) || {};
+  const out = {};
+  for (const [field, value] of Object.entries(args)) {
+    const propSchema = properties[field];
+    if (!propSchema || propSchema.source !== 'path') {
+      out[field] = value;
+    }
+  }
+  return out;
+}
+
+function computePlanHash(planFields) {
+  const payload = {
+    body: planFields.body,
+    headers: planFields.headers,
+    method: planFields.method,
+    path: planFields.path,
+    path_params: planFields.path_params,
+    query: planFields.query
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(sortKeysDeep(payload))).digest('hex');
+}
+
 function printHelp() {
   process.stdout.write(`tusq ${VERSION}\n\n`);
   process.stdout.write('Usage: tusq <command> [options]\n\n');
@@ -1311,7 +1537,7 @@ function printCommandHelp(command) {
     scan: 'Usage: tusq scan <path> [--framework <name>] [--format json] [--verbose]',
     manifest: 'Usage: tusq manifest [--out <path>] [--format json] [--verbose]',
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
-    serve: 'Usage: tusq serve [--port <n>] [--verbose]',
+    serve: 'Usage: tusq serve [--port <n>] [--policy <path>] [--verbose]',
     review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',

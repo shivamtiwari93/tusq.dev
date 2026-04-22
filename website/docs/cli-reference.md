@@ -48,11 +48,21 @@ tusq compile [--out <path>] [--dry-run] [--verbose]
 
 ## `tusq serve`
 
-Serve compiled tools over a local describe-only MCP endpoint.
+Serve compiled tools over a local MCP endpoint. Without `--policy`, behavior is describe-only (V1 default). With `--policy`, the server loads an execution policy file and can validate arguments and emit dry-run plans.
 
 ```bash
-tusq serve [--port <n>] [--verbose]
+tusq serve [--port <n>] [--policy <path>] [--verbose]
 ```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port <n>` | TCP port for the local MCP listener | `3333` |
+| `--policy <path>` | Path to `.tusq/execution-policy.json`; enables dry-run mode when `mode: "dry-run"` | Unset (describe-only) |
+| `--verbose` | Print policy resolution and request logs to stderr | Disabled |
+
+If `--policy` is set and the file is missing, unreadable, contains invalid JSON, has an unsupported `schema_version`, or specifies an unknown `mode`, `tusq serve` exits 1 with an actionable message before starting the server.
+
+See [Execution Policy](./execution-policy.md) for the full policy file shape, mode semantics, and dry-run response format.
 
 ## `tusq review`
 

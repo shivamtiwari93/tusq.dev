@@ -145,6 +145,7 @@ The accurate launch workflow is:
 6. run `tusq docs --out capability-docs.md` to create local Markdown docs for review and adoption
 7. run `tusq diff --from <previous-manifest> --to tusq.manifest.json --review-queue` when comparing manifest versions
 8. run `tusq serve` to expose those definitions through a local describe-only MCP endpoint
+9. optionally run `tusq serve --policy .tusq/execution-policy.json` to activate dry-run argument validation and auditable plan emission (requires `.tusq/execution-policy.json` with `mode: "dry-run"`)
 
 Until package distribution is explicitly confirmed, treat the repo-local CLI workflow as the supported way to try `v0.1.0`.
 
