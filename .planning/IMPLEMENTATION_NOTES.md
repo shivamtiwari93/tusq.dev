@@ -416,6 +416,8 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 - Removed scaffold placeholders that conflicted with production scope (default tutorial docs, example blog posts, sample components).
 - Left legacy static site (`websites/`) intact per PM decision; migration is additive with cleanup deferred.
 
+---
+
 ## Verification
 
 - Built the new website stack from scratch:
