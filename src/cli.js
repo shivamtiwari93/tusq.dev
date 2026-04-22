@@ -2013,6 +2013,124 @@ function extractExpressRoutes(content, filePath) {
   return routes;
 }
 
+// M24: extract the content between a matching pair of open/close chars starting at startIndex.
+// Skips over single/double/backtick string literals to avoid counting delimiters inside strings.
+// Returns the inner content (excluding the open/close chars), or null if the block is unbalanced.
+function extractBalancedBlock(source, startIndex, openChar, closeChar) {
+  if (source[startIndex] !== openChar) return null;
+  let depth = 0;
+  let i = startIndex;
+  while (i < source.length) {
+    const ch = source[i];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      const quote = ch;
+      i += 1;
+      while (i < source.length) {
+        if (source[i] === '\\') { i += 2; continue; }
+        if (source[i] === quote) { i += 1; break; }
+        i += 1;
+      }
+      continue;
+    }
+    if (ch === openChar) depth += 1;
+    else if (ch === closeChar) {
+      depth -= 1;
+      if (depth === 0) return source.slice(startIndex + 1, i);
+    }
+    i += 1;
+  }
+  return null;
+}
+
+// M24: given an options block string (content between the outer {}), attempt to extract
+// a structured schema_fields record from a literal `schema: { body: { properties: {...} } }` pattern.
+// Returns { body: { properties: {...}, required: [...] } } on success, or null on any parse failure.
+// Partial extraction is forbidden: any failed step returns null and the caller falls back to M15.
+function extractFastifySchemaBody(optionsBlock) {
+  // Step 1: locate schema: { (literal brace — variable references like schema: mySchema won't match)
+  const schemaMatch = /\bschema\s*:\s*\{/.exec(optionsBlock);
+  if (!schemaMatch) return null;
+  const schemaBraceIdx = schemaMatch.index + schemaMatch[0].length - 1;
+
+  // Step 2: balanced-brace-match the schema block
+  const schemaBlock = extractBalancedBlock(optionsBlock, schemaBraceIdx, '{', '}');
+  if (!schemaBlock) return null;
+
+  // Step 3: locate body: { inside schema block
+  const bodyMatch = /\bbody\s*:\s*\{/.exec(schemaBlock);
+  if (!bodyMatch) return null;
+  const bodyBraceIdx = bodyMatch.index + bodyMatch[0].length - 1;
+
+  // Step 4: balanced-brace-match the body block
+  const bodyBlock = extractBalancedBlock(schemaBlock, bodyBraceIdx, '{', '}');
+  if (!bodyBlock) return null;
+
+  // Step 5: locate properties: { inside body block
+  const propertiesMatch = /\bproperties\s*:\s*\{/.exec(bodyBlock);
+  if (!propertiesMatch) return null;
+  const propertiesBraceIdx = propertiesMatch.index + propertiesMatch[0].length - 1;
+
+  // Step 6: balanced-brace-match the properties block
+  const propertiesBlock = extractBalancedBlock(bodyBlock, propertiesBraceIdx, '{', '}');
+  if (!propertiesBlock) return null;
+
+  // Step 7: iterate top-level property entries in source (declaration) order
+  const properties = {};
+  let pos = 0;
+  while (pos < propertiesBlock.length) {
+    // Skip whitespace and commas
+    const wsMatch = /^[\s,]+/.exec(propertiesBlock.slice(pos));
+    if (wsMatch) { pos += wsMatch[0].length; continue; }
+
+    // Try to match a top-level property name followed by : {
+    const propMatch = /^([A-Za-z_$][A-Za-z0-9_$]*)\s*:\s*\{/.exec(propertiesBlock.slice(pos));
+    if (!propMatch) { pos += 1; continue; }
+
+    const fieldName = propMatch[1];
+    const braceOffset = propMatch[0].lastIndexOf('{');
+    const braceAbsIdx = pos + braceOffset;
+
+    const fieldBlock = extractBalancedBlock(propertiesBlock, braceAbsIdx, '{', '}');
+    if (!fieldBlock) return null; // fail safe — drop entire schema_fields
+
+    // Extract the type string literal; default to 'string' if absent (Fastify default)
+    const typeMatch = /\btype\s*:\s*(['"`])(string|number|integer|boolean|object|array)\1/.exec(fieldBlock);
+    properties[fieldName] = { type: typeMatch ? typeMatch[2] : 'string' };
+
+    // Advance pos past the closing brace of this field entry
+    let depth = 0;
+    let j = braceAbsIdx;
+    while (j < propertiesBlock.length) {
+      const ch = propertiesBlock[j];
+      if (ch === '{') depth += 1;
+      else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) { pos = j + 1; break; }
+      }
+      j += 1;
+    }
+    if (depth !== 0) return null;
+  }
+
+  if (Object.keys(properties).length === 0) return null;
+
+  // Step 8: locate required: [ inside body block and parse string items
+  const required = [];
+  const requiredMatch = /\brequired\s*:\s*\[/.exec(bodyBlock);
+  if (requiredMatch) {
+    const bracketIdx = requiredMatch.index + requiredMatch[0].length - 1;
+    const bracketContent = extractBalancedBlock(bodyBlock, bracketIdx, '[', ']');
+    if (!bracketContent) return null; // fail safe
+    const itemRegex = /['"`]([^'"`\n]+)['"`]/g;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(bracketContent)) !== null) {
+      required.push(itemMatch[1]);
+    }
+  }
+
+  return { body: { properties, required } };
+}
+
 function extractFastifyRoutes(content, filePath) {
   const routes = [];
   const lines = content.split(/\r?\n/);
@@ -2077,6 +2195,7 @@ function extractFastifyRoutes(content, filePath) {
         framework: 'fastify'
       },
       schema_hint: /\bschema\s*:/i.test(optionsBlock),
+      schema_fields: extractFastifySchemaBody(optionsBlock),
       response_hint: inferResponseHint(`${optionsBlock}\n${handlerExpr}`),
       middleware: tokens
     });
@@ -2109,6 +2228,7 @@ function extractFastifyRoutes(content, filePath) {
         framework: 'fastify'
       },
       schema_hint: /\bschema\s*:/i.test(block),
+      schema_fields: extractFastifySchemaBody(block),
       response_hint: inferResponseHint(block),
       middleware: []
     });
@@ -2216,6 +2336,10 @@ function scoreConfidence(route) {
     score += 0.14;
   } else {
     score -= 0.10;
+  }
+
+  if (route.schema_fields) {
+    score += 0.04;
   }
 
   if (route.path && route.path !== '/') {
@@ -2536,6 +2660,7 @@ function buildInputSchema(route, hasSchema, pathParameters) {
   const properties = {};
   const required = [];
 
+  // Path parameters are always authoritative for the URL shape
   for (const name of pathParameters) {
     properties[name] = {
       type: 'string',
@@ -2543,6 +2668,32 @@ function buildInputSchema(route, hasSchema, pathParameters) {
       description: `Path parameter: ${name}`
     };
     required.push(name);
+  }
+
+  // M24: when schema_fields were successfully extracted from a literal Fastify schema.body block,
+  // merge the declared field shapes. Path params win on name collision (path is authoritative).
+  const schemaFields = route.schema_fields;
+  if (schemaFields && schemaFields.body && schemaFields.body.properties) {
+    const pathParamSet = new Set(pathParameters);
+    for (const [fieldName, fieldDef] of Object.entries(schemaFields.body.properties)) {
+      if (!pathParamSet.has(fieldName)) {
+        properties[fieldName] = { type: fieldDef.type };
+      }
+    }
+    // Merge required entries from the body schema, skipping path params already listed
+    for (const req of (schemaFields.body.required || [])) {
+      if (!pathParamSet.has(req) && !required.includes(req)) {
+        required.push(req);
+      }
+    }
+    return {
+      type: 'object',
+      properties,
+      required,
+      additionalProperties: false,
+      source: 'fastify_schema_body',
+      description: describeInputSchema(route, hasSchema, pathParameters.length)
+    };
   }
 
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {

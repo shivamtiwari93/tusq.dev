@@ -731,6 +731,65 @@ All milestones M9–M16 are implemented and verified on HEAD e292452. Key change
 
 ---
 
+## M24 Implementation Record — Opt-In Fastify Schema Body-Field Extraction (2026-04-22)
+
+**Turn:** turn_01be3ee8e55dfe43
+**HEAD:** 4190593 (workspace dirty on implementation changes)
+
+**Challenge of prior PM turn:** The prior accepted PM turn (turn_e29104b770c9ebdc, role=pm) performed planning artifact verification and document updates only — it cannot satisfy the `implementation_complete` gate. This dev turn challenges that claim and performs fresh independent dev-authored implementation and runtime verification. Baseline re-confirmed: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (6 scenarios)" before any M24 changes.
+
+**Scope:** Implemented M24 literal Fastify `schema.body` field extraction — a static-only extraction path that reads declared top-level field shapes from a Fastify route's `schema.body.properties` block and populates `input_schema.properties` in the manifest with `additionalProperties: false` and `source: 'fastify_schema_body'`. No new CLI flag, no new subcommand, zero new package.json dependencies.
+
+### Changes shipped
+
+**`tests/fixtures/fastify-sample/src/server.ts`:**
+- Added `POST /items` route with a literal `schema.body` block containing `name: string`, `price: number`, `active: boolean` and `required: ['name', 'price']` — exercises the primary M24 extraction path.
+- Added `PUT /items/:id` route with a literal `schema.body` block declaring `id: number` and `name: string`, and path param `:id` — exercises the path-param collision: path param wins and retains `type: 'string', source: 'path'`.
+- Added `GET /catalog` route with `schema: sharedSchema` (non-literal variable reference) — exercises the fall-back to M15 behavior.
+- Fixture grows from 2 routes to 5 routes.
+
+**`src/cli.js`:**
+- Added `extractBalancedBlock(source, startIndex, openChar, closeChar)`: skips string literals (single/double/backtick) while counting open/close chars; returns inner content or `null` on unbalanced input.
+- Added `extractFastifySchemaBody(optionsBlock)`: implements the 8-step extraction algorithm specified in SYSTEM_SPEC §M24 using `extractBalancedBlock`. Any failed step returns `null` (entire `schema_fields` dropped); partial extraction is forbidden. Returns `{ body: { properties, required } }` on success.
+- Extended `extractFastifyRoutes` patterns 2 (3-arg inline with options) and 3 (`fastify.route({...})`) to set `schema_fields: extractFastifySchemaBody(...)` on extracted route objects.
+- Updated `scoreConfidence`: added `if (route.schema_fields) score += 0.04` after the existing `schema_hint` branch (capped at 0.95).
+- Updated `buildInputSchema`: when `route.schema_fields.body.properties` is present, merges declared fields into `properties` (path params win on name collision using a `Set`), merges `required` entries (skipping path params already in `required`), and returns `{ ..., additionalProperties: false, source: 'fastify_schema_body' }`. M15 fall-back path (generic `body` placeholder) is untouched.
+
+**`tests/smoke.mjs`:**
+- Updated Fastify route_count assertion from 2 to 5.
+- Added M24 smoke block covering items (a)–(g) from SYSTEM_SPEC/ROADMAP:
+  - (a) GET /orders and POST /orders (no `properties` block) produce M15 fall-back (`additionalProperties: true`, no `source` on `input_schema`).
+  - (b) POST /items produces `source: 'fastify_schema_body'`, `additionalProperties: false`, correct property types and declaration-order keys `[name, price, active]`, and correct `required: ['name', 'price']`.
+  - (c) GET /catalog (`schema: sharedSchema`, non-literal) produces M15 fall-back.
+  - (d) PUT /items/:id: path param `id` wins (`source: 'path'`, `type: 'string'`); body field `name` is merged; body's `id: number` is NOT merged.
+  - (e) Express manifest has no `fastify_schema_body` source tags.
+  - (f) NestJS scan routes have no `fastify_schema_body` source tags.
+  - (g) Two consecutive `tusq manifest` runs on the Fastify fixture produce byte-identical `input_schema.properties` ordering for POST /items.
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `fastify-schema-body-extraction-determinism` scenario: runs `tusq scan` 3 times on the Fastify fixture and asserts `POST /items` produces `source: 'fastify_schema_body'`, `additionalProperties: false`, `expected_properties_keys: ['name', 'price', 'active']`, `expected_required: ['name', 'price']`, and identical property ordering across all runs.
+
+**`tests/eval-regression.mjs`:**
+- Added `runFastifySchemaExtractionScenario(tmpRoot, scenario)`: copies the Fastify fixture, runs `tusq scan` `repeat_runs` times, verifies `source`, `additionalProperties`, property key order, and required fields on the target route; asserts identical property key ordering across all runs.
+- Added routing for `'fastify-schema-body-extraction-determinism'` in the main dispatch loop.
+
+**`website/docs/manifest-format.md`:**
+- Added `### Fastify Schema Body Extraction (V1.5)` subsection: extraction rules, `fastify_schema_body` source tag, `additionalProperties: false` flip, path-param collision example, fall-back semantics, forbidden framing callout (NOT validator-backed), and re-approval note (capability_digest includes `input_schema`).
+
+**`website/docs/frameworks.md`:**
+- Added `## Fastify: literal schema-body extraction (V1.5)` section: scope boundary (literal body only, top-level only, no nested descent), fall-back semantics, link to manifest-format.md, forbidden framing callout.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `node bin/tusq.js help` | Exit 0; 12-command surface unchanged |
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (7 scenarios)" |
+
+**Gate satisfaction:** M24 implementation is complete and verified. All M24 smoke items (a)–(g) pass. 7 eval scenarios pass (up from 6, adding `fastify-schema-body-extraction-determinism`). Non-Fastify fixtures (Express, NestJS) produce byte-identical manifests. Constraints 13 and 14 satisfied: no framework import, no eval/new Function/ts-node, no network I/O, no partial extraction, source tag is `fastify_schema_body` (not "validator-backed"). `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## M23 Implementation Record — Opt-In Strict Policy Verifier (Manifest-Aware) (2026-04-22)
 
 **Turn:** turn_6c5a861e00f1654d

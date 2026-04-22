@@ -536,8 +536,8 @@ async function run() {
   runCli(['init'], { cwd: fastifyProject });
   const fastifyScanResult = runCli(['scan', '.', '--format', 'json'], { cwd: fastifyProject });
   const fastifyScan = JSON.parse(fastifyScanResult.stdout);
-  if (fastifyScan.route_count !== 2) {
-    throw new Error(`Expected 2 Fastify routes (inline GET + route-object POST), got ${fastifyScan.route_count}`);
+  if (fastifyScan.route_count !== 5) {
+    throw new Error(`Expected 5 Fastify routes (2 original + 3 M24 additions), got ${fastifyScan.route_count}`);
   }
   const fastifyGet = fastifyScan.routes.find((r) => r.method === 'GET' && r.path === '/orders');
   if (!fastifyGet) {
@@ -555,6 +555,113 @@ async function run() {
   }
   if (!fastifyPost.auth_hints.includes('requireAuth')) {
     throw new Error(`Expected Fastify POST /orders auth_hints to include requireAuth, got ${JSON.stringify(fastifyPost.auth_hints)}`);
+  }
+
+  // ─── M24: Fastify schema body field extraction ───────────────────────────────
+
+  // (a) Fastify routes without a literal schema.body block are byte-identical to pre-M24 behavior.
+  //     GET /orders has schema: { response: ... } (no body key) → falls back to M15.
+  if (fastifyGet.input_schema.source !== undefined) {
+    throw new Error(`M24(a): GET /orders should have no top-level source (M15 fall-back), got source=${fastifyGet.input_schema.source}`);
+  }
+  if (fastifyGet.input_schema.additionalProperties !== true) {
+    throw new Error(`M24(a): GET /orders should have additionalProperties: true (M15 fall-back), got ${fastifyGet.input_schema.additionalProperties}`);
+  }
+  //     POST /orders has schema.body but no properties → M15 fall-back
+  if (fastifyPost.input_schema.source !== undefined) {
+    throw new Error(`M24(a): POST /orders (no properties block) should have no top-level source, got source=${fastifyPost.input_schema.source}`);
+  }
+  if (fastifyPost.input_schema.additionalProperties !== true) {
+    throw new Error(`M24(a): POST /orders should have additionalProperties: true (M15 fall-back), got ${fastifyPost.input_schema.additionalProperties}`);
+  }
+
+  // (b) POST /items has a literal schema.body.properties → M24 extraction.
+  //     Asserts: properties with declared field names in declaration order,
+  //              additionalProperties: false, source: 'fastify_schema_body'.
+  const fastifyPostItems = fastifyScan.routes.find((r) => r.method === 'POST' && r.path === '/items');
+  if (!fastifyPostItems) {
+    throw new Error('M24(b): Expected POST /items route in Fastify scan');
+  }
+  if (fastifyPostItems.input_schema.source !== 'fastify_schema_body') {
+    throw new Error(`M24(b): Expected input_schema.source='fastify_schema_body', got '${fastifyPostItems.input_schema.source}'`);
+  }
+  if (fastifyPostItems.input_schema.additionalProperties !== false) {
+    throw new Error(`M24(b): Expected additionalProperties: false on extracted schema, got ${fastifyPostItems.input_schema.additionalProperties}`);
+  }
+  const m24ItemsProps = fastifyPostItems.input_schema.properties;
+  if (!m24ItemsProps || !m24ItemsProps.name || !m24ItemsProps.price || !m24ItemsProps.active) {
+    throw new Error(`M24(b): Expected name/price/active in input_schema.properties: ${JSON.stringify(m24ItemsProps)}`);
+  }
+  if (m24ItemsProps.name.type !== 'string' || m24ItemsProps.price.type !== 'number' || m24ItemsProps.active.type !== 'boolean') {
+    throw new Error(`M24(b): Type mismatch in extracted properties: ${JSON.stringify(m24ItemsProps)}`);
+  }
+  // Declaration order must be preserved: name < price < active
+  const m24ItemsKeys = Object.keys(m24ItemsProps);
+  if (m24ItemsKeys[0] !== 'name' || m24ItemsKeys[1] !== 'price' || m24ItemsKeys[2] !== 'active') {
+    throw new Error(`M24(b): Expected declaration order [name, price, active], got [${m24ItemsKeys.join(', ')}]`);
+  }
+  // required array: ['name', 'price']
+  if (!fastifyPostItems.input_schema.required.includes('name') || !fastifyPostItems.input_schema.required.includes('price')) {
+    throw new Error(`M24(b): Expected required to include name and price: ${JSON.stringify(fastifyPostItems.input_schema.required)}`);
+  }
+
+  // (c) GET /catalog uses schema: sharedSchema (non-literal) → M15 fall-back
+  const fastifyCatalog = fastifyScan.routes.find((r) => r.method === 'GET' && r.path === '/catalog');
+  if (!fastifyCatalog) {
+    throw new Error('M24(c): Expected GET /catalog route in Fastify scan');
+  }
+  if (fastifyCatalog.input_schema.source !== undefined) {
+    throw new Error(`M24(c): GET /catalog (non-literal schema) should have no top-level source, got source=${fastifyCatalog.input_schema.source}`);
+  }
+  if (fastifyCatalog.input_schema.additionalProperties !== true) {
+    throw new Error(`M24(c): GET /catalog should have additionalProperties: true (M15 fall-back), got ${fastifyCatalog.input_schema.additionalProperties}`);
+  }
+
+  // (d) PUT /items/:id has a body schema with 'id' colliding with path param :id — path param wins.
+  const fastifyPutItems = fastifyScan.routes.find((r) => r.method === 'PUT' && r.path === '/items/:id');
+  if (!fastifyPutItems) {
+    throw new Error('M24(d): Expected PUT /items/:id route in Fastify scan');
+  }
+  if (fastifyPutItems.input_schema.source !== 'fastify_schema_body') {
+    throw new Error(`M24(d): Expected source='fastify_schema_body' on PUT /items/:id, got '${fastifyPutItems.input_schema.source}'`);
+  }
+  const m24PutProps = fastifyPutItems.input_schema.properties;
+  // Path param :id must be present with source: 'path' (path parameter wins)
+  if (!m24PutProps.id || m24PutProps.id.source !== 'path') {
+    throw new Error(`M24(d): Path param id should win and have source:'path', got: ${JSON.stringify(m24PutProps.id)}`);
+  }
+  // Body 'name' field must be present (not a collision)
+  if (!m24PutProps.name || m24PutProps.name.type !== 'string') {
+    throw new Error(`M24(d): Expected name field from body schema: ${JSON.stringify(m24PutProps)}`);
+  }
+  // Body's duplicate 'id' field (type: 'number') must NOT be present (path param wins)
+  if (m24PutProps.id.type !== 'string') {
+    throw new Error(`M24(d): Path param id should retain type: 'string', got type='${m24PutProps.id.type}'`);
+  }
+
+  // (e) Express fixture manifests are byte-identical pre/post-M24 (no source changes for Express)
+  //     The express manifest was already generated above; read it from disk
+  const expressM24ManifestPath = path.join(expressProject, 'tusq.manifest.json');
+  const expressM24ManifestContent = JSON.parse(await fs.readFile(expressM24ManifestPath, 'utf8'));
+  for (const cap of expressM24ManifestContent.capabilities || []) {
+    if (cap.input_schema && cap.input_schema.source === 'fastify_schema_body') {
+      throw new Error(`M24(e): Express manifest must NOT have source='fastify_schema_body', found it on capability ${cap.name}`);
+    }
+  }
+
+  // (f) NestJS fixture assertion is below after nestScan (no fastify_schema_body in NestJS output)
+
+  // (g) Repeated manifest generations on the Fastify fixture produce byte-identical property ordering
+  runCli(['manifest'], { cwd: fastifyProject });
+  const fastifyManifestPath = path.join(fastifyProject, 'tusq.manifest.json');
+  const fastifyManifest1 = await fs.readFile(fastifyManifestPath, 'utf8');
+  runCli(['manifest'], { cwd: fastifyProject });
+  const fastifyManifest2 = await fs.readFile(fastifyManifestPath, 'utf8');
+  // The manifest_version increments on each call, so compare only the capabilities shape
+  const m24Cap1 = JSON.parse(fastifyManifest1).capabilities.find((c) => c.path === '/items' && c.method === 'POST');
+  const m24Cap2 = JSON.parse(fastifyManifest2).capabilities.find((c) => c.path === '/items' && c.method === 'POST');
+  if (JSON.stringify(m24Cap1.input_schema.properties) !== JSON.stringify(m24Cap2.input_schema.properties)) {
+    throw new Error(`M24(g): Non-deterministic property ordering across runs:\nRun1: ${JSON.stringify(m24Cap1.input_schema.properties)}\nRun2: ${JSON.stringify(m24Cap2.input_schema.properties)}`);
   }
 
   runCli(['init'], { cwd: nestProject });
@@ -579,6 +686,13 @@ async function run() {
   }
   if (!nestPost.input_schema?.properties?.id || nestPost.input_schema.properties.id.source !== 'path') {
     throw new Error(`Expected NestJS POST path parameter id to be represented in input_schema: ${JSON.stringify(nestPost.input_schema)}`);
+  }
+
+  // M24(f): NestJS fixture must not produce any fastify_schema_body source tags
+  for (const nestRoute of nestScan.routes) {
+    if (nestRoute.input_schema && nestRoute.input_schema.source === 'fastify_schema_body') {
+      throw new Error(`M24(f): NestJS manifest must NOT have source='fastify_schema_body', found it on ${nestRoute.method} ${nestRoute.path}`);
+    }
   }
 
   const port = 32155;

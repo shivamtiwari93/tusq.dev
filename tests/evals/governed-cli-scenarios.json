@@ -91,6 +91,17 @@
       "strict_policy_caps": ["alpha_cap", "beta_cap", "gamma_cap", "delta_cap", "zeta_cap"],
       "expected_strict_error_order": ["beta_cap", "gamma_cap", "zeta_cap"],
       "repeat_runs": 3
+    },
+    {
+      "id": "fastify-schema-body-extraction-determinism",
+      "fixture": "fastify-sample",
+      "framework": "fastify",
+      "expected_schema_route": { "method": "POST", "path": "/items" },
+      "expected_properties_keys": ["name", "price", "active"],
+      "expected_required": ["name", "price"],
+      "expected_source": "fastify_schema_body",
+      "expected_additional_properties": false,
+      "repeat_runs": 3
     }
   ]
 }

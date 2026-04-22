@@ -412,6 +412,59 @@ async function runStrictDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runFastifySchemaExtractionScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await copyFixture(scenario.fixture, project);
+
+  runCli(['init'], { cwd: project });
+
+  const repeatRuns = scenario.repeat_runs || 3;
+  let referenceKeys = null;
+
+  for (let i = 0; i < repeatRuns; i++) {
+    const scanResult = runCli(['scan', '.', '--format', 'json'], { cwd: project });
+    let scanData;
+    try {
+      scanData = JSON.parse(scanResult.stdout);
+    } catch {
+      fail(`${scenario.id}: run ${i + 1} scan produced non-JSON stdout: ${scanResult.stdout}`);
+    }
+
+    const targetRoute = scanData.routes.find(
+      (r) => r.method === scenario.expected_schema_route.method && r.path === scenario.expected_schema_route.path
+    );
+    if (!targetRoute) {
+      fail(`${scenario.id}: run ${i + 1}: expected route ${scenario.expected_schema_route.method} ${scenario.expected_schema_route.path} not found`);
+    }
+
+    const schema = targetRoute.input_schema;
+
+    if (schema.source !== scenario.expected_source) {
+      fail(`${scenario.id}: run ${i + 1}: expected input_schema.source='${scenario.expected_source}', got '${schema.source}'`);
+    }
+    if (schema.additionalProperties !== scenario.expected_additional_properties) {
+      fail(`${scenario.id}: run ${i + 1}: expected additionalProperties=${scenario.expected_additional_properties}, got ${schema.additionalProperties}`);
+    }
+
+    const keys = Object.keys(schema.properties || {});
+    if (JSON.stringify(keys) !== JSON.stringify(scenario.expected_properties_keys)) {
+      fail(`${scenario.id}: run ${i + 1}: expected properties keys ${JSON.stringify(scenario.expected_properties_keys)}, got ${JSON.stringify(keys)}`);
+    }
+
+    for (const req of scenario.expected_required) {
+      if (!schema.required || !schema.required.includes(req)) {
+        fail(`${scenario.id}: run ${i + 1}: expected required to include '${req}', got ${JSON.stringify(schema.required)}`);
+      }
+    }
+
+    if (referenceKeys === null) {
+      referenceKeys = JSON.stringify(keys);
+    } else if (JSON.stringify(keys) !== referenceKeys) {
+      fail(`${scenario.id}: non-deterministic property ordering. Run 1: ${referenceKeys}, run ${i + 1}: ${JSON.stringify(keys)}`);
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -427,6 +480,8 @@ async function run() {
       await runPolicyInitGeneratorScenario(tmpRoot, scenario);
     } else if (scenario.id === 'policy-strict-verify-determinism') {
       await runStrictDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'fastify-schema-body-extraction-determinism') {
+      await runFastifySchemaExtractionScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

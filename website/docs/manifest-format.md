@@ -87,9 +87,52 @@ Example for `/api/v1/users/:id`:
 
 This gives downstream tool consumers explicit required arguments even when full body/query schema inference is not available yet.
 
+### Fastify Schema Body Extraction (V1.5)
+
+When a Fastify route declares a literal `schema: { body: { properties: {...} } }` block in its route-options object, `tusq scan` captures the declared top-level field shapes into `input_schema.properties`. This is a static extraction — no code is evaluated, no framework is imported.
+
+- `input_schema.source` is set to `fastify_schema_body` when extraction succeeds.
+- `input_schema.additionalProperties` is `false`, indicating the body shape is fully declared.
+- Property key order matches the source declaration order (deterministic, not alphabetized).
+- Only top-level fields are extracted (no nested property descent in V1.5).
+- When the `schema` value is a variable reference (not a literal object), or when `body` is absent, or when any brace is unbalanced, the extractor falls back to the write-body placeholder described below — no partial extraction is emitted.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "price": { "type": "number" },
+    "active": { "type": "boolean" }
+  },
+  "required": ["name", "price"],
+  "additionalProperties": false,
+  "source": "fastify_schema_body",
+  "description": "request body inferred from framework schema hints."
+}
+```
+
+When a Fastify route also has path parameters, the path-derived fields appear first and win on name collision:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "source": "path", "description": "Path parameter: id" },
+    "name": { "type": "string" }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false,
+  "source": "fastify_schema_body",
+  "description": "path parameters inferred from route pattern; request body inferred from framework schema hints."
+}
+```
+
+The `source` value `fastify_schema_body` means "the declared body schema as it appears literally in source" — it does NOT mean the shape is validator-backed or runtime-enforced by Fastify. A capability's `capability_digest` includes `input_schema`, so an M24-driven shape change will flip the digest and require re-approval via `tusq approve`.
+
 ### Write Body Placeholder (V1)
 
-For `POST`, `PUT`, `PATCH`, and `DELETE` routes, `input_schema.properties.body` is emitted as an object placeholder. Its `source` is `request_body` unless a framework schema hint was detected, in which case it is `framework_schema_hint`.
+For `POST`, `PUT`, `PATCH`, and `DELETE` routes without a literal Fastify `schema.body` block, `input_schema.properties.body` is emitted as an object placeholder. Its `source` is `request_body` unless a framework schema hint was detected, in which case it is `framework_schema_hint`.
 
 ```json
 {
