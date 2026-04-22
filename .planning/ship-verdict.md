@@ -2,6 +2,32 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_90173ffadc289753 (role=qa, 2026-04-22)
+
+This QA turn challenges the prior accepted dev turn (turn_6d86983e67099b6f) independently and does not rubber-stamp it. HEAD is f735611 on run_aa36ba7784c7784b.
+
+**Challenge 1 — Substantive source changes since last QA turn.** Last accepted QA turn (turn_fc91760b6fd1ad00) operated on HEAD ba97410. Current HEAD is f735611 (dev checkpoint for turn_6d86983e67099b6f). `git diff bb10bac..HEAD --stat` shows 5 files changed: `src/cli.js` (+154 lines — M19 `tusq docs` implementation), `tests/smoke.mjs` (+32 lines — docs smoke assertions), `README.md` (+14/-5), `website/docs/cli-reference.md` (+12), `.planning/IMPLEMENTATION_NOTES.md` (+58). These are substantive source and test changes that require independent QA verification; not a checkpoint-only commit. **Challenge upheld: 4 new M19 criteria (REQ-054–REQ-057) require independent verification.**
+
+**Challenge 2 — ROADMAP.md missing M19 entries.** Prior dev turn added M19 behavior but did not add M19 to ROADMAP.md (still ended at M18, 110 checked). Fixed: added M19 section with 6 checked items. ROADMAP now shows 116 checked / 0 open. **Challenge raised and fixed.**
+
+**Challenge 3 — Acceptance matrix missing REQ-054–REQ-057.** Prior dev turn grew the test surface to cover M19 `tusq docs` but did not add the corresponding acceptance criteria entries. Fixed: added REQ-054 (docs in help), REQ-055 (structural sections), REQ-056 (--out deterministic), REQ-057 (missing manifest exits 1). **Challenge raised and fixed.**
+
+**Challenge 4 — RELEASE_NOTES.md count discrepancy.** Still stated "53 acceptance criteria" after acceptance matrix grew to 57 entries (REQ-054–REQ-057). Fixed: updated to 57 and added M19 `tusq docs` section. **Challenge raised and fixed.**
+
+**Challenge 5 — Independent npm test on HEAD f735611.** Ran `npm test` → exit 0, "Smoke tests passed" and "Eval regression harness passed (2 scenarios)". All 57 criteria independently re-verified PASS. **Challenge resolved.**
+
+**Challenge 6 — CLI surface verification on HEAD f735611.** `node bin/tusq.js help` → exit 0; 11 commands: init, scan, manifest, compile, serve, review, docs, approve, diff, version, help. `tusq docs --help` → exit 0; flags: `--manifest`, `--out`, `--verbose`. **Challenge resolved: docs command exposed correctly.**
+
+**Challenge 7 — docs missing-manifest error path.** `node bin/tusq.js docs --manifest nonexistent.json` → exit 1 with `Manifest not found: <path>`. **Challenge resolved: REQ-057 error path correct.**
+
+**Challenge 8 — Workflow artifact accuracy post-fix.** Acceptance matrix: 57 criteria, all PASS, 0 FAIL, 0 SKIP. ROADMAP: 116 checked / 0 open. PM_SIGNOFF: Approved: YES. RELEASE_NOTES.md: corrected to 57 acceptance criteria. **Challenge resolved: all gate artifacts complete and accurate.**
+
+**Independent test run (2026-04-22, HEAD f735611):** `npm test` → exit 0. `node bin/tusq.js help` → exit 0. `node bin/tusq.js docs --help` → exit 0. `node bin/tusq.js docs --manifest nonexistent.json` → exit 1 with actionable error. All independent, not inherited from prior dev evidence.
+
+**Result:** All 57 acceptance criteria PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
+---
+
 ## QA Challenge — turn_fc91760b6fd1ad00 (role=qa, 2026-04-21)
 
 This QA turn challenges the prior accepted QA turn (turn_65565d72e96362d1) independently and does not rubber-stamp it. HEAD is 354d46a on run_0edfdeabceba9227.

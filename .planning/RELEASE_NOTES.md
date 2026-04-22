@@ -61,7 +61,7 @@ This provenance chain is preserved end-to-end: `tusq scan` records it in `.tusq/
 
 - Smoke test suite (`node tests/smoke.mjs`) passes end-to-end: scenarios covering all 6 commands, all 3 frameworks, approval persistence, dry-run compile, MCP RPC (including examples/constraints/redaction propagation), and SIGINT shutdown. Includes new framework-specific assertions for Fastify route count, named handler, schema-inferred input_schema, auth_hints, and NestJS guard inheritance and path composition.
 - Manual CLI audit confirms correct UX for help, version, invalid commands, invalid flags, and missing-prerequisite errors.
-- All 53 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI).
+- All 57 acceptance criteria in `.planning/acceptance-matrix.md` have status PASS (25 prior + 3 provenance-chain checks REQ-026–REQ-028 + REQ-029 roadmap page + REQ-030 manifest-format doc + REQ-031 sensitivity_class pipeline + REQ-032 auth_hints MCP runtime + REQ-033 examples/constraints pipeline + REQ-034 redaction/approval-audit pipeline + REQ-035 version-history/digest manifest-only fields + REQ-036 framework-specific deep extraction + REQ-037 first-pass manifest usability + REQ-038 review governance and schema inference + REQ-039–REQ-044 manifest diff and review queue + REQ-045–REQ-049 governed CLI eval regression harness + REQ-050–REQ-053 governed manifest approval CLI + REQ-054–REQ-057 repo-local capability documentation generator).
 - Website consolidation checks pass: homepage structure, 404 behavior, styling cues, and canonical `website/` ownership are explicitly covered in the QA acceptance matrix and ship verdict.
 - Provenance chain verified: scan.json, tusq.manifest.json, and tusq-tools/*.json all carry `provenance.{file,line}` on the express fixture end-to-end.
 - Fastify scanner defect fixed: `fastify.get(path, {options}, handler)` 3-argument inline form was silently dropped; fix adds a multiline pattern to handle this form before the existing `fastify.route()` block.
@@ -131,6 +131,17 @@ The v0.1.0 manifest is designed to be usable by an LLM (or a human reviewer) on 
 - **`tusq review --verbose`** prints one line per capability with inferred `inputs=…`, `returns=…`, and `source=<file>, handler=<fn>, framework=<framework>` so reviewers see the inferred shape and provenance before approving.
 - **Inferred input and output schemas** fill in obvious shapes so the manifest is not empty for first-pass consumers: write methods get `input_schema.properties.body` with `source: "request_body"`; handlers that return `res.json([…])` or `res.json({…})` produce `output_schema.type="array"` or an object schema with inferred primitive types for simple literal returns (e.g. `{ ok: true }` → `properties.ok.type="boolean"`).
 - **Provenance carries `framework` and `handler`** through scan, manifest, and compiled tools so the review output and downstream tooling can show where a capability came from.
+
+## Repo-Local Capability Documentation
+
+`tusq docs` generates a Markdown document from your `tusq.manifest.json` without network access, execution, or external dependencies:
+
+- Reads any manifest file (default `tusq.manifest.json`; override with `--manifest <path>`)
+- Writes to stdout by default; use `--out <path>` to write a file instead
+- Covers manifest metadata (`manifest_version`, `previous_manifest_hash`, `source_scan`) and per-capability sections (approval status, governance fields, input/output schemas, examples, constraints, redaction, and provenance)
+- Capabilities are sorted deterministically by name so output is stable across repeated runs on the same manifest
+
+Intended use: drop the generated Markdown into a wiki, PR description, or review ticket so stakeholders can read capability contracts without running the CLI.
 
 ## Known V1 Limits And Non-Claims
 

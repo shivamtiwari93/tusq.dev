@@ -156,6 +156,14 @@
 - [x] Support `--dry-run`, `--json`, and `--manifest <path>` for safe review and automation
 - [x] Update smoke coverage, CLI help, README, docs, and planning references for the approval workflow
 
+### M19: Repo-Local Capability Documentation Generator (~0.5 day)
+- [x] Add `tusq docs` command to generate Markdown capability documentation from a local manifest
+- [x] Support `--manifest <path>` to specify a non-default manifest file
+- [x] Support `--out <path>` to write generated Markdown to a file instead of stdout
+- [x] Render manifest metadata (version, hash, scan reference) and per-capability sections (approval, governance, schema, examples, constraints, redaction, provenance) in deterministic sorted order
+- [x] Update CLI help, README, and website CLI-reference docs for the docs command
+- [x] Add smoke coverage for stdout output, --manifest, --out, generated sections, approval metadata, and deterministic output
+
 ## Key Risks
 
 | Risk | Impact | Mitigation |
