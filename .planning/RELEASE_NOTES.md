@@ -22,9 +22,10 @@ The defendable v0.1.0 position is:
 - Node.js SaaS backends using Express, Fastify, or NestJS
 - manual review and approval through `tusq.manifest.json`
 - compile approved capabilities into JSON tool definitions
-- expose those definitions through a local describe-only MCP endpoint
+- expose those definitions through a local describe-only MCP endpoint by default
+- optional opt-in governance track: scaffold a policy with `tusq policy init`, validate it with `tusq policy verify`, then run `tusq serve --policy` for dry-run plan emission (never live execution)
 
-The shortest accurate launch story is: repo to reviewed manifest to approved tool definitions to inspectable describe-only MCP.
+The shortest accurate launch story is: repo to reviewed manifest to approved tool definitions to inspectable describe-only MCP, with an optional one-command governance track (`tusq policy init` → `tusq policy verify` → `tusq serve --policy`) for teams that want CI-verifiable dry-run plans.
 
 Homepage hero copy, homepage shipped-surface copy, site metadata, and these release notes now all use that same describe-only framing so the first skim and the detailed read make the same promise.
 
@@ -195,6 +196,8 @@ tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] \
 ## Policy Verify Command (M22 — V1.3)
 
 `tusq policy verify` validates an execution policy file against the same `loadAndValidatePolicy()` validator used by `tusq serve --policy`. It provides a fast, CI-friendly pre-flight check without starting a server.
+
+**Why it matters** — Before M22, the only way to confirm a policy would be accepted by `tusq serve --policy` was to start the server. That is slow in CI and conflates policy validity with server startup failures. `tusq policy verify` closes the loop between `tusq policy init` (M21, scaffold) and `tusq serve --policy` (M20, enforce) with a dedicated, non-server validation step that fails fast in CI, returns a machine-readable JSON result under `--json`, and — critically — shares the exact same validator as the server (REQ-074 parity), so a `verify` PASS is a provable guarantee that `serve --policy` will accept the same file.
 
 **Usage:**
 ```
