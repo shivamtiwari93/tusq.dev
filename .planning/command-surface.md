@@ -161,6 +161,52 @@ M21 adds one new local-only command, `tusq policy init`, that scaffolds a valid 
 | Safe default mode | Default `mode` is `describe-only`; `dry-run` requires an explicit `--mode dry-run` flag |
 | Validator round-trip | The generated file MUST pass `loadAndValidatePolicy()`; smoke coverage enforces this round-trip |
 
+## M22 Product CLI Surface
+
+M22 adds one new local-only subcommand, `tusq policy verify`, that validates an execution-policy file without starting an MCP server. It shares `loadAndValidatePolicy()` with the M20 `tusq serve --policy` startup path, so every accept/reject decision and every error message is identical across the two entry points. No existing command surface is altered; no new validation depth is added.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq policy verify` | Validate `.tusq/execution-policy.json` (pre-serve, pre-commit, or CI gate) | File passed `loadAndValidatePolicy()`; serve startup would accept this file |
+| `tusq policy verify --policy <path>` | Validate a non-default policy file | File at `<path>` passed the shared validator |
+| `tusq policy verify --json` | Emit structured verification output to stdout | JSON `{valid:true, path, policy}` printed; exit 0 |
+| `tusq policy verify --verbose` | Echo resolved path and validator diagnostics to stderr | Human summary printed; verbose diagnostics on stderr |
+
+### `tusq policy verify` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--policy <path>` | Path to the execution-policy file to validate | `.tusq/execution-policy.json` |
+| `--json` | Emit a machine-readable result object to stdout (both success and failure cases) | Human-readable summary (stdout on success, stderr on failure) |
+| `--verbose` | Echo resolved path and validator diagnostics to stderr | Disabled |
+
+### `tusq policy verify` Failure UX (Parity with `tusq serve --policy`)
+
+| Failure | User sees (identical across `serve --policy` and `policy verify`) |
+|---------|---------|
+| Policy file missing / ENOENT | `Policy file not found:` followed by the path |
+| Policy file is not valid JSON | `Invalid policy JSON at:` followed by the path and parser message |
+| Unsupported `schema_version` | `Unsupported policy schema_version:` followed by the value and the supported list |
+| Unknown `mode` | `Unknown policy mode:` followed by the value and the allowed list (`describe-only, dry-run`) |
+| `allowed_capabilities` is not an array of strings | `Invalid allowed_capabilities in policy:` followed by the offending value |
+
+### `tusq policy verify` JSON Output Shape
+
+| Case | stdout | exit |
+|------|--------|------|
+| Success | `{"valid": true, "path": "<resolved>", "policy": {"schema_version","mode","reviewer","approved_at","allowed_capabilities"}}` | `0` |
+| Failure | `{"valid": false, "path": "<resolved>", "error": "<same message as non-JSON stderr output>"}` | `1` |
+
+### `tusq policy verify` Local-Only Invariants
+
+| Invariant | How it shows up at the CLI |
+|-----------|----------------------------|
+| No server startup | `tusq policy verify` never binds a TCP port; it runs synchronously and exits |
+| No network I/O | No HTTP, DB, or MCP handshake; operators can run it with the network disabled |
+| No manifest read | `tusq.manifest.json` is never opened; the verifier is a pure policy-file validator in V1.3 |
+| No target-product call | No capability is executed, dry-run or otherwise; `policy verify` cannot reach the target product |
+| Validator parity | `tusq policy verify` and `tusq serve --policy` share `loadAndValidatePolicy()`; a smoke parity fixture asserts identical exit code and error message across the two entry points for every failure case |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

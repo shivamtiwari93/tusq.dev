@@ -177,19 +177,33 @@
 - [x] Update CLI help, README, and website CLI-reference docs to describe the `--policy` flag and `.tusq/execution-policy.json` shape; add an `execution-policy.md` docs page
 
 ### M21: Execution Policy Scaffold Generator (~0.5 day)
-- [ ] Add `tusq policy init` command that scaffolds a valid `.tusq/execution-policy.json` with sensible defaults, so operators no longer hand-author the M20 policy file
-- [ ] Default output path is `.tusq/execution-policy.json`; parent directory created if missing; honor `--out <path>` to write elsewhere
-- [ ] Default `schema_version: "1.0"` and `mode: "describe-only"` (the safest possible V1.2 default — preserves describe-only behavior even when `tusq serve --policy` is invoked with the generated file)
-- [ ] Support `--mode <describe-only|dry-run>` to select the generated mode; any other value exits 1 with an actionable message before any file is written
-- [ ] Support `--reviewer <id>` with the same env-chain fallback used by `tusq approve` (`TUSQ_REVIEWER`, `USER`, `LOGNAME`, then literal `"unknown"`); the reviewer identity is written to the generated `reviewer` field
-- [ ] Stamp `approved_at` as the ISO-8601 UTC generation timestamp
-- [ ] Support `--allowed-capabilities <name,name,...>` to set an initial scope filter; omitting the flag leaves `allowed_capabilities` unset (meaning "all approved"); empty or whitespace-only list exits 1
-- [ ] Support `--force` to overwrite an existing target file; without `--force`, a pre-existing target exits 1 with `Policy file already exists:` and the path; `--dry-run` prints the would-be content to stdout without writing and without requiring `--force`
-- [ ] Support `--json` for a machine-readable confirmation (path, mode, reviewer, approved_at, allowed_capabilities) intended for automation
-- [ ] Keep the command fully local/offline — no network I/O, no target-product calls, no MCP handshake; file I/O only
-- [ ] The generated file MUST pass `loadAndValidatePolicy()` byte-for-byte so `tusq serve --policy <generated path>` succeeds without any further human edits
-- [ ] Add smoke coverage for default generation, `--mode dry-run`, `--allowed-capabilities`, `--force` overwrite vs exit-1 existing-file path, `--dry-run` no-write behavior, and a round-trip that loads the generated file through `loadAndValidatePolicy()`
-- [ ] Update CLI help, README, `website/docs/cli-reference.md`, and `website/docs/execution-policy.md` to describe the new `policy init` command and link it from the `tusq serve --policy` walkthrough
+- [x] Add `tusq policy init` command that scaffolds a valid `.tusq/execution-policy.json` with sensible defaults, so operators no longer hand-author the M20 policy file
+- [x] Default output path is `.tusq/execution-policy.json`; parent directory created if missing; honor `--out <path>` to write elsewhere
+- [x] Default `schema_version: "1.0"` and `mode: "describe-only"` (the safest possible V1.2 default — preserves describe-only behavior even when `tusq serve --policy` is invoked with the generated file)
+- [x] Support `--mode <describe-only|dry-run>` to select the generated mode; any other value exits 1 with an actionable message before any file is written
+- [x] Support `--reviewer <id>` with the same env-chain fallback used by `tusq approve` (`TUSQ_REVIEWER`, `USER`, `LOGNAME`, then literal `"unknown"`); the reviewer identity is written to the generated `reviewer` field
+- [x] Stamp `approved_at` as the ISO-8601 UTC generation timestamp
+- [x] Support `--allowed-capabilities <name,name,...>` to set an initial scope filter; omitting the flag leaves `allowed_capabilities` unset (meaning "all approved"); empty or whitespace-only list exits 1
+- [x] Support `--force` to overwrite an existing target file; without `--force`, a pre-existing target exits 1 with `Policy file already exists:` and the path; `--dry-run` prints the would-be content to stdout without writing and without requiring `--force`
+- [x] Support `--json` for a machine-readable confirmation (path, mode, reviewer, approved_at, allowed_capabilities) intended for automation
+- [x] Keep the command fully local/offline — no network I/O, no target-product calls, no MCP handshake; file I/O only
+- [x] The generated file MUST pass `loadAndValidatePolicy()` byte-for-byte so `tusq serve --policy <generated path>` succeeds without any further human edits
+- [x] Add smoke coverage for default generation, `--mode dry-run`, `--allowed-capabilities`, `--force` overwrite vs exit-1 existing-file path, `--dry-run` no-write behavior, and a round-trip that loads the generated file through `loadAndValidatePolicy()`
+- [x] Update CLI help, README, `website/docs/cli-reference.md`, and `website/docs/execution-policy.md` to describe the new `policy init` command and link it from the `tusq serve --policy` walkthrough
+
+### M22: Execution Policy Verifier (~0.5 day)
+- [ ] Add `tusq policy verify` subcommand that runs the same `loadAndValidatePolicy()` as `tusq serve --policy` but without starting a server, so operators can gate CI and pre-commit hooks on policy validity
+- [ ] Default `--policy` target is `.tusq/execution-policy.json`; honor `--policy <path>` to validate a non-default file
+- [ ] Exit 0 on a policy that `loadAndValidatePolicy()` accepts; exit 1 on any validator rejection (missing file, bad JSON, unsupported `schema_version`, unknown `mode`, invalid `allowed_capabilities`)
+- [ ] Every failure message MUST be byte-for-byte identical to the message `tusq serve --policy` emits at startup for the same input; no wording divergence permitted
+- [ ] Default stdout summary on success: `Policy valid: <path> (mode: <mode>, reviewer: <reviewer>, allowed_capabilities: <count|unset>)`
+- [ ] Support `--json` for machine-readable output; on success emit `{valid:true, path, policy: {schema_version, mode, reviewer, approved_at, allowed_capabilities}}`; on failure emit `{valid:false, path, error}` to stdout and still exit 1
+- [ ] Support `--verbose` to echo the resolved path and validator diagnostics to stderr
+- [ ] Keep the command fully local/offline — no network I/O, no TCP bind, no MCP handshake, no target-product call, no manifest read in V1.3
+- [ ] Reuse the existing `loadAndValidatePolicy()` function from the M20 serve path; no standalone re-implementation of validation logic is permitted (the validator is the contract)
+- [ ] Add smoke coverage for: (a) successful verification of a default `tusq policy init` output, (b) exit-1 on missing file, malformed JSON, unsupported `schema_version`, unknown `mode`, and non-array `allowed_capabilities`, (c) `--json` success and failure shapes, (d) parity fixtures that confirm `tusq policy verify` and `tusq serve --policy` produce the same exit code and the same message for every failure case
+- [ ] Add one eval regression scenario asserting the round-trip `tusq policy init` → `tusq policy verify` is stable (generator/verifier/validator remain aligned)
+- [ ] Update CLI help, README, `website/docs/cli-reference.md`, and `website/docs/execution-policy.md` to describe the new `policy verify` subcommand and link it from both the `tusq policy init` and `tusq serve --policy` walkthroughs
 
 ## Key Risks
 
@@ -203,3 +217,5 @@
 | Execution policy drift between manifest governance and serve | Approved capabilities could expose unvalidated plans if policy parser bypasses approval | `tools/list` and `tools/call` continue to filter by `approved: true`; policy mode never relaxes the approval gate |
 | M21 default flipping operators into dry-run by accident | Operators expect describe-only semantics but get dry-run plan responses | `tusq policy init` defaults to `mode: "describe-only"`; switching to dry-run requires an explicit `--mode dry-run` flag and is echoed in stdout and `--json` confirmation |
 | M21 generator drift from `loadAndValidatePolicy()` | Generated policy could fail validation at `tusq serve --policy` time, breaking operator onboarding | Smoke test performs a round-trip: generate → `loadAndValidatePolicy()`; any drift in the validator or generator surfaces as a failing test before merge |
+| M22 verifier/server validator divergence | A `tusq policy verify` pass that `tusq serve --policy` rejects (or vice versa) would destroy the only governance contract the verifier ships | Dev MUST reuse `loadAndValidatePolicy()` — no standalone validator. Smoke parity fixtures assert identical exit code and error message for every failure case before merge (SYSTEM_SPEC Constraint 9) |
+| M22 scope creep into manifest-aware strict mode | Adding manifest cross-reference in V1.3 would violate the local-only boundary and conflate policy-file validation with capability-approval validation | Scope boundary table explicitly reserves manifest-aware `--strict` for V2; V1.3 is strictly a policy-file validator; Constraint 10 forbids manifest reads under `policy verify` |
