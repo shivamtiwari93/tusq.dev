@@ -7,6 +7,7 @@
 - The previous pass also described a six-step workflow that pre-dated M16 and left `tusq diff` out of the launch narrative entirely, even though the command is shipped and CI-ready on HEAD
 - A subsequent pass still wrote the approval step as "edit the manifest by hand" even after `tusq approve` shipped in M18 with explicit `--reviewer`, `--all`, `--dry-run`, and `--json` flags; launch copy must call that first-class command by name so the approval trail reads as a governed operator action, not a text-editor ritual
 - The most recent pass still listed a 10-command CLI surface even after `tusq docs` shipped in M19 as an offline, deterministic Markdown capability-documentation generator; launch copy must include the 11th command and frame `tusq docs` as the shareable review artifact that complements the manifest and describe-only MCP surface
+- The most recent launch pass also still framed `tusq serve` as a single describe-only response shape even after M20 shipped the `--policy` flag, the `.tusq/execution-policy.json` governance artifact, and the opt-in dry-run `tools/call` response (with `executed: false`, policy echo, and a deterministic `plan_hash`); launch copy must explain that dry-run is opt-in, that the approval gate is unchanged, and that no live execution was added
 - For launch, the first screen should answer four questions in order: who this is for, what problem it solves, what proof exists today, and where V1 stops
 - Governance detail stays important, but it should support the operator story rather than replace it
 - Re-review after change is part of the operator story: `tusq diff` turns manifest-version comparison into a review queue so governed exposure stays governed as the codebase evolves
@@ -46,12 +47,13 @@
 ### Must publish at launch
 
 - A launch announcement that names the release as `tusq.dev v0.1.0`
-- Messaging that stays inside the verified product boundary: scan, manifest, review, approve (with reviewer identity and timestamp), compile, describe-only MCP serve, diff-based drift re-review, and offline Markdown capability documentation via `tusq docs`
+- Messaging that stays inside the verified product boundary: scan, manifest, review, approve (with reviewer identity and timestamp), compile, describe-only MCP serve, opt-in dry-run plan emission via `tusq serve --policy` with a reviewer-signed `.tusq/execution-policy.json`, diff-based drift re-review, and offline Markdown capability documentation via `tusq docs`
 - A first-screen line in README and homepage hero that makes the buyer problem explicit before the category label
 - A first-screen line in README and homepage hero that also states the proof path before any metadata inventory appears
 - A simple terminal-first workflow example:
   `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` → `tusq compile` → `tusq serve`
 - An adoption-artifact example for share-outs: `tusq docs --out docs/capabilities.md` to generate a deterministic Markdown review packet from the current manifest
+- An optional dry-run example for reviewers who want argument validation and a plan preview without adding live execution: author `.tusq/execution-policy.json` with `mode: "dry-run"`, then start `tusq serve --policy .tusq/execution-policy.json`; subsequent `tools/call` responses return `executed: false`, a policy echo, and a `dry_run_plan` object with a deterministic `plan_hash`
 - A follow-on CI-ready example for repeat runs:
   regenerate manifest → `tusq diff --from <old> --to <new> --review-queue` → re-approve drifted capabilities with `tusq approve <capability> --reviewer <id>` → `tusq diff --fail-on-unapproved-changes` in CI
 - Release notes that spell out supported frameworks and deferred items
@@ -87,7 +89,7 @@
 1. **Overclaim risk**
    The repo vision and older copy imply runtime learning, live execution, embedded surfaces, and broader capability composition. Launch copy must not inherit those promises.
 2. **Expectation mismatch on MCP**
-   Some developers will assume `tools/call` executes actions. The announcement and FAQ need to repeat that V1 is describe-only and returns schema, examples, and constraints only.
+   Some developers will assume `tools/call` executes actions. The announcement and FAQ need to repeat that V1 `tusq serve` is describe-only by default and returns schema, examples, and constraints only. Under the opt-in `--policy` flag with `mode: "dry-run"`, `tools/call` still never executes — responses carry `executed: false`, a policy echo, and a validated `dry_run_plan`; copy must not describe dry-run as "live execution with a safety net."
 3. **Governance vagueness**
    If "governed" is left as slogan-level copy, buyers may miss that V1 already ships reviewable approval state, optional approval trail, and redaction policy alongside route provenance and classification metadata.
 4. **Category abstraction overload**

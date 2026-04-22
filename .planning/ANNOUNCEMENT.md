@@ -26,10 +26,11 @@ This release gives teams a concrete terminal workflow:
 6. expose those compiled tools through a local, describe-only MCP endpoint
 7. re-review drift with `tusq diff --review-queue` when the codebase or manifest changes, and optionally enforce `--fail-on-unapproved-changes` in CI
 8. share a deterministic, offline review artifact with `tusq docs --out docs/capabilities.md`, which renders approval state, governance metadata, redaction policy, examples, constraints, and provenance directly from the manifest
+9. optionally activate an opt-in dry-run with `tusq serve --policy .tusq/execution-policy.json`; when the reviewer-signed policy file sets `mode: "dry-run"`, MCP `tools/call` validates arguments and returns `executed: false`, a policy echo, and a `dry_run_plan` with a deterministic `plan_hash` — still no live API execution, just a plan preview reviewers can audit
 
-What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls, does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
+What it does not do yet matters just as much: `v0.1.0` does not proxy live API calls (even under `--policy` with `mode: "dry-run"`, `tools/call` always returns `executed: false` and makes no outbound request to the target product), does not ship an interactive review UI, and does not support frameworks beyond Express, Fastify, and NestJS.
 
-The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, an inspectable describe-only MCP surface, and an offline, deterministic Markdown capability review packet from `tusq docs`.
+The proof points for this launch are intentionally concrete: reviewed manifest output, repo-local `tusq approve` approval with audit trail (`approved_by`, `approved_at`), compiled tool definitions, provenance back to source, visible governance metadata (`side_effect_class`, `sensitivity_class`, and `auth_hints`), reviewable `redaction` policy, inspectable `examples` and `constraints` in the describe-only runtime surface, an inspectable describe-only MCP surface, an offline, deterministic Markdown capability review packet from `tusq docs`, and an opt-in dry-run response shape under `tusq serve --policy` that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — no live execution was added.
 
 Current launch CTA: ask early users to try tusq.dev locally from the repo on a supported service, not to assume a public package-manager install path is already live.
 
@@ -64,13 +65,16 @@ tusq compile
 tusq serve
 # share a reviewable Markdown artifact with stakeholders who do not run the CLI:
 tusq docs --out docs/capabilities.md
+# optionally activate opt-in dry-run argument validation and plan emission
+# (author .tusq/execution-policy.json with mode: "dry-run" first):
+tusq serve --policy .tusq/execution-policy.json
 # later, when the codebase changes, re-review drift:
 tusq diff --from previous.manifest.json --to tusq.manifest.json --review-queue
 # and gate CI on unapproved drift:
 tusq diff --from previous.manifest.json --to tusq.manifest.json --fail-on-unapproved-changes
 ```
 
-This release is intentionally scoped. The MCP server is describe-only in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. Review is non-interactive: `tusq review` prints a grouped stdout summary and `tusq approve` records who approved what and when, so the approval trail is a first-class CLI action rather than a hand-edit to the manifest. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
+This release is intentionally scoped. The MCP server is describe-only by default in V1. `tools/call` returns schema, example payloads, and constraints; it does not execute live product actions. With the opt-in `tusq serve --policy .tusq/execution-policy.json` flag and `mode: "dry-run"`, `tools/call` additionally validates arguments (required fields, primitive types, and `additionalProperties: false`) and returns a `dry_run_plan` with `executed: false`, a policy echo, and a deterministic SHA-256 `plan_hash` — still no outbound request, still reviewer-governed by the policy file and the approval gate. Review is non-interactive: `tusq review` prints a grouped stdout summary and `tusq approve` records who approved what and when, so the approval trail is a first-class CLI action rather than a hand-edit to the manifest. The scanner is heuristic and static-analysis-first, which is why the manifest is a first-class review surface rather than a hidden implementation detail.
 
 We think that tradeoff is the right one for a first release. It proves the important part: teams can start from the product they already have and move toward an AI-visible capability surface without rebuilding the stack or hand-authoring every tool definition.
 
@@ -89,6 +93,7 @@ npm link
 
 - Run the workflow against your target service: `tusq init` → `tusq scan .` → `tusq manifest` → `tusq approve --all --reviewer you@example.com` (or approve a single capability by name) → `tusq compile` → `tusq serve`
 - Generate a shareable review packet with `tusq docs --out docs/capabilities.md`; the output is deterministic and offline, so it can be checked in, diffed, and circulated to reviewers who do not run the CLI
+- For reviewers who want argument validation plus a plan preview before any future execution step exists, author a `.tusq/execution-policy.json` (fields: `schema_version: "1.0"`, `mode: "dry-run"`, optional `allowed_capabilities`, optional `reviewer`, optional `approved_at`) and start the server with `tusq serve --policy .tusq/execution-policy.json`; every `tools/call` still returns `executed: false`, and the `dry_run_plan.plan_hash` is stable across runs for identical validated inputs
 - When the codebase or manifest changes, run `tusq diff --from <old-manifest> --to tusq.manifest.json --review-queue` to see what drifted, and use `--fail-on-unapproved-changes` if you want a CI gate
 - Review `tusq.manifest.json` before approving any capability, especially approval state, optional approval trail, provenance, `side_effect_class`, `sensitivity_class`, `auth_hints`, and `redaction`
 - After compile, inspect describe-only `examples` and `constraints` in `tools/call` so the runtime-facing payload matches your intended usage boundaries
@@ -104,7 +109,7 @@ npm link
 
 It scans supported Node.js SaaS backends (`Express`, `Fastify`, `NestJS`), generates a reviewable `tusq.manifest.json`, compiles approved capabilities into JSON tool defs, and exposes them through a local describe-only MCP endpoint.
 
-This release proves repo → reviewed manifest → approved tool JSON → inspectable MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution. `tusq diff` closes the loop when code changes by emitting a review queue of drifted capabilities that can gate CI.
+This release proves repo → reviewed manifest → approved tool JSON → inspectable describe-only MCP, with visible approval state, optional approval trail, governance metadata like `side_effect_class`, `sensitivity_class`, and `auth_hints`, reviewable `redaction`, plus inspectable `examples` and `constraints`, not live execution. `tusq serve --policy` is available as an opt-in dry-run that emits a validated `dry_run_plan` with `executed: false` and a deterministic `plan_hash` — still no live execution. `tusq diff` closes the loop when code changes by emitting a review queue of drifted capabilities that can gate CI.
 
 Best fit: teams with an existing supported backend, not teams looking for hosted agents on day one.
 
@@ -135,13 +140,13 @@ Current V1 scope:
 - reviewable `redaction` policy
 - inspectable `examples` and `constraints` in describe-only `tools/call`
 - approved capability compilation
-- local describe-only MCP server
+- local describe-only MCP server (default); opt-in dry-run via `tusq serve --policy` with a reviewer-signed `.tusq/execution-policy.json` that emits a validated `dry_run_plan` carrying `executed: false` and a deterministic `plan_hash`
 - manifest-version diff with review-queue output and `--fail-on-unapproved-changes` CI gate
 - offline deterministic Markdown capability documentation via `tusq docs`
 - repo-local evaluation path for launch
 
 Explicitly not in V1:
-- live API execution
+- live API execution (even under `--policy` with `mode: "dry-run"`, `tools/call` never executes)
 - plugin framework support
 - non-Node ecosystems
 - interactive review UI

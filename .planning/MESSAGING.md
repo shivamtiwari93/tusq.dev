@@ -4,10 +4,10 @@
 
 - Previous launch framing leaned too hard on the internal category label "capability compiler" before qualifying the buyer problem
 - The last launch pass fixed most boundary issues, but it still let the governance inventory read like the headline instead of the proof
-- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16, then the subsequent pass still framed approval as "edit the manifest by hand" even after `tusq approve` shipped in M18 with reviewer identity, timestamp, and audit-trail flags, and the most recent pass still described a 10-command surface even after `tusq docs` shipped in M19 as a repo-local Markdown capability-documentation generator
+- Prior launch assets also lagged the shipped product surface: they described an eight-command CLI and a six-step workflow, omitting the `tusq diff` review-queue command that shipped in M16, then the subsequent pass still framed approval as "edit the manifest by hand" even after `tusq approve` shipped in M18 with reviewer identity, timestamp, and audit-trail flags, the most recent pass still described a 10-command surface even after `tusq docs` shipped in M19 as a repo-local Markdown capability-documentation generator, and the most recent launch pass still described `tools/call` as describe-only only, even after M20 shipped `tusq serve --policy` as an opt-in dry-run execution policy that emits a validated plan with `executed: false` and a deterministic `plan_hash` — no live execution added, but the runtime surface now has a second, reviewer-governed response shape that launch copy must explain
 - Launch copy should instead start with the operator reality: an existing Express, Fastify, or NestJS product, pressure to make that product AI-visible, and a need to keep review and control intact
 - The category label still matters, but only after the audience, problem, proof sequence, and V1 boundary are clear
-- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, governed `tusq approve` audit trail in, approved tool JSON out, describe-only MCP out, drift re-reviewed through `tusq diff`, and adoption documentation generated offline through `tusq docs`
+- The proof sentence must stay simple enough to skim: supported repo in, reviewed manifest out, governed `tusq approve` audit trail in, approved tool JSON out, describe-only MCP out by default, opt-in dry-run plan emission through `tusq serve --policy` when reviewers want argument validation and a plan preview, drift re-reviewed through `tusq diff`, and adoption documentation generated offline through `tusq docs`
 
 ## Audience
 
@@ -100,6 +100,9 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 - `tusq approve [capability] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]` sets `approved: true` on one or many capabilities and records `approved_by` / `approved_at` so approval is a first-class CLI action rather than a hand-edit
 - `tusq diff` compares two `tusq.manifest.json` versions and, with `--review-queue`, emits a structured queue of capabilities that need re-review; `--fail-on-unapproved-changes` turns that queue into a CI gate
 - `tusq docs [--manifest <path>] [--out <path>] [--verbose]` generates deterministic Markdown capability documentation from `tusq.manifest.json` — fully offline, no network or execution — so reviewers and adopters can share a human-readable artifact that mirrors approval state, governance metadata, redaction policy, examples, constraints, and provenance
+- `tusq serve [--port <n>] [--policy <path>] [--verbose]` is describe-only by default; the optional `--policy <path>` flag loads a reviewer-signed `.tusq/execution-policy.json` and activates an opt-in dry-run response shape for MCP `tools/call`
+- `.tusq/execution-policy.json` is the M20 governance artifact (fields: `schema_version`, `mode: "describe-only" | "dry-run"`, optional `allowed_capabilities`, optional `reviewer`, optional `approved_at`); when `mode: "dry-run"` is active, `tools/call` validates arguments and returns `executed: false`, a policy echo, and a `dry_run_plan` object with method, path, path_params, query, body, headers, auth_context, side_effect_class, sensitivity_class, redaction, a SHA-256 `plan_hash`, and `evaluated_at`
+- Without `--policy`, behavior is byte-for-byte identical to V1 describe-only; `--policy` never bypasses the approval gate — `allowed_capabilities` is a strict subset filter on top of approval, never a replacement
 - Supported frameworks are Express, Fastify, and NestJS only
 - `tusq scan` uses static heuristics to detect routes and write `.tusq/scan.json`
 - `tusq manifest` generates `tusq.manifest.json` and preserves prior approvals
@@ -124,12 +127,15 @@ For teams already running Express, Fastify, or NestJS services, tusq.dev is the 
 - tusq.dev can expose compiled tools through a local, describe-only MCP server with inspectable schema, examples, and constraints
 - tusq.dev can compare manifest versions with `tusq diff`, emit a review queue of drifted capabilities, and optionally fail on unapproved changes for CI enforcement
 - tusq.dev can generate deterministic, offline Markdown capability documentation from a manifest with `tusq docs`, so approval trail, governance metadata, examples, constraints, and provenance can be shared with reviewers without running the MCP endpoint
+- tusq.dev can opt into a reviewer-signed execution policy with `tusq serve --policy`, which activates dry-run validation and emits a structured plan (`executed: false`, policy echo, and a `dry_run_plan` with a deterministic `plan_hash`) so teams can audit what a future execution step would send without any live API call happening
 - tusq.dev gives teams a governed path from existing SaaS code to AI-visible capability definitions without starting from prompts
 - V1 is self-hosted and terminal-native; teams can run the workflow locally
 
 ## Claims We Must Not Make
 
-- Do not say tusq.dev executes live product actions through MCP in v0.1.0
+- Do not say tusq.dev executes live product actions through MCP in v0.1.0 — even under `tusq serve --policy` with `mode: "dry-run"`, every `tools/call` response carries `executed: false` and the server makes no outbound HTTP, DB, or socket I/O against the target product
+- Do not describe `--policy` as "live execution with a safety net"; it is opt-in dry-run argument validation plus plan emission, nothing more
+- Do not imply `--policy` is required or default; `tusq serve` without `--policy` is byte-for-byte identical to the V1 describe-only surface
 - Do not say tusq.dev infers full business logic, runtime behavior, or production-grade permissions perfectly
 - Do not say tusq.dev supports Python, Go, Java, or arbitrary backend frameworks in v0.1.0
 - Do not say tusq.dev includes an interactive approval UI, embedded chat experience, or hosted cloud control plane in v0.1.0
