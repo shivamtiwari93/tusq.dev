@@ -1,5 +1,32 @@
 # Implementation Notes — tusq.dev Docs & Website Platform
 
+## Dev Turn turn_bacea73d62ee30fa — Independent Verification Pass (2026-04-21)
+
+### Challenge To Prior Turn
+
+- Prior turn (turn_2aa8082ea5b78a4d, role=pm, phase=planning) was a planning-phase re-verification pass returning `needs_human` for the planning_signoff gate. PM turns cannot satisfy the `implementation_complete` gate; that requires a dev turn with fresh runtime evidence.
+- This dev turn does NOT inherit any prior-turn evidence. All commands re-run independently on HEAD `c223260`.
+
+### Verification Activities (dev-independent, HEAD c223260)
+
+- `node tests/smoke.mjs` → exit 0, "Smoke tests passed". REQ-039–REQ-044 all passing.
+- `node bin/tusq.js help` → exit 0; 9-command surface confirmed: init, scan, manifest, compile, serve, review, diff, version, help.
+- `node bin/tusq.js diff --help` → exit 0; full flag set confirmed: `--from`, `--to`, `--json`, `--review-queue`, `--fail-on-unapproved-changes`, `--verbose`.
+- `node bin/tusq.js diff` (no args) → exit 1 with "No predecessor manifest could be resolved. Pass --from <path>" — correct actionable error.
+- ROADMAP: 98 checked / 0 open. M1–M16 complete.
+- PM_SIGNOFF: Approved: YES on line 3.
+
+### Dev Verdict
+
+- All M16 acceptance criteria (REQ-039–REQ-044) independently verified as PASS on HEAD c223260.
+- `implementation_complete` gate satisfied: `.planning/IMPLEMENTATION_NOTES.md` exists with substantive `## Changes` content, and this dev verification pass is complete.
+- No source changes required. Implementation ships as-is.
+- Proposing phase transition to `qa`.
+
+---
+
+
+
 ## Dev Turn turn_f2be32af8c8708f4 — Independent Re-Verification Pass (2026-04-21)
 
 ### Challenge To Prior Turn
