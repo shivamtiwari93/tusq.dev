@@ -18,20 +18,22 @@
       "title": "Developer",
       "mandate": "Implement approved work safely and verify behavior.",
       "write_authority": "authoritative",
-      "runtime": "local-dev",
+      "runtime": "local-director",
       "runtime_id": "local-director"
     },
     "qa": {
       "title": "QA",
       "mandate": "Challenge correctness, acceptance coverage, and ship readiness.",
       "write_authority": "authoritative",
-      "runtime": "local-qa"
+      "runtime": "local-director",
+      "runtime_id": "local-director"
     },
     "product_marketing": {
       "title": "Staff Product Marketing Manager",
       "mandate": "Sharpen positioning, launch clarity, and market-facing narrative without drifting from product truth.",
       "write_authority": "authoritative",
-      "runtime": "local-product-marketing"
+      "runtime": "local-director",
+      "runtime_id": "local-director"
     },
     "eng_director": {
       "title": "Engineering Director",
