@@ -2,6 +2,24 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_07e9f20a4e140acf (role=qa, 2026-04-21)
+
+This QA turn challenges the prior accepted QA turn (turn_afcc6dfa7b4ddb93) independently and does not rubber-stamp it. HEAD is 96bda16 on run_3c0710a95e02aed1.
+
+**Challenge 1 — Prior QA turn scope is stale.** turn_afcc6dfa7b4ddb93 operated on HEAD 359e162 and verified 44 acceptance criteria. Since that checkpoint, two additional commits were merged: `0270325` (Add governed CLI eval regression harness — substantive; added `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`, updated `package.json` test script, added REQ-045–REQ-049 to acceptance matrix, updated ROADMAP to 104 checked) and `96bda16` (Record AgentXchain M17 QA rerun recovery — orchestration files only, no source/test/bin changes). The prior QA turn's evidence was accurate for its HEAD but does not cover REQ-045–REQ-049. **Challenge upheld: 5 new criteria require independent verification.**
+
+**Challenge 2 — Independent verification of REQ-045–REQ-049 (governed CLI eval harness).** Ran `node tests/eval-regression.mjs` → exit 0, "Eval regression harness passed (2 scenarios)". Independently run, not inherited from any prior turn. The eval harness validates: (REQ-045) scenarios file exists with schema_version 1.0 and ≥2 scenarios; (REQ-046) strict review gate failure before approval then pass after; (REQ-047) compiled tool metadata boundaries (auth hints, side-effect, schema source markers, examples, constraints/redaction, no approval metadata leakage); (REQ-048) manifest diff review queue and CI gate behavior with unapproved changed capability. REQ-049 (`npm test` runs both suites) verified: `npm test` exits 0 with both "Smoke tests passed" and "Eval regression harness passed (2 scenarios)". **Challenge resolved: all 5 new criteria PASS.**
+
+**Challenge 3 — Independent smoke run on current HEAD (96bda16).** Ran `node tests/smoke.mjs` → exit 0, "Smoke tests passed". Not inherited from the prior QA turn's evidence. All 44 prior acceptance criteria REQ-001–REQ-044 remain covered. **Challenge resolved: 44 prior criteria independently re-verified PASS.**
+
+**Challenge 4 — 9-command CLI surface and diff flag coverage unchanged.** Ran `node bin/tusq.js help` → exit 0; surface: init, scan, manifest, compile, serve, review, diff, version, help — 9 commands, matches SYSTEM_SPEC.md and command-surface.md. Ran `node bin/tusq.js diff --help` → exit 0; flag set: --from, --to, --json, --review-queue, --fail-on-unapproved-changes, --verbose. Ran `node bin/tusq.js diff` (no args) → exit 1 with "No predecessor manifest could be resolved. Pass --from <path> for a deterministic comparison." **Challenge resolved: no surface drift, error path correct.**
+
+**Challenge 5 — Workflow artifact accuracy on HEAD 96bda16.** Acceptance matrix has 49 criteria (REQ-001–REQ-049), all PASS. RELEASE_NOTES.md updated from "44" to "49" to reflect the current criterion count (was stale). ROADMAP.md shows 104 checked / 0 open covering M1–M17. PM_SIGNOFF: Approved: YES. **Challenge resolved: all gate artifacts now complete and accurate for HEAD 96bda16.**
+
+**Independent test run (2026-04-21, HEAD 96bda16):** `node tests/smoke.mjs` → exit 0. `node tests/eval-regression.mjs` → exit 0. `npm test` → exit 0. `node bin/tusq.js help` → exit 0. `node bin/tusq.js diff --help` → exit 0. `node bin/tusq.js diff` → exit 1 with correct actionable error. All independent, not inherited from prior evidence.
+
+**Result:** All 49 acceptance criteria PASS. No defects found. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase. All automated gate requirements are satisfied.
+
 ## QA Challenge — turn_afcc6dfa7b4ddb93 (role=qa, 2026-04-21)
 
 This QA turn challenges the prior accepted dev turn (turn_bacea73d62ee30fa, role=dev, phase=implementation) independently and does not rubber-stamp it. HEAD is 359e162 on run_3c0710a95e02aed1.
