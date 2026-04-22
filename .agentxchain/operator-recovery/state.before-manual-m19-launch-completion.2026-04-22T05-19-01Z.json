@@ -2,10 +2,31 @@
   "schema_version": "1.1",
   "run_id": "run_aa36ba7784c7784b",
   "project_id": "tusq-dev",
-  "status": "completed",
+  "status": "active",
   "phase": "launch",
   "accepted_integration_ref": "git:8ed5ec6db0399ea78dbedd3d98031f69a0035a93",
-  "active_turns": {},
+  "active_turns": {
+    "turn_31ddb8ff4f250139": {
+      "turn_id": "turn_31ddb8ff4f250139",
+      "run_id": "run_aa36ba7784c7784b",
+      "assigned_role": "product_marketing",
+      "status": "dispatched",
+      "attempt": 1,
+      "assigned_at": "2026-04-22T05:17:38.961Z",
+      "deadline_at": "2026-04-22T05:37:38.961Z",
+      "runtime_id": "local-product-marketing",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "8ed5ec6db0399ea78dbedd3d98031f69a0035a93",
+        "clean": true,
+        "captured_at": "2026-04-22T05:17:38.742Z",
+        "dirty_snapshot": {}
+      },
+      "assigned_sequence": 17,
+      "concurrent_with": [],
+      "dispatched_at": "2026-04-22T05:17:39.016Z"
+    }
+  },
   "turn_sequence": 17,
   "last_completed_turn_id": "turn_374e0472fe2f3523",
   "blocked_on": null,
@@ -20,9 +41,15 @@
     "planning_signoff": "passed",
     "implementation_complete": "passed",
     "qa_ship_verdict": "passed",
-    "launch_ready": "passed"
+    "launch_ready": "pending"
   },
-  "budget_reservations": {},
+  "budget_reservations": {
+    "turn_31ddb8ff4f250139": {
+      "reserved_usd": 2,
+      "role_id": "product_marketing",
+      "created_at": "2026-04-22T05:17:38.644Z"
+    }
+  },
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
@@ -39,11 +66,11 @@
   "inherited_context": null,
   "repo_decisions": null,
   "last_completed_turn": {
-    "turn_id": "turn_374e0472fe2f3523",
+    "turn_id": "turn_c655ad3f7af911d3",
     "role": "product_marketing",
     "phase": "launch",
     "checkpoint_sha": "8ed5ec6db0399ea78dbedd3d98031f69a0035a93",
-    "checkpointed_at": "2026-04-22T05:19:02.059Z",
+    "checkpointed_at": "2026-04-22T05:13:23.522Z",
     "intent_id": null
   },
   "delegation_queue": [],
