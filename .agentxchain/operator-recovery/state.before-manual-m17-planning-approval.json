@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.1",
+  "run_id": "run_3c0710a95e02aed1",
+  "project_id": "tusq-dev",
+  "status": "blocked",
+  "phase": "planning",
+  "accepted_integration_ref": "git:c3b8c08642e9fc7c6b64e18798f425776a02d6dc",
+  "active_turns": {},
+  "turn_sequence": 2,
+  "last_completed_turn_id": "turn_2aa8082ea5b78a4d",
+  "blocked_on": "human:planning_signoff gate explicitly requires human approval. All four required planning artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) are complete and internally consistent on HEAD c3b8c08; shipped CLI surface and smoke tests match the planning boundary. An agent PM cannot self-declare the gate satisfied.",
+  "blocked_reason": {
+    "category": "needs_human",
+    "recovery": {
+      "typed_reason": "needs_human",
+      "owner": "human",
+      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
+      "turn_retained": false,
+      "detail": "planning_signoff gate explicitly requires human approval. All four required planning artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) are complete and internally consistent on HEAD c3b8c08; shipped CLI surface and smoke tests match the planning boundary. An agent PM cannot self-declare the gate satisfied."
+    },
+    "blocked_at": "2026-04-22T01:41:39.006Z",
+    "turn_id": "turn_2aa8082ea5b78a4d"
+  },
+  "escalation": null,
+  "pending_phase_transition": null,
+  "pending_run_completion": null,
+  "queued_phase_transition": null,
+  "queued_run_completion": null,
+  "last_gate_failure": null,
+  "phase_gate_status": {
+    "planning_signoff": "pending",
+    "implementation_complete": "pending",
+    "qa_ship_verdict": "pending",
+    "launch_ready": "pending"
+  },
+  "budget_reservations": {},
+  "budget_status": {
+    "spent_usd": 0,
+    "remaining_usd": 50
+  },
+  "created_at": "2026-04-22T01:39:33.385Z",
+  "phase_entered_at": "2026-04-22T01:39:33.385Z",
+  "provenance": {
+    "trigger": "intake",
+    "parent_run_id": null,
+    "trigger_reason": "Derive and deliver the next tusq.dev increment from VISION.md: build an eval/regression harness for governed CLI workflows so tusq can validate prompt-pack behavior, tool-call expectations, permission/schema regressions, and drift across sample SaaS capability tasks.",
+    "intake_intent_id": "intent_1776817496160_7ab5",
+    "created_by": "operator"
+  },
+  "inherited_context": null,
+  "repo_decisions": null,
+  "last_completed_turn": {
+    "turn_id": "turn_286b6e84f9a60808",
+    "role": "pm",
+    "phase": "planning",
+    "checkpoint_sha": "c3b8c08642e9fc7c6b64e18798f425776a02d6dc",
+    "checkpointed_at": "2026-04-22T01:39:44.414Z",
+    "intent_id": null
+  },
+  "delegation_queue": [],
+  "next_recommended_role": null,
+  "pending_delegation_review": null
+}
