@@ -204,7 +204,7 @@ It should be a reviewable, versionable contract that describes:
 - side effects
 - permissions
 - approval requirements
-- redaction rules
+- redaction rules, including source-literal `pii_fields` hints and parallel `pii_categories` labels for reviewer-led masking/retention decisions
 - examples
 - grouping metadata
 

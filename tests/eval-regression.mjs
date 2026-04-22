@@ -514,6 +514,80 @@ async function runPiiFieldHintScenario(tmpRoot, scenario) {
   }
 }
 
+async function runPiiCategoryLabelScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await copyFixture(scenario.fixture, project);
+
+  runCli(['init'], { cwd: project });
+
+  const repeatRuns = scenario.repeat_runs || 3;
+  let referenceResults = null;
+
+  for (let i = 0; i < repeatRuns; i++) {
+    runCli(['scan', '.', '--framework', scenario.framework], { cwd: project });
+    runCli(['manifest'], { cwd: project });
+
+    const manifestPath = path.join(project, 'tusq.manifest.json');
+    const manifest = await readJson(manifestPath);
+
+    const runResults = {};
+    for (const expected of scenario.expected_routes) {
+      const capability = manifest.capabilities.find(
+        (c) => c.method === expected.method && c.path === expected.path
+      );
+      if (!capability) {
+        fail(`${scenario.id}: run ${i + 1}: expected capability ${expected.method} ${expected.path} not found`);
+      }
+
+      const redaction = capability.redaction || {};
+      const actualPiiFields = Array.isArray(redaction.pii_fields) ? redaction.pii_fields : [];
+      const actualPiiCategories = Array.isArray(redaction.pii_categories) ? redaction.pii_categories : null;
+
+      if (actualPiiCategories === null) {
+        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: expected pii_categories array`);
+      }
+      if (JSON.stringify(actualPiiFields) !== JSON.stringify(expected.expected_pii_fields)) {
+        fail(
+          `${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: ` +
+          `expected pii_fields=${JSON.stringify(expected.expected_pii_fields)}, ` +
+          `got ${JSON.stringify(actualPiiFields)}`
+        );
+      }
+      if (JSON.stringify(actualPiiCategories) !== JSON.stringify(expected.expected_pii_categories)) {
+        fail(
+          `${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: ` +
+          `expected pii_categories=${JSON.stringify(expected.expected_pii_categories)}, ` +
+          `got ${JSON.stringify(actualPiiCategories)}`
+        );
+      }
+      if (actualPiiFields.length !== actualPiiCategories.length) {
+        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: pii_fields/pii_categories length mismatch`);
+      }
+      if (capability.sensitivity_class !== 'unknown') {
+        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: sensitivity_class must remain unknown`);
+      }
+      if (redaction.retention_days !== null || redaction.log_level !== 'full' || redaction.mask_in_traces !== false) {
+        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: M26 must not alter redaction policy defaults`);
+      }
+
+      runResults[`${expected.method} ${expected.path}`] = JSON.stringify({
+        pii_fields: actualPiiFields,
+        pii_categories: actualPiiCategories
+      });
+    }
+
+    if (referenceResults === null) {
+      referenceResults = runResults;
+    } else {
+      for (const [key, value] of Object.entries(runResults)) {
+        if (value !== referenceResults[key]) {
+          fail(`${scenario.id}: non-deterministic pii_categories for ${key}. Run 1: ${referenceResults[key]}, run ${i + 1}: ${value}`);
+        }
+      }
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -533,6 +607,8 @@ async function run() {
       await runFastifySchemaExtractionScenario(tmpRoot, scenario);
     } else if (scenario.id === 'pii-field-hint-extraction-determinism') {
       await runPiiFieldHintScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'pii-category-label-determinism') {
+      await runPiiCategoryLabelScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

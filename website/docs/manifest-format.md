@@ -246,6 +246,7 @@ Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` p
 ```json
 {
   "pii_fields": [],
+  "pii_categories": [],
   "log_level": "full",
   "mask_in_traces": false,
   "retention_days": null
@@ -287,6 +288,49 @@ Both fields can be manually edited in `tusq.manifest.json`, and `tusq compile` p
 - V1.6 canonical list is frozen. Any expansion requires its own ROADMAP milestone with a re-approval expectation.
 
 **This is a source-literal name hint, NOT runtime PII detection.** A `pii_fields` entry means the field's normalized name matches a canonical name. It does NOT prove the field carries PII at runtime, does NOT imply GDPR/HIPAA/PCI compliance, and must not be described as "PII detection" or "PII-validated." Final redaction posture remains the reviewer's responsibility.
+
+### PII Field-Name Category Labels (V1.7)
+
+`tusq manifest` also populates `redaction.pii_categories`. This array is parallel to `redaction.pii_fields`: it has the same length, the same order, and one category label for each matched field-name entry.
+
+Example:
+
+```json
+{
+  "pii_fields": ["email", "password", "credit_card"],
+  "pii_categories": ["email", "secrets", "payment"],
+  "log_level": "full",
+  "mask_in_traces": false,
+  "retention_days": null
+}
+```
+
+If `pii_fields` is empty, `pii_categories` is `[]` (never absent).
+
+**Canonical V1.7 category keys:**
+
+| Category key | Source canonical names |
+|--------------|------------------------|
+| `email` | `email`, `emailaddress`, `useremail` |
+| `phone` | `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone` |
+| `government_id` | `ssn`, `socialsecuritynumber`, `taxid`, `nationalid` |
+| `name` | `firstname`, `lastname`, `fullname`, `middlename` |
+| `address` | `streetaddress`, `zipcode`, `postalcode` |
+| `date_of_birth` | `dateofbirth`, `dob`, `birthdate` |
+| `payment` | `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban` |
+| `secrets` | `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret` |
+| `network` | `ipaddress` |
+
+**What V1.7 does NOT do:**
+
+- It does not inspect values or execute application code.
+- It does not fetch dictionaries or use a compliance/PII library.
+- It does not auto-set `sensitivity_class`.
+- It does not auto-populate `log_level`, `mask_in_traces`, or `retention_days`; existing defaults remain `"full"`, `false`, and `null` unless a reviewer edits them.
+- It does not enforce retention in `tusq serve` or `tusq policy verify --strict`.
+- It does not prove GDPR/HIPAA/PCI compliance.
+
+**This is a source-literal category label, NOT runtime retention-policy enforcement.** A `pii_categories` entry only labels the canonical category that produced the matching `pii_fields` entry. Use it as reviewer evidence when deciding masking, logging, and retention policy manually.
 
 ## Version history and digests (V1)
 

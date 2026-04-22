@@ -484,7 +484,7 @@ M26 exists because M25 made redaction hints useful but flat. A reviewer can now 
 
 The bounded step is to add category labels only: `redaction.pii_categories` mirrors `redaction.pii_fields` one-for-one and labels each matched field with a frozen category (`email`, `phone`, `government_id`, `name`, `address`, `date_of_birth`, `payment`, `secrets`, or `network`). This gives reviewers retention-relevant evidence without silently setting retention policy. The extractor remains pure, local, deterministic, and zero-dependency; it operates on M25's own output rather than rescanning source or inspecting values.
 
-**Decision:** M26 ships static PII category labels, not retention-policy enforcement. `redaction.retention_days`, `redaction.log_level`, and `redaction.mask_in_traces` stay `null`; `sensitivity_class` stays `"unknown"`; `scoreConfidence()` stays unchanged. This is codified as SYSTEM_SPEC.md Constraints 17 and 18, and command-surface.md documents that no new CLI command or flag is introduced.
+**Decision:** M26 ships static PII category labels, not retention-policy enforcement. M26 does not derive or mutate `redaction.retention_days`, `redaction.log_level`, or `redaction.mask_in_traces`; existing defaults remain `null`, `"full"`, and `false` respectively unless explicitly edited by a reviewer. `sensitivity_class` stays `"unknown"` and `scoreConfidence()` stays unchanged. This is codified as SYSTEM_SPEC.md Constraints 17 and 18, and command-surface.md documents that no new CLI command or flag is introduced.
 
 This decision consciously rejects three tempting alternatives:
 

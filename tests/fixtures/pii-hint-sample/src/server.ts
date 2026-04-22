@@ -39,5 +39,24 @@ fastify.route({
   handler: async function register() { return { ok: true }; }
 });
 
+// M26: mixed categories — email, government_id, and payment in declaration order
+fastify.route({
+  method: 'POST',
+  url: '/profile',
+  schema: {
+    body: {
+      type: 'object',
+      properties: {
+        user_email: { type: 'string' },
+        ssn: { type: 'string' },
+        credit_card: { type: 'string' },
+        email_template_id: { type: 'string' }
+      },
+      required: ['user_email']
+    }
+  },
+  handler: async function profile() { return { ok: true }; }
+});
+
 // M25: no PII-named body fields — pii_fields must be []
 fastify.get('/catalog', async function listCatalog() { return []; });

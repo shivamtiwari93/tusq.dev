@@ -228,6 +228,7 @@ async function run() {
   };
   const defaultRedaction = {
     pii_fields: [],
+    pii_categories: [],
     log_level: 'full',
     mask_in_traces: false,
     retention_days: null
@@ -251,6 +252,7 @@ async function run() {
   };
   const customRedaction = {
     pii_fields: [],
+    pii_categories: [],
     log_level: 'redacted',
     mask_in_traces: true,
     retention_days: 30

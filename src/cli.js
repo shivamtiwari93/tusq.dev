@@ -10,28 +10,56 @@ const REDACTION_LOG_LEVELS = ['full', 'redacted', 'silent'];
 const DOMAIN_PREFIX_SEGMENTS = new Set(['api', 'v1', 'v2', 'v3', 'v4', 'v5', 'rest', 'graphql', 'internal', 'public', 'external']);
 const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
 
-// M25: frozen canonical PII field-name set (V1.6). Whole-key normalized match only.
+// M25/M26: frozen canonical PII field-name set and category labels.
 // Expansion is a material governance event requiring its own ROADMAP milestone.
-const PII_CANONICAL_NAMES = new Set([
+const PII_CATEGORY_BY_NAME = Object.freeze({
   // Email
-  'email', 'emailaddress', 'useremail',
+  email: 'email',
+  emailaddress: 'email',
+  useremail: 'email',
   // Phone
-  'phone', 'phonenumber', 'mobile', 'mobilephone', 'telephone',
+  phone: 'phone',
+  phonenumber: 'phone',
+  mobile: 'phone',
+  mobilephone: 'phone',
+  telephone: 'phone',
   // Government ID
-  'ssn', 'socialsecuritynumber', 'taxid', 'nationalid',
+  ssn: 'government_id',
+  socialsecuritynumber: 'government_id',
+  taxid: 'government_id',
+  nationalid: 'government_id',
   // Name
-  'firstname', 'lastname', 'fullname', 'middlename',
+  firstname: 'name',
+  lastname: 'name',
+  fullname: 'name',
+  middlename: 'name',
   // Address
-  'streetaddress', 'zipcode', 'postalcode',
+  streetaddress: 'address',
+  zipcode: 'address',
+  postalcode: 'address',
   // Date of birth
-  'dateofbirth', 'dob', 'birthdate',
+  dateofbirth: 'date_of_birth',
+  dob: 'date_of_birth',
+  birthdate: 'date_of_birth',
   // Payment
-  'creditcard', 'cardnumber', 'cvv', 'cvc', 'bankaccount', 'iban',
+  creditcard: 'payment',
+  cardnumber: 'payment',
+  cvv: 'payment',
+  cvc: 'payment',
+  bankaccount: 'payment',
+  iban: 'payment',
   // Secrets
-  'password', 'passphrase', 'apikey', 'accesstoken', 'refreshtoken', 'authtoken', 'secret',
+  password: 'secrets',
+  passphrase: 'secrets',
+  apikey: 'secrets',
+  accesstoken: 'secrets',
+  refreshtoken: 'secrets',
+  authtoken: 'secrets',
+  secret: 'secrets',
   // Network
-  'ipaddress'
-]);
+  ipaddress: 'network'
+});
+const PII_CANONICAL_NAMES = new Set(Object.keys(PII_CATEGORY_BY_NAME));
 
 class CliError extends Error {
   constructor(message, exitCode) {
@@ -411,6 +439,7 @@ function cmdManifest(args) {
     capability.redaction.pii_fields = extractPiiFieldHints(
       capability.input_schema && capability.input_schema.properties
     );
+    capability.redaction.pii_categories = extractPiiFieldCategories(capability.redaction.pii_fields);
     capability.capability_digest = computeCapabilityDigest(capability);
     return capability;
   });
@@ -2500,9 +2529,31 @@ function extractPiiFieldHints(properties) {
   return matched;
 }
 
+// M26: pure extractor — one category label for each M25-emitted pii_fields entry.
+// Categories preserve pii_fields order and use the same whole-key normalization rule.
+function extractPiiFieldCategories(piiFields) {
+  if (!Array.isArray(piiFields) || piiFields.length === 0) {
+    return [];
+  }
+  const categories = [];
+  for (const field of piiFields) {
+    if (typeof field !== 'string') {
+      continue;
+    }
+    const normalized = field.toLowerCase().replace(/[_-]/g, '');
+    const category = PII_CATEGORY_BY_NAME[normalized];
+    if (!category) {
+      throw new CliError(`PII field '${field}' does not map to a known category`, 1);
+    }
+    categories.push(category);
+  }
+  return categories;
+}
+
 function defaultRedaction() {
   return {
     pii_fields: [],
+    pii_categories: [],
     log_level: 'full',
     mask_in_traces: false,
     retention_days: null
@@ -2524,6 +2575,13 @@ function normalizeRedaction(value) {
         .map((entry) => entry.trim())
         .filter(Boolean)
     );
+  }
+
+  if (Array.isArray(value.pii_categories)) {
+    out.pii_categories = value.pii_categories
+      .filter((entry) => typeof entry === 'string')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
   }
 
   if (typeof value.log_level === 'string') {

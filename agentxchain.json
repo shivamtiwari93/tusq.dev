@@ -18,7 +18,8 @@
       "title": "Developer",
       "mandate": "Implement approved work safely and verify behavior.",
       "write_authority": "authoritative",
-      "runtime": "local-dev"
+      "runtime": "local-dev",
+      "runtime_id": "local-director"
     },
     "qa": {
       "title": "QA",

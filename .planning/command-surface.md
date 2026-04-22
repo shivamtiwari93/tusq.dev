@@ -434,8 +434,8 @@ The V1.7 category vocabulary is frozen and maps one-to-one from the M25 canonica
 |-------|------------|
 | `capability.sensitivity_class` | Unchanged — stays `"unknown"`; category labels are not sensitivity inference |
 | `capability.confidence` | Unchanged — category labels do not modify `scoreConfidence()` |
-| `capability.redaction.log_level` | Unchanged — remains `null` |
-| `capability.redaction.mask_in_traces` | Unchanged — remains `null` |
+| `capability.redaction.log_level` | Unchanged — remains existing default `"full"` unless explicitly edited |
+| `capability.redaction.mask_in_traces` | Unchanged — remains existing default `false` unless explicitly edited |
 | `capability.redaction.retention_days` | Unchanged — remains `null`; organizational policy owns retention defaults |
 | `capability.capability_digest` | Re-computed on first post-M26 scan because `redaction.pii_categories` is added |
 
@@ -456,7 +456,7 @@ M26 has one defensive failure path: if a `pii_fields` entry has no matching cate
 | Static-only extraction | Pure function over `redaction.pii_fields`; no source re-scan, no value inspection |
 | Zero new dependencies | `package.json` MUST NOT gain any PII, retention, NLP, or compliance library |
 | Deterministic output | `pii_categories` order equals `pii_fields` order; repeated runs produce byte-identical arrays |
-| No retention overclaim | `retention_days`, `log_level`, and `mask_in_traces` remain `null` |
+| No retention overclaim | `retention_days`, `log_level`, and `mask_in_traces` are not auto-populated from categories; existing defaults remain `null`, `"full"`, and `false` respectively |
 | No sensitivity auto-escalation | `sensitivity_class` remains `"unknown"` on every capability |
 | Source-literal framing | `pii_categories` labels M25 field-name matches; it is NOT runtime PII validation or retention-policy enforcement |
 

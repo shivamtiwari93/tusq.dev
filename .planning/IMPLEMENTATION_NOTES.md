@@ -911,3 +911,38 @@ Added `runPiiFieldHintScenario(tmpRoot, scenario)`: runs `tusq scan` + `tusq man
 | `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (8 scenarios)" |
 
 **Gate satisfaction:** M23 implementation is complete and verified. All 12 M23 smoke items (a)–(k) pass. 6 eval scenarios pass (up from 5, adding `policy-strict-verify-determinism`). Default M22 behavior is byte-for-byte unchanged. No network, manifest (except under `--strict`), or target-product I/O was added. Constraint 11 (opt-in-strict invariant) and Constraint 12 (least-privilege-validation invariant) are satisfied. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+## Dev Turn turn_320b1b05e8a25890 — M26 Static PII Category Labels (2026-04-22)
+
+### Challenge To Prior Turn
+
+Prior PM planning established M26 as a bounded category-labeling increment, not retention-policy enforcement. I preserved that boundary: no new command, no new flag, no new dependency, no source re-scan, no value inspection, no `sensitivity_class` auto-escalation, and no changes to `tusq policy verify --strict` behavior.
+
+### What Was Implemented
+
+**`src/cli.js`:**
+- Replaced the standalone M25 `PII_CANONICAL_NAMES` literal set with a frozen `PII_CATEGORY_BY_NAME` lookup covering the same canonical normalized names and deriving `PII_CANONICAL_NAMES` from its keys. This keeps M25 and M26 frozen together.
+- Added `extractPiiFieldCategories(piiFields)`, a pure helper that normalizes each M25-emitted `pii_fields` entry with the same lowercase + underscore/hyphen stripping rule, looks up the category, and returns a parallel category array in the same order.
+- Added defensive failure behavior: if a `pii_fields` entry does not map to a category, manifest generation throws a `CliError` before writing an inconsistent manifest.
+- Populated `capability.redaction.pii_categories` immediately after `capability.redaction.pii_fields` and before `computeCapabilityDigest()`, so M13 digest semantics include the new redaction shape.
+- Added `pii_categories: []` to `defaultRedaction()` and preservation logic in `normalizeRedaction()`.
+
+**`tests/fixtures/pii-hint-sample/src/server.ts`:**
+- Added `POST /profile` with `user_email`, `ssn`, `credit_card`, and `email_template_id` fields. The first three exercise email/government_id/payment categories; `email_template_id` confirms whole-key matching remains conservative.
+
+**`tests/eval-regression.mjs`:**
+- Added `runPiiCategoryLabelScenario()`, which runs scan + manifest repeatedly and asserts `pii_fields`, `pii_categories`, one-to-one array length/order, unchanged `sensitivity_class`, unchanged redaction policy defaults, and deterministic output across three runs.
+
+**`tests/evals/governed-cli-scenarios.json`:**
+- Added `pii-category-label-determinism`, bringing the eval suite to 9 scenarios. It covers `/auth`, `/register`, `/profile`, and `/catalog`.
+
+**`tests/smoke.mjs`:**
+- Updated default and custom redaction expectations to include `pii_categories: []`, matching the new additive manifest shape.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (9 scenarios)" |
+
+**Gate satisfaction:** M26 implementation is complete and verified. The implementation emits category labels as descriptive metadata only, leaves existing policy defaults unchanged (`log_level: "full"`, `mask_in_traces: false`, `retention_days: null`), leaves `sensitivity_class` as `"unknown"`, preserves whole-key matching, and adds deterministic eval coverage. Phase transition to `qa` is requested.
