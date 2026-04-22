@@ -61,6 +61,20 @@ const PII_CATEGORY_BY_NAME = Object.freeze({
 });
 const PII_CANONICAL_NAMES = new Set(Object.keys(PII_CATEGORY_BY_NAME));
 
+// M27: frozen reviewer advisory set for tusq redaction review.
+// Wording and em-dash usage are part of the governance contract.
+const PII_REVIEW_ADVISORY_BY_CATEGORY = Object.freeze({
+  email: "Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+  phone: "Contact-PII field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+  government_id: "High-sensitivity government-ID field detected — reviewer: apply your org's strictest retention, logging, and trace-redaction defaults.",
+  name: "Personal-name field detected — reviewer: decide whether the field should be logged in plaintext, masked, or redacted; retention follows your org's contact-data policy.",
+  address: "Physical-address field detected — reviewer: choose retention window, log masking, and trace redaction aligned with your org's contact-data policy.",
+  date_of_birth: "Date-of-birth field detected — reviewer: apply age-sensitive retention and redaction defaults; some jurisdictions treat DOB as higher-risk PII.",
+  payment: "Payment-data field detected — reviewer: apply your org's payment-data retention, logging, and masking rules (e.g., PCI-aligned defaults owned by your team).",
+  secrets: "Secret or credential field detected — reviewer: this field SHOULD NOT be logged in plaintext; apply trace redaction and minimal retention at your org's standard.",
+  network: "Network-identifier field detected — reviewer: choose retention and masking aligned with your org's logging policy; some jurisdictions treat IP addresses as PII."
+});
+
 class CliError extends Error {
   constructor(message, exitCode) {
     super(message);
@@ -132,6 +146,9 @@ function dispatch(argv) {
       return;
     case 'policy':
       cmdPolicy(args);
+      return;
+    case 'redaction':
+      cmdRedaction(args);
       return;
     default:
       printHelp();
@@ -1501,6 +1518,212 @@ function cmdPolicy(args) {
   throw new CliError(`Unknown policy subcommand: ${sub}`, 1);
 }
 
+function cmdRedaction(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('redaction');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'review') {
+    cmdRedactionReview(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+function cmdRedactionReview(args) {
+  const { opts, positionals } = parseRedactionReviewArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('redaction review');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  assertPiiReviewAdvisorySetComplete();
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  let capabilities = manifest.capabilities;
+  if (opts.capability) {
+    capabilities = capabilities.filter((capability) => capability && capability.name === opts.capability);
+    if (capabilities.length === 0) {
+      throw new CliError(`Capability not found: ${opts.capability}`, 1);
+    }
+  }
+
+  const report = buildRedactionReviewReport(manifestPath, manifest, capabilities);
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatRedactionReviewReport(report));
+}
+
+function parseRedactionReviewArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (token === '--json') {
+      opts.json = true;
+      continue;
+    }
+    if (token === '--manifest' || token === '--capability') {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for ${token}`, 1);
+      }
+      opts[token.slice(2)] = next;
+      i += 1;
+      continue;
+    }
+    if (token.startsWith('--manifest=')) {
+      opts.manifest = token.slice('--manifest='.length);
+      continue;
+    }
+    if (token.startsWith('--capability=')) {
+      opts.capability = token.slice('--capability='.length);
+      continue;
+    }
+    if (token.startsWith('--')) {
+      throw new CliError(`Unknown flag: ${token}`, 1);
+    }
+    positionals.push(token);
+  }
+
+  return { opts, positionals };
+}
+
+function buildRedactionReviewReport(manifestPath, manifest, capabilities) {
+  return {
+    manifest_path: manifestPath,
+    manifest_version: typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null,
+    generated_at: typeof manifest.generated_at === 'string' ? manifest.generated_at : null,
+    capabilities: capabilities.map((capability) => {
+      const redaction = capability && capability.redaction && typeof capability.redaction === 'object'
+        ? capability.redaction
+        : {};
+      const piiFields = Array.isArray(redaction.pii_fields) ? redaction.pii_fields.slice() : [];
+      const piiCategories = Array.isArray(redaction.pii_categories) ? redaction.pii_categories.slice() : [];
+      return {
+        name: capability && capability.name,
+        approved: capability ? capability.approved : undefined,
+        sensitivity_class: capability ? capability.sensitivity_class : undefined,
+        pii_fields: piiFields,
+        pii_categories: piiCategories,
+        advisories: buildPiiReviewAdvisories(piiCategories)
+      };
+    })
+  };
+}
+
+function buildPiiReviewAdvisories(piiCategories) {
+  const seen = new Set();
+  const advisories = [];
+  for (const category of piiCategories) {
+    if (typeof category !== 'string' || seen.has(category)) {
+      continue;
+    }
+    seen.add(category);
+    const text = PII_REVIEW_ADVISORY_BY_CATEGORY[category];
+    if (text) {
+      advisories.push({ category, text });
+    }
+  }
+  return advisories;
+}
+
+function formatRedactionReviewReport(report) {
+  if (report.capabilities.length === 0) {
+    return 'No capabilities in manifest — nothing to review.\n';
+  }
+
+  const version = report.manifest_version === null ? 'unknown' : String(report.manifest_version);
+  const generatedAt = report.generated_at === null ? 'unknown' : report.generated_at;
+  const lines = [
+    `Manifest: ${report.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    ''
+  ];
+
+  for (let i = 0; i < report.capabilities.length; i += 1) {
+    const capability = report.capabilities[i];
+    lines.push(`Capability: ${capability.name}`);
+    lines.push(`  approved: ${String(capability.approved)}`);
+    lines.push(`  sensitivity_class: ${String(capability.sensitivity_class)}`);
+    lines.push('  Redaction:');
+    lines.push(`    pii_fields:     ${JSON.stringify(capability.pii_fields)}`);
+    lines.push(`    pii_categories: ${JSON.stringify(capability.pii_categories)}`);
+    if (capability.pii_fields.length === 0) {
+      lines.push('    No canonical PII field-name matches — reviewer action: none required from M27.');
+    } else {
+      lines.push('    Advisories:');
+      for (const advisory of capability.advisories) {
+        lines.push(`      - ${advisory.category}: ${advisory.text}`);
+      }
+    }
+    if (i < report.capabilities.length - 1) {
+      lines.push('');
+    }
+  }
+
+  lines.push('');
+  return lines.join('\n');
+}
+
+function assertPiiReviewAdvisorySetComplete() {
+  const categories = [
+    'email',
+    'phone',
+    'government_id',
+    'name',
+    'address',
+    'date_of_birth',
+    'payment',
+    'secrets',
+    'network'
+  ];
+  for (const category of categories) {
+    if (typeof PII_REVIEW_ADVISORY_BY_CATEGORY[category] !== 'string') {
+      throw new CliError(`Missing PII review advisory for category: ${category}`, 2);
+    }
+  }
+}
+
 function cmdPolicyVerify(args) {
   const { opts, positionals } = parseCommandArgs('policy verify', args, {
     policy: 'value',
@@ -1920,6 +2143,7 @@ function printHelp() {
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
+  process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
 }
@@ -1937,7 +2161,22 @@ function printCommandHelp(command) {
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
-    'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]'
+    'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
+    redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    'redaction review': [
+      'Usage: tusq redaction review [--manifest <path>] [--capability <name>] [--json]',
+      '',
+      'Flags:',
+      '  --manifest <path>    Manifest file to read (default: tusq.manifest.json)',
+      '  --capability <name>  Filter to one exact capability name',
+      '  --json               Emit machine-readable JSON',
+      '',
+      'Exit codes:',
+      '  0  Manifest was read and the report was emitted',
+      '  1  Missing/invalid manifest, unknown flag, unknown capability, or unknown subcommand',
+      '',
+      'This is a reviewer aid, not a runtime enforcement gate.'
+    ].join('\n')
   };
   process.stdout.write(`${entries[command] || 'Usage: tusq help'}\n`);
 }
