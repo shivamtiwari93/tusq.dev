@@ -2411,6 +2411,150 @@ M25 does not alter the approval-gate invariant set first stated in the M20 secti
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-088 through REQ-094-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M26: Static PII Category Labels for Redaction Hints
+
+### Purpose
+
+VISION.md line 168 names "produce redaction and **retention defaults**" as a V1 data-and-schema-understanding responsibility. M25 delivered the first half — it populates `redaction.pii_fields` with the canonical PII field-name hints derived statically from `input_schema.properties`. The second half (retention defaults) remains unserved: a reviewer looking at `tusq.manifest.json` sees `redaction.pii_fields: ["email", "password"]` but no signal that these two fields belong to *different* retention categories (email: contact PII with year-scale retention by org policy; password: secret with no-retention / immediate-hash by org policy). Auto-populating `retention_days` directly from a field-name match would conflate organizational policy with extracted evidence and silently reclassify approved capabilities — the same overclaim M25 rejected under Constraint 16.
+
+The bounded path forward: emit a parallel `redaction.pii_categories` array (same length and order as `pii_fields`) where each entry labels the canonical category that produced the match. Categories are the exact nine buckets already enumerated in M25's canonical PII name set: `"email"`, `"phone"`, `"government_id"`, `"name"`, `"address"`, `"date_of_birth"`, `"payment"`, `"secrets"`, `"network"`. The category signal gives reviewers the data they need to set retention/log-level/mask-in-traces defaults by hand without the extractor silently doing it for them. `retention_days`, `log_level`, and `mask_in_traces` continue to stay `null` in V1.7 — organizational-policy owns those fields, not the extractor. `sensitivity_class` continues to stay `"unknown"` (M25 Constraint 16 propagates verbatim).
+
+This is the smallest bounded increment that turns M25 from a flat name list into categorized retention-relevant evidence without overclaiming. It is a pure in-memory computation over M25's own output plus the frozen canonical name set that M25 already defines.
+
+### Scope Boundary
+
+M26 ships exactly one extraction path: M25's already-computed `redaction.pii_fields` array → a parallel `redaction.pii_categories` array via a frozen category lookup derived from the M25 canonical set. Everything else is explicitly out of scope for V1.7:
+
+| In-scope for M26 | Out-of-scope for V1.7 |
+|------------------|------------------------|
+| Emit `redaction.pii_categories` — same length and same order as `pii_fields`; each entry is the canonical category label for the field at the same index | Auto-populating `redaction.retention_days` (stays `null`; organizational policy owns retention) |
+| Nine canonical categories, exactly matching M25's canonical-set row headings (normalized to snake_case category keys) | Auto-populating `redaction.log_level` or `redaction.mask_in_traces` (stays `null`) |
+| Category keys use a frozen mapping table enumerated in `src/cli.js`: `PII_CANONICAL_NAMES` gains a sibling `PII_CATEGORY_BY_NAME` lookup from normalized name → category | Auto-escalating `capability.sensitivity_class` on category presence (stays `"unknown"`; Constraint 16 propagates to M26) |
+| Pure function (`extractPiiFieldCategories(pii_fields, input_schema_properties)`) over M25's output | Introducing any new category beyond the nine M25 categories |
+| Cross-framework application — category emission runs wherever `pii_fields` runs | Locale-aware category inference (multi-locale PII names remain V2 plugin scope) |
+| `capability_digest` re-computation when `pii_categories` changes (M13 already hashes `redaction` into the digest) | Introducing a separate `redaction.retention_hints` array or new top-level redaction field (V2) |
+| Deterministic output — categories array order matches `pii_fields` order which is already source-literal from M15/M24/M25 | Category-driven default filtering in `tusq serve` or `tusq policy verify --strict` (scoreless pass-through in V1.7) |
+
+### Category Mapping (V1.7)
+
+The category labels are the exact row headings from M25's canonical PII name set, normalized to lowercase snake_case. Every normalized name in `PII_CANONICAL_NAMES` MUST map to exactly one category key. The mapping is frozen and enumerated in `src/cli.js`:
+
+| Category key | Source M25 normalized names |
+|---------------|------------------------------|
+| `email` | `email`, `emailaddress`, `useremail` |
+| `phone` | `phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone` |
+| `government_id` | `ssn`, `socialsecuritynumber`, `taxid`, `nationalid` |
+| `name` | `firstname`, `lastname`, `fullname`, `middlename` |
+| `address` | `streetaddress`, `zipcode`, `postalcode` |
+| `date_of_birth` | `dateofbirth`, `dob`, `birthdate` |
+| `payment` | `creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban` |
+| `secrets` | `password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret` |
+| `network` | `ipaddress` |
+
+The mapping is total and disjoint: every entry in `PII_CANONICAL_NAMES` has exactly one category; no name maps to two categories; no category key is emitted without at least one supporting entry in the canonical name set. Any V1.7.x or V2 expansion — whether adding a new normalized name to an existing category or adding a new category — is a material governance event and MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry, identical to the M25 canonical-set freeze rule.
+
+### Extraction Rules
+
+The extractor (`extractPiiFieldCategories` in `src/cli.js`) runs immediately after `extractPiiFieldHints` finishes populating `capability.redaction.pii_fields`. For each generated capability:
+
+1. If `redaction.pii_fields` is empty or absent, return `[]`.
+2. For each `key` in `redaction.pii_fields`, in order:
+   - Compute `normalized = key.toLowerCase().replace(/[_-]/g, '')` (exactly the M25 normalization rule).
+   - Look up `normalized` in `PII_CATEGORY_BY_NAME`. Because M25 already guarantees every entry in `pii_fields` has a matching normalized canonical name, the lookup MUST succeed. If it does not (which would indicate a bug in the M25/M26 name-set synchronization), throw synchronously during manifest generation so the operator sees an actionable error before any `tusq.manifest.json` is written.
+   - Push the returned category key into the result array.
+3. Return the result array. The result array's length equals `pii_fields.length` and its ordering equals `pii_fields` ordering.
+
+The extractor is a pure function — no filesystem I/O, no side effects, no source-text inspection. It is invoked exactly once per capability, after `extractPiiFieldHints` and before `buildRedactionDefaults()` / `computeCapabilityDigest()`.
+
+### Pipeline Propagation
+
+```
+input_schema.properties (already populated by M15/M24/heuristic paths)
+   └─ extractPiiFieldHints(properties)                                      # M25; unchanged
+      └─ capability.redaction.pii_fields                                    # M25 array, declaration order
+         └─ extractPiiFieldCategories(pii_fields, properties)               # M26; pure function, in-memory only
+            └─ capability.redaction.pii_categories                          # M26 array, same length + order as pii_fields
+               └─ capability_digest (M13)                                   # re-hashed when pii_categories changes
+                  └─ tusq.manifest.json capability.redaction                # persisted artifact
+                     └─ tusq-tools/*.json redaction                         # inherits pii_categories verbatim
+                        └─ MCP tools/call redaction                         # agents see pii_categories as advisory metadata
+```
+
+`redaction.pii_categories` is a new sibling to `redaction.pii_fields` inside the `redaction` object. It does not replace any existing field; it sits alongside `pii_fields`, `log_level`, `mask_in_traces`, and `retention_days`. The manifest schema version is unchanged in V1.7 (the shape expansion is additive).
+
+### Default Behavior Preservation Table
+
+| Input | Pre-M26 `redaction` | Post-M26 `redaction` |
+|-------|---------------------|------------------------|
+| Capability with `pii_fields: ["email", "password"]` | `{pii_fields: ["email", "password"], pii_categories: <absent>, log_level: null, mask_in_traces: null, retention_days: null}` | `{pii_fields: ["email", "password"], pii_categories: ["email", "secrets"], log_level: null, mask_in_traces: null, retention_days: null}` |
+| Capability with `pii_fields: ["user_email", "FIRST_NAME"]` | `{pii_fields: ["user_email", "FIRST_NAME"], pii_categories: <absent>, ...}` | `{pii_fields: ["user_email", "FIRST_NAME"], pii_categories: ["email", "name"], ...}` |
+| Capability with `pii_fields: []` | `{pii_fields: [], pii_categories: <absent>, ...}` | `{pii_fields: [], pii_categories: [], ...}` |
+| Capability with empty/absent `input_schema.properties` | `{pii_fields: [], pii_categories: <absent>, ...}` | `{pii_fields: [], pii_categories: [], ...}` |
+
+Every capability emits `pii_categories` as an array; an empty `pii_fields` produces an empty `pii_categories`. The field is never absent — this keeps the manifest shape predictable for downstream consumers.
+
+### Confidence Model Interaction
+
+M26 does NOT modify `scoreConfidence()`. Category presence, like field-name presence, is a redaction signal, not a confidence signal. A capability with `redaction.pii_categories: ["email", "secrets"]` has the same `confidence` as the same capability without M26.
+
+### Sensitivity Class Interaction
+
+M26 does NOT modify `capability.sensitivity_class`. `sensitivity_class` remains `"unknown"` on every capability in V1.7. Constraint 16 (M25 redaction-framing invariant) propagates verbatim to M26: auto-escalating sensitivity_class on category presence would overclaim, because a `secrets` category on a 2FA toggle is semantically different from a `secrets` category on a login route, and the extractor cannot tell these apart from field names alone. Sensitivity inference is reserved for an explicit V2 increment.
+
+### Retention Defaults Interaction
+
+M26 does NOT modify `redaction.retention_days`, `redaction.log_level`, or `redaction.mask_in_traces`. All three remain `null` in V1.7. This is a conscious boundary: these fields encode organizational policy (regulatory deadlines, log-retention rules, tracing budgets) that a field-category label cannot derive without org-specific context. The M26 increment supplies the evidence reviewers need to set these fields by hand; it does NOT auto-populate them. A future V2 increment may read a repo-local policy file (e.g., `.tusq/redaction-policy.json`) keyed by category to supply org-specific defaults; that increment is explicitly out of scope for V1.7.
+
+### Local-Only Invariants
+
+| Invariant | How it shows up during manifest generation |
+|-----------|---------------------------------------------|
+| No dynamic evaluation | The extractor is a pure function over M25's `pii_fields` array and the frozen `PII_CATEGORY_BY_NAME` lookup; no `require`, no `eval`, no `new Function` |
+| No network I/O | Manifest generation remains filesystem-only; no downloads, no registry lookups, no category-dictionary fetch |
+| No new runtime dependency | `package.json` MUST NOT gain any new library for M26; the extractor uses only the M25 canonical set and the frozen category lookup |
+| Graceful degradation | When `pii_fields` is empty or absent, `pii_categories: []` (the only emitted shape on non-PII capabilities) |
+| Deterministic output | `pii_categories` order is identical to `pii_fields` order (source-literal declaration order); repeated runs produce byte-identical arrays |
+| Total mapping | Every M25-match triggers exactly one category emission; no skipped entries, no duplicate categories emitted for the same index |
+| No `sensitivity_class` auto-escalation | `sensitivity_class` stays `"unknown"` even when `pii_categories` is non-empty |
+| No `retention_days` / `log_level` / `mask_in_traces` auto-population | All three remain `null`; organizational-policy owns them, not the extractor |
+| No source-text regex | The extractor never opens or scans source files; it operates exclusively on M25's in-memory `pii_fields` array |
+| No runtime-enforced framing | `pii_categories` is a source-literal label, NOT a runtime PII-validation claim, NOT a regulatory-compliance claim, NOT a retention-policy enforcement (Constraint 18 propagates framing guardrails from Constraint 16) |
+
+### V1.7 Limitations
+
+| Limitation | Rationale | V2 Plan |
+|------------|-----------|---------|
+| Nine categories only | Matches M25's canonical set exactly; expanding the category vocabulary requires expanding the canonical name set, which is a material governance event | V2 may add categories alongside new canonical names under a dedicated expansion milestone |
+| `retention_days` / `log_level` / `mask_in_traces` stay null | Retention/log/trace policies encode org-specific regulatory deadlines that field categories alone cannot derive | V2 reads a repo-local policy file (e.g., `.tusq/redaction-policy.json`) keyed by category to supply org-specific defaults under an explicit opt-in |
+| No cross-capability aggregation | `pii_categories` is a per-capability array; V1.7 does not emit a repo-level summary | V2 `tusq docs` may summarize category distribution across capabilities |
+| No category-driven filtering in `tusq serve` or policy verifier | M25/M26 are descriptive; enforcement remains out of scope | V2 may add a policy-file rule that rejects a capability whose `pii_categories` contains a category not listed in `.tusq/redaction-policy.json` |
+| No `sensitivity_class` auto-escalation | Same composite-judgment reasoning as M25 Constraint 16 | V2 sensitivity-inference increment ships with its own constraint entry |
+| Capability-digest flip on M26 upgrade | Every capability with non-empty `pii_fields` gains a new `pii_categories` entry; under M13, the `redaction` hash changes and the capability requires re-approval | Expected behavior — M13 approval gate is the correct migration path; RELEASE_NOTES MUST document the re-approval requirement; capabilities with `pii_fields: []` flip from `pii_categories: <absent>` to `pii_categories: []`, which is also a digest-flipping change |
+
+### Approval-Gate Invariant Preservation
+
+M26 does not alter the approval-gate invariant set stated under M20/M25. For clarity:
+
+1. A capability whose `redaction.pii_categories` changes under M26 (appears for the first time; every capability will see this on its first post-M26 scan) MUST have its `capability_digest` re-computed; M13 semantics propagate verbatim. A reviewer MUST explicitly re-approve the capability for it to appear in `tools/list`.
+2. `tools/list` continues to filter by `approved: true`. A newly-populated `redaction.pii_categories` does NOT implicitly approve the capability; if approval was previously granted, M13 diff detection will surface the change for re-approval under `tusq diff`.
+3. M26 does NOT change `tusq serve` behavior. The `redaction` shape is passed through to `tools/call` responses unchanged; agents see `pii_categories` as advisory metadata alongside `pii_fields`, not as an enforced constraint on payloads.
+4. M26 does NOT change `tusq policy verify --strict` behavior. Strict mode's checks (name exists, approved, not review-needed) are orthogonal to redaction content; a capability with populated `pii_categories` and `approved: true` passes `--strict` on the same terms as a capability with populated `pii_fields` and `approved: true`.
+
+### Digest Flip Scope
+
+M26's first-scan digest flip applies to **every** capability, not only those with non-empty `pii_fields`. Reason: capabilities with `pii_fields: []` transition from `pii_categories: <absent>` to `pii_categories: []`, and the `redaction` object hash computed under M13 includes the object shape. This is a one-time migration event and is documented in the M26 RELEASE_NOTES entry. Post-migration, the digest only re-flips when `pii_fields` itself changes (same M25 semantics).
+
+### Docs and Tests Required Before Implementation
+
+- `README.md` — add a one-line note under the manifest-format section that every capability's `redaction.pii_categories` array labels each `pii_fields` entry with its canonical category (`email`, `phone`, `government_id`, `name`, `address`, `date_of_birth`, `payment`, `secrets`, `network`) and explicitly state that categories are source-literal name-category labels, NOT retention-policy enforcement or regulatory-compliance claims; do NOT use "auto-retention," "auto-redaction," or "compliant" framing.
+- `website/docs/manifest-format.md` — extend the "PII Field-Name Redaction Hints" subsection (or add an adjoining "PII Field-Name Category Labels" subsection) enumerating the nine-category V1.7 mapping, explaining the one-to-one correspondence with `pii_fields`, the empty-array behavior when `pii_fields` is empty, the no-auto-population rule for `retention_days`/`log_level`/`mask_in_traces`, the no-auto-escalation rule for `sensitivity_class`, and the explicit framing that M26 does NOT prove runtime PII handling or retention-policy enforcement — `pii_categories` is a category label, not a validation gate.
+- `website/docs/manifest-format.md` — add a "What M26 does NOT do" callout enumerating: does not inspect values, does not execute code, does not fetch any dictionary, does not prove regulatory compliance, does not auto-set `sensitivity_class`, does not auto-populate `log_level` / `mask_in_traces` / `retention_days`, does not enforce retention, does not filter in `tusq serve`.
+- `tests/smoke.mjs` — add coverage for: (a) Fastify fixture route with literal `schema.body` declaring `email` and `password` produces `redaction.pii_categories: ["email", "secrets"]` alongside `pii_fields: ["email", "password"]`, same length and order; (b) capability with `pii_fields: []` produces `pii_categories: []` (array, not absent); (c) capability with mixed-category fields (`user_email` + `ssn` + `credit_card`) produces `pii_categories: ["email", "government_id", "payment"]` in declaration order matching `pii_fields`; (d) Express and NestJS fixtures — non-PII capabilities produce `pii_categories: []`; PII-name capabilities emit categories in the same order as `pii_fields`; (e) repeated manifest generations produce byte-identical `pii_categories` arrays; (f) `sensitivity_class` remains `"unknown"` on every capability even when `pii_categories` is populated; (g) `retention_days`, `log_level`, `mask_in_traces` all remain `null` on every capability; (h) `tusq policy verify --strict` is unchanged by M26 (strict's approval-alignment check does not inspect `redaction`); (i) every entry in `pii_fields` produces exactly one entry in `pii_categories` at the same index.
+- `tests/fixtures/pii-hint-sample/` — extend the existing M25 fixture (or add a sibling) with at least one route whose literal `schema.body` declares two PII fields from **different** categories (e.g., `email` + `credit_card`) so the category emission exercises the cross-category path. The existing `POST /auth` (`email` + `password`) already exercises two categories (email + secrets) and can serve the category-mix test without a new route.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario (`pii-category-label-determinism`) asserting that a fixture exercising multiple categories produces the expected `pii_categories` array in declaration order and that the scenario is deterministic across three repeated runs. Total eval scenarios become **9**.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-094+ acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2429,3 +2573,5 @@ The dev role is accountable for implementing all items above. The QA role is acc
 14. **M24 source-literal-framing invariant** — The extracted `input_schema` shape represents "what the source declares," NOT "what the Fastify runtime would validate." The manifest `input_schema.source` field tags the extraction as `fastify_schema_body`, and docs/README/CLI-help/launch artifacts MUST NOT describe it as "validator-backed," "runtime-validated," "ajv-validated," or any phrase that implies the manifest shape is enforced at runtime by the framework. The defensible framing is "the declared body schema as it appears literally in source." M24 does NOT invoke any JSON-Schema validator; propagation to `tools/call` dry-run validation continues to use the narrow four-rule validator specified under M20. Any future runtime-enforced validation lands under a separate milestone with its own constraint entry.
 15. **M25 static-name-matching invariant** — PII field-name redaction hints are produced by a pure function over the already-built `input_schema.properties` object. The matching rule is whole-key case-insensitive comparison after normalization (`toLowerCase()` + strip `_` and `-`) against a frozen canonical set explicitly enumerated in `src/cli.js`. Partial-key, tail-match, or substring matching is forbidden: `email_template_id` MUST NOT match `email`. The extractor MUST NOT read any source file; MUST NOT inspect any value; MUST NOT invoke regex over source text; MUST NOT make network I/O; MUST NOT import any PII-detection or NLP library (no `pii-detector`, no `presidio`, no `compromise`). `redaction.pii_fields` ordering MUST equal the iteration order of `input_schema.properties` (source-literal declaration order from M15/M24). Repeated manifest generations on the same repo MUST produce byte-identical `pii_fields` arrays. Manifest output for capabilities whose `input_schema.properties` contains no canonical PII keys MUST be byte-for-byte identical to HEAD `541abcd`. Any expansion of the canonical set beyond the V1.6 list is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
 16. **M25 redaction-framing invariant** — A non-empty `redaction.pii_fields` array means "the field key matches a well-known PII canonical name." It does NOT mean the field carries PII at runtime, that the route is GDPR/HIPAA/PCI-compliant, or that any payload validation occurs. Docs/README/CLI-help/launch artifacts MUST NOT describe M25 as "PII detection," "PII validation," "PII-validated," "GDPR-compliant," "HIPAA-compliant," "PCI-compliant," "automated redaction," or any phrase that implies regulatory-grade or runtime-enforced PII handling. The defensible framing is "well-known PII field-name hints derived statically from source-declared field keys." M25 MUST NOT auto-escalate `capability.sensitivity_class` on PII match; `sensitivity_class` remains `"unknown"` until an explicit V2 sensitivity-inference increment ships with its own constraint entry. M25 MUST NOT auto-populate `redaction.log_level`, `redaction.mask_in_traces`, or `redaction.retention_days` — those remain `null` in V1.6 and are owned by a future organizational-policy increment.
+17. **M26 static-category-labeling invariant** — PII field-name category labels are produced by a pure function over M25's already-emitted `redaction.pii_fields` array plus a frozen `PII_CATEGORY_BY_NAME` lookup enumerated in `src/cli.js`. The extractor MUST NOT read any source file; MUST NOT inspect any value; MUST NOT invoke regex over source text; MUST NOT make network I/O; MUST NOT import any PII-detection, NLP, retention-policy, or compliance library. `redaction.pii_categories` length MUST equal `redaction.pii_fields` length, and entries MUST appear in the same order (one-to-one index correspondence). Category keys are drawn from a frozen nine-entry set: `"email"`, `"phone"`, `"government_id"`, `"name"`, `"address"`, `"date_of_birth"`, `"payment"`, `"secrets"`, `"network"`. Every normalized name in M25's `PII_CANONICAL_NAMES` MUST map to exactly one category in `PII_CATEGORY_BY_NAME`; M25 and M26 freeze together. Any expansion of either the canonical name set or the category set is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. Repeated manifest generations on the same repo MUST produce byte-identical `pii_categories` arrays. When `redaction.pii_fields` is empty, `redaction.pii_categories` MUST be `[]` (never absent).
+18. **M26 retention-framing invariant** — A populated `redaction.pii_categories` array means "each entry labels the M25 canonical category that produced the matching `pii_fields` entry." It does NOT mean the capability enforces any retention policy at runtime, does NOT prove regulatory compliance, and does NOT imply the manifest auto-sets retention defaults. Docs/README/CLI-help/launch artifacts MUST NOT describe M26 as "auto-retention," "automated redaction," "retention-policy enforcement," "GDPR-retention-compliant," "HIPAA-retention-compliant," or any phrase that implies runtime retention is governed by the manifest. The defensible framing is "canonical PII field-name category labels derived statically from M25's field-name matches, intended to help reviewers set retention/log/trace policy defaults by hand." M26 MUST NOT auto-populate `redaction.retention_days`, `redaction.log_level`, or `redaction.mask_in_traces` — all three remain `null` in V1.7 and are owned by a future organizational-policy increment. M26 MUST NOT auto-escalate `capability.sensitivity_class` — it stays `"unknown"` (Constraint 16 propagates verbatim to M26). M26 MUST NOT filter capabilities in `tusq serve` or in `tusq policy verify --strict` based on category content; M26 is descriptive metadata only.

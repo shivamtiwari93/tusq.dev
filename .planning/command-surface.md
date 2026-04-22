@@ -402,6 +402,64 @@ M25 extraction either succeeds (populates `pii_fields`) or produces no match at 
 | No `sensitivity_class` auto-escalation | `sensitivity_class` remains `"unknown"` on every capability; M25 does not imply sensitivity |
 | Source-literal framing | `redaction.pii_fields` is a field-name hint, NOT a runtime PII detection claim; docs do not use "PII-validated" or "compliant" framing (SYSTEM_SPEC Constraint 16) |
 
+## M26 Product CLI Surface
+
+M26 introduces NO new CLI command, NO new flag, and NO new subcommand. The operator-visible surface change is additive manifest metadata: every generated capability gains `capability.redaction.pii_categories`, a deterministic array parallel to the M25 `redaction.pii_fields` array. The array labels each matched PII field name with one frozen category key and leaves retention/log/trace defaults unset.
+
+| Commands exercised | How M26 surfaces |
+|--------------------|------------------|
+| `tusq scan <path>` | No scan-artifact shape change; M26 operates during manifest generation over M25's already-emitted `pii_fields` array |
+| `tusq manifest` | Populates `capability.redaction.pii_categories`; order and length match `redaction.pii_fields`; empty `pii_fields` produces `pii_categories: []` |
+| `tusq compile` | Compiled tool metadata inherits `redaction.pii_categories` verbatim alongside `pii_fields` |
+| `tusq serve` | MCP `tools/call` metadata includes `pii_categories` as advisory source-literal category labels; no runtime filtering or retention enforcement is added |
+| `tusq diff` | First post-M26 scan flips `capability_digest` because `redaction` shape changes; reviewers must re-approve affected capabilities under M13 semantics |
+| `tusq approve` | Unchanged; M26 does not auto-approve or bypass review |
+| `tusq policy verify` / `tusq policy verify --strict` | Unchanged; strict verification remains approval-alignment based and does not inspect category content |
+
+### Manifest Output Shape Under M26
+
+| Capability situation | `redaction.pii_fields` | `redaction.pii_categories` |
+|----------------------|-------------------------|-----------------------------|
+| Fields `email`, `password` | `["email", "password"]` | `["email", "secrets"]` |
+| Fields `user_email`, `ssn`, `credit_card` | `["user_email", "ssn", "credit_card"]` | `["email", "government_id", "payment"]` |
+| No canonical PII field-name match | `[]` | `[]` |
+
+### M26 Category Keys
+
+The V1.7 category vocabulary is frozen and maps one-to-one from the M25 canonical name set: `email`, `phone`, `government_id`, `name`, `address`, `date_of_birth`, `payment`, `secrets`, and `network`.
+
+### M26 Default Preservation
+
+| Field | M26 effect |
+|-------|------------|
+| `capability.sensitivity_class` | Unchanged — stays `"unknown"`; category labels are not sensitivity inference |
+| `capability.confidence` | Unchanged — category labels do not modify `scoreConfidence()` |
+| `capability.redaction.log_level` | Unchanged — remains `null` |
+| `capability.redaction.mask_in_traces` | Unchanged — remains `null` |
+| `capability.redaction.retention_days` | Unchanged — remains `null`; organizational policy owns retention defaults |
+| `capability.capability_digest` | Re-computed on first post-M26 scan because `redaction.pii_categories` is added |
+
+### M26 Failure UX
+
+M26 has one defensive failure path: if a `pii_fields` entry has no matching category in the frozen lookup, `tusq manifest` fails synchronously before writing a manifest. That indicates implementation drift between `PII_CANONICAL_NAMES` and `PII_CATEGORY_BY_NAME`; operators should treat it as a bug, not a policy decision.
+
+| Situation | Operator sees |
+|-----------|---------------|
+| Every `pii_fields` entry maps to a category | `redaction.pii_categories` emitted in matching order |
+| `pii_fields` is empty | `redaction.pii_categories: []` |
+| A `pii_fields` entry lacks a category mapping | Manifest generation exits non-zero with a mapping-drift error |
+
+### M26 Local-Only Invariants
+
+| Invariant | How it shows up at manifest generation |
+|-----------|-----------------------------------------|
+| Static-only extraction | Pure function over `redaction.pii_fields`; no source re-scan, no value inspection |
+| Zero new dependencies | `package.json` MUST NOT gain any PII, retention, NLP, or compliance library |
+| Deterministic output | `pii_categories` order equals `pii_fields` order; repeated runs produce byte-identical arrays |
+| No retention overclaim | `retention_days`, `log_level`, and `mask_in_traces` remain `null` |
+| No sensitivity auto-escalation | `sensitivity_class` remains `"unknown"` on every capability |
+| Source-literal framing | `pii_categories` labels M25 field-name matches; it is NOT runtime PII validation or retention-policy enforcement |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

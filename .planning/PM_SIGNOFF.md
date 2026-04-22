@@ -478,6 +478,20 @@ This decision consciously rejects three tempting alternatives:
 - **B) Auto-escalate only for the canonical "Secrets" and "Payment" categories (passwords, API keys, credit cards).** Still conflates field and capability signals; the `password` field on a 2FA toggle route is arguably not confidential in the same sense as `password` on a login route. Rejected for V1.6.
 - **C) Emit a soft `sensitivity_hint: "pii_detected"` field alongside `sensitivity_class`.** Introduces a new field shape, forks the governance vocabulary, and adds a migration surface for consumers of the manifest. Sensitivity inference deserves its own increment, not a backdoor under M25. Rejected.
 
+### Challenge 37: Move toward retention defaults without pretending a field-name category is an org policy
+
+M26 exists because M25 made redaction hints useful but flat. A reviewer can now see `redaction.pii_fields: ["email", "password"]`, but the manifest does not distinguish contact PII from secrets. VISION.md asks for redaction and retention defaults, and the obvious temptation is to jump directly from field names to `retention_days`, `log_level`, and `mask_in_traces` defaults. That would be premature: retention and logging posture are organization-specific policy choices, not facts the scanner can infer from a source-declared field key.
+
+The bounded step is to add category labels only: `redaction.pii_categories` mirrors `redaction.pii_fields` one-for-one and labels each matched field with a frozen category (`email`, `phone`, `government_id`, `name`, `address`, `date_of_birth`, `payment`, `secrets`, or `network`). This gives reviewers retention-relevant evidence without silently setting retention policy. The extractor remains pure, local, deterministic, and zero-dependency; it operates on M25's own output rather than rescanning source or inspecting values.
+
+**Decision:** M26 ships static PII category labels, not retention-policy enforcement. `redaction.retention_days`, `redaction.log_level`, and `redaction.mask_in_traces` stay `null`; `sensitivity_class` stays `"unknown"`; `scoreConfidence()` stays unchanged. This is codified as SYSTEM_SPEC.md Constraints 17 and 18, and command-surface.md documents that no new CLI command or flag is introduced.
+
+This decision consciously rejects three tempting alternatives:
+
+- **A) Auto-populate `retention_days` by category.** Email, payment, and secrets retention vary by product, jurisdiction, customer contract, and internal policy. A static scanner cannot choose those defaults responsibly. Rejected for V1.7.
+- **B) Auto-populate `log_level` / `mask_in_traces` by category.** Logging and trace masking are runtime policy controls; field-name categories are advisory metadata. Rejected for V1.7.
+- **C) Treat populated categories as regulatory compliance evidence.** A category label means "the normalized source field name matched the frozen category map." It does not prove runtime payload content, retention enforcement, GDPR/HIPAA/PCI compliance, or safe logging. Rejected explicitly under Constraint 18.
+
 ## Key Judgment Calls
 
 1. **Docs are authored content, not auto-generated.** Each docs page is written in user-facing language derived from planning artifacts. This means a human (product_marketing role) owns the content quality.
