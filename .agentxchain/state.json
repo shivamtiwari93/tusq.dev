@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_035dd2c2b8e4b821",
+  "run_id": "run_9a16c57316a9f9fc",
   "project_id": "tusq-dev",
   "status": "completed",
   "phase": "launch",
-  "accepted_integration_ref": "git:c04177592edcf48e462906a6b3ed27e51bf34d71",
+  "accepted_integration_ref": "git:5172579826b71f325d7bc2844db18a5e019913fa",
   "active_turns": {},
-  "turn_sequence": 17,
-  "last_completed_turn_id": "turn_41847925766151f8",
+  "turn_sequence": 11,
+  "last_completed_turn_id": "turn_d249ee837c39627e",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -27,13 +27,13 @@
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-22T09:37:21.502Z",
-  "phase_entered_at": "2026-04-22T10:21:18.925Z",
+  "created_at": "2026-04-22T10:37:33.513Z",
+  "phase_entered_at": "2026-04-22T11:14:30.000Z",
   "provenance": {
     "trigger": "intake",
     "parent_run_id": null,
-    "trigger_reason": "Derive and execute the next VISION-aligned tusq.dev increment after M23. First reconcile the baseline by marking the shipped M23 strict policy verifier complete in planning artifacts if repo evidence supports it. Then have PM derive a concrete M24 increment from .planning/VISION.md and current product gaps, favoring V1 data/schema understanding or validator-aware input-schema inference for existing Node.js route discovery if feasible. Keep work inside AgentXchain roles and require concrete code, tests, docs, QA evidence, and launch artifact updates.",
-    "intake_intent_id": "intent_1776850543701_dfca",
+    "trigger_reason": "Derive and ship M25 from .planning/VISION.md and current product gaps. Favor a bounded static sensitive-field/redaction increment that improves tusq.manifest.json usefulness for real SaaS codebases while preserving local/offline deterministic behavior. PM must reconcile the M24 baseline as shipped, define exact scope and constraints, then route dev/QA/product-marketing through AgentXchain for real code, tests, docs, QA evidence, and launch artifacts.",
+    "intake_intent_id": "intent_1776854092147_5ecd",
     "created_by": "operator"
   },
   "inherited_context": null,
@@ -42,14 +42,14 @@
   "next_recommended_role": null,
   "pending_delegation_review": null,
   "last_completed_turn": {
-    "turn_id": "turn_a09f1e00a1a26b11",
+    "turn_id": "turn_d249ee837c39627e",
     "role": "product_marketing",
     "phase": "launch",
-    "checkpoint_sha": "c04177592edcf48e462906a6b3ed27e51bf34d71",
-    "checkpointed_at": "2026-04-22T10:28:10.038Z",
+    "checkpoint_sha": "5172579826b71f325d7bc2844db18a5e019913fa",
+    "checkpointed_at": "2026-04-22T11:23:26.155Z",
     "intent_id": null
   },
   "non_progress_signature": null,
   "non_progress_count": 0,
-  "completed_at": "2026-04-22T10:29:11.340Z"
+  "completed_at": "2026-04-22T11:24:15.000Z"
 }

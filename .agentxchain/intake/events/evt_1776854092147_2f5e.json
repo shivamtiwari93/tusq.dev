@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776854092147_2f5e",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-22T10:34:52.146Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Derive and execute the next VISION-aligned tusq.dev increment after M24. Prioritize V1 data/schema understanding: static sensitive-field detection and redaction defaults from route input schemas, DTO/schema literals, path and handler names, without runtime execution or new network access.",
+    "injected": true,
+    "priority": "p0"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Derive and execute the next VISION-aligned tusq.dev increment after M24. Prioritize V1 data/schema understanding: static sensitive-field detection and redaction defaults from route input schemas, DTO/schema literals, path and handler names, without runtime execution or new network access."
+    }
+  ],
+  "dedup_key": "manual:eea9ac62e8de5df3"
+}
