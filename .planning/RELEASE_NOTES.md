@@ -413,6 +413,46 @@ When a Fastify route declares a literal `schema: { body: { properties: {...}, re
 
 **All 100 acceptance criteria** (REQ-001–REQ-100) pass on HEAD 45129d3: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (9 scenarios)`. Recovered QA re-ran and confirmed the same command/result before the launch transition.
 
+## Reviewer-Facing PII Redaction Review Report (M27 — V1.8)
+
+`tusq redaction review` adds a read-only reviewer report for the static PII redaction metadata already emitted by M25/M26. It reads a manifest, lists each capability's `redaction.pii_fields` and `redaction.pii_categories`, and attaches frozen per-category advisory text for reviewer-owned masking, logging, and retention decisions.
+
+**Usage:**
+```
+tusq redaction review [--manifest <path>] [--capability <name>] [--json]
+```
+
+**What the report includes:**
+- Top-level `manifest_path`, `manifest_version`, and `generated_at` copied from the manifest; missing `manifest_version`/`generated_at` become `null` in `--json` and `unknown` in human output.
+- One section/object per capability, including unapproved and review-needed capabilities.
+- `approved`, `sensitivity_class`, `pii_fields`, and `pii_categories` copied from the manifest.
+- `advisories` with one entry per distinct category in first-appearance order.
+
+**Frozen V1.8 advisory categories:**
+- `email`
+- `phone`
+- `government_id`
+- `name`
+- `address`
+- `date_of_birth`
+- `payment`
+- `secrets`
+- `network`
+
+**Key invariants:**
+- The advisory source of truth is `PII_REVIEW_ADVISORY_BY_CATEGORY` in `src/cli.js`.
+- Advisory wording is frozen, including em-dash U+2014 usage; wording or punctuation drift is a material governance event.
+- `capabilities: []` is valid and exits 0: human output is exactly `No capabilities in manifest — nothing to review.`; JSON output still emits the top-level fields and `capabilities: []`.
+- Missing manifest, malformed JSON, missing/non-array `capabilities`, unknown `--capability`, unknown subcommand, and unknown flag all exit 1 with stderr-only messages and empty stdout.
+- The command is strictly read-only: it does not mutate `tusq.manifest.json`, does not write policy/tool/scan artifacts, does not change `capability_digest`, and does not change `tusq policy verify` or `tusq policy verify --strict`.
+- `sensitivity_class`, `retention_days`, `log_level`, `mask_in_traces`, approval fields, and review-needed state are not inferred or mutated.
+
+**Framing boundary** (SYSTEM_SPEC Constraints 19 and 20): `tusq redaction review` is a reviewer aid, not a runtime enforcement gate, not automated PII compliance, not an automated redaction policy, and not a substitute for reviewer judgment. Running it does not make a capability safer at runtime; it only summarizes existing static field-name/category evidence alongside frozen reviewer reminders.
+
+**New eval scenario** — `redaction-review-determinism` extends the governed-cli eval harness to 10 scenarios. It runs `tusq redaction review --json` three times on the same pii-hint-sample manifest and asserts byte-identical stdout plus advisory ordering that matches `pii_categories` appearance order.
+
+**All 108 acceptance criteria** (REQ-001–REQ-108) pass on HEAD d242727: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`.
+
 ## Known V1 Limits And Non-Claims
 
 - **Heuristic scanner:** Route extraction uses regex-based static analysis, not a full AST. Complex dynamic route registration patterns may be missed or produce low-confidence results. Users should review the manifest before compiling.

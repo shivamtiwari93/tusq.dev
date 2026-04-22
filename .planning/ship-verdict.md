@@ -2,6 +2,31 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_642043849a146591 (role=qa, 2026-04-22)
+
+This QA turn challenges the prior accepted implementation turn for M27 rather than rubber-stamping it. HEAD is d242727 on run_995056dd29cb9f11.
+
+**Challenge 1 — Prior implementation claims do not satisfy QA artifact coverage.** The implementation turn states that M27 runtime code, smoke coverage, eval coverage, README, CLI reference docs, and ROADMAP checks were already in place or fixed. That is not enough for the QA phase: `.planning/acceptance-matrix.md` still stopped at REQ-100, `.planning/RELEASE_NOTES.md` stopped at M26, and this ship verdict had no M27 challenge entry. **Challenge upheld and fixed:** added REQ-101 through REQ-108, added the M27 release-note section, and added this challenge entry.
+
+**Challenge 2 — Command surface changed and needs independent verification.** M27 adds a new CLI noun (`redaction`) and one subcommand (`redaction review`). This is a real surface expansion, not a hidden manifest-only change like M25/M26. **Verified:** `node bin/tusq.js help` exits 0 and lists `redaction`; `node bin/tusq.js redaction review --help` exits 0 and documents exactly `--manifest`, `--capability`, and `--json`, plus the "reviewer aid, not a runtime enforcement gate" framing. Acceptance coverage added as REQ-101.
+
+**Challenge 3 — Frozen advisory wording could drift silently.** A review report whose advisory text changes between releases would create CI snapshot churn and reviewer-trust issues. **Verified:** `src/cli.js` defines `PII_REVIEW_ADVISORY_BY_CATEGORY` as a frozen nine-entry object; `assertPiiReviewAdvisorySetComplete()` guards category coverage; smoke coverage checks the expected advisory text and confirms em-dash U+2014 bytes are present. Acceptance coverage added as REQ-102.
+
+**Challenge 4 — Report determinism and shape need current evidence.** The prior implementation notes claim deterministic human/JSON output, copied manifest metadata, category-order advisory rows, and exact `--capability` filtering. **Verified:** `npm test` exits 0 and smoke M27 checks cover byte-identical human and JSON output, JSON parseability, top-level report shape, sensitivity echo, mixed-category advisory order, and exact capability filtering. Eval `redaction-review-determinism` also asserts three repeated `--json` runs and advisory order for `/auth`, `/profile`, and `/catalog`. Acceptance coverage added as REQ-103, REQ-104, and REQ-108.
+
+**Challenge 5 — Error and empty-manifest UX could contaminate stdout.** A reviewer command is commonly piped to a file, so failure paths must not write partial reports to stdout. **Verified:** smoke coverage asserts missing manifest, malformed JSON, unknown capability, and unknown flag write stderr only with `stdout === ""`; `capabilities: []` exits 0 with the exact human line `No capabilities in manifest — nothing to review.` and the expected JSON shape. Acceptance coverage added as REQ-105.
+
+**Challenge 6 — M27 read-only boundary must be proven, not inferred.** The command name contains "redaction", so it could be misconstrued as a policy/default mutator. **Verified:** code inspection shows `cmdRedactionReview()` reads the manifest and writes only stdout/stderr; smoke captures `tusq.manifest.json` content and mtime before/after and asserts unchanged; smoke compares `tusq policy verify` default and `--strict` outputs before/after a redaction review run. Acceptance coverage added as REQ-106 and REQ-107.
+
+**Independent verification run (2026-04-22, HEAD d242727):**
+- `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help && node bin/tusq.js redaction review --help` → exit 0, confirms command/help surface and reviewer-aid framing.
+- Code inspection of `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, and `tests/eval-regression.mjs` performed.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS. Required QA artifacts are present and updated. Ship verdict stands as SHIP. The `qa_ship_verdict` gate still requires human approval before launch routing.
+
+---
+
 ## QA Challenge — turn_687bfd76c850ef17 (role=qa, 2026-04-22)
 
 This QA turn challenges the prior accepted dev turn (turn_8e8664e8eaa9383b) independently and does not rubber-stamp it. HEAD is ca29d17 on run_9a16c57316a9f9fc.
