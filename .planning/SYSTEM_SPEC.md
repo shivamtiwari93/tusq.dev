@@ -1961,6 +1961,202 @@ A dedicated smoke/eval scenario enforces that for every failing fixture (`empty-
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-070 through REQ-075 acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M23: Opt-In Strict Policy Verifier (Manifest-Aware)
+
+### Purpose
+
+M22 shipped `tusq policy verify` as a pure *policy-file* validator: given a path, does `loadAndValidatePolicy()` accept it, exactly as `tusq serve --policy` would at startup? That is a necessary but not sufficient governance check. A policy file can be internally valid yet still misaligned with the manifest the serve path will actually consult — for example, when `allowed_capabilities` names a capability that does not exist in `tusq.manifest.json`, or names one that exists but is `approved: false`, or one whose `review_needed: true` flag is still set. In those cases, `tusq serve --policy` will start successfully, `tools/list` will silently drop the unapproved or missing capability, and an operator's reviewer-level least-privilege expectation is quietly violated — the policy looked tight but the manifest never supported it.
+
+M23 closes that gap with a single opt-in flag on the existing `tusq policy verify` subcommand: `--strict`. When set, the verifier additionally reads `tusq.manifest.json` (or a path passed via `--manifest <path>`) and cross-references every name in the policy's `allowed_capabilities` array against the manifest's approval-gated set. The check is strictly read-only: it introduces one additional local filesystem read and zero new I/O classes.
+
+### Scope Boundary
+
+M23 is deliberately narrow:
+
+- **In scope (V1.4):** one new flag (`--strict`) and one supporting flag (`--manifest <path>`, consulted only under `--strict`) on the existing `tusq policy verify` subcommand. Under `--strict`, every name listed in `allowed_capabilities` is cross-checked against the manifest for existence, `approved: true`, and absence of `review_needed: true`. Default (`--strict` absent) behavior is byte-for-byte identical to M22.
+- **Out of scope (V1.4):** no manifest-freshness check (no `previous_manifest_hash` chaining, no `manifest_version` ladder enforcement); no capability-schema quality check; no dry-run plan execution under `--strict`; no network I/O of any kind; no target-product I/O of any kind; no `tusq policy audit` / multi-source governance report (reserved for a future increment); no auto-fix or `--fix` flag; no strict-by-default escalation.
+
+Strict mode is additive and opt-in. Everything default `tusq policy verify` rejects, `tusq policy verify --strict` also rejects; strict mode adds additional rejection cases on top of the M22 validator, never relaxes them.
+
+### `tusq policy verify --strict` Command Shape
+
+Synopsis (extended from M22):
+
+```
+tusq policy verify [--policy <path>]
+                   [--strict [--manifest <path>]]
+                   [--json]
+                   [--verbose]
+```
+
+Flag evaluation order (enforced by dev implementation):
+
+1. Parse flags. If `--manifest` is set without `--strict`, exit 1 with `--manifest requires --strict` and do not read any file. (This guard keeps the flag semantics unambiguous and prevents a future drift where `--manifest` gets silently repurposed.)
+2. Run the M22 policy-file validator via `loadAndValidatePolicy(policyPath)`. If it fails, exit 1 with the M22 message exactly as before. Strict checks are NOT run on a policy that fails M22 validation — the operator's first fix is the policy file, not the manifest.
+3. If `--strict` is set, resolve the manifest path (default `tusq.manifest.json`; overridable via `--manifest <path>`), read the manifest, and run strict checks as defined below. On any strict check failure, exit 1.
+4. On success (M22 validator accepts the policy AND, if `--strict`, every strict check passes), emit the appropriate success output and exit 0.
+
+Exit codes:
+
+| Exit | Meaning |
+|------|---------|
+| `0` | Policy file passed `loadAndValidatePolicy()`; AND, if `--strict` was set, all strict checks passed |
+| `1` | M22 validator rejected the policy, OR a strict check rejected the policy, OR `--manifest` was supplied without `--strict`, OR (strict-mode only) the manifest file was missing or unreadable or not valid JSON |
+
+### `tusq policy verify` Options (extended for M23)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--policy <path>` | Path to the execution-policy file to validate | `.tusq/execution-policy.json` |
+| `--strict` | Additionally cross-reference `allowed_capabilities` against the manifest | Disabled (default is M22 behavior) |
+| `--manifest <path>` | Path to the manifest file consulted under `--strict` | `tusq.manifest.json` |
+| `--json` | Emit a machine-readable result object to stdout (extended shape under `--strict`) | Human-readable summary |
+| `--verbose` | Print the resolved policy path, manifest path (if `--strict`), and diagnostics to stderr | Disabled |
+
+### Strict Check Rules
+
+Given a policy with `allowed_capabilities` = `N` (an array or `null`):
+
+| Case | Behavior |
+|------|----------|
+| `N` is `null` / unset | Strict check passes trivially. Unset semantically means "all approved capabilities in the manifest are allowed," which is by definition manifest-aligned. (This matches the M20 `tools/list` filter semantics.) |
+| `N` is an empty array | Strict check passes trivially. The policy authorizes zero capabilities; no misalignment is possible. |
+| `N` is a non-empty array | For each name in `N`, the manifest MUST contain a capability whose `name` field equals that string, that capability MUST have `approved: true`, and that capability MUST NOT have `review_needed: true`. Strict errors are collected in deterministic order (the order in which names appear in `N`), not deduplicated across rules (a single name can fail multiple rules, producing multiple strict errors). |
+
+### `tusq policy verify --strict` Failure UX
+
+Strict-mode failure messages are new (they describe a new failure class and therefore cannot inherit from M22). The M22 parity contract applies only to policy-file validation; strict checks are a distinct governance boundary and `tusq serve --policy` does NOT enforce them (serve silently drops unlisted capabilities via `tools/list`, which is the M20 contract and MUST be preserved).
+
+| Failure | User sees |
+|---------|-----------|
+| `--manifest` supplied without `--strict` | `--manifest requires --strict` |
+| `--strict` set but manifest file missing | `Manifest not found:` followed by the resolved manifest path |
+| `--strict` set but manifest file unreadable | `Could not read manifest file:` followed by the path and the OS error message |
+| `--strict` set but manifest file is not valid JSON | `Invalid manifest JSON at:` followed by the path and parser message |
+| `--strict` set but manifest has no `capabilities` array | `Invalid manifest shape at:` followed by the path and the literal suffix `: missing capabilities array` |
+| Strict: allowed capability not present in manifest | `Strict policy verify failed: allowed capability not found in manifest:` followed by the name |
+| Strict: allowed capability present but `approved: false` | `Strict policy verify failed: allowed capability not approved:` followed by the name |
+| Strict: allowed capability present and approved but `review_needed: true` | `Strict policy verify failed: allowed capability requires review:` followed by the name |
+
+Multiple strict failures for different names produce one message line per failure, emitted to stderr (or included in the `strict_errors` array under `--json`), in the order the names appear in `allowed_capabilities`.
+
+### `tusq policy verify --strict` JSON Output Shape
+
+On success (exit 0), with `--strict --json`:
+
+```
+{
+  "valid": true,
+  "strict": true,
+  "path": "<resolved policy path>",
+  "manifest_path": "<resolved manifest path>",
+  "manifest_version": <integer>,
+  "policy": {
+    "schema_version": "1.0",
+    "mode": "describe-only" | "dry-run",
+    "reviewer": "<string>",
+    "approved_at": "<ISO-8601 UTC>",
+    "allowed_capabilities": null | ["<name>", ...]
+  },
+  "approved_allowed_capabilities": <integer>
+}
+```
+
+Where `approved_allowed_capabilities` is the count of names in `allowed_capabilities` that passed strict checks (equal to `allowed_capabilities.length` on success, or `null` when `allowed_capabilities` is itself `null`/unset).
+
+On failure (exit 1), with `--strict --json`:
+
+```
+{
+  "valid": false,
+  "strict": true,
+  "path": "<resolved policy path>",
+  "manifest_path": "<resolved manifest path or null if manifest I/O failed before read>",
+  "error": "<same message written to stderr for the first failure>",
+  "strict_errors": [
+    {"name": "<capability name>", "reason": "not_in_manifest" | "not_approved" | "requires_review"}
+  ]
+}
+```
+
+On an M22-level rejection (policy-file validator failed), `strict` is `true` only when `--strict` was supplied; `strict_errors` is an empty array because strict checks never ran. The `error` field and behavior are identical to the M22 `--json` failure shape for that case.
+
+### `tusq policy verify --strict` Local-Only Invariants
+
+| Invariant | How it shows up at the CLI |
+|-----------|----------------------------|
+| No server startup | `tusq policy verify --strict` never binds a TCP port, never opens a socket; it runs synchronously and exits |
+| No network I/O | No HTTP, DB, MCP handshake; operators can run it with networking disabled |
+| Filesystem reads are bounded | Exactly two files are read under `--strict`: the policy file and the manifest file. No scan file, no compiled tools, no `.git/`, no external includes |
+| No target-product call | The verifier never invokes a compiled tool, never executes a dry-run plan |
+| No manifest writes | The manifest is read-only under `--strict`; no field is mutated, no approval is recorded, no `capability_digest` is re-computed |
+| Default behavior unchanged | With `--strict` absent, no manifest I/O occurs even if `tusq.manifest.json` exists at the default path; M22 behavior is preserved byte-for-byte |
+
+### Pipeline Propagation
+
+```
+tusq manifest                                                         # existing
+   └─ writes: tusq.manifest.json                                      # approval-gated set lives here
+
+tusq approve <name> [--all]                                           # existing
+   └─ writes: tusq.manifest.json capabilities[*].approved=true       # approval gate
+
+tusq policy init
+   └─ writes: .tusq/execution-policy.json                             # M21
+
+tusq policy verify .tusq/execution-policy.json
+   └─ reads:  loadAndValidatePolicy(path)                             # M22; pure policy-file validator
+
+tusq policy verify --strict .tusq/execution-policy.json
+   └─ reads:  loadAndValidatePolicy(path)                             # M22; pure policy-file validator
+   └─ reads:  tusq.manifest.json (or --manifest <path>)               # M23; manifest-aware cross-reference
+   └─ emits:  stdout summary or JSON; exit 0 or 1                     # M23
+
+tusq serve --policy .tusq/execution-policy.json
+   └─ reads:  loadAndValidatePolicy(path)                             # M20; unchanged, shared validator
+   └─ serves: tools/list (approved-only), tools/call (policy mode)    # M20
+```
+
+M23 inserts no new pipeline stage; it extends the M22 sibling validator with an opt-in manifest-aware branch. Default `tusq policy verify` is still the pure policy-file path.
+
+### V1.4 Limitations
+
+| Limitation | Rationale | V2 Plan |
+|------------|-----------|---------|
+| No manifest freshness / hash-chain check | Adding `previous_manifest_hash` validation here would couple strict verify to version-history semantics that `tusq diff` already owns; keeping concerns separate preserves each command's contract | V2 `tusq policy audit` can compose strict verify + diff + eval into one multi-source report |
+| No execution reachability probe | Violates the local/offline invariant; a PASS is an alignment statement, not an execution-safety statement | Reserved for a hosted / opt-in operator tier, never for the local CLI |
+| No `--fix` or auto-remediation | V1.4 is read-only by design; mutating the policy file during verify would make the command a writer and break the single-responsibility shape | V2 may add `tusq policy migrate` when a `1.1` schema ships |
+| No strict-by-default escalation | Would silently break every M22 CI caller and couple verify to filesystem state (manifest presence); Constraint 11 forbids this | V2 may expose an operator-level default via a separate config, never via command drift |
+| No warning / advisory output when strict is off but manifest exists | Clutters stdout/stderr for a correctly-scoped default case and muddies exit-code semantics | If operator telemetry ever justifies it, a `--warn-strict` opt-in flag is the right shape, not a default |
+
+### Approval-Gate Invariant Preservation
+
+M23 does not alter the approval-gate invariant set first stated in the M20 section. For clarity:
+
+1. `tools/list` continues to filter by `approved: true` on the source manifest regardless of whether `tusq policy verify --strict` passed, failed, or was never run.
+2. A passing `tusq policy verify --strict` is NOT authorization to execute any capability, and is NOT a substitute for `tools/list`'s at-serve-time approval filter. Strict mode is a reviewer-time alignment check, not a runtime gate.
+3. A failing `tusq policy verify --strict` does NOT prevent `tusq serve --policy` from starting successfully with the same policy file — M23 does not change the serve path, and `tusq serve --policy` continues to silently drop unlisted/unapproved capabilities from `tools/list` as specified in M20. Strict verify is a CI/review-layer gate, not a serve-startup gate.
+4. `tusq policy verify --strict` performs no outbound I/O. It cannot leak capability names, reviewer identity, policy content, or manifest content beyond the local filesystem and stdout/stderr.
+
+### Validator Parity Contract (Extended)
+
+The M22 validator-parity contract (every M22 rejection message is byte-identical between `tusq policy verify` and `tusq serve --policy`) is preserved verbatim under M23: strict mode runs strictly AFTER M22 validation, so the M22 error surface is unchanged. Strict-mode failure messages are NOT part of the M22 parity contract — `tusq serve --policy` does not perform strict checks and never will under V1.4, and strict-mode messages are distinct strings documented in the failure UX table above.
+
+A dedicated smoke/eval scenario enforces two parity invariants:
+
+1. **M22 parity preserved:** every M22 failure fixture still produces byte-identical messages across `tusq policy verify`, `tusq policy verify --strict` (when M22 validation fails first), and `tusq serve --policy`.
+2. **Strict determinism:** repeated `tusq policy verify --strict` runs on the same policy and manifest produce identical exit codes, identical stdout, and identical `strict_errors` ordering. No nondeterminism is permitted.
+
+### Docs and Tests Required Before Implementation
+
+- `README.md` — add `policy verify --strict` to the CLI reference description; add a two-line example showing the strict invocation and the forbidden framing ("alignment check, not a runtime safety gate").
+- `website/docs/cli-reference.md` — add a `policy verify --strict` subsection with synopsis, options table, strict-failure table, JSON-output example, and an explicit "what a strict PASS does NOT prove" note.
+- `website/docs/execution-policy.md` — insert a "Strict verification (opt-in)" section that recommends `tusq policy verify --strict` as a CI/review-layer gate once a manifest exists; link it from both the `tusq policy init` walkthrough and the `tusq serve --policy` walkthrough; explicitly distinguish policy-file validation from manifest-aware strict validation.
+- `tests/smoke.mjs` — add coverage for: (1) default `tusq policy verify` behavior is byte-for-byte identical to M22 even when `tusq.manifest.json` exists (no manifest I/O observed), (2) `--strict` success exit 0 on a generated policy whose `allowed_capabilities` are approved in the manifest, (3) `--strict` exit 1 on allowed-capability absent from manifest with exact failure message, (4) `--strict` exit 1 on allowed-capability present but unapproved, (5) `--strict` exit 1 on allowed-capability present and approved but `review_needed: true`, (6) `--strict` exit 1 when manifest file is missing with `Manifest not found:` message, (7) `--strict` exit 1 when manifest is malformed JSON, (8) `--manifest` without `--strict` exits 1 before any file is read, (9) `--strict --json` success shape matches the spec (valid, strict, path, manifest_path, manifest_version, policy, approved_allowed_capabilities), (10) `--strict --json` failure shape matches the spec (valid:false, strict:true, path, manifest_path, error, strict_errors), (11) `--strict` with `allowed_capabilities` unset passes on a populated manifest, (12) M22 parity: every existing M22 failure fixture still produces identical messages under `tusq policy verify` with and without `--strict`.
+- `tests/evals/governed-cli-scenarios.json` — add one eval scenario asserting that `tusq policy verify --strict` produces deterministic `strict_errors` ordering across repeated runs on the same fixture (guards against nondeterminism in manifest traversal or Set-based deduplication).
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-075 through REQ-080-ish acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -1973,3 +2169,5 @@ The dev role is accountable for implementing all items above. The QA role is acc
 8. **M21 safe-default invariant** — The default `mode` for a generated policy is `"describe-only"`. An operator must explicitly pass `--mode dry-run` to generate a dry-run policy. The generator never flips describe-only behavior silently.
 9. **M22 validator-parity invariant** — `tusq policy verify` and `tusq serve --policy` MUST share `loadAndValidatePolicy()` byte-for-byte. Every acceptance or rejection decision, and every error message, is identical across the two entry points. No standalone re-implementation of validation logic is permitted; any new validator rule lands in `loadAndValidatePolicy()` and is picked up by both paths at once. Smoke-test parity fixtures enforce this invariant at merge time.
 10. **M22 local-only invariant** — `tusq policy verify` MUST NOT perform any network, manifest, or target-product I/O in V1.3. Its side effects are limited to reading the policy file path, writing to stdout/stderr, and exiting 0 or 1. It never binds a TCP port, never starts an MCP server, never reads `tusq.manifest.json`, and never invokes a compiled tool.
+11. **M23 opt-in-strict invariant** — Strict manifest-aware verification is opt-in via the `--strict` flag on `tusq policy verify`. The default `tusq policy verify` path (no flag) MUST remain byte-for-byte identical to the M22 behavior: no manifest file is opened, no manifest path is resolved, and no new failure mode is exposed. `--strict` is never default, never inferred from filesystem state (e.g., presence of `tusq.manifest.json`), and never toggled by any other flag. `--manifest <path>` is only consulted when `--strict` is set and passing `--manifest` without `--strict` MUST exit 1 with `--manifest requires --strict` before any file is read.
+12. **M23 least-privilege-validation invariant** — A passing `tusq policy verify --strict` run is strictly a policy/manifest alignment statement at verify time: every name in `allowed_capabilities` exists in the referenced manifest, is `approved: true`, and is not blocked on review. It is NOT a runtime safety gate. Strict mode MUST NOT be documented, described, or framed as an "execution safety check," a "pre-flight for serve --policy," a "manifest freshness check," a "runtime reachability probe," or any phrase that implies a PASS makes execution safe. Strict mode performs exactly two local filesystem reads (the policy file and the manifest file), writes to stdout/stderr, and exits 0 or 1. It never binds a TCP port, never opens a network socket, never executes any capability, never mutates the manifest, and never reads any other file.

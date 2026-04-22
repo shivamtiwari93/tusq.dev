@@ -207,6 +207,66 @@ M22 adds one new local-only subcommand, `tusq policy verify`, that validates an 
 | No target-product call | No capability is executed, dry-run or otherwise; `policy verify` cannot reach the target product |
 | Validator parity | `tusq policy verify` and `tusq serve --policy` share `loadAndValidatePolicy()`; a smoke parity fixture asserts identical exit code and error message across the two entry points for every failure case |
 
+## M23 Product CLI Surface
+
+M23 adds one opt-in flag (`--strict`) and one supporting flag (`--manifest <path>`) to the existing `tusq policy verify` subcommand. Under `--strict`, the verifier additionally reads `tusq.manifest.json` and cross-references every name in the policy's `allowed_capabilities` array against the manifest's approval-gated set (existence + `approved: true` + absence of `review_needed: true`). Default behavior (no `--strict`) is byte-for-byte identical to M22 — no manifest I/O, no new failure modes, no change in output. No existing command surface is altered; no new subcommand is introduced.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq policy verify --strict` | Validate policy file AND cross-check `allowed_capabilities` against approved capabilities in `tusq.manifest.json` | Policy passed `loadAndValidatePolicy()` AND every allowed name exists in the manifest, is `approved: true`, and is not `review_needed: true` |
+| `tusq policy verify --strict --manifest <path>` | Same as above but consulting a non-default manifest path | Same invariants evaluated against the manifest at `<path>` |
+| `tusq policy verify --strict --json` | Emit extended machine-readable verification output under strict mode | JSON `{valid:true, strict:true, path, manifest_path, manifest_version, policy, approved_allowed_capabilities}` printed; exit 0 |
+| `tusq policy verify --strict --verbose` | Echo resolved policy + manifest paths and diagnostics to stderr | Human summary printed; verbose diagnostics on stderr |
+
+### `tusq policy verify --strict` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--policy <path>` | Path to the execution-policy file to validate | `.tusq/execution-policy.json` |
+| `--strict` | Activate manifest-aware cross-reference on top of the M22 policy-file validation | Disabled (default is M22 behavior) |
+| `--manifest <path>` | Path to the manifest consulted under `--strict`; supplying `--manifest` without `--strict` exits 1 before any file is read | `tusq.manifest.json` |
+| `--json` | Emit a machine-readable result object to stdout (extended under `--strict`, including `strict_errors` on failure) | Human-readable summary |
+| `--verbose` | Echo resolved policy path, manifest path, and diagnostics to stderr | Disabled |
+
+### `tusq policy verify --strict` Failure UX
+
+Strict-mode failure messages are distinct from M22 messages because strict checks are a new governance boundary that `tusq serve --policy` does NOT enforce. The M22 parity contract is preserved: an M22-level rejection still emits the M22 message byte-for-byte whether `--strict` is set or not. Strict-specific failures are emitted ONLY when the M22 validator accepts the policy and `--strict` is set.
+
+| Failure | User sees |
+|---------|-----------|
+| `--manifest` supplied without `--strict` | `--manifest requires --strict` |
+| `--strict` set but manifest file missing | `Manifest not found:` followed by the resolved manifest path |
+| `--strict` set but manifest file unreadable | `Could not read manifest file:` followed by the path and the OS error message |
+| `--strict` set but manifest is not valid JSON | `Invalid manifest JSON at:` followed by the path and parser message |
+| `--strict` set but manifest has no `capabilities` array | `Invalid manifest shape at:` followed by the path and `: missing capabilities array` |
+| Strict: allowed capability not in manifest | `Strict policy verify failed: allowed capability not found in manifest:` followed by the name |
+| Strict: allowed capability present but `approved: false` | `Strict policy verify failed: allowed capability not approved:` followed by the name |
+| Strict: allowed capability present and approved but `review_needed: true` | `Strict policy verify failed: allowed capability requires review:` followed by the name |
+
+Multiple strict failures produce one message line per offending name in the order names appear in `allowed_capabilities`.
+
+### `tusq policy verify --strict` JSON Output Shape
+
+| Case | stdout | exit |
+|------|--------|------|
+| Success | `{"valid": true, "strict": true, "path": "<policy>", "manifest_path": "<manifest>", "manifest_version": <int>, "policy": {...}, "approved_allowed_capabilities": <int\|null>}` | `0` |
+| Strict-check failure | `{"valid": false, "strict": true, "path": "<policy>", "manifest_path": "<manifest>", "error": "<first failure message>", "strict_errors": [{"name":"<name>","reason":"not_in_manifest\|not_approved\|requires_review"}, ...]}` | `1` |
+| M22-level failure under `--strict` | `{"valid": false, "strict": true, "path": "<policy>", "manifest_path": null, "error": "<M22 message>", "strict_errors": []}` | `1` |
+| `--manifest` without `--strict` | No JSON read/write attempted; exit 1 with `--manifest requires --strict` on stderr | `1` |
+
+### `tusq policy verify --strict` Local-Only Invariants
+
+| Invariant | How it shows up at the CLI |
+|-----------|----------------------------|
+| Opt-in only | Default `tusq policy verify` (no `--strict`) NEVER reads `tusq.manifest.json` even when it exists at the default path; a smoke test asserts this |
+| Bounded reads | Exactly two files are read under `--strict`: the policy file and the manifest file. No scan file, no compiled tools, no `.git/`, no git lookups, no external includes |
+| No server startup | `tusq policy verify --strict` never binds a TCP port; it runs synchronously and exits |
+| No network I/O | No HTTP, DB, or MCP handshake; operators can run it with the network disabled |
+| No target-product call | No capability is executed, dry-run or otherwise; strict verify cannot reach the target product |
+| No manifest mutation | The manifest is read-only under `--strict`; no approval is recorded, no field is mutated, no `capability_digest` is re-computed |
+| Alignment statement, not safety gate | A strict PASS proves policy/manifest alignment at verify time only — NOT runtime reachability, NOT manifest freshness, NOT execution safety |
+| M22 parity preserved | M22 rejection messages are byte-identical whether `--strict` is set or not; `tusq serve --policy` is unchanged |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.
