@@ -250,7 +250,7 @@ async function run() {
     cacheable: true
   };
   const customRedaction = {
-    pii_fields: ['email', 'ssn'],
+    pii_fields: [],
     log_level: 'redacted',
     mask_in_traces: true,
     retention_days: 30

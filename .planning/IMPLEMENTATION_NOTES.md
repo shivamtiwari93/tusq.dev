@@ -862,4 +862,52 @@ The PM turn correctly identified that SYSTEM_SPEC had 12 smoke items while ROADM
 | `node bin/tusq.js help` | Exit 0; 12-command surface unchanged |
 | `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (6 scenarios)" |
 
+## Dev Turn turn_8e8664e8eaa9383b — M25 PII Field-Name Redaction-Hint Extraction (2026-04-22)
+
+### Challenge To Prior Turn
+
+Prior turn (turn_b720108c0495ed22, role=pm, phase=planning) is a planning-only turn that produced four PM gate artifacts. It does not satisfy the implementation_complete gate — it has no source changes, no test additions, and no verification of the M25 behavior described in DEC-596 through DEC-602. I verified the baseline independently: `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (7 scenarios)" on HEAD before M25 changes.
+
+### What Was Implemented
+
+M25 adds `extractPiiFieldHints(input_schema.properties) → capability.redaction.pii_fields` as a pure auto-extractor. Implementation is three additive changes to `src/cli.js`:
+
+**1. `PII_CANONICAL_NAMES` constant (after line 11):**
+Frozen `Set` of 36 normalized PII names across 9 categories: Email (`email`, `emailaddress`, `useremail`), Phone (`phone`, `phonenumber`, `mobile`, `mobilephone`, `telephone`), Government ID (`ssn`, `socialsecuritynumber`, `taxid`, `nationalid`), Name (`firstname`, `lastname`, `fullname`, `middlename`), Address (`streetaddress`, `zipcode`, `postalcode`), DOB (`dateofbirth`, `dob`, `birthdate`), Payment (`creditcard`, `cardnumber`, `cvv`, `cvc`, `bankaccount`, `iban`), Secrets (`password`, `passphrase`, `apikey`, `accesstoken`, `refreshtoken`, `authtoken`, `secret`), Network (`ipaddress`).
+
+**2. `extractPiiFieldHints(properties)` function (before `defaultRedaction()`):**
+Pure function. Normalization: `key.toLowerCase().replace(/[_-]/g, '')`. Whole-key match only against `PII_CANONICAL_NAMES`. Returns matched source-literal keys in `Object.keys(properties)` iteration order. Returns `[]` if `properties` is falsy, non-object, or array.
+
+**3. Auto-extraction hook in `cmdManifest` capability builder (after capability object construction, before `computeCapabilityDigest`):**
+```js
+capability.redaction.pii_fields = extractPiiFieldHints(
+  capability.input_schema && capability.input_schema.properties
+);
+```
+This overwrites `pii_fields` for every capability on every manifest run. `log_level`, `mask_in_traces`, and `retention_days` are unaffected (preserved from `redactionMap` or `defaultRedaction()`). `sensitivity_class` is never auto-escalated (Constraint 16).
+
+### Why `customRedaction.pii_fields` Was Changed in `tests/smoke.mjs`
+
+The smoke test at line 252 had `pii_fields: ['email', 'ssn']` in `customRedaction`. That value was manually set on an Express `GET /users` capability (no body properties). Under M25, `pii_fields` is always re-derived from `input_schema.properties` on every manifest run. Express `GET /users` has no PII-named properties (`input_schema.properties = {}`), so M25 produces `pii_fields: []`, overwriting the manually-set value. This is the correct M25 behavior (pure extractor, not a preserved annotation). Changed to `pii_fields: []` to match M25 semantics. The test still validates that `log_level: 'redacted'`, `mask_in_traces: true`, and `retention_days: 30` survive a rescan.
+
+### New Fixture and Eval Scenario
+
+**`tests/fixtures/pii-hint-sample/src/server.ts`:**
+Three Fastify routes:
+- `POST /auth` — body fields `email`, `password`: both canonical names → `pii_fields: ['email', 'password']`
+- `POST /register` — body fields `user_email` (→`useremail`), `first_name` (→`firstname`), `phone_number` (→`phonenumber`), `account_type` (→`accounttype`, NOT in set) → `pii_fields: ['user_email', 'first_name', 'phone_number']`
+- `GET /catalog` — no body → `pii_fields: []`
+
+**`tests/evals/governed-cli-scenarios.json`:**
+Added `pii-field-hint-extraction-determinism` scenario (8th, total count now 8): uses `pii-hint-sample` fixture, `framework: fastify`, 3 `repeat_runs`, 3 `expected_routes` with per-route `expected_pii_fields`.
+
+**`tests/eval-regression.mjs`:**
+Added `runPiiFieldHintScenario(tmpRoot, scenario)`: runs `tusq scan` + `tusq manifest` `repeat_runs` times, checks each expected route's `capability.redaction.pii_fields` against `expected_pii_fields`, asserts determinism across runs.
+
+### Verification
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0; "Smoke tests passed" + "Eval regression harness passed (8 scenarios)" |
+
 **Gate satisfaction:** M23 implementation is complete and verified. All 12 M23 smoke items (a)–(k) pass. 6 eval scenarios pass (up from 5, adding `policy-strict-verify-determinism`). Default M22 behavior is byte-for-byte unchanged. No network, manifest (except under `--strict`), or target-product I/O was added. Constraint 11 (opt-in-strict invariant) and Constraint 12 (least-privilege-validation invariant) are satisfied. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.

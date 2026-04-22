@@ -465,6 +465,55 @@ async function runFastifySchemaExtractionScenario(tmpRoot, scenario) {
   }
 }
 
+async function runPiiFieldHintScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await copyFixture(scenario.fixture, project);
+
+  runCli(['init'], { cwd: project });
+
+  const repeatRuns = scenario.repeat_runs || 3;
+  let referenceResults = null;
+
+  for (let i = 0; i < repeatRuns; i++) {
+    runCli(['scan', '.', '--framework', scenario.framework], { cwd: project });
+    runCli(['manifest'], { cwd: project });
+
+    const manifestPath = path.join(project, 'tusq.manifest.json');
+    const manifest = await readJson(manifestPath);
+
+    const runResults = {};
+    for (const expected of scenario.expected_routes) {
+      const capability = manifest.capabilities.find(
+        (c) => c.method === expected.method && c.path === expected.path
+      );
+      if (!capability) {
+        fail(`${scenario.id}: run ${i + 1}: expected capability ${expected.method} ${expected.path} not found`);
+      }
+      const actualPiiFields = capability.redaction && Array.isArray(capability.redaction.pii_fields)
+        ? capability.redaction.pii_fields
+        : [];
+      if (JSON.stringify(actualPiiFields) !== JSON.stringify(expected.expected_pii_fields)) {
+        fail(
+          `${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: ` +
+          `expected pii_fields=${JSON.stringify(expected.expected_pii_fields)}, ` +
+          `got ${JSON.stringify(actualPiiFields)}`
+        );
+      }
+      runResults[`${expected.method} ${expected.path}`] = JSON.stringify(actualPiiFields);
+    }
+
+    if (referenceResults === null) {
+      referenceResults = runResults;
+    } else {
+      for (const [key, value] of Object.entries(runResults)) {
+        if (value !== referenceResults[key]) {
+          fail(`${scenario.id}: non-deterministic pii_fields for ${key}. Run 1: ${referenceResults[key]}, run ${i + 1}: ${value}`);
+        }
+      }
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -482,6 +531,8 @@ async function run() {
       await runStrictDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.id === 'fastify-schema-body-extraction-determinism') {
       await runFastifySchemaExtractionScenario(tmpRoot, scenario);
+    } else if (scenario.id === 'pii-field-hint-extraction-determinism') {
+      await runPiiFieldHintScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

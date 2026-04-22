@@ -1,0 +1,7 @@
+{
+  "name": "pii-hint-sample",
+  "version": "1.0.0",
+  "dependencies": {
+    "fastify": "^4.27.0"
+  }
+}

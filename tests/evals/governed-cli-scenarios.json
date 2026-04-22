@@ -45,15 +45,21 @@
       "policy": {
         "schema_version": "1.0",
         "mode": "dry-run",
-        "allowed_capabilities": ["get_users_api_v1_users_id"],
+        "allowed_capabilities": [
+          "get_users_api_v1_users_id"
+        ],
         "reviewer": "eval@example.com",
         "approved_at": "2026-04-22T05:20:21Z"
       },
       "dry_run_tool": "get_users_api_v1_users_id",
-      "dry_run_arguments": { "id": "eval-42" },
+      "dry_run_arguments": {
+        "id": "eval-42"
+      },
       "expected_plan_method": "GET",
       "expected_plan_path": "/api/v1/users/eval-42",
-      "expected_path_params": { "id": "eval-42" }
+      "expected_path_params": {
+        "id": "eval-42"
+      }
     },
     {
       "id": "policy-dry-run-approval-gate",
@@ -75,33 +81,103 @@
       "policy_init_mode": "dry-run",
       "policy_init_reviewer": "eval-generator@example.com",
       "dry_run_tool": "get_users_api_v1_users_id",
-      "dry_run_arguments": { "id": "gen-99" },
+      "dry_run_arguments": {
+        "id": "gen-99"
+      },
       "expected_plan_method": "GET",
       "expected_plan_path": "/api/v1/users/gen-99",
-      "expected_path_params": { "id": "gen-99" }
+      "expected_path_params": {
+        "id": "gen-99"
+      }
     },
     {
       "id": "policy-strict-verify-determinism",
       "strict_manifest_capabilities": [
-        { "name": "alpha_cap", "approved": true,  "review_needed": false },
-        { "name": "beta_cap",  "approved": false, "review_needed": false },
-        { "name": "gamma_cap", "approved": true,  "review_needed": true  },
-        { "name": "delta_cap", "approved": true,  "review_needed": false }
+        {
+          "name": "alpha_cap",
+          "approved": true,
+          "review_needed": false
+        },
+        {
+          "name": "beta_cap",
+          "approved": false,
+          "review_needed": false
+        },
+        {
+          "name": "gamma_cap",
+          "approved": true,
+          "review_needed": true
+        },
+        {
+          "name": "delta_cap",
+          "approved": true,
+          "review_needed": false
+        }
       ],
-      "strict_policy_caps": ["alpha_cap", "beta_cap", "gamma_cap", "delta_cap", "zeta_cap"],
-      "expected_strict_error_order": ["beta_cap", "gamma_cap", "zeta_cap"],
+      "strict_policy_caps": [
+        "alpha_cap",
+        "beta_cap",
+        "gamma_cap",
+        "delta_cap",
+        "zeta_cap"
+      ],
+      "expected_strict_error_order": [
+        "beta_cap",
+        "gamma_cap",
+        "zeta_cap"
+      ],
       "repeat_runs": 3
     },
     {
       "id": "fastify-schema-body-extraction-determinism",
       "fixture": "fastify-sample",
       "framework": "fastify",
-      "expected_schema_route": { "method": "POST", "path": "/items" },
-      "expected_properties_keys": ["name", "price", "active"],
-      "expected_required": ["name", "price"],
+      "expected_schema_route": {
+        "method": "POST",
+        "path": "/items"
+      },
+      "expected_properties_keys": [
+        "name",
+        "price",
+        "active"
+      ],
+      "expected_required": [
+        "name",
+        "price"
+      ],
       "expected_source": "fastify_schema_body",
       "expected_additional_properties": false,
       "repeat_runs": 3
+    },
+    {
+      "id": "pii-field-hint-extraction-determinism",
+      "fixture": "pii-hint-sample",
+      "framework": "fastify",
+      "repeat_runs": 3,
+      "expected_routes": [
+        {
+          "method": "POST",
+          "path": "/auth",
+          "expected_pii_fields": [
+            "email",
+            "password"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/register",
+          "expected_pii_fields": [
+            "user_email",
+            "first_name",
+            "phone_number"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/catalog",
+          "expected_pii_fields": []
+        }
+      ]
     }
   ]
 }

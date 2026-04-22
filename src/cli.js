@@ -10,6 +10,29 @@ const REDACTION_LOG_LEVELS = ['full', 'redacted', 'silent'];
 const DOMAIN_PREFIX_SEGMENTS = new Set(['api', 'v1', 'v2', 'v3', 'v4', 'v5', 'rest', 'graphql', 'internal', 'public', 'external']);
 const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
 
+// M25: frozen canonical PII field-name set (V1.6). Whole-key normalized match only.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const PII_CANONICAL_NAMES = new Set([
+  // Email
+  'email', 'emailaddress', 'useremail',
+  // Phone
+  'phone', 'phonenumber', 'mobile', 'mobilephone', 'telephone',
+  // Government ID
+  'ssn', 'socialsecuritynumber', 'taxid', 'nationalid',
+  // Name
+  'firstname', 'lastname', 'fullname', 'middlename',
+  // Address
+  'streetaddress', 'zipcode', 'postalcode',
+  // Date of birth
+  'dateofbirth', 'dob', 'birthdate',
+  // Payment
+  'creditcard', 'cardnumber', 'cvv', 'cvc', 'bankaccount', 'iban',
+  // Secrets
+  'password', 'passphrase', 'apikey', 'accesstoken', 'refreshtoken', 'authtoken', 'secret',
+  // Network
+  'ipaddress'
+]);
+
 class CliError extends Error {
   constructor(message, exitCode) {
     super(message);
@@ -384,6 +407,10 @@ function cmdManifest(args) {
       approved_at: approvedAtMap.has(key) ? approvedAtMap.get(key) : null,
       domain: route.domain
     };
+    // M25: auto-extract PII field-name hints from the scanned input_schema.properties
+    capability.redaction.pii_fields = extractPiiFieldHints(
+      capability.input_schema && capability.input_schema.properties
+    );
     capability.capability_digest = computeCapabilityDigest(capability);
     return capability;
   });
@@ -2454,6 +2481,23 @@ function normalizeConstraints(value) {
   }
 
   return out;
+}
+
+// M25: pure extractor — whole-key normalized match against PII_CANONICAL_NAMES.
+// Normalization: toLowerCase() then strip '_' and '-'. No partial/tail/substring match.
+// Returns matched source-literal keys in input_schema.properties iteration order.
+function extractPiiFieldHints(properties) {
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+    return [];
+  }
+  const matched = [];
+  for (const key of Object.keys(properties)) {
+    const normalized = key.toLowerCase().replace(/[_-]/g, '');
+    if (PII_CANONICAL_NAMES.has(normalized)) {
+      matched.push(key);
+    }
+  }
+  return matched;
 }
 
 function defaultRedaction() {
