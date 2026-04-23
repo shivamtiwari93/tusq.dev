@@ -1,28 +1,26 @@
 {
-  "session_id": "session_12a37a8929c047e3",
-  "run_id": "run_9a16c57316a9f9fc",
+  "session_id": "session_351808e1465719b6",
+  "run_id": "run_71b762f4405c0fc5",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-22T11:23:34.757Z",
-  "checkpoint_reason": "turn_assigned",
-  "run_status": "active",
-  "phase": "launch",
-  "last_phase": "launch",
-  "last_turn_id": "turn_cb993aa494e1ed23",
-  "last_completed_turn_id": "turn_d249ee837c39627e",
-  "active_turn_ids": [
-    "turn_cb993aa494e1ed23"
-  ],
-  "last_role": "product_marketing",
+  "last_checkpoint_at": "2026-04-23T01:46:39.599Z",
+  "checkpoint_reason": "turn_accepted",
+  "run_status": "blocked",
+  "phase": "planning",
+  "last_phase": "planning",
+  "last_turn_id": "turn_b68e40fbb7b5d1f4",
+  "last_completed_turn_id": "turn_b68e40fbb7b5d1f4",
+  "active_turn_ids": [],
+  "last_role": "pm",
   "pending_gate": null,
   "pending_run_completion": null,
-  "blocked": false,
+  "blocked": true,
   "baseline_ref": {
-    "git_head": "5172579826b71f325d7bc2844db18a5e019913fa",
+    "git_head": "22e4cbe56ee52f9c149095572cd342c7189391c6",
     "git_branch": "main",
-    "workspace_dirty": false
+    "workspace_dirty": true
   },
   "agent_context": {
     "adapter": null,
-    "dispatch_dir": ".agentxchain/dispatch/turns/turn_cb993aa494e1ed23"
+    "dispatch_dir": null
   }
 }

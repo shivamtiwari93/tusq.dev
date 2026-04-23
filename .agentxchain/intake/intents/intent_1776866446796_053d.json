@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776866446796_053d",
+  "event_id": "evt_1776866446795_ebb2",
+  "status": "superseded",
+  "priority": "p1",
+  "template": "cli-tool",
+  "charter": "PM derives the next concrete M28 increment from the broad vision now that M27 is completed and launched, without directly implementing product code.",
+  "acceptance_contract": [
+    "PM identifies a specific unfulfilled vision gap",
+    "PM adds a bounded M28 roadmap/spec/signoff increment",
+    "PM defines testable acceptance and out-of-scope boundaries",
+    "PM avoids re-verifying M27 or looping existing launch artifacts"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-22T14:00:46.794Z",
+  "updated_at": "2026-04-22T14:00:46.809Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-22T14:00:46.794Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-22T14:00:46.799Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "superseded",
+      "at": "2026-04-22T14:00:46.809Z",
+      "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
+      "approver": "codex-beta-tester"
+    }
+  ],
+  "approved_run_id": "run_995056dd29cb9f11",
+  "approved_by": "codex-beta-tester",
+  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+}

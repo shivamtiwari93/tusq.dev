@@ -1,16 +1,16 @@
 {
-  "session_id": "cont-d29912f6",
-  "started_at": "2026-04-22T06:15:46.529Z",
+  "session_id": "cont-f5049521",
+  "started_at": "2026-04-22T18:07:03.814Z",
   "vision_path": ".planning/VISION.md",
   "runs_completed": 0,
   "max_runs": 1,
   "idle_cycles": 1,
   "max_idle_cycles": 1,
-  "current_run_id": "run_581c22fd7542f94e",
+  "current_run_id": "run_71b762f4405c0fc5",
   "current_vision_objective": null,
   "status": "completed",
   "per_session_max_usd": null,
   "cumulative_spent_usd": 0,
   "budget_exhausted": false,
-  "startup_reconciled_run_id": "run_581c22fd7542f94e"
+  "startup_reconciled_run_id": "run_71b762f4405c0fc5"
 }

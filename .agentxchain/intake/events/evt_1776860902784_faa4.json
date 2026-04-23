@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776860902784_faa4",
+  "source": "schedule",
+  "category": "vision_gap",
+  "created_at": "2026-04-22T12:28:22.783Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "title": "Derive M27 retention-policy recommendation increment",
+    "summary": "M26 shipped category labels but VISION.md still calls for redaction and retention defaults. Derive a bounded next increment that uses pii_categories to produce reviewer-owned policy recommendations without mutating retention_days/log_level/mask_in_traces automatically or claiming compliance/runtime enforcement.",
+    "vision_refs": [
+      ".planning/VISION.md:167",
+      ".planning/VISION.md:168",
+      ".planning/PM_SIGNOFF.md:481"
+    ],
+    "baseline": "M26 completed at c1cd53a"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "M26 completed at git:c1cd53a6dcf04532fe9f27e610bbfb688bb2ced4; VISION.md lines 167-168 still name sensitive-field detection and redaction/retention defaults as broader product scope."
+    }
+  ],
+  "dedup_key": "schedule:7fa44c1ba5bb76cc"
+}

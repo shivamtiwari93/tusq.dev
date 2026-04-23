@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1776866446795_ebb2",
+  "source": "manual",
+  "category": "operator_injection",
+  "created_at": "2026-04-22T14:00:46.794Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "Derive the next bounded tusq.dev roadmap increment after M27 from .planning/VISION.md. Focus on an unfulfilled vision module that is not already complete in ROADMAP, such as eval/regression infrastructure, rollout tooling, skill/domain grouping, runtime instrumentation, or capability-quality review. PM must update ROADMAP/SYSTEM_SPEC/PM_SIGNOFF/command-surface with one concrete M28-sized increment and explicit out-of-scope boundaries before implementation.",
+    "injected": true,
+    "priority": "p1"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Derive the next bounded tusq.dev roadmap increment after M27 from .planning/VISION.md. Focus on an unfulfilled vision module that is not already complete in ROADMAP, such as eval/regression infrastructure, rollout tooling, skill/domain grouping, runtime instrumentation, or capability-quality review. PM must update ROADMAP/SYSTEM_SPEC/PM_SIGNOFF/command-surface with one concrete M28-sized increment and explicit out-of-scope boundaries before implementation."
+    }
+  ],
+  "dedup_key": "manual:9976b85710b3671f"
+}

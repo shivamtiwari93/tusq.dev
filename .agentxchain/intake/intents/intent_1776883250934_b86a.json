@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1776883250934_b86a",
+  "event_id": "evt_1776883250934_6eaa",
+  "status": "superseded",
+  "priority": "p0",
+  "template": "cli-tool",
+  "charter": "PM should derive the next bounded roadmap/spec/intake increment from .planning/VISION.md, current ROADMAP/SYSTEM_SPEC/docs, and product gaps after M27. Do not re-verify or seek signoff for stale M27; produce new M28-ready planning scope if remaining vision supports it.",
+  "acceptance_contract": [
+    "Creates or updates planning/intake artifacts for a new bounded post-M27 increment",
+    "Aligns the increment with explicit remaining VISION.md V2/V3 scope",
+    "Does not approve or loop on stale M27 planning_signoff",
+    "Leaves product implementation to later AgentXchain governed roles"
+  ],
+  "phase_scope": "planning",
+  "requires_human_start": true,
+  "target_run": null,
+  "created_at": "2026-04-22T18:40:50.933Z",
+  "updated_at": "2026-04-22T18:40:50.936Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-22T18:40:50.933Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-22T18:40:50.935Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "superseded",
+      "at": "2026-04-22T18:40:50.936Z",
+      "reason": "planning artifacts for this intent already exist on disk; intent superseded during approval",
+      "approver": "operator"
+    }
+  ],
+  "approved_run_id": "run_71b762f4405c0fc5",
+  "approved_by": "operator",
+  "archived_reason": "planning artifacts for this intent already exist on disk; intent superseded during approval"
+}
