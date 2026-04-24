@@ -2462,3 +2462,25 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn c7d0bee8 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Attempt 3: independently re-verified all 108 acceptance criteria PASS on HEAD a07c0e2; confirmed no source drift in baseline-commit; updated ship-verdict.md with challenge entry; qa_ship_verdict gate artifacts complete; ship verdict stands as SHIP; awaiting human approval to advance to launch.
+- **Decision DEC-001:** Challenged prior accepted QA turn (turn_430f9b5d0f850456, attempt=2, HEAD 4ed3270) and subsequent baseline commit a07c0e2 independently. git diff 4ed3270..a07c0e2 --name-only shows zero src/ or tests/ changes — only orchestrator state, QA artifacts, HUMAN_TASKS.md, and TALK.md were touched. No source regression possible.
+- **Decision DEC-002:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD a07c0e2. npm test exits 0 with Smoke tests passed and Eval regression harness passed (10 scenarios). CLI surface confirmed: 13 commands, redaction at position 11, redaction review --help exits 0 with correct three-flag surface and reviewer-aid framing.
+- **Decision DEC-003:** Ship verdict stands as SHIP. All three qa_ship_verdict gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) are present and complete. Ship-verdict.md updated with attempt-3 challenge entry. Status is needs_human because the qa_ship_verdict gate explicitly requires human approval before transitioning to launch.
+- **Proposed next:** human
+
+---
+
+## Turn 4a338b66 — product_marketing (launch)
+
+- **Status:** needs_human
+- **Summary:** Re-verified that the four launch_ready gate artifacts already describe the shipped M27 boundary on HEAD f353172; made zero edits per DEC-908/DEC-909 (do not churn launch artifacts across duplicate passes); awaiting human approval to close launch_ready.
+- **Decision DEC-001:** Challenged the prior accepted turn (turn_c7d0bee84d904477, role=qa, phase=qa, HEAD f353172) rather than rubber-stamping it. That turn was a QA re-verification pass that only modified .planning/ship-verdict.md; git diff a07c0e2..f353172 --name-only shows a single file change restricted to a QA-owned artifact. No launch-owned artifact was touched; no shipped-product boundary changed.
+- **Decision DEC-002:** Made zero edits to launch-owned artifacts this turn. The four launch_ready gate files on HEAD f353172 already carry the shipped M27 boundary: MESSAGING.md 10 M27/redaction/Constraint-19-or-20 mentions, LAUNCH_PLAN.md 3, CONTENT_CALENDAR.md 2, ANNOUNCEMENT.md 7. All four describe the `redaction` top-level CLI noun at position 11 of the 13-command surface, the `tusq redaction review [--manifest <path>] [--capability <name>] [--json]` flag surface, the strictly-read-only invariant, the zero-digest-flip invariant, the empty-capabilities valid-exit-0 rule, the null/unknown manifest-field fallback, the empty-stdout-on-exit-1 rule, the em-dash U+2014 byte-exactness invariant, and the Constraints 19/20 reviewer-aid framing boundary.
+- **Decision DEC-003:** Status is needs_human and proposed_next_role is 'human' because the launch_ready exit gate for this run explicitly requires human approval before run completion. run_completion_request is true because launch is the terminal phase and all four gate artifacts accurately describe the shipped boundary with all upstream gates (planning_signoff, implementation_complete, qa_ship_verdict) passed. phase_transition_request is null because launch is terminal.
+- **Proposed next:** human
+
+---
+
