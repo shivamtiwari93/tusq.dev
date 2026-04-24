@@ -1101,3 +1101,48 @@ Rationale: highest operator impact per implementation cost. Every capability tod
 - Baseline `npm test` exits 0: "Smoke tests passed" + "Eval regression harness passed (10 scenarios)".
 - No source changes were required or made; this turn is analysis/proposal only.
 - `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
+## Dev Turn turn_b8db06d02a8ef4cd — Idle Expansion #2 Baseline Verification (2026-04-24)
+
+**Run:** run_ce89ef5bd4b8cca8
+**HEAD:** cc4ce8b (workspace dirty on orchestrator state files only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_e614e7a53ef67b3a, role=pm, phase=planning, intent_1777046032635_2eab) operated on the second idle-expansion intent for this run. The PM produced a formal `idle_expansion_result` with `kind=new_intake_intent` naming M28 (Sensitivity Class Inference from Static Manifest Evidence) and correctly set `status: needs_human` because M28 acceptance requires human sign-off at the planning_signoff gate before any new implementation run starts.
+
+The PM turn cannot satisfy the `implementation_complete` gate for this run — it is a planning-phase artifact producer, not a dev implementation turn. Critically, the PM's `needs_human` status refers to M28's own future run needing human approval; it does not block closing the implementation_complete gate for this idle-expansion run, which is analysis-only by charter. This dev turn challenges that interpretation explicitly and proceeds accordingly.
+
+Not rubber-stamping: The PM turn did NOT modify dev-owned artifacts (src/, tests/), did NOT add new source or test coverage, and did NOT advance the implementation gate — all correct for its role. The M28 proposal is a planning-phase proposal artifact; implementing M28 in this turn would be premature (no human planning_signoff for M28 exists yet).
+
+### Scope of This Turn
+
+This idle-expansion run (run_ce89ef5bd4b8cca8) was chartered to: inspect VISION.md, ROADMAP.md, and SYSTEM_SPEC.md; derive the next concrete increment; emit a structured idle_expansion_result. That work is complete:
+
+- `intent_1777034815829_43d8` (iteration 1, run_71b762f4405c0fc5): satisfied by dev turn turn_c53476b839e7413c — analysis recorded above.
+- `intent_1777046032635_2eab` (iteration 1, run_ce89ef5bd4b8cca8): satisfied by PM turn turn_e614e7a53ef67b3a — formal idle_expansion_result with M28 proposal and 11-item acceptance contract.
+
+This dev turn's responsibility is: (1) independently verify the baseline is stable on HEAD cc4ce8b, (2) confirm no source drift introduced by the idle-expansion passes, and (3) close the implementation_complete gate.
+
+**M28 is NOT implemented in this turn.** M28 requires a separate run with human-approved planning artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) before dev work begins. Implementing M28 here would bypass the planning_signoff gate for an unchartered increment.
+
+### Baseline Re-Verification (HEAD cc4ce8b)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (10 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git log --oneline -5` | cc4ce8b checkpoint (qa, turn_b2194361320f2d0f); 1c9a609 checkpoint (dev, turn_c53476b839e7413c); no source drift since last verified dev turn |
+
+**No source changes were made or required.** The idle-expansion analysis is analysis/proposal only. The shipped V1.8 boundary (M1–M27, 13 CLI commands, 10 eval scenarios) is intact and verified.
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive implementation and verification content across all M17–M27 milestones plus both idle-expansion analysis records.
+- Fresh independent verification pass completed on HEAD cc4ce8b: `npm test` exits 0.
+- No source changes required or made.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
