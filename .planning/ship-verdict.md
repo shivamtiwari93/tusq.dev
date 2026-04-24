@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_d79e197ff4f1bbe2 (role=qa, attempt=3, 2026-04-24)
+
+This QA turn (attempt 3, turn_d79e197ff4f1bbe2) challenges the prior accepted QA turn (turn_c7d0bee84d904477, role=qa, HEAD f353172) and the single subsequent non-governed commit (ae1748b, "chore: update project docs") independently rather than rubber-stamping them.
+
+**Challenge 1 — Verify no source drift from f353172 to HEAD ae1748b.** `git diff f353172..ae1748b --name-only` shows only `HUMAN_TASKS.md` and `TALK.md` changed. Zero `src/`, `tests/`, or QA-owned planning artifact files were modified. The prior QA checkpoint's verification remains valid. Challenge resolved: no source regression possible.
+
+**Challenge 2 — Independent baseline re-verification on HEAD ae1748b (2026-04-24).**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, `--manifest`/`--capability`/`--json` flag surface, `This is a reviewer aid, not a runtime enforcement gate.` framing.
+Challenge resolved: shipped behavior is stable.
+
+**Challenge 3 — All 108 acceptance criteria remain PASS on HEAD ae1748b.** acceptance-matrix.md has 108 rows, 0 FAIL entries. M28 remains analysis-only (IMPLEMENTATION_NOTES.md) and is not shipped scope. Challenge resolved.
+
+**Challenge 4 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-108 (all PASS). RELEASE_NOTES.md documents M1–M27 including M27 V1.8 section. ship-verdict.md carries independent challenge entries across all attempts. No artifact is missing or incomplete. Challenge resolved.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD ae1748b. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_c7d0bee84d904477 (role=qa, attempt=3, 2026-04-24)
 
 This QA turn (attempt 3) challenges the prior accepted QA turn (turn_430f9b5d0f850456, attempt=2, HEAD 4ed3270) and the subsequent baseline-commit (a07c0e2) independently rather than rubber-stamping them.
