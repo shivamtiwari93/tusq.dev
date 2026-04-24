@@ -2,6 +2,25 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_368ba5736ba64849 (role=qa, attempt=5, 2026-04-24)
+
+This QA turn (attempt 5, turn_368ba5736ba64849) challenges the prior accepted dev turn (turn_f951b3e7860399e4, role=dev, HEAD 2ed0882) independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff bb71c9f..2ed0882 --name-only` returns exactly one file: `.planning/IMPLEMENTATION_NOTES.md`. Zero `src/`, `tests/`, or QA-owned planning artifact files were modified. The dev turn correctly declined to implement M28 because M28 requires human approval at the planning_signoff gate and is absent from SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, and command-surface.md. Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — No new acceptance criteria required.** The dev turn's IMPLEMENTATION_NOTES.md update documents the idle-expansion analysis scope and gate satisfaction with zero new shipped scope. M28 remains unchartered. The shipped scope through M27 remains fully covered by REQ-001–REQ-108 in acceptance-matrix.md. Challenge resolved: 108 criteria remain the complete and accurate coverage.
+
+**Challenge 3 — Independent baseline re-verification on HEAD 2ed0882 (2026-04-24).**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+Challenge resolved: shipped behavior is stable on HEAD 2ed0882.
+
+**Challenge 4 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-108 (all PASS). RELEASE_NOTES.md documents M1–M27 including M27 V1.8 section. ship-verdict.md carries independent challenge entries across all attempts. No artifact is missing or incomplete. Challenge resolved.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD 2ed0882. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_94765272190b50fb (role=qa, attempt=4, 2026-04-24)
 
 This QA turn (attempt 4, turn_94765272190b50fb) challenges the prior accepted dev turn (turn_5e198b0f29fbb6fe, role=dev, HEAD 0bb4657) independently rather than rubber-stamping it.
