@@ -1,26 +1,682 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_71b762f4405c0fc5",
+  "run_id": "run_ce89ef5bd4b8cca8",
   "project_id": "tusq-dev",
-  "status": "blocked",
-  "phase": "planning",
-  "accepted_integration_ref": "git:22e4cbe56ee52f9c149095572cd342c7189391c6",
-  "active_turns": {},
-  "turn_sequence": 5,
-  "last_completed_turn_id": "turn_b68e40fbb7b5d1f4",
-  "blocked_on": "human:planning_signoff gate explicitly requires human approval before transitioning from planning to implementation. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) cover M27 scope completely and are internally consistent with SYSTEM_SPEC Constraints 19 and 20. Baseline npm test green (10 scenarios); 13-command CLI surface intact with `redaction` noun at position 11. No PM edits are defensible without a new charter (see DEC-900). An agent PM cannot self-declare gate satisfaction on a human-required gate; routing to human reviewer.",
-  "blocked_reason": {
-    "category": "needs_human",
-    "recovery": {
-      "typed_reason": "needs_human",
-      "owner": "human",
-      "recovery_action": "Resolve the stated issue, then run agentxchain resume",
-      "turn_retained": false,
-      "detail": "planning_signoff gate explicitly requires human approval before transitioning from planning to implementation. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) cover M27 scope completely and are internally consistent with SYSTEM_SPEC Constraints 19 and 20. Baseline npm test green (10 scenarios); 13-command CLI surface intact with `redaction` noun at position 11. No PM edits are defensible without a new charter (see DEC-900). An agent PM cannot self-declare gate satisfaction on a human-required gate; routing to human reviewer."
-    },
-    "blocked_at": "2026-04-23T01:46:39.107Z",
-    "turn_id": "turn_b68e40fbb7b5d1f4"
+  "status": "active",
+  "phase": "qa",
+  "accepted_integration_ref": "git:4ed32704b1ffc41827622c92aa0e8e3dc33fcfb8",
+  "active_turns": {
+    "turn_430f9b5d0f850456": {
+      "turn_id": "turn_430f9b5d0f850456",
+      "assigned_role": "qa",
+      "status": "failed_acceptance",
+      "attempt": 2,
+      "assigned_at": "2026-04-24T18:28:18.515Z",
+      "deadline_at": "2026-04-24T18:48:18.646Z",
+      "runtime_id": "local-qa",
+      "baseline": {
+        "kind": "git_worktree",
+        "head_ref": "4ed32704b1ffc41827622c92aa0e8e3dc33fcfb8",
+        "clean": false,
+        "captured_at": "2026-04-24T18:28:18.516Z",
+        "dirty_snapshot": {
+          ".planning/ship-verdict.md": "sha256:f9a344a48f1a288be3dd580e73565e115c431db88f37a656a2d8627c74bd6366",
+          ".agentxchain/reports/report-run_ce89ef5bd4b8cca8.md": "sha256:a2284c28e3cdc3dbb897af5aa25a3b7a55ae9f86ea72e7e637513969bfa03b7f",
+          ".planning/acceptance-matrix.md": "sha256:4f86e9472026b233fc35498861109a8994e314b6419ef50a50da470a0862a044"
+        }
+      },
+      "assigned_sequence": 6,
+      "concurrent_with": [],
+      "reissued_from": "turn_6270cccb6235a4e8",
+      "dispatched_at": "2026-04-24T18:33:11.600Z",
+      "conflict_state": null,
+      "failed_at": "2026-04-24T18:34:39.312Z",
+      "failure_reason": "Observed artifact mismatch: Undeclared file changes detected (observed but not in files_changed): .agentxchain/reports/report-run_ce89ef5bd4b8cca8.md, .planning/ship-verdict.md. If these files were changed by the operator (not the turn), add them to the dispatch baseline by committing or stashing them before dispatch.",
+      "last_rejection": {
+        "turn_id": "turn_430f9b5d0f850456",
+        "attempt": 2,
+        "rejected_at": "2026-04-24T18:32:27.997Z",
+        "reason": "framework report in workspace before dispatch baseline was captured - need clean baseline",
+        "validation_errors": [
+          "File conflict detected: .planning/acceptance-matrix.md, .planning/ship-verdict.md"
+        ],
+        "failed_stage": "conflict",
+        "conflict_context": {
+          "prior_attempt_turn_id": "turn_430f9b5d0f850456",
+          "prior_attempt_number": 2,
+          "conflict_type": "file_conflict",
+          "conflicting_files": [
+            ".planning/acceptance-matrix.md",
+            ".planning/ship-verdict.md"
+          ],
+          "accepted_turns_since": [
+            {
+              "turn_id": "turn_1e8cabbfdda98f5d",
+              "role": "product_marketing",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_00305ef09c9695fd",
+              "role": "product_marketing",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_ab4a99d24320161c",
+              "role": "product_marketing",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_d2867074f79796bc",
+              "role": "product_marketing",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_5d0694e7ed0e70b7",
+              "role": "product_marketing",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_1f89182d2701a838",
+              "role": "pm",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            }
+          ],
+          "forward_revision_files": [
+            ".planning/acceptance-matrix.md",
+            ".planning/ship-verdict.md"
+          ],
+          "forward_revision_turns_since": [
+            {
+              "turn_id": "turn_043d08d995070cfa",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_e6b31574217ab1d2",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_bb25fb1211bb2ac8",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_013f8052c75b2636",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_2f897851dee4ca6c",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_e104571b9fadb751",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_1922c14c34a16cff",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_46de5bddccc6ed25",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_1e99db5881d4cad6",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_af4fdc071f440a23",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_1dfcc7fe5582abf9",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_3ae514f35df1db9d",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_a325dad1e69c9d1e",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_2bc1f5e196f81cda",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_7401f68ff8ff8bbb",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_6098b7a0a7aec86b",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_07e9f20a4e140acf",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_d86b8fb1c45a611a",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_65565d72e96362d1",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_fc91760b6fd1ad00",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_90173ffadc289753",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_8b946491c6c37565",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_2aae9109760b8f5f",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_8fa593ad7654ffa5",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_538122bf13463265",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_e2e63fc4e6a7eaff",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_f5768367a963d0ff",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_daa2308a34863e76",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_687bfd76c850ef17",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_c61f860faf22511c",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_04df09a5f352be56",
+              "role": "qa",
+              "files_changed": [
+                ".planning/acceptance-matrix.md",
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_7de1d2affebb3f59",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            },
+            {
+              "turn_id": "turn_b2194361320f2d0f",
+              "role": "qa",
+              "files_changed": [
+                ".planning/ship-verdict.md"
+              ]
+            }
+          ],
+          "non_conflicting_files_preserved": [],
+          "guidance": "Rebase the rejected work on top of the current workspace state and preserve non-conflicting changes."
+        }
+      },
+      "conflict_context": {
+        "prior_attempt_turn_id": "turn_430f9b5d0f850456",
+        "prior_attempt_number": 2,
+        "conflict_type": "file_conflict",
+        "conflicting_files": [
+          ".planning/acceptance-matrix.md",
+          ".planning/ship-verdict.md"
+        ],
+        "accepted_turns_since": [
+          {
+            "turn_id": "turn_1e8cabbfdda98f5d",
+            "role": "product_marketing",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_00305ef09c9695fd",
+            "role": "product_marketing",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_ab4a99d24320161c",
+            "role": "product_marketing",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_d2867074f79796bc",
+            "role": "product_marketing",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_5d0694e7ed0e70b7",
+            "role": "product_marketing",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_1f89182d2701a838",
+            "role": "pm",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          }
+        ],
+        "forward_revision_files": [
+          ".planning/acceptance-matrix.md",
+          ".planning/ship-verdict.md"
+        ],
+        "forward_revision_turns_since": [
+          {
+            "turn_id": "turn_043d08d995070cfa",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_e6b31574217ab1d2",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_bb25fb1211bb2ac8",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_013f8052c75b2636",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_2f897851dee4ca6c",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_e104571b9fadb751",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_1922c14c34a16cff",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_46de5bddccc6ed25",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_1e99db5881d4cad6",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_af4fdc071f440a23",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_1dfcc7fe5582abf9",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_3ae514f35df1db9d",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_a325dad1e69c9d1e",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_2bc1f5e196f81cda",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_7401f68ff8ff8bbb",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_6098b7a0a7aec86b",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_07e9f20a4e140acf",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_d86b8fb1c45a611a",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_65565d72e96362d1",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_fc91760b6fd1ad00",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_90173ffadc289753",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_8b946491c6c37565",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_2aae9109760b8f5f",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_8fa593ad7654ffa5",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_538122bf13463265",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_e2e63fc4e6a7eaff",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_f5768367a963d0ff",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_daa2308a34863e76",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_687bfd76c850ef17",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_c61f860faf22511c",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_04df09a5f352be56",
+            "role": "qa",
+            "files_changed": [
+              ".planning/acceptance-matrix.md",
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_7de1d2affebb3f59",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          },
+          {
+            "turn_id": "turn_b2194361320f2d0f",
+            "role": "qa",
+            "files_changed": [
+              ".planning/ship-verdict.md"
+            ]
+          }
+        ],
+        "non_conflicting_files_preserved": [],
+        "guidance": "Rebase the rejected work on top of the current workspace state and preserve non-conflicting changes."
+      },
+      "started_at": "2026-04-24T18:33:12.574Z",
+      "worker_attached_at": "2026-04-24T18:33:12.574Z",
+      "worker_pid": 26254,
+      "first_output_at": "2026-04-24T18:33:13.558Z",
+      "first_output_stream": "stdout"
+    }
   },
+  "turn_sequence": 6,
+  "last_completed_turn_id": "turn_b8db06d02a8ef4cd",
+  "blocked_on": null,
+  "blocked_reason": null,
   "escalation": null,
   "pending_phase_transition": null,
   "pending_run_completion": null,
@@ -28,87 +684,45 @@
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "pending",
-    "implementation_complete": "pending",
+    "planning_signoff": "passed",
+    "implementation_complete": "passed",
     "qa_ship_verdict": "pending",
     "launch_ready": "pending"
   },
-  "budget_reservations": {},
+  "budget_reservations": {
+    "turn_430f9b5d0f850456": {
+      "reserved_usd": 2,
+      "role_id": "qa",
+      "created_at": "2026-04-24T18:28:18.515Z",
+      "reissued_from": "turn_6270cccb6235a4e8"
+    }
+  },
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-22T14:02:18.399Z",
-  "phase_entered_at": "2026-04-22T14:02:18.399Z",
+  "created_at": "2026-04-24T15:53:57.733Z",
+  "phase_entered_at": "2026-04-24T18:25:40.107Z",
   "provenance": {
-    "trigger": "continuation",
-    "parent_run_id": "run_995056dd29cb9f11",
-    "trigger_reason": null,
-    "intake_intent_id": null,
-    "created_by": "operator"
+    "trigger": "intake",
+    "parent_run_id": null,
+    "trigger_reason": "[idle-expansion #1] Inspect VISION.md, ROADMAP.md, SYSTEM_SPEC.md, and current project state.\nDerive the next concrete increment as a new intake intent with charter + acceptance_contract + priority.\nIf ALL vision goals are genuinely exhausted, declare vision_exhausted with per-heading classification.\n\nCONSTRAINTS:\n- Do NOT modify .planning/VISION.md (human-owned, read-only).\n- ROADMAP.md and SYSTEM_SPEC.md may be updated as supporting evidence.\n- Every proposed intent MUST cite at least one VISION.md heading from the snapshot below.\n- Output MUST be a structured idle_expansion_result (new_intake_intent or vision_exhausted).\n\nVISION headings snapshot:\n  - Vision for tusq.dev\n  - Mission\n  - The fight\n  - The promise\n  - What tusq.dev does\n  - The core insight\n  - The canonical artifact\n  - Why we move fast\n  - Why wide works for us\n  - Coherence is expensive, implementation is cheaper than before\n  - Wide OSS compounds faster than narrow OSS\n  - Breadth turns into retention\n  - The guardrails on width\n  - Design principles\n  - Velocity over surface area\n  - Reviewable over opaque\n  - Explicit side effects\n  - Self-hostable or it does not ship\n  - Plugins are how we scale\n  - Product modules\n  - The full transition we automate\n  - Capability discovery and normalization\n  - Auth and permission mapping\n  - Data and schema understanding\n  - Runtime instrumentation\n  - Safe execution wrappers\n  - Skill and agent composition\n  - AI-facing interface generation\n  - Eval and regression infrastructure\n  - Documentation and adoption surfaces\n  - Migration and rollout tooling\n  - Governance and review workflows\n  - Competitive transition intelligence\n  - Roadmap shape: V1, V2, V3\n  - Must-have in V1\n  - High-leverage in V2\n  - Moat features in V3\n  - Who this is for\n  - Why open source\n  - What we resist\n  - Vision for maturity\n  - Relationship to tusq.cloud\n  - Final statement\n\nSource manifest:\n  - .planning/VISION.md (19 headings, 19041 bytes)\n  - .planning/ROADMAP.md (4 headings, 62174 bytes)\n  - .planning/SYSTEM_SPEC.md (18 headings, 214957 bytes, warning: exceeds_64kb)",
+    "intake_intent_id": "intent_1777046032635_2eab",
+    "created_by": "continuous_loop"
   },
-  "inherited_context": {
-    "schema_version": "0.1",
-    "parent_run_id": "run_995056dd29cb9f11",
-    "parent_status": "blocked",
-    "parent_completed_at": null,
-    "parent_phases_completed": [
-      "planning"
-    ],
-    "parent_roles_used": [
-      "pm"
-    ],
-    "parent_blocked_reason": "human:planning_signoff gate explicitly requires human approval before transitioning from planning to implementation. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) now cover M27 scope and are internally consistent with SYSTEM_SPEC Constraints 19 and 20. Baseline npm test is green (9 scenarios). An agent PM cannot self-declare gate satisfaction regardless of artifact completeness; routing to human reviewer.",
-    "parent_retrospective": {
-      "headline": "planning_signoff gate explicitly requires human approval before transitioning from planning to implementation. All four PM-owned workflow-kit artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) now cover M27 scope and are internally consistent with SYSTEM_SPEC Constraints 19 and 20. Baseline npm test is green (9 scenarios). An agent PM cannot self-declare gate satisfaction regardless of artifact completeness; routing to human reviewer.",
-      "terminal_reason": "needs_human",
-      "next_operator_action": "Resolve the stated issue, then run agentxchain resume",
-      "follow_on_hint": null
-    },
-    "recent_decisions": [
-      {
-        "id": "DEC-002",
-        "statement": "M27 adds a new CLI noun `redaction` parallel to the existing `policy` noun (M21/M22/M23), not a top-level `pii-review` command or a flag on the existing `tusq review` approval-gate command.",
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": "DEC-003",
-        "statement": "The V1.8 nine-entry PII_REVIEW_ADVISORY_BY_CATEGORY advisory set is frozen in src/cli.js and enumerated in SYSTEM_SPEC § M27. No override file, no environment variable, no flag, no locale in V1.8. Every advisory ends with a reviewer-directive reminder ('reviewer: ...') so the output makes clear the decision still belongs to the reviewer.",
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": "DEC-004",
-        "statement": "M27 causes zero capability_digest flips on first post-M27 run because the manifest is not mutated. In contrast with M25 (narrow flip on PII-name capabilities) and M26 (broad flip across every capability), M27 is observationally invisible in `tusq diff`.",
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": "DEC-005",
-        "statement": "Challenged the prior accepted turn (turn_e21bcbf7e08e9f4c, role=product_marketing, phase=launch, HEAD c1cd53a) rather than rubber-stamping. The M26 launch pass completed (DEC-887–DEC-889) but cannot satisfy a fresh M27 planning acceptance contract; M27 requires its own planning artifacts.",
-        "decided_by": "pm",
-        "phase": "planning"
-      },
-      {
-        "id": "DEC-006",
-        "statement": "Modified only the four PM-owned planning_signoff gate artifacts: .planning/PM_SIGNOFF.md, .planning/ROADMAP.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md. Did NOT modify reserved orchestrator state files, QA-owned artifacts, launch-owned artifacts, dev-owned src/, or intake-template stubs.",
-        "decided_by": "pm",
-        "phase": "planning"
-      }
-    ],
-    "recent_accepted_turns": [
-      {
-        "turn_id": "turn_4a4545d1e454f260",
-        "role": "pm",
-        "summary": "Derived M27 as a bounded reviewer-facing PII redaction review subcommand (tusq redaction review) that aggregates M25/M26 PII evidence with frozen advisory text and strictly does not mutate the manifest, retention_days, log_level, mask_in_traces, sensitivity_class, serve, or policy verify.",
-        "phase": "planning"
-      }
-    ],
-    "inherited_at": "2026-04-22T14:02:18.394Z"
-  },
+  "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": null,
-  "pending_delegation_review": null
+  "next_recommended_role": "qa",
+  "pending_delegation_review": null,
+  "non_progress_signature": null,
+  "non_progress_count": 0,
+  "last_completed_turn": {
+    "turn_id": "turn_b8db06d02a8ef4cd",
+    "role": "dev",
+    "phase": "implementation",
+    "checkpoint_sha": "4ed32704b1ffc41827622c92aa0e8e3dc33fcfb8",
+    "checkpointed_at": "2026-04-24T18:25:40.643Z",
+    "intent_id": null
+  }
 }

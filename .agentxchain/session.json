@@ -1,22 +1,24 @@
 {
-  "session_id": "session_351808e1465719b6",
-  "run_id": "run_71b762f4405c0fc5",
+  "session_id": "session_7fd43c6179deb6dc",
+  "run_id": "run_ce89ef5bd4b8cca8",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-23T01:46:39.599Z",
-  "checkpoint_reason": "turn_accepted",
-  "run_status": "blocked",
-  "phase": "planning",
-  "last_phase": "planning",
-  "last_turn_id": "turn_b68e40fbb7b5d1f4",
-  "last_completed_turn_id": "turn_b68e40fbb7b5d1f4",
-  "active_turn_ids": [],
-  "last_role": "pm",
+  "last_checkpoint_at": "2026-04-24T18:34:39.364Z",
+  "checkpoint_reason": "acceptance_failed",
+  "run_status": "active",
+  "phase": "qa",
+  "last_phase": "qa",
+  "last_turn_id": "turn_430f9b5d0f850456",
+  "last_completed_turn_id": "turn_b8db06d02a8ef4cd",
+  "active_turn_ids": [
+    "turn_430f9b5d0f850456"
+  ],
+  "last_role": "qa",
   "pending_gate": null,
   "pending_run_completion": null,
-  "blocked": true,
+  "blocked": false,
   "baseline_ref": {
-    "git_head": "22e4cbe56ee52f9c149095572cd342c7189391c6",
-    "git_branch": "main",
+    "git_head": "96d2af256acd82c12b72a9a04e12d34117c95d3e",
+    "git_branch": "agentxchain-dogfood-2026-04",
     "workspace_dirty": true
   },
   "agent_context": {

@@ -2,6 +2,51 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_430f9b5d0f850456 (role=qa, attempt=2, 2026-04-24)
+
+This QA turn (attempt 2) is issued because the prior attempt (turn_6270cccb6235a4e8) updated only ship-verdict.md while the `qa_ship_verdict` gate also requires acceptance-matrix.md and RELEASE_NOTES.md to be complete. This turn independently re-verifies all three artifacts and confirms the gate is fully satisfied on HEAD 4ed3270.
+
+**Challenge 1 — Verify no source drift from dev idle_expansion passes.** The last two dev turns (turn_b8db06d02a8ef4cd on HEAD 4ed3270 and turn_c53476b839e7413c on HEAD 1c9a609) were both analysis-only idle_expansion passes that modified only `.planning/IMPLEMENTATION_NOTES.md`. **Verified:** `git show 4ed3270 --stat` shows exactly one file changed: `.planning/IMPLEMENTATION_NOTES.md`. No `src/`, `tests/`, or non-planning artifact was modified. Challenge resolved: no source regression is possible.
+
+**Challenge 2 — acceptance-matrix.md covers shipped scope completely.** REQ-001–REQ-108 are all PASS. The M28 proposal documented in IMPLEMENTATION_NOTES.md is not shipped scope and correctly absent from acceptance criteria. **Verified:** acceptance-matrix.md has 108 rows, all PASS, with independent verification notes for M26 and M27. Challenge resolved: acceptance coverage is complete and accurate.
+
+**Challenge 3 — RELEASE_NOTES.md covers M1–M27 completely.** The M27 (V1.8) section is present at lines 416–454, documenting `tusq redaction review`, the frozen advisory set, all key invariants (read-only, deterministic, em-dash byte-exact, empty-capabilities exit-0, stderr-only on failure), and the Constraints 19/20 reviewer-aid framing boundary. **Verified:** file read confirmed M27 section present and accurate. Challenge resolved: release notes are complete.
+
+**Challenge 4 — ship-verdict.md prior attempt gap.** The prior QA attempt (turn_6270cccb6235a4e8) added a challenge entry to this file but did not update acceptance-matrix.md or RELEASE_NOTES.md in the same turn, triggering a gate_artifacts_incomplete reissue. This attempt (turn_430f9b5d0f850456) confirms those two artifacts already carry correct content from an earlier accepted QA turn (turn_642043849a146591 / turn_7de1d2affebb3f59 on HEAD d242727/c8ffa38). No content changes to acceptance-matrix.md or RELEASE_NOTES.md are required — they are already complete. Challenge resolved.
+
+**Independent verification run (2026-04-24, HEAD 4ed3270):**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, three-flag surface + `This is a reviewer aid, not a runtime enforcement gate.` framing.
+- acceptance-matrix.md: 108 rows, all PASS, last tested dates current.
+- RELEASE_NOTES.md: M27 (V1.8) section present and accurate.
+
+**Result:** All three `qa_ship_verdict` gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) are complete and accurate on HEAD 4ed3270. All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
+## QA Challenge — turn_6270cccb6235a4e8 (role=qa, attempt=1, 2026-04-24)
+
+This QA turn challenges the prior accepted dev turn (turn_b8db06d02a8ef4cd, role=dev, phase=implementation, HEAD 4ed3270) independently rather than rubber-stamping it. HEAD is 4ed3270 on run_ce89ef5bd4b8cca8.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** The dev turn (turn_b8db06d02a8ef4cd) was an idle_expansion baseline verification pass: it verified the stable V1.8 baseline on HEAD cc4ce8b and updated only `.planning/IMPLEMENTATION_NOTES.md` (+45 lines). No source code (`src/`), test (`tests/`), or non-IMPLEMENTATION_NOTES planning artifact was modified. **Verified:** `git show 4ed3270 --stat` shows exactly one file changed: `.planning/IMPLEMENTATION_NOTES.md` (+45 insertions). The dev turn correctly declined to implement M28 because M28 requires human approval at the planning_signoff gate. Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — M28 was proposed but not implemented; no new acceptance criteria required.** The dev turn's IMPLEMENTATION_NOTES.md update documents M28 as a future proposed increment with status needs_human. M28 is not shipped. The shipped scope through M27 remains fully covered by REQ-001–REQ-108 in acceptance-matrix.md. No new criteria are needed for a turn that is analysis-only. Challenge resolved: 108 criteria remain the complete and accurate coverage.
+
+**Challenge 3 — Independent baseline re-verification on HEAD 4ed3270 (2026-04-24).** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` exits 0 and lists all 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) with `redaction` at position 11. `node bin/tusq.js redaction review --help` exits 0 with `--manifest`, `--capability`, `--json` flag surface and `This is a reviewer aid, not a runtime enforcement gate.` framing. Challenge resolved: behavior unchanged on 4ed3270.
+
+**Challenge 4 — QA artifact gaps checked.** acceptance-matrix.md (REQ-001–REQ-108, all PASS), RELEASE_NOTES.md (M1–M27 fully documented), and this ship-verdict.md all reflect the shipped M27 boundary accurately. The M28 proposal in IMPLEMENTATION_NOTES.md must not appear in QA artifacts as shipped scope — confirmed absent. Challenge resolved: QA artifacts are accurate.
+
+**Independent verification run (2026-04-24, HEAD 4ed3270):**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, three-flag surface + reviewer-aid framing.
+- `git show 4ed3270 --stat` → only `.planning/IMPLEMENTATION_NOTES.md` changed; zero source changes.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD 4ed3270. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_b2194361320f2d0f (role=qa, attempt=1, 2026-04-24)
 
 This QA turn challenges the prior accepted dev turn (turn_c53476b839e7413c, role=dev, phase=implementation, HEAD 1c9a609) independently rather than rubber-stamping it. HEAD is 1c9a609 on run_71b762f4405c0fc5.

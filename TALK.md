@@ -2402,3 +2402,63 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn c53476b8 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Performed idle expansion analysis against VISION.md, ROADMAP.md, SYSTEM_SPEC.md, and current project state (M1–M27 complete); proposed M28 Sensitivity Class Inference as next concrete increment with charter, acceptance_contract, and vision_traceability.
+- **Decision DEC-006:** Challenged the prior accepted turn (turn_b68e40fbb7b5d1f4, role=pm, phase=planning) as a planning-only re-verification pass that cannot satisfy the implementation_complete gate or the idle_expansion acceptance contract. This dev turn operates on intake intent intent_1777034815829_43d8 (category=idle_expansion), which requires analysis of VISION.md, ROADMAP.md, SYSTEM_SPEC.md, and current project state — not a repeat of prior PM planning verification.
+- **Decision DEC-007:** All V1 milestones M1–M27 are complete and verified on HEAD 22e4cbe. npm test exits 0 with 'Smoke tests passed' and 'Eval regression harness passed (10 scenarios)'. CLI has 13 top-level commands. No open ROADMAP items remain.
+- **Decision DEC-008:** Proposed M28: Sensitivity Class Inference from Static Evidence as the next concrete increment. Every capability in V1.8 has sensitivity_class 'unknown'. The inference rules use already-available signals (pii_categories from M26, side_effect_class from M9, auth_hints from M10) with a bounded frozen ordered rule set. Human-set values are always preserved. Zero new CLI commands, zero new dependencies.
+- **Decision DEC-009:** Vision is NOT exhausted. All V1 VISION.md headings are served, but multiple V2 headings remain unserved: 'Data and schema understanding' (sensitivity inference, retention defaults), 'Auth and permission mapping' (structured auth_requirements, role extraction), 'Runtime instrumentation' (payload observation, hot-path identification), 'Eval and regression infrastructure' (golden task generation), 'Migration and rollout tooling' (staged rollout, kill switches), 'Skill and agent composition' (multi-step domain agents), 'Competitive transition intelligence' (strategic exposure ranking).
+- **Proposed next:** qa
+
+---
+
+## Turn b2194361 — qa (qa)
+
+- **Status:** needs_human
+- **Summary:** Challenged dev idle-expansion turn (turn_c53476b839e7413c, analysis-only, zero source changes); independently re-verified M27 baseline on HEAD 1c9a609 (npm test exits 0, 10 scenarios, 13 CLI commands, redaction noun confirmed); confirmed 108 acceptance criteria remain PASS; added QA challenge section to ship-verdict.md; no new criteria required since no new scope was shipped.
+- **Decision DEC-001:** Challenged the prior accepted dev turn (turn_c53476b839e7413c, role=dev, phase=implementation) as an analysis-only idle_expansion pass that modified only .planning/IMPLEMENTATION_NOTES.md with zero source changes. No new acceptance criteria are required because no new scope was implemented.
+- **Decision DEC-002:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD 1c9a609. npm test exits 0 with Smoke tests passed and Eval regression harness passed (10 scenarios). CLI surface unchanged at 13 commands including redaction at position 11. Ship verdict stands as SHIP.
+- **Decision DEC-003:** Status is needs_human and proposed_next_role is human because the qa_ship_verdict gate explicitly requires human approval before transitioning to the launch phase. An agent QA role cannot self-declare gate satisfaction regardless of artifact completeness.
+- **Proposed next:** human
+
+---
+
+## Turn 8dcf7163 — product_marketing (launch)
+
+- **Status:** needs_human
+- **Summary:** Challenged prior QA re-verification turn; audited four launch_ready artifacts and confirmed M27 coverage is already accurate on HEAD cc4ce8b with no new scope shipped since DEC-001–DEC-007 of the prior product_marketing pass; made zero edits; status needs_human because launch_ready gate requires human approval.
+- **Decision DEC-001:** Challenged the prior accepted turn (turn_b2194361320f2d0f, role=qa, phase=qa, HEAD 1c9a609) and the intervening dev turn (turn_c53476b839e7413c, role=dev, phase=implementation, analysis-only idle_expansion that modified only .planning/IMPLEMENTATION_NOTES.md with zero source changes) rather than rubber-stamping them. The QA turn re-verified the M27 baseline but did not modify launch artifacts; the dev turn proposed M28 in notes but shipped no code. Therefore the shipped product boundary on HEAD cc4ce8b is identical to HEAD 93c84b3 where the prior product_marketing turn (DEC-001–DEC-007) already updated all four launch_ready artifacts for M27.
+- **Decision DEC-002:** Made zero edits to launch-owned artifacts this turn. The four launch_ready gate files (MESSAGING.md, LAUNCH_PLAN.md, CONTENT_CALENDAR.md, ANNOUNCEMENT.md) already describe the shipped M27 boundary accurately: the `redaction` top-level CLI noun at position 11 of the 13-command surface, the `tusq redaction review [--manifest <path>] [--capability <name>] [--json]` flag surface, the frozen nine-entry PII_REVIEW_ADVISORY_BY_CATEGORY lookup, the strictly-read-only invariant with zero manifest mutation and zero capability_digest flip, the empty-capabilities valid-exit-0 rule, the null/unknown fallback for missing manifest_version/generated_at, the empty-stdout-on-every-exit-1-path rule, the em-dash U+2014 byte-exactness invariant, and the Constraints 19/20 reviewer-aid framing boundary.
+- **Decision DEC-003:** Status is needs_human and proposed_next_role is 'human' because the launch_ready exit gate for this run explicitly requires human approval before run completion. run_completion_request is true because launch is the terminal phase and all four gate artifacts accurately describe the shipped boundary with all upstream gates (planning_signoff, implementation_complete, qa_ship_verdict) passed. phase_transition_request is null because launch is terminal.
+- **Proposed next:** human
+
+---
+
+## Turn e614e7a5 — pm (planning)
+
+- **Status:** needs_human
+- **Summary:** Produced idle_expansion_result proposing M28 (Sensitivity Class Inference from Static Manifest Evidence) as the next concrete increment, with charter, 11-item acceptance contract, vision traceability citing 7 snapshot headings, and explicit alternative-deferred analysis. No source or planning-gate edits; all V1 M1–M27 milestones remain shipped on HEAD cc4ce8b.
+- **Decision DEC-001:** Produced an idle_expansion_result with kind=new_intake_intent naming M28 — Sensitivity Class Inference from Static Manifest Evidence — as the proposed next increment at priority p1, citing 7 VISION.md snapshot headings (Data and schema understanding; Auth and permission mapping; Governance and review workflows; Reviewable over opaque; The canonical artifact; High-leverage in V2; Roadmap shape: V1, V2, V3).
+- **Decision DEC-002:** Vision is NOT exhausted. All V1 VISION headings are served by M1–M27, but multiple V2/V3 headings remain unserved: Data and schema understanding (sensitivity inference, retention defaults), Auth and permission mapping (structured auth_requirements, role extraction), Runtime instrumentation (payload observation, hot-path identification), Eval and regression infrastructure (golden task generation), Migration and rollout tooling (staged rollout, kill switches), Skill and agent composition (multi-step domain agents), Competitive transition intelligence (strategic exposure ranking).
+- **Decision DEC-003:** Formalized 11-item M28 acceptance contract with frozen ordered rule set (R1 preserve → R2 restricted for secrets/payment/government_id → R3 confidential for email/phone/name/address/date_of_birth/network → R4 confidential for destructive/financial → R5 internal for write or non-empty auth_hints → R6 public), explicit digest-flip callout (first post-M28 manifest regeneration will flip capability_digest for any capability whose inferred class differs from 'unknown', resetting approved=false per M13 semantics), rule-ordering precedence smoke test (AC-7g), and a new Constraint 21 reserving reviewer-aid framing and forbidding compliance-certification language.
+- **Decision DEC-004:** Did NOT modify the four PM-owned planning_signoff gate artifacts (.planning/PM_SIGNOFF.md, .planning/ROADMAP.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md) this turn.
+- **Decision DEC-005:** Challenged the prior accepted turn (turn_b2194361320f2d0f, role=qa, phase=qa on HEAD 1c9a609) and the intervening launch turn (turn_[latest], role=product_marketing, HEAD cc4ce8b) rather than rubber-stamping: both re-verified the M27 shipped boundary but neither produced an idle_expansion_result for the currently-assigned intake intent (intent_1777046032635_2eab, idle-expansion iteration 1). This PM turn produces that result as required by the intent's acceptance contract.
+- **Decision DEC-006:** Status is needs_human and proposed_next_role is 'human' because acceptance of a new intake intent (M28) and transition of the planning phase toward the next increment both require human approval at the planning_signoff exit gate.
+- **Objection OBJ-001 (low):** The prior dev turn (turn_c53476b839e7413c) performed idle-expansion analysis in IMPLEMENTATION_NOTES.md (a dev-owned artifact) rather than emitting a structured idle_expansion_result. That analysis's scope and conclusions are compatible with this PM turn's output, but the location was wrong for cross-role consumption: product_marketing and qa roles do not typically consume IMPLEMENTATION_NOTES.md, and the orchestrator's intake layer cannot mechanically lift a Markdown section into a new intake intent. Future idle-expansion intents should be assigned directly to PM (this turn's role) so the structured result lives in the staging artifact where triage can consume it.
+- **Proposed next:** human
+
+---
+
+## Turn b8db06d0 — dev (implementation)
+
+- **Status:** completed
+- **Summary:** Independently verified stable V1.8 baseline (npm test exits 0, 13-command CLI surface intact, 10 eval scenarios pass) on HEAD cc4ce8b; updated IMPLEMENTATION_NOTES.md with this turn's idle-expansion baseline verification record; closed the implementation_complete gate for run_ce89ef5bd4b8cca8 without implementing M28 (which requires a separate human-approved planning run).
+- **Decision DEC-001:** Did NOT implement M28 in this turn. M28 (Sensitivity Class Inference from Static Manifest Evidence) was proposed by the prior PM turn as an idle_expansion_result, but the PM explicitly set status=needs_human because M28 acceptance requires human sign-off at the planning_signoff gate. Implementing M28 here would bypass that gate for an unchartered increment.
+- **Decision DEC-002:** Challenged the prior PM turn (turn_e614e7a53ef67b3a) rather than rubber-stamping it. PM's needs_human status refers to M28's own future run requiring human approval, not a block on closing this run's implementation_complete gate. The idle-expansion analysis work is complete; no source changes were required.
+- **Decision DEC-003:** Verified baseline independently on HEAD cc4ce8b: npm test exits 0 with 'Smoke tests passed' and 'Eval regression harness passed (10 scenarios)'. No prior-turn evidence was inherited. CLI surface confirmed at 13 commands including redaction noun at position 11. No source drift from idle-expansion analysis passes.
+- **Proposed next:** qa
+
+---
+
