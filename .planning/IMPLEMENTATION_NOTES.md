@@ -1146,3 +1146,43 @@ Independent verification — all commands re-run; no prior-turn evidence inherit
 - Fresh independent verification pass completed on HEAD cc4ce8b: `npm test` exits 0.
 - No source changes required or made.
 - `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
+## Dev Turn turn_5e198b0f29fbb6fe — Idle Expansion #3 Baseline Verification (2026-04-24)
+
+**Run:** run_e7c2e5668d6cfb6a
+**HEAD:** 45b62c1 (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_9b69c2bed31d203a, role=pm, phase=planning, intent_1777060417648_c26a) operated on the third idle-expansion intent for this project. The PM re-emitted a valid `idle_expansion_result` with `kind=new_intake_intent` naming M28 (Sensitivity Class Inference from Static Manifest Evidence) at priority p1, and correctly set `status: needs_human` because M28 acceptance requires human sign-off at the planning_signoff gate before any new implementation run starts.
+
+Not rubber-stamping: The PM turn produced a correct idle_expansion_result (the intent intent_1777060417648_c26a is marked "completed" by the orchestrator). However, the PM turn cannot satisfy the `implementation_complete` gate — it is a planning-phase analysis producer, not a dev implementation turn. The PM's `needs_human` refers to M28's own future run requiring human approval; it does not block closing the implementation_complete gate for this idle-expansion run, which is analysis/proposal-only by charter.
+
+M28 (Sensitivity Class Inference from Static Manifest Evidence) is NOT implemented in this turn. M28 is NOT in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md yet — implementing M28 without those gate-approved artifacts would bypass the planning_signoff gate for an unchartered increment. M28 requires a dedicated run with human-approved planning artifacts before dev work begins.
+
+### Scope of This Turn
+
+This idle-expansion run (run_e7c2e5668d6cfb6a) was chartered via intent_1777060417648_c26a to: inspect VISION.md, ROADMAP.md, and SYSTEM_SPEC.md; derive the next concrete increment; emit a structured idle_expansion_result. That work is complete — satisfied by PM turn turn_9b69c2bed31d203a.
+
+This dev turn's responsibility is: (1) challenge the prior PM turn explicitly, (2) independently verify the baseline is stable on HEAD 45b62c1, (3) confirm no source drift introduced by the idle-expansion passes, and (4) close the implementation_complete gate.
+
+### Baseline Re-Verification (HEAD 45b62c1)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (10 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git rev-parse HEAD` | 45b62c1b12b946778ad947f85b1fdcef5285952f |
+
+**No source changes were made or required.** The idle-expansion analysis is analysis/proposal only. The shipped V1.8 boundary (M1–M27, 13 CLI commands, 10 eval scenarios) is intact and verified on HEAD 45b62c1.
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive implementation and verification content across all M17–M27 milestones plus all idle-expansion analysis records.
+- Fresh independent verification pass completed on HEAD 45b62c1: `npm test` exits 0.
+- No source changes required or made.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
