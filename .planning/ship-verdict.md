@@ -2,6 +2,28 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_b2194361320f2d0f (role=qa, attempt=1, 2026-04-24)
+
+This QA turn challenges the prior accepted dev turn (turn_c53476b839e7413c, role=dev, phase=implementation, HEAD 1c9a609) independently rather than rubber-stamping it. HEAD is 1c9a609 on run_71b762f4405c0fc5.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** The dev turn operated as an idle_expansion pass: it analyzed VISION.md, ROADMAP.md, SYSTEM_SPEC.md, and current project state (M1–M27), proposed M28 Sensitivity Class Inference, and updated only `.planning/IMPLEMENTATION_NOTES.md`. No source code (`src/`), test (`tests/`), or non-IMPLEMENTATION_NOTES planning artifact was modified. **Verified:** `git show 1c9a609 --stat` shows exactly one file changed: `.planning/IMPLEMENTATION_NOTES.md` (+89 lines). `git diff HEAD~1..HEAD --name-only` confirms the same. Challenge resolved: no source regression is possible from this turn.
+
+**Challenge 2 — M27 scope remains complete and no new criteria required.** The dev turn proposed M28 but did not implement it. The shipped scope through M27 is fully covered by REQ-001–REQ-108 in acceptance-matrix.md. No new acceptance criteria are needed for a turn that is analysis-only. The M28 proposal is a planning artifact in IMPLEMENTATION_NOTES.md, not a shipped implementation. Challenge resolved: 108 criteria remain the complete and accurate coverage.
+
+**Challenge 3 — Independent baseline re-verification on HEAD 1c9a609.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` exits 0 and lists all 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) with `redaction` at position 11. `node bin/tusq.js redaction review --help` exits 0 with `--manifest`, `--capability`, `--json` flag surface and the `This is a reviewer aid, not a runtime enforcement gate.` framing. Challenge resolved: behavior unchanged on 1c9a609.
+
+**Challenge 4 — No QA artifact gaps introduced.** The acceptance-matrix.md (REQ-001–REQ-108, all PASS), RELEASE_NOTES.md (M1–M27 fully documented including M27 V1.8 section at lines 416–454), and this ship-verdict.md correctly reflect the shipped M27 boundary. The dev turn's M28 proposal is not shipped and must not appear in QA artifacts as shipped scope. Challenge resolved: QA artifacts are accurate.
+
+**Independent verification run (2026-04-24, HEAD 1c9a609):**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, three-flag surface + reviewer-aid framing.
+- `git show 1c9a609 --stat` → only `.planning/IMPLEMENTATION_NOTES.md` changed; zero source changes.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD 1c9a609. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_7de1d2affebb3f59 (role=qa, attempt=2, 2026-04-22)
 
 This QA turn (attempt 2) re-challenges the M27 implementation and the prior QA attempt (turn_04df09a5) independently rather than rubber-stamping either. HEAD is c8ffa38 on run_995056dd29cb9f11.
