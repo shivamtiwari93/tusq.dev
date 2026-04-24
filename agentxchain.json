@@ -368,5 +368,13 @@
     "challenge_required": true,
     "max_turn_retries": 2,
     "max_deadlock_cycles": 2
+  },
+  "approval_policy": {
+    "phase_transitions": {
+      "default": "auto_approve"
+    },
+    "run_completion": {
+      "action": "auto_approve"
+    }
   }
 }
