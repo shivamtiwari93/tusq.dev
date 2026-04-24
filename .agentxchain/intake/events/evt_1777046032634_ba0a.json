@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1777046032634_ba0a",
+  "source": "vision_idle_expansion",
+  "category": "idle_expansion",
+  "created_at": "2026-04-24T15:53:52.634Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "expansion_key": "f31fd196c0e83e9f513b5f2c8a620156e3150221a5333f252d87e6b6f813c5d6",
+    "expansion_iteration": 1,
+    "accepted_turn_id": "pre_dispatch_cont-7182a188_1"
+  },
+  "evidence": [
+    {
+      "type": "text",
+      "value": "Idle-expansion iteration 1/5 — PM deriving next increment from vision/roadmap/spec."
+    }
+  ],
+  "dedup_key": "vision_idle_expansion:66231cb7233eb962",
+  "idle_expansion_context": {
+    "expansion_iteration": 1,
+    "vision_headings_snapshot": [
+      "Vision for tusq.dev",
+      "Mission",
+      "The fight",
+      "The promise",
+      "What tusq.dev does",
+      "The core insight",
+      "The canonical artifact",
+      "Why we move fast",
+      "Why wide works for us",
+      "Coherence is expensive, implementation is cheaper than before",
+      "Wide OSS compounds faster than narrow OSS",
+      "Breadth turns into retention",
+      "The guardrails on width",
+      "Design principles",
+      "Velocity over surface area",
+      "Reviewable over opaque",
+      "Explicit side effects",
+      "Self-hostable or it does not ship",
+      "Plugins are how we scale",
+      "Product modules",
+      "The full transition we automate",
+      "Capability discovery and normalization",
+      "Auth and permission mapping",
+      "Data and schema understanding",
+      "Runtime instrumentation",
+      "Safe execution wrappers",
+      "Skill and agent composition",
+      "AI-facing interface generation",
+      "Eval and regression infrastructure",
+      "Documentation and adoption surfaces",
+      "Migration and rollout tooling",
+      "Governance and review workflows",
+      "Competitive transition intelligence",
+      "Roadmap shape: V1, V2, V3",
+      "Must-have in V1",
+      "High-leverage in V2",
+      "Moat features in V3",
+      "Who this is for",
+      "Why open source",
+      "What we resist",
+      "Vision for maturity",
+      "Relationship to tusq.cloud",
+      "Final statement"
+    ]
+  }
+}
