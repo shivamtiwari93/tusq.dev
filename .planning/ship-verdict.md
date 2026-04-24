@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c7d0bee84d904477 (role=qa, attempt=3, 2026-04-24)
+
+This QA turn (attempt 3) challenges the prior accepted QA turn (turn_430f9b5d0f850456, attempt=2, HEAD 4ed3270) and the subsequent baseline-commit (a07c0e2) independently rather than rubber-stamping them.
+
+**Challenge 1 — Baseline commit a07c0e2 introduced no source drift.** The commit at HEAD a07c0e2 ("checkpoint: commit all framework state to establish clean dispatch baseline") modified only `.agentxchain/` orchestrator state files, `.planning/acceptance-matrix.md` (+2 lines re-verification note), `.planning/ship-verdict.md` (+45 lines challenge entries), `HUMAN_TASKS.md`, and `TALK.md`. **Verified:** `git diff 4ed3270..a07c0e2 --name-only` lists zero `src/` or `tests/` files. No product source changed since the last accepted QA verification. Challenge resolved: no source regression possible.
+
+**Challenge 2 — All 108 acceptance criteria remain PASS on HEAD a07c0e2.** acceptance-matrix.md has 108 rows with no FAIL entries. The M28 proposal remains analysis-only (IMPLEMENTATION_NOTES.md) and is not shipped scope. **Verified:** `node -e` row-count and FAIL-count check: 108 rows, 0 failed. Challenge resolved.
+
+**Challenge 3 — Independent baseline re-verification on HEAD a07c0e2 (2026-04-24).**
+- `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`.
+- `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11.
+- `node bin/tusq.js redaction review --help` → exit 0, `--manifest`/`--capability`/`--json` flag surface, `This is a reviewer aid, not a runtime enforcement gate.` framing.
+Challenge resolved: shipped behavior is stable.
+
+**Challenge 4 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-108 (all PASS). RELEASE_NOTES.md documents M1–M27 including M27 V1.8 section. This ship-verdict.md carries independent challenge entries across all three attempts. No artifact is missing or incomplete. Challenge resolved.
+
+**Result:** All 108 acceptance criteria (REQ-001–REQ-108) independently verified PASS on HEAD a07c0e2. Ship verdict stands as SHIP. Status is `needs_human` because the `qa_ship_verdict` gate explicitly requires human approval before transitioning to the launch phase.
+
+---
+
 ## QA Challenge — turn_430f9b5d0f850456 (role=qa, attempt=2, 2026-04-24)
 
 This QA turn (attempt 2) is issued because the prior attempt (turn_6270cccb6235a4e8) updated only ship-verdict.md while the `qa_ship_verdict` gate also requires acceptance-matrix.md and RELEASE_NOTES.md to be complete. This turn independently re-verifies all three artifacts and confirms the gate is fully satisfied on HEAD 4ed3270.
