@@ -1012,3 +1012,92 @@ The core M27 implementation (`cmdRedaction`, `cmdRedactionReview`, `parseRedacti
 | `node bin/tusq.js redaction review --help` | Exit 0; prints usage, flags, reviewer-aid framing |
 
 **Gate satisfaction:** M27 implementation is complete and verified. All M27 smoke items (a)–(k) pass. 10 eval scenarios pass (up from 9, adding `redaction-review-determinism`). No manifest mutation, no new dependencies, no sensitivity_class escalation, no other command behavior changed. `PII_REVIEW_ADVISORY_BY_CATEGORY` uses em-dash U+2014. Constraint 19 (reviewer-aid framing) and Constraint 20 (read-only invariant) satisfied. `implementation_complete` exit gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
+## Dev Turn turn_c53476b839e7413c — Idle Expansion Analysis: M28 Proposal (2026-04-24)
+
+### Challenge To Prior Turn
+
+Prior accepted turn (turn_b68e40fbb7b5d1f4, role=pm, phase=planning, HEAD 22e4cbe) was a planning-only re-verification pass for M27 gate artifacts. It cannot satisfy the `implementation_complete` gate for this intake intent — its mandate was confirming prior M27 planning is still current, not implementing any new increment. This dev turn operates on a fresh intake intent (intent_1777034815829_43d8, category=idle_expansion) whose mandate is to analyse the vision, roadmap, and system spec and derive the next concrete increment.
+
+### Baseline Re-Verification (HEAD 22e4cbe)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (10 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface confirmed |
+| `node bin/tusq.js redaction review --help` | Exit 0 — three-flag surface (--manifest, --capability, --json) |
+
+### Idle Expansion Analysis
+
+**Source artifacts inspected:**
+- `.planning/VISION.md` — 19 headings, 19041 bytes (human-owned, read-only)
+- `.planning/ROADMAP.md` — 326 lines, all M1–M27 milestones `[x]`, no open items
+- `.planning/SYSTEM_SPEC.md` — 18 headings, 214957 bytes; V2 gaps explicitly enumerated
+
+**Shipped surface (V1.8):**
+All milestones M1–M27 are complete. The CLI has 13 top-level commands. Key V1 deliverables satisfied: capability discovery (M15), manifest generation (M13), schema extraction (M24), PII field-name hints (M25), PII category labels (M26), reviewer-facing PII report (M27), execution policy (M20–M23), approval gate (M18), diff and review queue (M16), local docs generation (M19), eval harness (M17).
+
+**Gap analysis against VISION.md:**
+
+Every V1 heading is served. The open V2 gaps, in priority order:
+
+1. **`sensitivity_class` inference** — Every capability in V1.8 has `sensitivity_class: "unknown"`. SYSTEM_SPEC Constraint 16 explicitly deferred inference to "an explicit V2 sensitivity-inference increment ships with its own constraint entry." Signals are already available: `pii_categories` (M26), `side_effect_class` (M9), `auth_hints` (M10). This is the most immediately impactful gap: operators cannot distinguish PII-sensitive capabilities from public read-only ones without manual review of every capability. VISION headings: "Data and schema understanding", "Auth and permission mapping", "Reviewable over opaque", "Governance and review workflows".
+
+2. **Diff-aware re-approval** — When `tusq manifest` regenerates after a code change, capabilities that changed their `capability_digest` keep their old `approved: true` status. SYSTEM_SPEC M13 explicitly calls this out as V2: "V1 does not automatically set `approved: false` when a capability's `capability_digest` changes." VISION headings: "Governance and review workflows", "Safe execution wrappers".
+
+3. **Express/NestJS body schema extraction** — M24 delivers Fastify literal `schema.body` extraction only. Express + Joi/Zod/express-validator inference is V2. VISION headings: "Capability discovery and normalization", "Data and schema understanding".
+
+4. **`tusq policy suggest`** — Read manifest and propose initial `allowed_capabilities` list for a policy file. Mentioned in M21 V2 limitations. VISION headings: "Governance and review workflows", "Migration and rollout tooling".
+
+**Chosen next increment: M28 — Sensitivity Class Inference from Static Evidence**
+
+Rationale: highest operator impact per implementation cost. Every capability today says `"unknown"`, which means the governance signals in the manifest (pii_categories, side_effect_class, auth_hints) cannot be acted on without a manual per-capability review. A bounded, transparent, deterministic inference rule set — using only signals already in the manifest — would bring the governance surface to life with zero new dependencies and zero new CLI commands. This directly fulfils VISION.md "Data and schema understanding: detect sensitive fields such as PII, payments, secrets, and regulated data" and "Auth and permission mapping: determine which capabilities are read, write, destructive, financial, or security-sensitive; generate least-privilege hints and approval recommendations."
+
+### Idle Expansion Result
+
+```json
+{
+  "kind": "new_intake_intent",
+  "milestone": "M28",
+  "title": "Sensitivity Class Inference from Static Evidence",
+  "priority": "p1",
+  "vision_traceability": [
+    "Data and schema understanding",
+    "Auth and permission mapping",
+    "Governance and review workflows",
+    "Reviewable over opaque",
+    "The canonical artifact",
+    "High-leverage in V2"
+  ],
+  "charter": "Extend tusq manifest to auto-infer capability.sensitivity_class from already-available static signals (pii_categories, side_effect_class, auth_hints) using a bounded, transparent, zero-dependency ordered rule set. Human-set values in the prior manifest are always preserved on regeneration. No new CLI commands, no new flags, no new dependencies. Every capability currently has sensitivity_class: 'unknown'; M28 makes the governance surface actionable for operators by surfacing a defensible starting classification derived from existing manifest evidence.",
+  "inference_rules": [
+    "1. If prior manifest has sensitivity_class that is not 'unknown' → preserve (human judgment wins, never overwrite).",
+    "2. Else if pii_categories contains any of ['secrets', 'payment', 'government_id'] → 'restricted'.",
+    "3. Else if pii_categories contains any of ['email', 'phone', 'name', 'address', 'date_of_birth', 'network'] → 'confidential'.",
+    "4. Else if side_effect_class is 'destructive' or 'financial' → 'confidential'.",
+    "5. Else if side_effect_class is 'write' or auth_hints is non-empty → 'internal'.",
+    "6. Else → 'public'."
+  ],
+  "acceptance_contract": [
+    "tusq manifest auto-infers sensitivity_class for capabilities whose prior manifest value is 'unknown' or for new capabilities, using the frozen ordered rule set enumerated in src/cli.js.",
+    "Human-set sensitivity_class values (any value other than 'unknown' present in the prior manifest) are always preserved on manifest regeneration; inference never overwrites a non-'unknown' value.",
+    "Inference output is deterministic: identical manifest inputs produce identical sensitivity_class assignments across repeated runs.",
+    "No new CLI command, flag, or npm dependency is added; tusq manifest is the only changed command.",
+    "capability_digest includes sensitivity_class (already does via M13 hashing); a capability whose sensitivity_class changes due to M28 on first post-M28 regeneration will flip its digest and require re-approval per M13 semantics.",
+    "Smoke coverage asserts: (a) 'secrets'/'payment'/'government_id' category yields 'restricted'; (b) 'email'/'phone' category yields 'confidential'; (c) destructive side_effect_class yields 'confidential'; (d) write side_effect_class or non-empty auth_hints yields 'internal'; (e) no-PII no-auth no-write yields 'public'; (f) human-set non-'unknown' value preserved across regeneration; (g) Express/NestJS/Fastify fixtures produce expected classes.",
+    "tusq diff, tusq approve, tusq redaction review, tusq policy verify --strict behavior is unchanged; sensitivity_class in compiled tools and MCP responses carries the newly-inferred value (no field added or removed).",
+    "Inference rules are explicitly enumerated in src/cli.js as a frozen ordered constant and documented in SYSTEM_SPEC/ROADMAP/command-surface.md under M28.",
+    "website/docs/manifest-format.md updated to document V2 inference rules, the preservation guarantee, and the explicit framing that a non-'unknown' class is a heuristic starting point, not a compliance certification.",
+    "One new eval scenario (sensitivity-class-inference-determinism) asserting inference is deterministic across 3 runs on a pii-hint-sample fixture; total eval scenarios becomes 11."
+  ]
+}
+```
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive content (this record).
+- Baseline `npm test` exits 0: "Smoke tests passed" + "Eval regression harness passed (10 scenarios)".
+- No source changes were required or made; this turn is analysis/proposal only.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
