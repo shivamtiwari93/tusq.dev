@@ -2,6 +2,52 @@
 
 ---
 
+## Dev Turn turn_768db52384611260 — M29 Re-verification (run_6d12fe85d0e51576, 2026-04-25)
+
+**Run:** run_6d12fe85d0e51576
+**HEAD:** 1e427f539bb68154350bcebceb3e51f8dab20c35
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_534487732e1e53b2, role=pm, phase=planning, run_6d12fe85d0e51576) modified only the four PM-owned planning_signoff gate artifacts (.planning/PM_SIGNOFF.md, .planning/ROADMAP.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md) — zero source changes to src/, bin/, tests/, or website/. The PM turn re-affirmed the M29 (V1.10) charter and requested phase_transition_request='implementation'. Not rubber-stamping: the PM turn correctly produced the required planning artifacts for the planning_signoff gate but made no claim about source code correctness. Independent re-verification is required.
+
+M29 implementation (classifyAuthRequirements, AUTH_SCHEMES, extractFrozenList, --auth-scheme filter, 16 eval scenarios) is already committed on HEAD 1e427f5 from prior runs. This dev turn re-verifies all AC criteria independently.
+
+### AC Re-Verification Table (HEAD 1e427f5)
+
+| AC | Criterion | Verified |
+|----|-----------|---------|
+| AC-1 | classifyAuthRequirements is a pure function in src/cli.js | PASS — function at line 2803, no side effects, input-only |
+| AC-2 | AUTH_SCHEMES closed 7-value enum ['unknown','bearer','api_key','session','basic','oauth','none'] | PASS — line 9 |
+| AC-3 | Zero-evidence guard returns {auth_scheme:'unknown', auth_scopes:[], auth_roles:[], evidence_source:'none'} BEFORE R1 | PASS — lines 2816–2822 |
+| AC-4 | Frozen six-rule first-match-wins decision table R1–R6 present | PASS — lines 2830–2844 |
+| AC-5 | extractFrozenList with order-preserving case-sensitive dedup for auth_scopes/auth_roles | PASS — lines 2785–2801 |
+| AC-6 | capability_digest computed and assigned alongside auth_requirements | PASS — lines 471–472 |
+| AC-7 | compile output (tools/*.json) does NOT include auth_requirements key | PASS — compile map at ~line 545 excludes auth_requirements |
+| AC-7b | MCP tools/list and tools/call responses do NOT include auth_requirements | PASS — serve handler lines 661–675 excludes auth_requirements |
+| AC-8 | --auth-scheme filter on tusq review validates against AUTH_SCHEMES, AND-style with --sensitivity | PASS — lines 812–891 |
+| AC-9 | No new dependencies in package.json (no passport, jsonwebtoken, oauth2-server) | PASS — verified by prior turns; package.json unchanged |
+| AC-10 | eval harness passes 16 scenarios | PASS — node tests/eval-regression.mjs exits 0 "16 scenarios" |
+| AC-11 | 13-command CLI surface preserved exactly | PASS — node bin/tusq.js help lists 13 commands |
+
+### Baseline Verification Commands
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | 1e427f539bb68154350bcebceb3e51f8dab20c35 |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+
+**No source changes were made or required.** M29 implementation is complete and correct on HEAD 1e427f5.
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive implementation and verification content across all milestones plus all run-specific re-verification records.
+- Fresh independent verification pass completed on HEAD 1e427f5: `npm test` exits 0 with 16 scenarios.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## Dev Turn turn_0e8e152e05796fdc — M29 Re-verification (run_94746c3508844fcb, 2026-04-25)
 
 **Run:** run_94746c3508844fcb
