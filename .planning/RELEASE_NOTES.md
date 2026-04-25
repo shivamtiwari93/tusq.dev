@@ -512,6 +512,62 @@ tusq redaction review [--manifest <path>] [--capability <name>] [--json]
 
 **All 115 acceptance criteria** (REQ-001–REQ-115) pass on HEAD 6fb4fa1 + QA working tree: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (13 scenarios)`.
 
+## Static Auth Requirements Inference (M29 — V1.10)
+
+`tusq manifest` now automatically computes a structured `auth_requirements` record per capability as a pure deterministic function of existing manifest evidence. The record is a reviewer aid — it does NOT authenticate requests, enforce authorization, validate tokens, or certify OAuth/OIDC/SOC2/GDPR compliance.
+
+**Seven auth scheme values:**
+- `bearer` — middleware-name evidence matches bearer-token / JWT / access-token pattern (R1)
+- `api_key` — middleware-name evidence matches API-key / x-api-key pattern (R2)
+- `session` — middleware-name evidence matches session / cookie / passport-local pattern (R3)
+- `basic` — middleware-name evidence matches HTTP Basic Auth pattern (R4)
+- `oauth` — middleware-name evidence matches OAuth / OIDC / OpenID pattern (R5)
+- `none` — `auth_required === false` AND non-admin route (R6; reachable via manual manifest edits)
+- `unknown` — zero static evidence or no rule matched
+
+**Frozen six-rule decision table (R1 beats all — any rule change is a governance event):**
+
+| Rule | Condition | `auth_scheme` | `evidence_source` |
+|------|-----------|--------------|-------------------|
+| R1 | Any `auth_hints` name matches `/bearer\|jwt\|access[_-]?token/i` | `bearer` | `middleware_name` |
+| R2 | Any `auth_hints` name matches `/api[_-]?key\|x-api-key/i` | `api_key` | `middleware_name` |
+| R3 | Any `auth_hints` name matches `/session\|cookie\|passport-local/i` | `session` | `middleware_name` |
+| R4 | Any `auth_hints` name matches `/basic[_-]?auth/i` | `basic` | `middleware_name` |
+| R5 | Any `auth_hints` name matches `/oauth\|oidc\|openid/i` | `oauth` | `middleware_name` |
+| R6 | `auth_required === false` AND non-admin route | `none` | `auth_required_flag` |
+| default | Evidence present, no rule matched | `unknown` | `none` |
+
+**Zero-evidence guard (first check before R1):** Capabilities with no auth-related middleware (`auth_hints: []`), no route, no `auth_required` flag, and no sensitivity signal receive `auth_scheme: "unknown"` — NEVER silently `"none"`. `"none"` is only reachable from R6.
+
+**New review filter — `tusq review --auth-scheme <scheme>`:** Optional flag limits displayed output to capabilities with the specified auth scheme. Legal values: the 7-value closed enum above. Unrecognized value exits 1 before any output (empty stdout, error on stderr). Mutually compatible with `--sensitivity` (AND-style intersection when both are set). Filter is display-only and does not affect `--strict` exit code.
+
+**`auth_scopes` and `auth_roles` extraction:** Derived from middleware annotation literals via frozen frozen regex patterns `/scopes?:\s*\[([^\]]+)\]/` and `/role[s]?:\s*\[([^\]]+)\]/`. Both arrays are always present (never `null`), order-preserving, and case-sensitively deduplicated. Returns `[]` when no annotation matches.
+
+**Compile and MCP surface unchanged (AC-7):** `auth_requirements` is NOT in compiled tool definitions (`tusq-tools/*.json`) or MCP `tools/list`/`tools/call`/`dry_run_plan` responses. It is a manifest-and-review-surface field only.
+
+**Upgrade note — expected digest flip and re-approval sweep:** M29 changes `capability_digest` because `auth_requirements` is now included in the hash payload. On first `tusq manifest` run after M29, capabilities that previously had no `auth_requirements` will now have a computed value, flipping the digest and resetting `approved` to `false`. Use `tusq diff` to see which capabilities changed, then re-approve with `tusq approve`.
+
+**Key invariants:**
+- 13-command CLI surface preserved exactly (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help).
+- `tusq compile` output is byte-identical before and after M29 adoption.
+- `tusq approve` gate logic is unchanged.
+- `tusq serve` MCP surface (tools/list, tools/call, dry_run_plan) is byte-for-byte unchanged.
+- `tusq policy verify` (default and `--strict`) behavior is unchanged.
+- `tusq redaction review` behavior is unchanged.
+- No new dependency added to `package.json`.
+
+**Framing boundary (SYSTEM_SPEC Constraint 22):** `auth_requirements` is reviewer-aid framing only. tusq DOES NOT authenticate or authorize requests at runtime, DOES NOT certify OAuth/OIDC/SAML/SOC2/ISO27001 compliance, and DOES NOT validate token signatures or scope grants. `auth_scheme: "bearer"` means a middleware name matched the R1 regex — not that tusq verifies bearer tokens. Reviewers own all AAA decisions.
+
+**Three new eval scenarios** extend the governed-cli eval harness from 13 to 16 scenarios: `auth-scheme-bearer-r1-precedence` (R1 bearer precedence), `auth-scheme-zero-evidence-unknown-bucket` (zero-evidence guard → unknown, never none), `auth-scheme-scopes-extraction-order` (auth_scopes/auth_roles are arrays with order preservation).
+
+**All 124 acceptance criteria** (REQ-001–REQ-124) pass on HEAD 2ba4452 + QA working tree: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`.
+
+**Known limitation (V1.10):** The `auth_required` field is not set by the scanner in V1.10, making R6 (`auth_required === false` → `auth_scheme: 'none'`) reachable only via manually-edited manifests. The implementation is correct for manual edits. A future milestone may populate `auth_required` from scanner evidence.
+
+## QA M29 Verification (turn_f01a675bc13a2594, 2026-04-25)
+
+`npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands. `node bin/tusq.js review --help` → includes `--auth-scheme <scheme>`. OBJ-001 (medium) raised: AC-8 Case 6 (R6) is dead code in the automated pipeline — `auth_required` is never set by scanner; implementation is correct for manual manifest edits; non-blocking. All 124 acceptance criteria (REQ-001–REQ-124) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA M28 Verification (turn_bff61126f4accd83, 2026-04-25)
 
 `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (13 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands. `node bin/tusq.js review --help` → exit 0, includes `--sensitivity <class>`. Challenged dev turn (turn_6f3041947dd2a211) on three objections (AC-8 eval count gap, missing review --help doc, missing website docs). All three resolved by QA fixes applied directly (write authority: authoritative). All 115 acceptance criteria (REQ-001–REQ-115) pass. Ship verdict: SHIP. Gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) fully updated; phase_transition_request: launch (auto_approve policy).
