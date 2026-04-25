@@ -552,6 +552,101 @@ There are no other flags. `tusq redaction review --help` prints the flag surface
 | No capability execution | The subcommand never calls a compiled tool or starts the MCP server |
 | Reviewer-directive advisory text | Every advisory ends with "reviewer: ..." so the output explicitly reminds the operator the decision is theirs; no advisory claims the capability is compliant or runtime-safe |
 
+## M28 Product CLI Surface
+
+M28 introduces NO new CLI noun and NO new subcommand. The 13-noun CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is preserved exactly. The only operator-visible surface change is one optional filter flag on the existing `tusq review` command (`--sensitivity <class>`) plus an additive manifest field (`capability.sensitivity_class`) that surfaces in `tusq review`, `tusq docs`, and `tusq diff` output. M28 mutates the observable behavior of `tusq manifest` (it now emits a computed `sensitivity_class` instead of constant `"unknown"`) and the per-capability rendering of `tusq review`, `tusq docs`, and `tusq diff` (they now display the field) but introduces no new entry point.
+
+| Command | M28 surface change |
+|---------|--------------------|
+| `tusq manifest` | Each capability gains a computed `sensitivity_class` field via `classifySensitivity(cap)` |
+| `tusq review [--sensitivity <class>]` | New optional filter flag; output displays `sensitivity_class` per capability |
+| `tusq docs` | Per-capability section displays `sensitivity_class` |
+| `tusq diff` | Sensitivity changes surface as review-required entries (via the existing M13 capability_digest flip) |
+| `tusq compile` | Unchanged — output is byte-identical regardless of `sensitivity_class` value |
+| `tusq approve` | Unchanged — gate logic depends only on `approved` / `review_needed` fields |
+| `tusq serve` | Unchanged — MCP tool list is unaffected by `sensitivity_class` |
+| `tusq policy init` / `tusq policy verify` (default and `--strict`) | Unchanged — `sensitivity_class` is never a policy input |
+| `tusq redaction review` | Unchanged stdout/stderr behavior; the existing field echo continues to copy the manifest's `sensitivity_class` value verbatim (now a computed value instead of constant `"unknown"`) |
+
+### M28 Flags And Options
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--sensitivity <class>` (on `tusq review` only) | unset | Filter the review output to capabilities whose `sensitivity_class` matches; `<class>` MUST be one of `public`, `internal`, `confidential`, `restricted`, `unknown`; an unknown filter value exits 1 with `Unknown sensitivity class: <value>` on stderr before any output |
+
+The filter is advisory-only: it does NOT change the exit-code semantics of `tusq review` (exit 0 still means no blocking concerns; exit 1 still means unapproved or low-confidence capabilities were found — the filter does not hide those). Operators remain responsible for reviewing all capabilities regardless of sensitivity label.
+
+### M28 Closed Enum
+
+| Value | Assigned by | Meaning |
+|-------|-------------|---------|
+| `public` | R6 default | Evidence is present and no stronger rule matched |
+| `internal` | R5 | `auth_required === true` OR write-set verb without PII/financial signal |
+| `confidential` | R3 or R4 | Non-empty `redaction.pii_categories` (R3) or write verb + financial route/param (R4) |
+| `restricted` | R1 or R2 | `preserve === true` (R1) or admin/destructive verb / admin-namespaced route (R2) |
+| `unknown` | zero-evidence guard | No verb, no route, no params, no redaction, no preserve flag, no `auth_required` |
+
+The five values are the entire legal set. No other value, nullable, or wildcard is permitted in `capability.sensitivity_class`.
+
+### M28 Frozen Decision Table (Six Rules, First-Match-Wins)
+
+| Rule | Condition | Assigned class |
+|------|-----------|----------------|
+| R1 | `capability.preserve === true` | `restricted` |
+| R2 | `capability.verb` in `{delete, drop, truncate, admin, destroy, purge, wipe}` OR route segment matches `^(admin|root|superuser)(/|$)` | `restricted` |
+| R3 | `capability.redaction.pii_categories` is non-empty | `confidential` |
+| R4 | `capability.verb` in `{create, update, write, post, put, patch}` AND (route OR any param key) matches `/payment|invoice|charge|billing|ssn|tax|account_number/i` | `confidential` |
+| R5 | `capability.auth_required === true` OR (verb in write set AND no PII/financial signal) | `internal` |
+| R6 | (no prior rule matched, evidence present) | `public` |
+
+Rule precedence is fixed: R1 beats all others; R2 beats R3; R3 beats R4; earlier rules always win. The frozen rule table is enumerated verbatim in SYSTEM_SPEC § M28 and codified in Constraint 21; any rule change is a material governance event requiring its own ROADMAP milestone.
+
+### M28 Manifest Output Shape
+
+| Field | M28 effect |
+|-------|------------|
+| `capability.sensitivity_class` | Computed by `classifySensitivity(cap)` on every manifest generation; closed five-value enum |
+| `capability.capability_digest` | Re-computed because `sensitivity_class` is now a content field; flips on first post-M28 manifest regeneration for every capability that previously had `"unknown"` and now receives a computed value |
+| `capability.approved` | Resets to `false` on digest flip per existing M13 semantics; reviewers re-attest before promotion |
+| All other capability fields | Unchanged |
+
+### M28 Default Preservation
+
+| Field / Command | M28 effect |
+|-----------------|------------|
+| `tusq compile` output | Byte-identical regardless of `sensitivity_class` value (AC-9 invariant) |
+| `tusq approve` gate | Unchanged — depends only on `approved` and `review_needed` |
+| `tusq serve` MCP surface | Unchanged — tool-list filter is `approved: true` AND `review_needed: false` |
+| `tusq policy verify` (default and `--strict`) | Unchanged — `sensitivity_class` is never a policy input |
+| `tusq redaction review` output | Unchanged stdout/stderr discipline; field echo follows the manifest |
+| 13-command CLI surface | Preserved exactly — no new top-level noun, no new subcommand |
+| Empty-stdout invariant | All exit-1 paths continue to write empty stdout with stderr-only error text |
+| Em-dash U+2014 invariant | Preserved in any new help text or error messages introduced by M28 |
+
+### M28 Failure UX
+
+| Situation | Operator sees | Exit code |
+|-----------|---------------|-----------|
+| `tusq review --sensitivity <legal-value>` matches at least one capability | Filtered review output on stdout | 0 (when no blocking concerns remain) |
+| `tusq review --sensitivity <legal-value>` matches zero capabilities | Empty review section on stdout | 0 |
+| `tusq review --sensitivity <illegal-value>` | `Unknown sensitivity class: <value>` on stderr; stdout is empty; legal values list is part of the error message | 1 |
+| `--sensitivity` provided without a value | `--sensitivity requires a value` on stderr; stdout is empty | 1 |
+
+**Stream discipline:** Every exit-1 row above has `stdout === ""`. Operators who pipe stdout to a file get a zero-byte file on failure. Error text is written to stderr only.
+
+### M28 Local-Only Invariants
+
+| Invariant | How it shows up at review time |
+|-----------|---------------------------------|
+| Pure function | `classifySensitivity` has no I/O, no network, no clock, no filesystem reads beyond the manifest record |
+| Deterministic | Same manifest record → same `sensitivity_class`; byte-stable across Node.js processes and platforms |
+| Closed enum | No value outside `{public, internal, confidential, restricted, unknown}` may be emitted |
+| Zero-evidence unknown | Capabilities with no verb, no route, no params, no redaction, no preserve, no auth_required MUST receive `"unknown"` (never silently `"public"`) |
+| Zero new dependencies | `package.json` MUST NOT gain any classification, ML, compliance, or sensitivity-inference library |
+| Compile-output-invariant | `tusq compile` output is byte-identical for two manifests differing only in `sensitivity_class`; golden-file smoke assertion enforces this at merge time |
+| Frozen rule table | The six-rule first-match-wins table is locked by SYSTEM_SPEC § M28, Constraint 21, and the eval regression scenarios; any rule change is a material governance event requiring its own ROADMAP milestone |
+| Reviewer-aid framing | `sensitivity_class` MUST NOT be presented as runtime PII enforcement, automated compliance certification, or GDPR/HIPAA/PCI/SOC2 attestation in any docs, marketing, CLI output, or eval scenario |
+
 ## Primary Commands
 
 All commands execute from the `website/` working directory.

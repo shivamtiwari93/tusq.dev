@@ -2775,6 +2775,176 @@ M27 causes ZERO `capability_digest` flips on first post-M27 run because the mani
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-101+ acceptance criteria (the specific REQ numbering is the QA role's call; naming them now would over-reach PM scope).
 
+## M28: Static Sensitivity Class Inference from Manifest Evidence
+
+### Purpose
+
+M25–M27 shipped three redaction-metadata increments that gave reviewers structured PII signals but left `capability.sensitivity_class` frozen at `"unknown"` for every capability. The field has existed since M9, and Constraint 16 correctly prevented M25 from auto-escalating it on a PII name match alone. The gap is now addressable: a capability's manifest record already carries the verb, route, parameters, M26 PII categories, the M13 preserve flag, and write-effect markers — all of which are static, reviewer-authored evidence. A deterministic rule table over that evidence can produce a meaningful, reproducible sensitivity label without any network call, runtime probe, or policy inference.
+
+M28 computes `sensitivity_class` as a pure deterministic function of the existing manifest record. The classifier is a frozen six-rule first-match-wins decision table producing a closed five-value enum: `{public, internal, confidential, restricted, unknown}`. Capabilities with zero static evidence return `"unknown"` explicitly rather than silently defaulting to `"public"`. The new label surfaces only in `tusq review`, `tusq docs`, and `tusq diff` as a reviewer aid. It MUST NOT alter `tusq compile` policy, `tusq approve` gating, or any runtime execution surface.
+
+### Scope Boundary
+
+| In scope (V1.9) | Out of scope (V1.9) |
+|-----------------|---------------------|
+| Pure deterministic classifier over manifest record fields only | Any network or runtime call |
+| Closed five-value enum: public, internal, confidential, restricted, unknown | Open-ended or free-text sensitivity labels |
+| Six-rule first-match-wins frozen decision table | Machine-learning inference or heuristic scoring |
+| sensitivity_class surfaces in `tusq review`, `tusq docs`, `tusq diff` | New top-level CLI noun or flag |
+| capability_digest flip + M13 approved=false reset on change | Altering `tusq compile`, `tusq approve`, or `tusq serve` behavior |
+| `--sensitivity` optional filter on `tusq review` | Any runtime enforcement or PII compliance claim |
+| M10 SYSTEM_SPEC section (M28 frozen rule table + non-certification boundary) | GDPR / HIPAA / PCI / SOC2 attestation of any kind |
+| New Constraint 21 reserving reviewer-aid framing | Marketing or docs that frame sensitivity_class as runtime enforcement |
+
+### Frozen Decision Table (Six Rules, First-Match-Wins)
+
+The classifier evaluates rules in order; the first rule that matches the capability's manifest record determines the `sensitivity_class`. Rules are immutable once M28 ships; any rule change is a material governance event that MUST land under its own ROADMAP milestone with fresh re-approval expectations and a RELEASE_NOTES entry.
+
+| Rule | Condition | Assigned class | Rationale |
+|------|-----------|----------------|-----------|
+| R1 | `capability.preserve === true` | `restricted` | Preserve flag signals irreversible or destructive-by-intent semantics |
+| R2 | `capability.verb` in `{delete, drop, truncate, admin, destroy, purge, wipe}` OR route segment matches `/^(admin\|root\|superuser)/` | `restricted` | Admin/destructive verb or admin-namespaced route |
+| R3 | `capability.redaction.pii_categories` is non-empty | `confidential` | Confirmed PII-category evidence from M26 static labels |
+| R4 | `capability.verb` in `{create, update, write, post, put, patch}` AND (`capability.route` OR any param key) matches `/payment\|invoice\|charge\|billing\|ssn\|tax\|account_number/i` | `confidential` | Write verb into financial or regulated context |
+| R5 | `capability.auth_required === true` OR (`capability.verb` in write set AND no PII/financial signal from R3/R4) | `internal` | Auth gate or narrow write that does not meet R3/R4 threshold |
+| R6 | (no prior rule matched) | `public` | Default — only when evidence is present and all stronger rules fail |
+
+**Rule precedence is fixed: R1 beats all others; R2 beats R3; R3 beats R4; earlier rules always win.**
+
+Capabilities with zero static evidence (no verb, no route, no params, no redaction, no preserve flag, no auth_required) MUST receive `sensitivity_class: "unknown"`. This is a distinct sixth class, NOT a fallback to "public." The classifier MUST emit `"unknown"` explicitly when no manifest evidence is present to drive a rule — never silently default to `"public"` in the zero-evidence case.
+
+### Eight-Case Smoke Matrix (AC-7)
+
+| Case | Evidence | Expected class | Rule |
+|------|----------|----------------|------|
+| 1 | preserve=true, pii_categories non-empty | `restricted` | R1 beats R3 |
+| 2 | verb=delete, pii_categories non-empty | `restricted` | R2 beats R3 |
+| 3 | pii_categories non-empty, no preserve, verb=get | `confidential` | R3 |
+| 4 | verb=post, route=/payments/new, pii_categories empty | `confidential` | R4 |
+| 5 | auth_required=true, verb=get, pii_categories empty | `internal` | R5 |
+| 6 | verb=put, no PII, no financial route | `internal` | R5 |
+| 7 | verb=get, no auth, no PII | `public` | R6 |
+| 8 | no verb, no route, no params, no redaction, no preserve, no auth_required | `unknown` | zero evidence |
+
+### `classifySensitivity(capability)` Algorithm
+
+```
+function classifySensitivity(cap) {
+  // Zero-evidence guard
+  if (!cap.verb && !cap.route && (!cap.redaction?.pii_categories?.length)
+      && !cap.preserve && !cap.auth_required) {
+    return "unknown";
+  }
+  // R1: preserve flag
+  if (cap.preserve === true) return "restricted";
+  // R2: admin/destructive verb or route
+  const RESTRICTED_VERBS = new Set(["delete","drop","truncate","admin","destroy","purge","wipe"]);
+  if (RESTRICTED_VERBS.has((cap.verb || "").toLowerCase())) return "restricted";
+  if (/^(admin|root|superuser)(\/|$)/i.test(cap.route || "")) return "restricted";
+  // R3: PII category present
+  if (cap.redaction?.pii_categories?.length) return "confidential";
+  // R4: write verb + financial context
+  const WRITE_VERBS = new Set(["create","update","write","post","put","patch"]);
+  const FINANCIAL_RE = /payment|invoice|charge|billing|ssn|tax|account_number/i;
+  if (WRITE_VERBS.has((cap.verb || "").toLowerCase())) {
+    if (FINANCIAL_RE.test(cap.route || "") ||
+        Object.keys(cap.input_schema?.properties || {}).some(k => FINANCIAL_RE.test(k))) {
+      return "confidential";
+    }
+  }
+  // R5: auth_required or narrow write
+  if (cap.auth_required === true) return "internal";
+  if (WRITE_VERBS.has((cap.verb || "").toLowerCase())) return "internal";
+  // R6: default (evidence present, no stronger rule matched)
+  return "public";
+}
+```
+
+The function is pure: same input → same output, byte-stable across runs, no I/O, no clock, no randomness.
+
+### Pipeline Propagation
+
+```
+tusq manifest
+   └─ capabilities[*].sensitivity_class = classifySensitivity(cap)   # M28; pure function
+   └─ capability_digest re-computed (sensitivity_class included)      # M13; unchanged algorithm
+   └─ approved = false when digest flips                              # M13; unchanged gate
+
+tusq review [--sensitivity <class>]
+   └─ displays sensitivity_class per capability                       # M28; reviewer-aid surface
+
+tusq docs
+   └─ renders sensitivity_class in per-capability sections            # M28; reviewer-aid surface
+
+tusq diff
+   └─ surfaces sensitivity_class changes in review queue              # M28; reviewer-aid surface
+
+tusq compile
+   └─ output is byte-identical regardless of sensitivity_class        # M28; AC-9 invariant
+
+tusq approve
+   └─ gate logic is unchanged (approved/review_needed only)           # M28; AC-9 invariant
+
+tusq serve
+   └─ MCP surface is unchanged                                        # M28; AC-9 invariant
+```
+
+### `tusq review` Optional `--sensitivity` Filter
+
+The only new surface flag in M28 is an optional `--sensitivity <class>` filter on the existing `tusq review` command. When supplied, the review output lists only capabilities whose `sensitivity_class` matches the given value. It MUST NOT change the exit code semantics of `tusq review` (exit 0 still means no blocking concerns; exit 1 still means unapproved/low-confidence capabilities were found — the filter does not hide those). When the supplied value is not in the legal enum, exit 1 with an actionable message before any output. The filter is advisory-only: operators remain responsible for reviewing all capabilities regardless of sensitivity label.
+
+### AC-9 Compile / Approve / Runtime Invariant Preservation
+
+`tusq compile` output MUST be byte-identical for two manifests that differ only in `sensitivity_class` value. The compiled tool shape does NOT include `sensitivity_class` in V1.9; no sensitivity gate is applied at compile time. `tusq approve` acceptance criteria (approved/review_needed) are unchanged. `tusq serve` tool-list filtering continues to use only `approved: true` and `review_needed: false`. Any golden-file assertion that compares `tusq compile` output before and after a `sensitivity_class` change MUST pass without modification.
+
+### Digest Flip Scope and AC-5
+
+`sensitivity_class` is included in the content fields hashed to produce `capability_digest` (M13). When M28 first computes a non-`"unknown"` value for a capability that previously had `"unknown"`, the digest flips and `approved` resets to `false`. The capability disappears from `tools/list` until a reviewer re-approves it via `tusq approve`. This is the correct migration path for M28 adoption; RELEASE_NOTES MUST document the expected re-approval sweep on first post-M28 manifest regeneration.
+
+### V1.9 Limitations
+
+| Limitation | Rationale | V2 plan |
+|------------|-----------|---------|
+| No multi-locale or natural-language route parsing | Route segment matching is regex on ASCII patterns only; non-English or path-aliased routes may miss a classification | V2 plugin interface for locale-aware route classifiers |
+| No org-policy override file for sensitivity rules | Hardcoded rule table is the governance guarantee; overrides would drift reviewers | V2 policy-as-code tier with a signed rule table |
+| No partial-route confidence weighting | R4 financial match is binary; ambiguous routes (e.g., `/orders`) are classified by verb alone | V2 scoring model that weights multiple signals |
+| No reviewer-assignable sensitivity override | Reviewers can observe sensitivity in the review output but cannot override it in the manifest in V1.9 | V2 `tusq approve --sensitivity <class>` to record reviewer override with audit trail |
+
+### Non-Compliance-Certification Boundary
+
+`sensitivity_class` is reviewer-aid framing only. tusq DOES NOT certify, enforce, or attest GDPR, HIPAA, PCI, SOC2, or any other regulatory compliance at runtime. `sensitivity_class: "restricted"` does NOT mean the capability is runtime-restricted from unauthorized callers; it means the manifest evidence pattern matched the R1 or R2 rule and a reviewer should pay heightened attention. DOCS, CLI help, launch artifacts, and any external communication MUST NOT frame `sensitivity_class` as a runtime data-access control, a regulatory compliance proof, or an automated governance certification.
+
+### Edge-Case Invariants
+
+- A capability with `preserve === null` (not `true`) MUST NOT trigger R1.
+- A capability with `verb: "DELETE"` (uppercase) MUST trigger R2 after `toLowerCase()` normalization.
+- A route of `/admin-panel` MUST NOT trigger R2; the regex is `^(admin|root|superuser)(\/|$)` requiring the segment to BE admin/root/superuser as a full path prefix, not merely contain it.
+- `pii_categories: []` (empty array) MUST NOT trigger R3; the check is `length > 0`.
+- A capability with auth_required present but false MUST NOT trigger R5; the check is `=== true`.
+
+### Local-Only Invariants
+
+| Invariant | Requirement |
+|-----------|-------------|
+| Pure function | `classifySensitivity` has no I/O, no network, no clock, no filesystem reads beyond the manifest |
+| Deterministic | Same manifest record → same `sensitivity_class`, byte-stable across Node.js processes and platforms |
+| Closed enum | No value outside `{public, internal, confidential, restricted, unknown}` may be emitted |
+| Zero new dependencies | `package.json` MUST NOT gain any classification, ML, or compliance library |
+| Compile-output-invariant | `tusq compile` output is byte-identical before and after M28 adoption |
+
+### Docs and Tests Required Before Implementation
+
+- `src/cli.js` — add `classifySensitivity(cap)` pure function and call it on every capability in manifest generation; update `tusq review` to render `sensitivity_class` per capability and accept optional `--sensitivity <class>` filter; update `tusq docs` to include `sensitivity_class` in per-capability sections; verify `tusq diff` already surfaces the field change (no change needed if diff compares `capability_digest` — digest flip is automatic from M13).
+- `SYSTEM_SPEC.md` — this M28 section (already present after this edit); `## Constraints` gains Constraint 21.
+- `README.md` — add one line under the manifest shape description noting `sensitivity_class` is computed by a static rule table; link to docs for the frozen rule table.
+- `website/docs/manifest-format.md` — add a "Sensitivity Class" subsection documenting the five enum values, the six-rule table, the zero-evidence unknown bucket, the non-certification boundary, and the `--sensitivity` filter on `tusq review`.
+- `website/docs/cli-reference.md` — update `tusq review` entry with `--sensitivity` flag and note that `tusq docs` and `tusq diff` now surface `sensitivity_class`.
+- `tests/smoke.mjs` — add the 8-case smoke matrix (AC-7); add an assertion that `tusq compile` output is byte-identical for two capabilities differing only in `sensitivity_class`; add assertions that `tusq review --sensitivity restricted` filters correctly and that an unknown filter value exits 1.
+- `tests/evals/governed-cli-scenarios.json` — add ≥3 eval regression scenarios: (1) R1>R3 precedence (preserve=true with PII → restricted); (2) R4 financial-route detection (post verb + payment route, no PII → confidential); (3) zero-evidence unknown bucket (empty record → unknown). Total eval scenarios become **≥13**.
+- `tests/evals/governed-cli-scenarios.json` — verify AC-9 golden-file: a scenario that compiles two identical capabilities differing only in `sensitivity_class` and asserts identical compiled tool output.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-109+ acceptance criteria.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2797,3 +2967,4 @@ The dev role is accountable for implementing all items above. The QA role is acc
 18. **M26 retention-framing invariant** — A populated `redaction.pii_categories` array means "each entry labels the M25 canonical category that produced the matching `pii_fields` entry." It does NOT mean the capability enforces any retention policy at runtime, does NOT prove regulatory compliance, and does NOT imply the manifest auto-sets retention defaults. Docs/README/CLI-help/launch artifacts MUST NOT describe M26 as "auto-retention," "automated redaction," "retention-policy enforcement," "GDPR-retention-compliant," "HIPAA-retention-compliant," or any phrase that implies runtime retention is governed by the manifest. The defensible framing is "canonical PII field-name category labels derived statically from M25's field-name matches, intended to help reviewers set retention/log/trace policy defaults by hand." M26 MUST NOT auto-populate `redaction.retention_days`, `redaction.log_level`, or `redaction.mask_in_traces` — existing defaults remain `null`, `"full"`, and `false` respectively unless explicitly edited by a reviewer, and those fields are owned by a future organizational-policy increment. M26 MUST NOT auto-escalate `capability.sensitivity_class` — it stays `"unknown"` (Constraint 16 propagates verbatim to M26). M26 MUST NOT filter capabilities in `tusq serve` or in `tusq policy verify --strict` based on category content; M26 is descriptive metadata only.
 19. **M27 reviewer-aid-framing invariant** — The `tusq redaction review` subcommand is a reviewer aid, NOT a runtime enforcement gate, NOT a compliance certification, and NOT a substitute for reviewer judgment. Docs/README/CLI-help/launch artifacts MUST NOT describe M27 as "automated PII compliance," "automated redaction policy," "GDPR/HIPAA/PCI-ready check," "pre-flight check for serve," "runtime PII safeguard," "execution-safety gate," or any phrase that implies running the command makes a capability safer at runtime. The defensible framing is "a read-only reviewer report that aggregates the M25 field-name hints, the M26 category labels, and a frozen per-category advisory string for each capability." The V1.8 advisory set is explicitly enumerated in SYSTEM_SPEC § M27 and frozen in `src/cli.js` as `PII_REVIEW_ADVISORY_BY_CATEGORY`. Any addition or wording change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. Every advisory string ends with a reviewer-directed reminder (it always says what the reviewer still has to decide) and never claims the manifest or the capability is compliant.
 20. **M27 read-only invariant** — `tusq redaction review` is strictly read-only. It MUST NOT mutate `tusq.manifest.json`, MUST NOT write to `.tusq/execution-policy.json`, MUST NOT write to `tusq-tools/*.json`, MUST NOT write to `.tusq/scan.json`, MUST NOT create or modify any other repo file. It MUST NOT mutate `capability.redaction.retention_days`, `capability.redaction.log_level`, `capability.redaction.mask_in_traces`, `capability.sensitivity_class`, `capability.approved`, `capability.approved_by`, `capability.approved_at`, or `capability.review_needed`. It MUST NOT re-run the scanner, MUST NOT import `fastify`/`ajv`/`@sinclair/typebox` or any PII/compliance/retention/NLP library, MUST NOT bind a TCP port, MUST NOT start an MCP server, MUST NOT make any network I/O, and MUST NOT invoke any compiled tool. It MUST NOT change the observable behavior of `tusq scan`, `tusq manifest`, `tusq compile`, `tusq serve`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq version`, `tusq policy init`, `tusq policy verify` (default), or `tusq policy verify --strict`. The only observable side effects of a `tusq redaction review` invocation are stdout output, stderr output, and a process exit code; a smoke test asserts that the manifest file's mtime and content are unchanged after any invocation, and that `tusq policy verify` (default and `--strict`) produces byte-identical stdout and exit code before and after running M27 on the same fixture.
+21. **M28 sensitivity-class reviewer-aid framing invariant** — `sensitivity_class` is reviewer-aid framing only. It MUST NOT be presented as runtime PII enforcement, automated compliance certification, or GDPR/HIPAA/PCI/SOC2 attestation in any docs, marketing, CLI output, or eval scenario. The closed five-value enum `{public, internal, confidential, restricted, unknown}` is derived purely from already-shipped manifest evidence (verb, route, parameters, redaction PII categories, M13 preserve flag, write-effect markers) by a deterministic pure function (`classifySensitivity`) that performs zero network/runtime/policy calls. The frozen six-rule first-match-wins decision table (R1 preserve→restricted, R2 admin/destructive verb→restricted, R3 PII category→confidential, R4 write+financial-context→confidential, R5 auth_required or narrow_write→internal, R6 default→public) is immutable once M28 ships; any rule change is a material governance event that MUST land under its own ROADMAP milestone. Capabilities with zero static evidence MUST receive `sensitivity_class: "unknown"` — never silently "public." `tusq compile` output MUST be byte-identical regardless of `sensitivity_class` value. `tusq approve` gate logic MUST remain unchanged. `tusq serve` MCP surface MUST be unchanged. The only new CLI surface is an optional `--sensitivity <class>` filter on the existing `tusq review` command; no new top-level noun is introduced and the 13-command CLI surface is preserved exactly.
