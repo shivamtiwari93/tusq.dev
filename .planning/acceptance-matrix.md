@@ -120,6 +120,8 @@
 
 **turn_430f9b5d0f850456 re-verification (2026-04-24, HEAD 4ed3270):** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`. CLI surface confirmed: 13 commands, `redaction` at position 11, `redaction review --help` shows three-flag surface (`--manifest`, `--capability`, `--json`) and reviewer-aid framing. All 108 criteria remain PASS.
 
+**turn_5584c661462c5226 re-verification (attempt 2, 2026-04-25, HEAD 6b2cc50):** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` exits 0, 13 commands, `redaction` at position 11. git diff 7756d19..6b2cc50 confirms only `.planning/IMPLEMENTATION_NOTES.md` changed — zero source/test/QA-owned artifact drift. All 108 acceptance criteria (REQ-001–REQ-108) remain PASS. This attempt 2 modifies all three QA-owned gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) per the rejection feedback from attempt 1.
+
 ## Checklist
 
 - [x] Command help audited for every user-facing command (init, scan, manifest, compile, serve, review, version, help)

@@ -461,3 +461,7 @@ tusq redaction review [--manifest <path>] [--capability <name>] [--json]
 - **JavaScript/TypeScript only:** Python, Go, Java, and other ecosystems are not supported in V1.
 - **Non-interactive review:** `tusq review` prints to stdout only. An interactive TUI for in-terminal approval is planned for V1.1.
 - **Distribution still needs explicit confirmation:** the launch narrative should drive repo-local evaluation until a public package channel is actually available
+
+## QA Re-Verification (turn_5584c661462c5226, attempt 2, 2026-04-25, HEAD 6b2cc50)
+
+`npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11. All 108 acceptance criteria (REQ-001–REQ-108) remain PASS. No source drift from prior QA-verified baseline — git diff 7756d19..6b2cc50 confirms only `.planning/IMPLEMENTATION_NOTES.md` changed.
