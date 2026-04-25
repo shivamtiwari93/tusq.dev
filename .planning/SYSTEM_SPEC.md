@@ -2945,6 +2945,250 @@ The only new surface flag in M28 is an optional `--sensitivity <class>` filter o
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-109+ acceptance criteria.
 
+## M29: Static Auth Requirements Inference from Manifest Evidence
+
+### Purpose
+
+M10 shipped a single boolean `auth_required` field on each capability; M28 shipped static `sensitivity_class` inference. Reviewers still have no structured view of *what kind* of authentication a capability appears to expect: bearer token, API key, session cookie, basic auth, OAuth/OIDC, or none. This information is already implied by manifest evidence — the middleware-name strings recorded by the scanner, the route prefix, the `auth_required` boolean, and (post-M28) the `sensitivity_class` propagation — but it is not yet surfaced in a structured shape.
+
+M29 computes a structured `auth_requirements` record per capability as a pure deterministic function of the existing manifest record. The classifier evaluates a frozen six-rule first-match-wins decision table over middleware-name strings to assign `auth_scheme`, extracts `auth_scopes` and `auth_roles` from middleware-annotation literals via a frozen extraction rule set, and returns a closed-shape record. The new label surfaces only in `tusq review`, `tusq docs`, and `tusq diff` as a reviewer aid. It MUST NOT alter `tusq compile` policy, `tusq approve` gating, `tusq serve` MCP responses, `tusq policy verify` (default or `--strict`), or `tusq redaction review` output.
+
+### Scope Boundary
+
+| In scope (V1.10) | Out of scope (V1.10) |
+|------------------|----------------------|
+| Pure deterministic classifier over manifest record fields only | Any network or runtime call |
+| Closed seven-value `auth_scheme` enum: bearer, api_key, session, basic, oauth, none, unknown | Open-ended or free-text auth-scheme labels |
+| Closed five-value `evidence_source` enum: middleware_name, route_prefix, auth_required_flag, sensitivity_class_propagation, none | Inference from arbitrary source-text grep |
+| Frozen six-rule first-match-wins `auth_scheme` decision table | Token-signature validation, JWT-claim parsing, OAuth-flow simulation |
+| Frozen scope/role extraction rules (regex over middleware annotation literals only) | Reading any source file beyond what manifest generation already reads |
+| `auth_requirements` surfaces in `tusq review`, `tusq docs`, `tusq diff` | New top-level CLI noun or subcommand |
+| `capability_digest` flip + M13 `approved=false` reset on change | Altering `tusq compile`, `tusq approve`, `tusq serve`, `tusq policy verify`, `tusq redaction review` behavior |
+| Optional `--auth-scheme <scheme>` filter on existing `tusq review` | Any runtime AAA enforcement or compliance attestation claim |
+| New SYSTEM_SPEC § M29 + Constraint 22 (reviewer-aid framing) | SOC2 / ISO27001 / OAuth2 / OIDC / SAML / GDPR / HIPAA / PCI attestation of any kind |
+
+### Closed `auth_scheme` Enum (Seven Values)
+
+| Value | Meaning |
+|-------|---------|
+| `bearer` | Middleware-name evidence matches bearer-token / JWT / access-token pattern |
+| `api_key` | Middleware-name evidence matches API-key / x-api-key pattern |
+| `session` | Middleware-name evidence matches session / cookie / passport-local pattern |
+| `basic` | Middleware-name evidence matches HTTP Basic Auth pattern |
+| `oauth` | Middleware-name evidence matches OAuth / OIDC / OpenID pattern |
+| `none` | `auth_required === false` AND no admin/restricted route prefix; capability appears intentionally unauthenticated |
+| `unknown` | Zero-evidence guard: no middleware, no route prefix, no `auth_required` flag, no `sensitivity_class` signal |
+
+The seven values are the entire legal set. No other value, nullable, or wildcard is permitted in `auth_requirements.auth_scheme`.
+
+### Closed `evidence_source` Enum (Five Values)
+
+| Value | Meaning |
+|-------|---------|
+| `middleware_name` | Classification driven by R1–R5 middleware-name regex match |
+| `route_prefix` | Classification driven by route segment evidence |
+| `auth_required_flag` | Classification driven by R6 `auth_required === false` path |
+| `sensitivity_class_propagation` | Classification informed by `sensitivity_class` (R2/R6 admin/restricted route gating) |
+| `none` | Zero-evidence guard fired; record is `unknown` with empty arrays |
+
+### Frozen Decision Table (Six Rules, First-Match-Wins)
+
+The classifier evaluates rules in order against the capability's middleware-name list and `auth_required` flag; the first rule that matches determines `auth_scheme`. Rules are immutable once M29 ships; any rule change is a material governance event requiring its own ROADMAP milestone with fresh re-approval expectations and a RELEASE_NOTES entry.
+
+| Rule | Condition | Assigned `auth_scheme` | `evidence_source` |
+|------|-----------|------------------------|-------------------|
+| R1 | Any middleware_name matches `/bearer|jwt|access[_-]?token/i` | `bearer` | `middleware_name` |
+| R2 | Any middleware_name matches `/api[_-]?key|x-api-key/i` | `api_key` | `middleware_name` |
+| R3 | Any middleware_name matches `/session|cookie|passport-local/i` | `session` | `middleware_name` |
+| R4 | Any middleware_name matches `/basic[_-]?auth/i` | `basic` | `middleware_name` |
+| R5 | Any middleware_name matches `/oauth|oidc|openid/i` | `oauth` | `middleware_name` |
+| R6 | `auth_required === false` AND no admin/restricted route prefix | `none` | `auth_required_flag` |
+| default | (no prior rule matched, evidence present) | `unknown` | `none` |
+
+**Rule precedence is fixed: R1 beats all others; earlier rules always win.** A capability with both a `bearer`-matching middleware AND an `api_key`-matching middleware is classified as `bearer` (R1), never `api_key`.
+
+### Zero-Evidence Guard
+
+Capabilities with zero static evidence (no middleware names, no route prefix, no `auth_required` flag, no `sensitivity_class` signal) MUST receive:
+
+```
+auth_requirements: {
+  auth_scheme: "unknown",
+  auth_scopes: [],
+  auth_roles: [],
+  evidence_source: "none"
+}
+```
+
+— never silently default to `"none"`. The zero-evidence guard is the first check in `classifyAuthRequirements` before the rule table runs. `"none"` is reachable only from R6 evidence (an explicit `auth_required: false` declaration paired with a non-admin route); it MUST NOT be the absence-of-evidence fallback.
+
+### Frozen Scope/Role Extraction Rules
+
+`auth_scopes` and `auth_roles` are derived from a frozen pure rule set:
+
+- **Scopes** are extracted from middleware-annotation literals matching `/scopes?:\s*\[([^\]]+)\]/` over the capability's source-literal middleware list.
+- **Roles** are extracted from middleware-annotation literals matching `/role[s]?:\s*\[([^\]]+)\]/` over the same surface.
+
+Both arrays MUST:
+- preserve declaration order (the order entries appear in the source-literal middleware annotation),
+- be deduplicated case-sensitively (`"read:user"` and `"Read:User"` are distinct entries; only exact byte-equal duplicates are removed),
+- be empty arrays (never `null`, never absent) when zero matches are found.
+
+The extractor reads ONLY the already-built capability record fields (the source-literal middleware list captured by the M9/M15 scanner); no regex over arbitrary source files; no filesystem reads beyond what manifest generation already performs.
+
+### Eight-Case Smoke Matrix (AC-8)
+
+| Case | Evidence | Expected `auth_scheme` | Expected scopes/roles |
+|------|----------|------------------------|------------------------|
+| 1 | middleware_name="requireBearerToken" | `bearer` | `[]`/`[]` |
+| 2 | middleware_name="checkApiKey" | `api_key` | `[]`/`[]` |
+| 3 | middleware_name="sessionGuard" | `session` | `[]`/`[]` |
+| 4 | middleware_name="basicAuth" | `basic` | `[]`/`[]` |
+| 5 | middleware_name="oauthMiddleware" | `oauth` | `[]`/`[]` |
+| 6 | `auth_required=false`, route=/public/health | `none` | `[]`/`[]` |
+| 7 | middleware annotation declares `scopes:["read:user","write:user"]` | (per other rules) | `["read:user","write:user"]` (preserved order, deduped) |
+| 8 | zero-evidence empty record | `unknown` | `[]`/`[]` |
+
+### `classifyAuthRequirements(capability)` Algorithm
+
+```
+function classifyAuthRequirements(cap) {
+  const middlewareList = cap.middleware_names || [];
+  const annotations = cap.middleware_annotations || [];
+  // Zero-evidence guard
+  const hasMiddleware = middlewareList.length > 0;
+  const hasRoutePrefix = !!cap.route;
+  const hasAuthFlag = typeof cap.auth_required === "boolean";
+  const hasSensitivitySignal = cap.sensitivity_class && cap.sensitivity_class !== "unknown";
+  if (!hasMiddleware && !hasRoutePrefix && !hasAuthFlag && !hasSensitivitySignal) {
+    return { auth_scheme: "unknown", auth_scopes: [], auth_roles: [], evidence_source: "none" };
+  }
+  // Scope/role extraction (frozen rules; pure)
+  const scopes = extractFrozenList(annotations, /scopes?:\s*\[([^\]]+)\]/);
+  const roles = extractFrozenList(annotations, /role[s]?:\s*\[([^\]]+)\]/);
+  // R1..R5: middleware-name first-match-wins
+  const RULES = [
+    [/bearer|jwt|access[_-]?token/i, "bearer"],
+    [/api[_-]?key|x-api-key/i, "api_key"],
+    [/session|cookie|passport-local/i, "session"],
+    [/basic[_-]?auth/i, "basic"],
+    [/oauth|oidc|openid/i, "oauth"],
+  ];
+  for (const [re, scheme] of RULES) {
+    if (middlewareList.some(name => re.test(name))) {
+      return { auth_scheme: scheme, auth_scopes: scopes, auth_roles: roles, evidence_source: "middleware_name" };
+    }
+  }
+  // R6: explicit auth_required=false on non-admin route
+  const isAdminRoute = /^\/(admin|root|superuser)(\/|$)/i.test(cap.route || "");
+  if (cap.auth_required === false && !isAdminRoute) {
+    return { auth_scheme: "none", auth_scopes: scopes, auth_roles: roles, evidence_source: "auth_required_flag" };
+  }
+  // default: evidence present but no rule matched
+  return { auth_scheme: "unknown", auth_scopes: scopes, auth_roles: roles, evidence_source: "none" };
+}
+```
+
+The function is pure: same input → same output, byte-stable across runs, no I/O, no clock, no randomness, no network, no auth-library import.
+
+### Pipeline Propagation
+
+```
+tusq manifest
+   └─ capabilities[*].auth_requirements = classifyAuthRequirements(cap)   # M29; pure function
+   └─ capability_digest re-computed (auth_requirements included)            # M13; unchanged algorithm
+   └─ approved = false when digest flips                                    # M13; unchanged gate
+
+tusq review [--auth-scheme <scheme>] [--sensitivity <class>]
+   └─ displays auth_requirements per capability                             # M29; reviewer-aid surface
+
+tusq docs
+   └─ renders auth_requirements in per-capability sections                  # M29; reviewer-aid surface
+
+tusq diff
+   └─ surfaces auth_requirements changes in review queue                    # M29; via M13 digest flip
+
+tusq compile
+   └─ output is byte-identical regardless of auth_requirements              # M29; AC-7 invariant
+
+tusq approve
+   └─ gate logic is unchanged (approved/review_needed only)                 # M29; AC-7 invariant
+
+tusq serve
+   └─ MCP surface (tools/list, tools/call, dry_run_plan) is unchanged       # M29; AC-7 invariant
+   └─ auth_requirements MUST NOT appear in any serve response shape         # M29; AC-7 invariant
+
+tusq policy verify (default and --strict)
+   └─ unchanged                                                              # M29; AC-7/AC-10 invariant
+
+tusq redaction review
+   └─ unchanged                                                              # M29; AC-7/AC-10 invariant
+```
+
+### `tusq review` Optional `--auth-scheme` Filter
+
+The only new surface flag in M29 is an optional `--auth-scheme <scheme>` filter on the existing `tusq review` command. When supplied, the review output lists only capabilities whose `auth_requirements.auth_scheme` matches the given value. It MUST NOT change the exit code semantics of `tusq review` (exit 0 still means no blocking concerns; exit 1 still means unapproved/low-confidence capabilities were found — the filter does not hide those). When the supplied value is not in the legal seven-value enum, exit 1 with `Unknown auth scheme: <value>` on stderr, empty stdout, before any output (matching M28's `--sensitivity` validation pattern).
+
+The filter is mutually compatible with `--sensitivity`: both can be set in one invocation; they intersect AND-style. `tusq review --sensitivity restricted --auth-scheme bearer` lists only capabilities matching both filters.
+
+### AC-7 Compile / Approve / Runtime Invariant Preservation
+
+`tusq compile` output MUST be byte-identical for two manifests that differ only in `auth_requirements` value. The compiled tool shape does NOT include `auth_requirements` in V1.10. `tusq approve` acceptance criteria (`approved`/`review_needed`) are unchanged. `tusq serve` MCP surface (`tools/list`, `tools/call`, `dry_run_plan`) MUST NOT include `auth_requirements` in any response shape. `tusq policy verify` (default and `--strict`) and `tusq redaction review` behavior is byte-for-byte unchanged. Any golden-file assertion that compares `tusq compile` output before and after an `auth_requirements` change MUST pass without modification.
+
+### Digest Flip Scope and AC-5
+
+`auth_requirements` is included in the content fields hashed to produce `capability_digest` (M13). When M29 first computes a non-`"unknown"` value for a capability that previously had no `auth_requirements` field, the digest flips and `approved` resets to `false`. The capability disappears from `tools/list` until a reviewer re-approves it via `tusq approve`. RELEASE_NOTES MUST document the expected re-approval sweep on first post-M29 manifest regeneration.
+
+A change to any field of `auth_requirements` — including the contents of `auth_scopes` or `auth_roles` arrays (e.g., adding a single scope `"read:user"`) — flips the digest. The diff queue under `tusq diff` surfaces the `auth_requirements` change as a non-empty review queue entry.
+
+### V1.10 Limitations
+
+| Limitation | Rationale | V2 plan |
+|------------|-----------|---------|
+| No multi-locale or natural-language middleware-name parsing | Middleware regex is ASCII patterns only; non-English middleware names may miss classification | V2 plugin interface for locale-aware classifiers |
+| No org-policy override file for auth-scheme rules | Hardcoded rule table is the governance guarantee; overrides would drift reviewers | V2 policy-as-code tier with a signed rule table |
+| No reviewer-assignable auth-scheme override | Reviewers can observe `auth_scheme` in the review output but cannot override it in the manifest in V1.10 | V2 `tusq approve --auth-scheme <scheme>` to record reviewer override with audit trail |
+| No JWT-claim or scope-grant validation | Scopes/roles are extracted from middleware-annotation literals only; no token decoding or signature verification | Out of scope permanently for tusq; reserved for runtime-AAA-enforcement layers outside tusq |
+| No detection of multi-scheme middleware chains | A capability with both bearer and api_key middleware is classified by R1 precedence (bearer); the alternate scheme is not separately recorded | V2 may add a `secondary_schemes` array if reviewer demand emerges |
+
+### Non-Attestation Boundary
+
+`auth_requirements` is reviewer-aid framing only. tusq DOES NOT authenticate or authorize requests at runtime, DOES NOT certify SOC2 / ISO27001 / OAuth2 / OIDC / SAML compliance, and DOES NOT validate token signatures or scope grants. `auth_scheme: "bearer"` does NOT mean tusq verifies bearer tokens; it means a middleware in the source matched the R1 regex and a reviewer should pay attention to bearer-token configuration. DOCS, CLI help, launch artifacts, and any external communication MUST NOT frame `auth_requirements` as runtime AAA enforcement, automated AAA certification, or any compliance attestation.
+
+### Edge-Case Invariants
+
+- A capability with `auth_required === undefined` (not `false`) MUST NOT trigger R6; the check is `=== false`.
+- A capability with `middleware_names: ["BearerAuth", "checkApiKey"]` MUST classify as `bearer` (R1 precedence over R2).
+- A capability with route `/admin/users` AND `auth_required: false` MUST NOT trigger R6; admin route prefix blocks the `none` classification (admin route requires authentication review regardless of the flag).
+- A scopes annotation `scopes: ["read:user", "read:user", "write:user"]` MUST dedupe to `["read:user", "write:user"]` preserving first-occurrence order.
+- A scopes annotation `scopes: ["read:user", "Read:User"]` MUST preserve both entries (case-sensitive dedup); `"Read:User"` is a distinct scope.
+
+### Local-Only Invariants
+
+| Invariant | Requirement |
+|-----------|-------------|
+| Pure function | `classifyAuthRequirements` has no I/O, no network, no clock, no filesystem reads beyond the manifest record |
+| Deterministic | Same manifest record → same `auth_requirements`, byte-stable across Node.js processes and platforms |
+| Closed enums | `auth_scheme` ∈ seven-value set; `evidence_source` ∈ five-value set; no other value, nullable, or wildcard |
+| Empty-array invariant | `auth_scopes` and `auth_roles` MUST be `[]` (never `null`, never absent) when zero matches |
+| Zero-evidence unknown | Capabilities with no middleware, no route, no `auth_required`, no `sensitivity_class` signal MUST receive `unknown` (never silently `"none"`) |
+| Zero new dependencies | `package.json` MUST NOT gain `passport`, `jsonwebtoken`, `oauth2-server`, or any AAA library |
+| Compile-output-invariant | `tusq compile` output is byte-identical before and after M29 adoption |
+| Serve-surface-invariant | `tusq serve` `tools/list` / `tools/call` / `dry_run_plan` response shapes do NOT include `auth_requirements` |
+
+### Docs and Tests Required Before Implementation
+
+- `src/cli.js` — add `classifyAuthRequirements(cap)` pure function and call it on every capability in manifest generation; update `tusq review` to render `auth_requirements` per capability and accept optional `--auth-scheme <scheme>` filter (mutually compatible with `--sensitivity`); update `tusq docs` to include `auth_requirements` in per-capability sections; verify `tusq diff` already surfaces the field change (no change needed if diff compares `capability_digest` — digest flip is automatic from M13).
+- `SYSTEM_SPEC.md` — this M29 section (already present after this edit); `## Constraints` gains Constraint 22.
+- `README.md` — add one line under the manifest shape description noting `auth_requirements` is computed by a static rule table; link to docs for the frozen rule table.
+- `website/docs/manifest-format.md` — add an "Auth Requirements" subsection documenting the seven-value `auth_scheme` enum, the five-value `evidence_source` enum, the six-rule table, the scope/role extraction rules, the zero-evidence `unknown` bucket, the non-attestation boundary, and the `--auth-scheme` filter on `tusq review`.
+- `website/docs/cli-reference.md` — update `tusq review` entry with `--auth-scheme` flag (and document mutual compatibility with `--sensitivity`) and note that `tusq docs` and `tusq diff` now surface `auth_requirements`.
+- `tests/smoke.mjs` — add the 8-case smoke matrix (AC-8); add an assertion that `tusq compile` output is byte-identical for two capabilities differing only in `auth_requirements`; add assertions that `tusq review --auth-scheme bearer` filters correctly, that an unknown filter value exits 1 with empty stdout, and that `--sensitivity` + `--auth-scheme` intersect AND-style.
+- `tests/evals/governed-cli-scenarios.json` — add ≥3 eval regression scenarios: (1) bearer-token middleware detection precedence over generic `auth_required` (R1 wins); (2) scopes-array extraction with mixed-order declaration verifying preserved order and deduplication; (3) zero-evidence `unknown` bucket with empty `auth_scopes`/`auth_roles` arrays. Total eval scenarios become **≥16**.
+- `tests/evals/governed-cli-scenarios.json` — verify AC-7 golden-file: a scenario that compiles two identical capabilities differing only in `auth_requirements` and asserts identical compiled tool output; a serve-surface assertion that `tools/list` / `tools/call` response shapes contain no `auth_requirements` key.
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-116+ acceptance criteria.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -2968,3 +3212,4 @@ The dev role is accountable for implementing all items above. The QA role is acc
 19. **M27 reviewer-aid-framing invariant** — The `tusq redaction review` subcommand is a reviewer aid, NOT a runtime enforcement gate, NOT a compliance certification, and NOT a substitute for reviewer judgment. Docs/README/CLI-help/launch artifacts MUST NOT describe M27 as "automated PII compliance," "automated redaction policy," "GDPR/HIPAA/PCI-ready check," "pre-flight check for serve," "runtime PII safeguard," "execution-safety gate," or any phrase that implies running the command makes a capability safer at runtime. The defensible framing is "a read-only reviewer report that aggregates the M25 field-name hints, the M26 category labels, and a frozen per-category advisory string for each capability." The V1.8 advisory set is explicitly enumerated in SYSTEM_SPEC § M27 and frozen in `src/cli.js` as `PII_REVIEW_ADVISORY_BY_CATEGORY`. Any addition or wording change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. Every advisory string ends with a reviewer-directed reminder (it always says what the reviewer still has to decide) and never claims the manifest or the capability is compliant.
 20. **M27 read-only invariant** — `tusq redaction review` is strictly read-only. It MUST NOT mutate `tusq.manifest.json`, MUST NOT write to `.tusq/execution-policy.json`, MUST NOT write to `tusq-tools/*.json`, MUST NOT write to `.tusq/scan.json`, MUST NOT create or modify any other repo file. It MUST NOT mutate `capability.redaction.retention_days`, `capability.redaction.log_level`, `capability.redaction.mask_in_traces`, `capability.sensitivity_class`, `capability.approved`, `capability.approved_by`, `capability.approved_at`, or `capability.review_needed`. It MUST NOT re-run the scanner, MUST NOT import `fastify`/`ajv`/`@sinclair/typebox` or any PII/compliance/retention/NLP library, MUST NOT bind a TCP port, MUST NOT start an MCP server, MUST NOT make any network I/O, and MUST NOT invoke any compiled tool. It MUST NOT change the observable behavior of `tusq scan`, `tusq manifest`, `tusq compile`, `tusq serve`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq version`, `tusq policy init`, `tusq policy verify` (default), or `tusq policy verify --strict`. The only observable side effects of a `tusq redaction review` invocation are stdout output, stderr output, and a process exit code; a smoke test asserts that the manifest file's mtime and content are unchanged after any invocation, and that `tusq policy verify` (default and `--strict`) produces byte-identical stdout and exit code before and after running M27 on the same fixture.
 21. **M28 sensitivity-class reviewer-aid framing invariant** — `sensitivity_class` is reviewer-aid framing only. It MUST NOT be presented as runtime PII enforcement, automated compliance certification, or GDPR/HIPAA/PCI/SOC2 attestation in any docs, marketing, CLI output, or eval scenario. The closed five-value enum `{public, internal, confidential, restricted, unknown}` is derived purely from already-shipped manifest evidence (verb, route, parameters, redaction PII categories, M13 preserve flag, write-effect markers) by a deterministic pure function (`classifySensitivity`) that performs zero network/runtime/policy calls. The frozen six-rule first-match-wins decision table (R1 preserve→restricted, R2 admin/destructive verb→restricted, R3 PII category→confidential, R4 write+financial-context→confidential, R5 auth_required or narrow_write→internal, R6 default→public) is immutable once M28 ships; any rule change is a material governance event that MUST land under its own ROADMAP milestone. Capabilities with zero static evidence MUST receive `sensitivity_class: "unknown"` — never silently "public." `tusq compile` output MUST be byte-identical regardless of `sensitivity_class` value. `tusq approve` gate logic MUST remain unchanged. `tusq serve` MCP surface MUST be unchanged. The only new CLI surface is an optional `--sensitivity <class>` filter on the existing `tusq review` command; no new top-level noun is introduced and the 13-command CLI surface is preserved exactly.
+22. **M29 auth-requirements reviewer-aid framing invariant** — `auth_requirements` is reviewer-aid framing only. It MUST NOT be presented as runtime authentication enforcement, runtime authorization enforcement, automated AAA certification, OAuth/OIDC/SAML/SOC2/ISO27001 compliance attestation, or token-signature validation in any docs, marketing, README, CLI help, launch artifact, or eval scenario. The closed seven-value `auth_scheme` enum `{bearer, api_key, session, basic, oauth, none, unknown}` and the closed five-value `evidence_source` enum `{middleware_name, route_prefix, auth_required_flag, sensitivity_class_propagation, none}` are derived purely from already-shipped manifest evidence (middleware-name list, route prefix, `auth_required` boolean, `sensitivity_class`, middleware-annotation literals) by a deterministic pure function (`classifyAuthRequirements`) that performs zero network calls, imports zero auth libraries (no `passport`, no `jsonwebtoken`, no `oauth2-server`), reads zero source files beyond what manifest generation already reads, and executes zero compiled tools. The frozen six-rule first-match-wins `auth_scheme` decision table (R1 bearer/jwt/access_token middleware, R2 api_key/x-api-key middleware, R3 session/cookie/passport-local middleware, R4 basic_auth middleware, R5 oauth/oidc/openid middleware, R6 `auth_required === false` AND non-admin route → `none`, default → `unknown`) and the frozen scope/role extraction rules (`/scopes?:\s*\[([^\]]+)\]/` and `/role[s]?:\s*\[([^\]]+)\]/` over middleware-annotation literals only, order-preserving case-sensitive dedup, empty-array on zero matches) are immutable once M29 ships; any rule change is a material governance event that MUST land under its own ROADMAP milestone. Capabilities with zero static evidence MUST receive `auth_requirements: { auth_scheme: "unknown", auth_scopes: [], auth_roles: [], evidence_source: "none" }` — never silently `"none"`. `tusq compile` output MUST be byte-identical regardless of `auth_requirements` value. `tusq approve` gate logic MUST remain unchanged. `tusq serve` MCP surface (`tools/list`, `tools/call`, `dry_run_plan`) MUST be byte-for-byte unchanged and MUST NOT include `auth_requirements` in any response shape. `tusq policy verify` (default and `--strict`) and `tusq redaction review` MUST be byte-for-byte unchanged. The only new CLI surface is an optional `--auth-scheme <scheme>` filter on the existing `tusq review` command (mutually compatible with `--sensitivity`); no new top-level noun is introduced and the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is preserved exactly.
