@@ -2,6 +2,41 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_9c2522b83d39efec (role=qa, run_8fe3b8b418dc589c, M29 re-verification, 2026-04-25)
+
+This QA turn challenges the prior accepted dev turn (turn_0528de27fb8f6d22, role=dev, HEAD d904e1f) for run_8fe3b8b418dc589c independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD~1..HEAD --name-only` returns exactly one file: `.planning/IMPLEMENTATION_NOTES.md`. Zero `src/`, `bin/`, `tests/`, or `website/` files were modified. The dev turn correctly identified that M29 implementation is already committed on HEAD d904e1f from prior runs. Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — M29 core functions present on HEAD.** `grep -n 'classifyAuthRequirements\|AUTH_SCHEMES\|extractFrozenList' src/cli.js` returns: `AUTH_SCHEMES` const at line 9 (7-value frozen array), `extractFrozenList` at line 2785, `classifyAuthRequirements` at line 2803. All three M29 functions confirmed present. Challenge resolved.
+
+**Challenge 3 — Zero-evidence guard fires before R1.** `src/cli.js` lines 2808–2814: guard checks `!hasMiddleware && !hasRoute && !hasAuthFlag && !hasSensitivitySignal` before the RULES loop. Returns `auth_scheme: 'unknown'` (never `'none'`). AC-4 invariant confirmed. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. The implementation is correct for manual manifest edits. This was noted in prior QA turns and remains non-blocking. No new objections raised.
+
+**Challenge 5 — AC-7 compile/serve byte-identity invariant.** `cmdCompile` tool object construction (lines 542–555) does NOT include `auth_requirements` — confirmed by source inspection. `tools/list` (lines 661–673) and `dry_run_plan` (lines 723–748) also exclude `auth_requirements`. `node -e` dry-run check confirms `auth_requirements` does not appear in compile dry-run output (exit 0). Challenge resolved.
+
+**Challenge 6 — 16 eval scenarios pass.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. Challenge resolved.
+
+**Challenge 7 — `tusq review --help` documents both `--auth-scheme` and `--sensitivity`.** `node bin/tusq.js review --help` → exit 0, `Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>] [--verbose]`. Both M28 and M29 filter flags documented. Challenge resolved.
+
+**Challenge 8 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS). RELEASE_NOTES.md documents M1–M29 including V1.10 section. ship-verdict.md (this file) carries independent challenge. No artifact missing or incomplete. Challenge resolved.
+
+**Challenge 9 — 13-command CLI surface preserved.** `node bin/tusq.js help` → exit 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). No new top-level noun or subcommand added by M29. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 3074ee5, run_8fe3b8b418dc589c, 2026-04-25)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `node bin/tusq.js review --help` | Exit 0 — includes `--auth-scheme <scheme>` and `--sensitivity <class>` |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/` | Empty output — zero source drift |
+
+All 124 acceptance criteria (REQ-001–REQ-124) pass. Ship verdict: **SHIP**. Phase transition to launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_c72ee10c438066e0 (role=qa, run_44a179ccf81697c3, M29 re-verification, 2026-04-25)
 
 This QA turn challenges the prior accepted dev turn (turn_91da85658fdfe27c, role=dev, HEAD bc5e2fe) for run_44a179ccf81697c3 independently rather than rubber-stamping it.
