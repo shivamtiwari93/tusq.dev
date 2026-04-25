@@ -265,3 +265,7 @@ Explicitly not in V1:
 
 Best fit:
 - teams with an existing supported service they want to inspect and expose carefully
+
+## Run re-affirmation — run_8fe3b8b418dc589c (turn_5e97659a21a458e2, launch, attempt 1)
+
+Re-verified the M29 (V1.10) announcement copy against shipped product behavior on HEAD `a89c4fb`. The framing — "Static Auth Requirements Inference From Manifest Evidence" as a reviewer aid (NOT runtime authentication, NOT runtime authorization enforcement, NOT automated AAA enforcement, NOT OAuth/OIDC/SAML/SOC2/ISO27001 compliance certification, NOT token signature validation, NOT scope grant validation), closed seven-value `auth_scheme` enum, closed five-value `evidence_source` enum, frozen six-rule decision table, AC-4 zero-evidence guard returning `"unknown"` (NEVER silently `"none"`), order-preserving `auth_scopes`/`auth_roles` arrays, M13 `capability_digest` re-approval sweep, AC-7 byte-identity invariants on compile and MCP serve, optional `--auth-scheme` reviewer filter on `tusq review` (AND-style intersection with `--sensitivity`), preserved 13-command CLI surface, no new dependency in `package.json`, eval harness 13→16 scenarios, and the V1.10 disclosed limitation that the scanner does not set `auth_required` (so R6 is reachable only via manually-edited manifests) — remains consistent with the shipped product. `npm test` exits 0 with 16 scenarios. No announcement revision required.

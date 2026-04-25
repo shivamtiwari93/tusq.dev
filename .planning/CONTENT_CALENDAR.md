@@ -63,3 +63,7 @@
 - Release one polished sample app or reference repo for repeatable demos
 - Turn common launch questions into an FAQ section covering framework support, approval flow, approval trail, provenance, redaction policy, governance metadata, MCP behavior, and local setup expectations
 - If usage quality is high, prepare a comparison-style post around "manual tool definition vs manifest-first capability compilation"
+
+## Run re-affirmation — run_8fe3b8b418dc589c (turn_5e97659a21a458e2, launch, attempt 1)
+
+Re-verified the M29 (V1.10) launch-day content cadence against shipped product behavior on HEAD `a89c4fb`. The closed seven-value `auth_scheme` enum, closed five-value `evidence_source` enum, frozen six-rule first-match-wins decision table, AC-4 zero-evidence `unknown` guard, AC-7 compile/serve byte-identity invariants, optional `--auth-scheme` reviewer filter, preserved 13-command CLI surface, eval harness 13→16 scenarios, V1.10 disclosed scanner limitation (R6 reachable only via manually-edited manifests), and SYSTEM_SPEC Constraint 22 reviewer-aid framing boundary remain accurate. `npm test` passes 16 scenarios. No content-calendar revision required.
