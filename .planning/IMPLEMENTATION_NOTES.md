@@ -1269,6 +1269,46 @@ Independent verification — all commands re-run; no prior-turn evidence inherit
 
 ---
 
+## Dev Turn turn_56af307abe6071b2 — Idle Expansion #7 Baseline Verification (2026-04-25)
+
+**Run:** run_efe89c4130d6ae0c
+**HEAD:** 2ab05a8 (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_68ad10b7442cf010, role=pm, phase=planning, intent_1777093794813_d514) operated on the seventh idle-expansion intent for this project. The PM re-emitted a valid `idle_expansion_result` with `kind=new_intake_intent` naming M28 (Sensitivity Class Inference from Static Manifest Evidence) at priority p1 with an 11-item acceptance contract (AC-1 closed enum field {public, internal, confidential, restricted, unknown}; AC-2 pure deterministic inference; AC-3 frozen six-rule first-match-wins table R1 preserve→restricted, R2 admin/destructive→restricted, R3 PII→confidential, R4 write+financial→confidential, R5 auth_or_narrow_write→internal, R6 default→public; AC-4 explicit unknown for zero-evidence capabilities; AC-5 digest-flip + M13 approved=false reset on change; AC-6 13-command CLI surface preserved, review-surface-only; AC-7 8-case smoke matrix including R2-beats-R3 and R1-beats-all precedence; AC-8 ≥3 new eval regression scenarios; AC-9 zero runtime/policy/redaction coupling; AC-10 SYSTEM_SPEC M28 section with frozen rule table; AC-11 new Constraint 21) and 7-heading vision traceability. The PM correctly set `status: needs_human` because M28 acceptance requires human sign-off at the planning_signoff gate before any new implementation run starts.
+
+Not rubber-stamping: The PM turn produced a correct idle_expansion_result; the prior QA turn (turn_5584c661462c5226, attempt 2) independently verified all 108 acceptance criteria (REQ-001–REQ-108) on HEAD 6b2cc50 and updated three QA-owned gate artifacts (.planning/acceptance-matrix.md, .planning/ship-verdict.md, .planning/RELEASE_NOTES.md). The intervening dev turn (turn_2f2f9778624b4b17) was analysis-only modifying only IMPLEMENTATION_NOTES.md. However, the PM turn cannot satisfy the `implementation_complete` gate — it is a planning-phase analysis producer, not a dev implementation turn. The PM's `needs_human` refers to M28's own future run requiring human approval; it does not block closing the implementation_complete gate for this idle-expansion run, which is analysis/proposal-only by charter.
+
+M28 (Sensitivity Class Inference from Static Manifest Evidence) is NOT implemented in this turn. M28 is NOT in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md yet — implementing M28 without those gate-approved artifacts would bypass the planning_signoff gate for an unchartered increment.
+
+### Scope of This Turn
+
+This idle-expansion run (run_efe89c4130d6ae0c) was chartered via intent_1777093794813_d514 to: inspect VISION.md, ROADMAP.md, and SYSTEM_SPEC.md; derive the next concrete increment; emit a structured idle_expansion_result. That work is complete — satisfied by PM turn turn_68ad10b7442cf010.
+
+This dev turn's responsibility is: (1) challenge the prior PM turn explicitly, (2) independently verify the baseline is stable on HEAD 2ab05a8, (3) confirm no source drift introduced by the idle-expansion passes, and (4) close the implementation_complete gate.
+
+### Baseline Re-Verification (HEAD 2ab05a8)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | 2ab05a881bb36312a26d2e2701b0cc3a639f70df |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (10 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+
+**No source changes were made or required.** The idle-expansion analysis is analysis/proposal only. The shipped V1.8 boundary (M1–M27, 13 CLI commands, 10 eval scenarios) is intact and verified on HEAD 2ab05a8.
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive implementation and verification content across all M17–M27 milestones plus all idle-expansion analysis records.
+- Fresh independent verification pass completed on HEAD 2ab05a8: `npm test` exits 0.
+- No source changes required or made.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## Dev Turn turn_2f2f9778624b4b17 — Idle Expansion #6 Baseline Verification (2026-04-24)
 
 **Run:** run_e816012b221f4cd2
