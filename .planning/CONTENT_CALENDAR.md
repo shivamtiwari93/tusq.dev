@@ -67,3 +67,7 @@
 ## Run re-affirmation — run_8fe3b8b418dc589c (turn_5e97659a21a458e2, launch, attempt 1)
 
 Re-verified the M29 (V1.10) launch-day content cadence against shipped product behavior on HEAD `a89c4fb`. The closed seven-value `auth_scheme` enum, closed five-value `evidence_source` enum, frozen six-rule first-match-wins decision table, AC-4 zero-evidence `unknown` guard, AC-7 compile/serve byte-identity invariants, optional `--auth-scheme` reviewer filter, preserved 13-command CLI surface, eval harness 13→16 scenarios, V1.10 disclosed scanner limitation (R6 reachable only via manually-edited manifests), and SYSTEM_SPEC Constraint 22 reviewer-aid framing boundary remain accurate. `npm test` passes 16 scenarios. No content-calendar revision required.
+
+## Run re-affirmation — run_94746c3508844fcb (turn_d2cdf748d6a4b511, launch, attempt 1)
+
+Re-verified the M29 (V1.10) launch-day content cadence on HEAD `a3a794a` for run_94746c3508844fcb. Closed `auth_scheme`/`evidence_source` enums, frozen six-rule decision table, AC-4 zero-evidence `unknown` guard, AC-7 compile/serve byte-identity invariants, optional `--auth-scheme` reviewer filter, preserved 13-command CLI surface, eval harness at 16 scenarios, V1.10 scanner limitation, and Constraint 22 reviewer-aid framing remain accurate. `npm test` passes 16 scenarios. No content-calendar revision required.
