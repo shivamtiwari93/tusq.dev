@@ -1,5 +1,7 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+> Re-affirmed on 2026-04-25 in run_44a179ccf81697c3 (turn_018f55250ec41d6d, PM attempt 4) at HEAD `5600a0d`. The § M29 Product CLI Surface below was authored in the prior run (commit 66cec85, turn_480dc289e36bfeba) and carries the closed seven-value `auth_scheme` enum, the closed five-value `evidence_source` enum, the frozen six-rule decision table, the manifest output shape, the failure UX (unrecognized `--auth-scheme` value exits 1 with empty stdout before any output), and the local-only invariants. This turn re-anchors that content for the current run and codifies an explicit compile-surface-invariant alongside the existing serve-surface-invariant: `auth_requirements` MUST NOT appear as a top-level key in any compiled tool definition emitted by `tusq compile` to `tools/*.json`, AND MUST NOT appear in any `tusq serve` MCP response shape (`tools/list`, `tools/call`, `dry_run_plan`). The 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is preserved exactly; the only operator-visible surface added by M29 is the optional `--auth-scheme <scheme>` filter on the existing `tusq review` command (mutually compatible with M28's `--sensitivity <class>` via AND-style intersection). No source code was modified by this PM turn.
+
 ## M16 Product CLI Surface
 
 M16 adds the first active diff command on top of the manifest version fields already specified in SYSTEM_SPEC.md. REQ-039 through REQ-044 passed on 2026-04-21.

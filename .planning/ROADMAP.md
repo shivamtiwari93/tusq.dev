@@ -1,5 +1,7 @@
 # Roadmap — tusq.dev Docs & Website Platform
 
+> Re-affirmed on 2026-04-25 in run_44a179ccf81697c3 (turn_018f55250ec41d6d, PM attempt 4) at HEAD `5600a0d`. The M29 milestone block below carries the chartering content authored in the prior run (commit 66cec85, turn_480dc289e36bfeba). This turn re-anchors the M29 entry and adds ONE Key Risk row codifying the no-`auth_requirements`-in-compile-JSON invariant as an explicit affirmative invariant alongside the existing no-`auth_requirements`-in-serve-MCP-surface invariant. The `tusq compile` AC-7 byte-identity guarantee already implies `auth_requirements` cannot appear in compiled `tools/*.json` output, but the implication is not the same as an explicit invariant: an explicit invariant is what dev and QA reviewers grep for. The 13-command CLI surface is preserved exactly; no new CLI nouns; the only new operator-visible surface remains the optional `--auth-scheme <scheme>` filter on the existing `tusq review` command. No source files were modified by this turn.
+
 ## Phases
 
 | Phase | Goal | Status |
