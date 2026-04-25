@@ -585,3 +585,16 @@ Three specific framing risks challenged and resolved:
 1. **Deployment target** — Where will the Docusaurus site be hosted? (Recommendation: decide after build works.)
 2. **Custom domain** — Is `tusq.dev` the production domain for the docs site?
 3. **Old `websites/` cleanup** — When should the static HTML site be removed? (Recommendation: after Docusaurus deployment is confirmed.)
+
+## Run-Specific Re-Affirmation — run_94746c3508844fcb / turn_6551742f923b14ee
+
+This PM turn (planning, attempt 1) operates on HEAD `782780b` in a fresh run. The prior accepted turn (turn_5e97659a21a458e2, role=product_marketing, phase=launch in the parent run run_8fe3b8b418dc589c) closed the parent run's launch_ready gate authoritatively. This fresh run inherits that integration ref (`git:782780b5f316eeaa28ce5064db012cd6df0d5844`) and the M29 (V1.10) charter is already shipped end-to-end (planning, implementation, qa, launch all completed in the parent chain).
+
+**Independent re-verification on HEAD 782780b:**
+- `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`.
+- `node bin/tusq.js help` enumerates exactly the 13 shipped commands: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help. No new top-level noun was added by M29.
+- The four PM-owned planning_signoff gate artifacts (`PM_SIGNOFF.md`, `ROADMAP.md`, `SYSTEM_SPEC.md`, `command-surface.md`) already carry the full M29 charter (closed seven-value `auth_scheme` enum, closed five-value `evidence_source` enum, frozen six-rule first-match-wins decision table, frozen source-bounded scope/role extraction rules, AC-4 zero-evidence `unknown` guard, M13 `capability_digest` inclusion + re-approval sweep on first post-M29 manifest regeneration, AC-7 byte-identical `tusq compile` output invariant AND the stronger MCP-surface invariant (`tools/list`, `tools/call`, `dry_run_plan` byte-for-byte unchanged, `auth_requirements` does NOT appear in any MCP response), preserved 13-command CLI surface, only-new-operator-visible-surface `--auth-scheme <scheme>` filter on existing `tusq review` (AND-style intersection with M28's `--sensitivity`), zero new dependencies in `package.json`, eval harness 13→16 scenarios, V1.10 disclosed limitation that the M9/M15 scanner does not set `auth_required` so R6 is reachable only via manually-edited manifests, and Constraint 22's reviewer-aid framing boundary).
+
+**Challenge to prior accepted turn:** The parent run's product_marketing turn correctly closed launch_ready and requested run completion. This fresh run does not introduce new scope; it re-verifies the V1.10 charter against shipped product behavior. No M29 charter content is mutated in this turn — the charter remains frozen as established under Constraint 22. This re-affirmation paragraph records the in-run independent verification so the planning_signoff gate is closed authoritatively under this run's local-pm runtime direct-write authority.
+
+**Decision:** All four planning_signoff required artifacts exist with comprehensive M29 charter coverage. The gate is satisfied. Phase transition to `implementation` is requested under the run's `auto_approve` policy.
