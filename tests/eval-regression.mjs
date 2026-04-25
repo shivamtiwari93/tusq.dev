@@ -773,6 +773,82 @@ async function runSensitivityClassPreserveScenario(tmpRoot, scenario) {
   }
 }
 
+async function runAuthRequirementsSyntheticScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+  await fs.mkdir(path.join(project, '.tusq'), { recursive: true });
+
+  runCli(['init'], { cwd: project });
+
+  const scanData = {
+    generated_at: new Date().toISOString(),
+    framework: 'express',
+    routes: scenario.synthetic_routes.map((route) => ({
+      method: route.method,
+      path: route.path || '/',
+      handler: route.handler,
+      domain: route.path ? route.path.split('/').filter(Boolean)[0] || 'general' : 'general',
+      auth_hints: route.middleware || [],
+      confidence: 0.7,
+      input_schema: { type: 'object', properties: {}, required: [], additionalProperties: true },
+      output_schema: { type: 'object', additionalProperties: true },
+      provenance: { file: 'src/app.ts', line: 1, handler: route.handler, framework: 'express' }
+    }))
+  };
+  await writeJson(path.join(project, '.tusq', 'scan.json'), scanData);
+  runCli(['manifest'], { cwd: project });
+
+  const manifest = await readJson(path.join(project, 'tusq.manifest.json'));
+
+  for (const expected of scenario.synthetic_routes) {
+    const cap = manifest.capabilities.find(
+      (c) => c.method === (expected.method || '').toUpperCase() && c.path === (expected.path || '/')
+    ) || manifest.capabilities.find(
+      (c) => c.method === (expected.method || '').toUpperCase()
+    );
+
+    if (!cap) {
+      if (expected.method === '' && expected.path === '') {
+        const zeroCap = manifest.capabilities[0];
+        if (!zeroCap || !zeroCap.auth_requirements) {
+          fail(`${scenario.id}: zero-evidence capability missing auth_requirements`);
+        }
+        if (zeroCap.auth_requirements.auth_scheme !== (expected.expected_auth_scheme || 'unknown')) {
+          fail(`${scenario.id}: zero-evidence: expected auth_scheme=${expected.expected_auth_scheme || 'unknown'}, got ${zeroCap.auth_requirements.auth_scheme}`);
+        }
+        continue;
+      }
+      fail(`${scenario.id}: expected capability ${expected.method} ${expected.path} not found`);
+    }
+
+    if (!cap.auth_requirements) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: missing auth_requirements field`);
+    }
+    if (expected.expected_auth_scheme !== undefined && cap.auth_requirements.auth_scheme !== expected.expected_auth_scheme) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: expected auth_scheme=${expected.expected_auth_scheme}, got ${cap.auth_requirements.auth_scheme}`);
+    }
+    if (expected.expected_evidence_source !== undefined && cap.auth_requirements.evidence_source !== expected.expected_evidence_source) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: expected evidence_source=${expected.expected_evidence_source}, got ${cap.auth_requirements.evidence_source}`);
+    }
+    if (expected.expected_auth_scopes !== undefined) {
+      if (JSON.stringify(cap.auth_requirements.auth_scopes) !== JSON.stringify(expected.expected_auth_scopes)) {
+        fail(`${scenario.id}: ${expected.method} ${expected.path}: expected auth_scopes=${JSON.stringify(expected.expected_auth_scopes)}, got ${JSON.stringify(cap.auth_requirements.auth_scopes)}`);
+      }
+    }
+    if (expected.expected_auth_roles !== undefined) {
+      if (JSON.stringify(cap.auth_requirements.auth_roles) !== JSON.stringify(expected.expected_auth_roles)) {
+        fail(`${scenario.id}: ${expected.method} ${expected.path}: expected auth_roles=${JSON.stringify(expected.expected_auth_roles)}, got ${JSON.stringify(cap.auth_requirements.auth_roles)}`);
+      }
+    }
+    if (!Array.isArray(cap.auth_requirements.auth_scopes)) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: auth_scopes MUST be an array`);
+    }
+    if (!Array.isArray(cap.auth_requirements.auth_roles)) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: auth_roles MUST be an array`);
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -800,6 +876,8 @@ async function run() {
       await runSensitivityClassSyntheticScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'sensitivity_class_preserve') {
       await runSensitivityClassPreserveScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'auth_requirements_synthetic') {
+      await runAuthRequirementsSyntheticScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

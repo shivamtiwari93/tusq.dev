@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const VERSION = '0.1.0';
 const SUPPORTED_FRAMEWORKS = ['express', 'fastify', 'nestjs'];
 const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted'];
+const AUTH_SCHEMES = ['unknown', 'bearer', 'api_key', 'session', 'basic', 'oauth', 'none'];
 const REDACTION_LOG_LEVELS = ['full', 'redacted', 'silent'];
 const DOMAIN_PREFIX_SEGMENTS = new Set(['api', 'v1', 'v2', 'v3', 'v4', 'v5', 'rest', 'graphql', 'internal', 'public', 'external']);
 const V1_DESCRIBE_ONLY_NOTE = 'Describe-only mode in V1. Live execution is deferred to V1.1.';
@@ -466,6 +467,8 @@ function cmdManifest(args) {
     capability.redaction.pii_categories = extractPiiFieldCategories(capability.redaction.pii_fields);
     // M28: compute sensitivity_class as a pure function of the full manifest evidence
     capability.sensitivity_class = classifySensitivity(capability);
+    // M29: compute auth_requirements as a pure function of manifest evidence
+    capability.auth_requirements = classifyAuthRequirements(capability);
     capability.capability_digest = computeCapabilityDigest(capability);
     return capability;
   });
@@ -806,10 +809,20 @@ function cmdReview(args) {
     }
   }
 
+  // M29: pre-check for --auth-scheme without a value
+  const authSchemeIdx = args.indexOf('--auth-scheme');
+  if (authSchemeIdx !== -1) {
+    const nextArg = args[authSchemeIdx + 1];
+    if (!nextArg || nextArg.startsWith('--')) {
+      throw new CliError('--auth-scheme requires a value', 1);
+    }
+  }
+
   const { opts, positionals } = parseCommandArgs('review', args, {
     format: 'value',
     strict: 'boolean',
-    sensitivity: 'value'
+    sensitivity: 'value',
+    'auth-scheme': 'value'
   });
 
   if (opts.help) {
@@ -818,7 +831,7 @@ function cmdReview(args) {
   }
 
   if (positionals.length > 0) {
-    throw new CliError('Usage: tusq review [--format json] [--strict] [--sensitivity <class>]', 1);
+    throw new CliError('Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>]', 1);
   }
 
   if (opts.format && opts.format !== 'json') {
@@ -829,6 +842,14 @@ function cmdReview(args) {
   if (opts.sensitivity !== undefined && !SENSITIVITY_CLASSES.includes(opts.sensitivity)) {
     throw new CliError(
       `Unknown sensitivity class: ${opts.sensitivity}. Legal values: ${SENSITIVITY_CLASSES.join(', ')}`,
+      1
+    );
+  }
+
+  // M29: validate --auth-scheme filter value
+  if (opts['auth-scheme'] !== undefined && !AUTH_SCHEMES.includes(opts['auth-scheme'])) {
+    throw new CliError(
+      `Unknown auth scheme: ${opts['auth-scheme']}. Legal values: ${AUTH_SCHEMES.join(', ')}`,
       1
     );
   }
@@ -854,11 +875,18 @@ function cmdReview(args) {
     return;
   }
 
-  // M28: apply --sensitivity filter for display only (does not affect exit code)
+  // M28/M29: apply display filters (do not affect exit code)
   const allCapabilities = manifest.capabilities || [];
-  const displayCapabilities = opts.sensitivity !== undefined
-    ? allCapabilities.filter((c) => normalizeSensitivityClass(c.sensitivity_class) === opts.sensitivity)
-    : allCapabilities;
+  let displayCapabilities = allCapabilities;
+  if (opts.sensitivity !== undefined) {
+    displayCapabilities = displayCapabilities.filter((c) => normalizeSensitivityClass(c.sensitivity_class) === opts.sensitivity);
+  }
+  if (opts['auth-scheme'] !== undefined) {
+    displayCapabilities = displayCapabilities.filter((c) => {
+      const scheme = (c.auth_requirements && normalizeAuthScheme(c.auth_requirements.auth_scheme)) || 'unknown';
+      return scheme === opts['auth-scheme'];
+    });
+  }
 
   const grouped = new Map();
   for (const capability of displayCapabilities) {
@@ -877,11 +905,12 @@ function cmdReview(args) {
       const approved = capability.approved ? 'x' : ' ';
       const lowFlag = capability.review_needed ? ' LOW_CONFIDENCE' : '';
       const sensitivityLabel = normalizeSensitivityClass(capability.sensitivity_class);
+      const authSchemeLabel = (capability.auth_requirements && normalizeAuthScheme(capability.auth_requirements.auth_scheme)) || 'unknown';
       const inputSummary = summarizeInputSchemaForReview(capability.input_schema);
       const outputSummary = summarizeOutputSchemaForReview(capability.output_schema);
       const provenanceSummary = summarizeProvenanceForReview(capability.provenance);
       process.stdout.write(
-        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag} sensitivity=${sensitivityLabel} inputs=${inputSummary} returns=${outputSummary} source=${provenanceSummary}\n`
+        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag} sensitivity=${sensitivityLabel} auth=${authSchemeLabel} inputs=${inputSummary} returns=${outputSummary} source=${provenanceSummary}\n`
       );
     }
   }
@@ -1161,12 +1190,14 @@ function renderCapabilityDocs(manifest, manifestPath) {
     lines.push(`- Side effect class: ${formatScalar(capability.side_effect_class)}`);
     lines.push(`- Sensitivity class: ${formatScalar(normalizeSensitivityClass(capability.sensitivity_class))}`);
     lines.push(`- Auth hints: ${formatArray(capability.auth_hints)}`);
+    lines.push(`- Auth scheme: ${formatScalar(capability.auth_requirements ? normalizeAuthScheme(capability.auth_requirements.auth_scheme) : 'unknown')}`);
     lines.push(`- Domain: ${formatScalar(capability.domain)}`);
     lines.push(`- Confidence: ${formatScalar(capability.confidence)}`);
     lines.push(`- Capability digest: ${formatScalar(capability.capability_digest)}`);
     lines.push('');
     appendJsonSection(lines, 'Input schema', capability.input_schema);
     appendJsonSection(lines, 'Output schema', capability.output_schema);
+    appendJsonSection(lines, 'Auth requirements', capability.auth_requirements || null);
     appendJsonSection(lines, 'Examples', normalizeExamples(capability.examples));
     appendJsonSection(lines, 'Constraints', normalizeConstraints(capability.constraints));
     appendJsonSection(lines, 'Redaction', normalizeRedaction(capability.redaction));
@@ -2186,7 +2217,7 @@ function printCommandHelp(command) {
     manifest: 'Usage: tusq manifest [--out <path>] [--format json] [--verbose]',
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--policy <path>] [--verbose]',
-    review: 'Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--verbose]',
+    review: 'Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>] [--verbose]',
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
@@ -2749,6 +2780,75 @@ function normalizeSensitivityClass(value) {
   return SENSITIVITY_CLASSES.includes(normalized) ? normalized : 'unknown';
 }
 
+// M29: extract a list of quoted string items from the first match of pattern in annotations.
+// Order-preserving, case-sensitive dedup, empty-array on zero matches (never null).
+function extractFrozenList(annotations, pattern) {
+  const seen = new Set();
+  const result = [];
+  for (const annotation of annotations) {
+    const m = pattern.exec(String(annotation));
+    if (m) {
+      const items = m[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
+      for (const item of items) {
+        if (item && !seen.has(item)) {
+          seen.add(item);
+          result.push(item);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function classifyAuthRequirements(cap) {
+  // M29: six-rule first-match-wins decision table (frozen — any rule change is a governance event)
+  const middlewareList = cap.auth_hints || [];
+  const annotations = cap.auth_hints || [];
+
+  // Zero-evidence guard (FIRST check — before R1 runs)
+  const hasMiddleware = middlewareList.length > 0;
+  const hasRoute = !!(cap.path);
+  const hasAuthFlag = typeof cap.auth_required === 'boolean';
+  const hasSensitivitySignal = cap.sensitivity_class && cap.sensitivity_class !== 'unknown';
+  if (!hasMiddleware && !hasRoute && !hasAuthFlag && !hasSensitivitySignal) {
+    return { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' };
+  }
+
+  // Scope/role extraction (frozen patterns — order-preserving, case-sensitive dedup)
+  const scopes = extractFrozenList(annotations, /scopes?:\s*\[([^\]]+)\]/);
+  const roles = extractFrozenList(annotations, /role[s]?:\s*\[([^\]]+)\]/);
+
+  // R1..R5: middleware-name first-match-wins
+  const RULES = [
+    [/bearer|jwt|access[_-]?token/i, 'bearer'],
+    [/api[_-]?key|x-api-key/i, 'api_key'],
+    [/session|cookie|passport-local/i, 'session'],
+    [/basic[_-]?auth/i, 'basic'],
+    [/oauth|oidc|openid/i, 'oauth']
+  ];
+
+  for (const [re, scheme] of RULES) {
+    if (middlewareList.some((name) => re.test(name))) {
+      return { auth_scheme: scheme, auth_scopes: scopes, auth_roles: roles, evidence_source: 'middleware_name' };
+    }
+  }
+
+  // R6: explicit auth_required=false on non-admin route
+  const isAdminRoute = /^\/(admin|root|superuser)(\/|$)/i.test(cap.path || '');
+  if (cap.auth_required === false && !isAdminRoute) {
+    return { auth_scheme: 'none', auth_scopes: scopes, auth_roles: roles, evidence_source: 'auth_required_flag' };
+  }
+
+  // Default: evidence present but no rule matched
+  return { auth_scheme: 'unknown', auth_scopes: scopes, auth_roles: roles, evidence_source: 'none' };
+}
+
+function normalizeAuthScheme(value) {
+  if (typeof value !== 'string') return 'unknown';
+  const normalized = value.trim().toLowerCase();
+  return AUTH_SCHEMES.includes(normalized) ? normalized : 'unknown';
+}
+
 function defaultExamples() {
   return [
     {
@@ -2963,6 +3063,7 @@ function computeCapabilityDigest(capability) {
     side_effect_class: capability.side_effect_class,
     sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
     auth_hints: dedupe(capability.auth_hints || []),
+    auth_requirements: capability.auth_requirements || null,
     examples: normalizeExamples(capability.examples),
     constraints: normalizeConstraints(capability.constraints),
     redaction: normalizeRedaction(capability.redaction),

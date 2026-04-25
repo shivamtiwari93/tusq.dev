@@ -2,6 +2,97 @@
 
 ---
 
+## Dev Turn turn_bf924bb02628f024 — M29 Static Auth Requirements Inference (2026-04-25)
+
+**Run:** run_39a58e0a4318421c
+**HEAD:** 66cec8501b7f300d7e588a43463a32ef57248a59 (workspace dirty — M29 source changes uncommitted)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_480dc289e36bfeba, role=pm, phase=planning, HEAD 66cec85) materialized the M29 charter — Static Auth Requirements Inference from Manifest Evidence — across all four PM-owned planning_signoff gate artifacts (PM_SIGNOFF.md Challenge 43, ROADMAP.md § M29 with 17 implementation items + 3 Key Risk rows, SYSTEM_SPEC.md § M29 with frozen 7-value auth_scheme enum + 5-value evidence_source enum + 6-rule decision table + classifyAuthRequirements pseudocode + Constraint 22, command-surface.md § M29 with flags, enums, manifest shape). The PM set `phase_transition_request: "implementation"` and `proposed_next_role: "dev"` — correctly requesting implementation under auto_approve policy.
+
+Not rubber-stamping: The PM turn added spec artifacts but wrote zero source code. The planning_signoff gate passed. This dev turn owns the source implementation. Each of the 11 acceptance criteria (AC-1..AC-11) was verified independently; no prior-turn conclusions were inherited.
+
+### Scope: M29 Implementation
+
+M29 is fully chartered in all four PM-owned gate artifacts. This dev turn implements it:
+
+**src/cli.js changes:**
+- `AUTH_SCHEMES` constant (line 9): closed 7-value enum `['unknown', 'bearer', 'api_key', 'session', 'basic', 'oauth', 'none']`.
+- `extractFrozenList(annotations, pattern)`: pure helper for order-preserving, case-sensitive dedup extraction from annotation strings.
+- `classifyAuthRequirements(cap)`: pure function implementing the frozen 6-rule first-match-wins decision table: zero-evidence guard (first, before R1) → `{auth_scheme:'unknown', auth_scopes:[], auth_roles:[], evidence_source:'none'}`; R1 bearer/jwt → `bearer`; R2 api_key → `api_key`; R3 session/cookie → `session`; R4 basic_auth → `basic`; R5 oauth/oidc → `oauth`; R6 auth_required===false + non-admin → `none`; default → `unknown`. Scopes/roles extracted via frozen regexes from `auth_hints` array (same source as middleware annotations). Evidence_source tracks whether rule fired from `middleware_name` or `auth_required_flag`.
+- `normalizeAuthScheme(value)`: validates against closed AUTH_SCHEMES enum.
+- `cmdManifest`: calls `classifyAuthRequirements(capability)` after `classifySensitivity(capability)`, before `computeCapabilityDigest(capability)`. Sets `capability.auth_requirements`.
+- `computeCapabilityDigest`: `auth_requirements: capability.auth_requirements || null` added to payload — any auth_requirements change flips the digest (AC-5).
+- `cmdReview`: pre-check for `--auth-scheme` without value; `'auth-scheme': 'value'` in parseCommandArgs; validation exits 1 with `Unknown auth scheme: <value>` on invalid value; display filter supports AND-style intersection with `--sensitivity`; review output line includes `auth=<scheme>`.
+- `printCommandHelp('review')`: updated to include `--auth-scheme <scheme>`.
+- `renderCapabilityDocs`: adds `- Auth scheme: <value>` line and `#### Auth requirements` JSON section per capability.
+- `cmdCompile`: NOT modified — `auth_requirements` is intentionally absent from compiled tool definitions (AC-7 compile-output-invariant).
+- `cmdServe`: NOT modified — `auth_requirements` MUST NOT appear in MCP surface (AC-7 serve-surface-invariant).
+
+**tests/smoke.mjs changes:**
+- `capabilityDigestPayload`: added `auth_requirements: capability.auth_requirements || null` to keep expected digest in sync with cli.js.
+- Compile-invariant assertions: `'auth_requirements' in compiledTool` MUST be false.
+- MCP invariant assertions: `'auth_requirements' in firstTool` and `'auth_requirements' in callResponse.result` MUST be false.
+- Docs assertions: `'Auth scheme'` and `'#### Auth requirements'` expected in docs output.
+- M29 8-case smoke matrix: cases 1-7 via real express projects with middleware names that match both `inferAuthHints` (`/auth|guard|role|permission|admin|jwt|acl|rbac/i`) and R1-R5 patterns: `requireJwtAuth` (R1/bearer), `apiKeyAuth` (R2/api_key), `sessionGuard` (R3/session), `basicAuth` (R4/basic), `oauthGuard` (R5/oauth). Case 6 (R6/none) verified via synthetic manifest. Case 7 (scopes extraction) verifies arrays always present. Case 8 (zero-evidence) confirms `'none'` is NOT the fallback.
+- M29 compile-output-invariant: two manifests differing only in `auth_requirements` produce byte-identical compiled output; `auth_requirements` not in compiled tool.
+- `--auth-scheme` filter tests: valid filter shows matching capabilities, invalid value exits 1 with empty stdout, `--auth-scheme` without value exits 1, AND-style intersection with `--sensitivity` runs without crash.
+- Review output includes `auth=` per capability.
+
+**tests/evals/governed-cli-scenarios.json changes:**
+- Added 3 new M29 scenarios with `scenario_type: "auth_requirements_synthetic"`:
+  1. `auth-scheme-bearer-r1-precedence`: R1 rule with `requireBearerToken` middleware → bearer + middleware_name evidence.
+  2. `auth-scheme-zero-evidence-unknown-bucket`: zero-evidence guard → unknown + none evidence + empty arrays.
+  3. `auth-scheme-scopes-extraction-order`: bearer route with scope/role array invariant.
+
+**tests/eval-regression.mjs changes:**
+- Added `runAuthRequirementsSyntheticScenario(tmpRoot, scenario)` runner: creates synthetic scan with `auth_hints: route.middleware || []`, runs manifest, checks `auth_requirements.auth_scheme`, `evidence_source`, `auth_scopes`, `auth_roles` against expected values.
+- Hooked into run() dispatch for `scenario.scenario_type === 'auth_requirements_synthetic'`.
+- Eval count: 13 → 16 scenarios.
+
+**website/docs/manifest-format.md changes:**
+- Added "Auth Requirements (V1.10)" section after M28 sensitivity_class section: documents 7-value auth_scheme enum, 5-value evidence_source enum, 6-rule decision table, zero-evidence guard, scope/role extraction rules, digest-flip/AC-5, compile/MCP invariant (AC-7), framing boundary (Constraint 22), `--auth-scheme` filter.
+
+**website/docs/cli-reference.md changes:**
+- Updated `tusq review` entry: added `--auth-scheme <scheme>` to usage line and example row; documented mutual AND-style compatibility with `--sensitivity`; noted filter is display-only.
+- Updated `tusq docs` entry: added "auth requirements" to section list.
+
+### AC Verification Table
+
+| AC | Criterion | Status | Evidence |
+|----|-----------|--------|----------|
+| AC-1 | Closed-shape record + 7-value auth_scheme + 5-value evidence_source enums | PASS | `AUTH_SCHEMES` const; `normalizeAuthScheme` enforces it; closed-enum assertion in smoke matrix |
+| AC-2 | Frozen 6-rule first-match-wins decision table | PASS | R1–R6 in `classifyAuthRequirements` at src/cli.js; locked by 8-case smoke matrix |
+| AC-3 | Frozen scope/role extraction from middleware annotations | PASS | `extractFrozenList` using frozen patterns; auth_scopes/auth_roles always arrays; case7 smoke |
+| AC-4 | Zero-evidence guard returns unknown (NOT none) | PASS | Zero-evidence guard is FIRST check before R1; case8 smoke asserts 'none' is not the fallback |
+| AC-5 | Digest-flip + M13 approved=false reset on auth_requirements change | PASS | `auth_requirements` in `computeCapabilityDigest` payload; M13 unchanged algorithm flips approved |
+| AC-6 | `tusq review --auth-scheme` filter (review-surface-only, no new noun) | PASS | `--auth-scheme` on cmdReview; validated; display-only; AND-style with --sensitivity |
+| AC-7 | Compile/serve byte-identity invariants | PASS | auth_requirements NOT in compile output; NOT in tools/list or tools/call MCP response |
+| AC-8 | 8-case smoke matrix | PASS | Cases 1-8 in smoke.mjs M29 section |
+| AC-9 | ≥3 new eval scenarios → ≥16 total | PASS | 3 new auth_requirements_synthetic scenarios; eval count 13→16 |
+| AC-10 | Zero runtime/policy/redaction/serve coupling | PASS | auth_requirements removed from compile/serve; no policy or redaction file changes |
+| AC-11 | SYSTEM_SPEC § M29 + Constraint 22 | PASS | Already in SYSTEM_SPEC.md from PM turn (frozen enum, 6-rule table, framing boundary) |
+
+### Baseline Verification (HEAD 66cec85 + working tree M29 changes)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | 66cec8501b7f300d7e588a43463a32ef57248a59 |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface confirmed: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists and updated with M29 implementation record.
+- Fresh independent verification: `npm test` exits 0 with all M29 smoke assertions and 16 eval scenarios passing.
+- Source changes made to `src/cli.js`, `tests/smoke.mjs`, `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`, `website/docs/manifest-format.md`, `website/docs/cli-reference.md`.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## Dev Turn turn_6f3041947dd2a211 — M28 Static Sensitivity Class Inference (2026-04-25)
 
 **Run:** run_b784b6baf905fc02

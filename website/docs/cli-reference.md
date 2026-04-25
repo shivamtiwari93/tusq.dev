@@ -66,16 +66,16 @@ See [Execution Policy](./execution-policy.md) for the full policy file shape, mo
 
 ## `tusq review`
 
-Print grouped manifest summary for review. The text output includes approval state, confidence, inferred input/output shape summaries, source provenance, and sensitivity class so reviewers can triage the manifest without opening every capability object.
+Print grouped manifest summary for review. The text output includes approval state, confidence, inferred input/output shape summaries, source provenance, sensitivity class, and auth scheme so reviewers can triage the manifest without opening every capability object.
 
 ```bash
-tusq review [--format json] [--strict] [--sensitivity <class>] [--verbose]
+tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>] [--verbose]
 ```
 
 Example text row:
 
 ```text
-- [x] get_users_users (GET /users) confidence=0.76 LOW_CONFIDENCE sensitivity=public inputs=none returns=array<object> source=src/app.ts:13 handler=listUsers framework=express
+- [x] get_users_users (GET /users) confidence=0.76 LOW_CONFIDENCE sensitivity=public auth=bearer inputs=none returns=array<object> source=src/app.ts:13 handler=listUsers framework=express
 ```
 
 Use `--format json` when you need the full raw manifest.
@@ -83,6 +83,10 @@ Use `--format json` when you need the full raw manifest.
 Use `--strict` in CI to fail with exit code `1` when any capability is unapproved or marked `review_needed`.
 
 Use `--sensitivity <class>` to filter the displayed output to capabilities with a specific M28 sensitivity class. Legal values: `unknown`, `public`, `internal`, `confidential`, `restricted`. An unrecognized value exits `1` before any output. The filter is display-only — it does not change the exit code (unapproved or low-confidence capabilities outside the filter still trigger a `--strict` failure).
+
+Use `--auth-scheme <scheme>` to filter the displayed output to capabilities with a specific M29 auth scheme. Legal values: `unknown`, `bearer`, `api_key`, `session`, `basic`, `oauth`, `none`. An unrecognized value exits `1` before any output. Mutually compatible with `--sensitivity` — both filters intersect AND-style when combined. The filter is display-only and does not affect exit-code semantics.
+
+`tusq docs` now includes an `#### Auth requirements` section per capability with the full `auth_requirements` object (auth_scheme, auth_scopes, auth_roles, evidence_source). `tusq diff` surfaces `auth_requirements` changes in the review queue via the M13 capability digest flip.
 
 ## `tusq docs`
 
@@ -92,7 +96,7 @@ Generate deterministic local Markdown documentation from a tusq manifest.
 tusq docs [--manifest <path>] [--out <path>] [--verbose]
 ```
 
-The generated Markdown is review/adoption documentation only. It includes manifest version metadata and per-capability sections for approval state, side-effect class, sensitivity class, auth hints, provenance, examples, constraints, and redaction. It does not publish hosted docs, call product APIs, or add live execution semantics.
+The generated Markdown is review/adoption documentation only. It includes manifest version metadata and per-capability sections for approval state, side-effect class, sensitivity class, auth hints, auth requirements, provenance, examples, constraints, and redaction. It does not publish hosted docs, call product APIs, or add live execution semantics.
 
 If `--manifest` is omitted, tusq reads `tusq.manifest.json` from the current project config or working directory. If `--out` is omitted, tusq prints Markdown to stdout.
 

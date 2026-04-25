@@ -245,6 +245,59 @@ Rules are evaluated top-to-bottom; the first match wins. R1 beats all — a capa
 
 **Compile and MCP surface:** `sensitivity_class` is NOT included in compiled tool definitions (`tusq-tools/*.json`) or MCP `tools/list`/`tools/call` responses. It is a manifest-and-review-surface field only.
 
+## Auth Requirements (V1.10)
+
+Starting with M29, `tusq manifest` automatically computes a structured `auth_requirements` record per capability as a pure deterministic function of the capability's middleware evidence. The record is a reviewer aid — it does NOT authenticate requests, enforce scopes, or certify OAuth/OIDC/SOC2/GDPR compliance.
+
+**Shape:**
+
+```json
+{
+  "auth_scheme": "bearer",
+  "auth_scopes": [],
+  "auth_roles": [],
+  "evidence_source": "middleware_name"
+}
+```
+
+**Closed `auth_scheme` enum (seven values):**
+
+| Value | Meaning |
+|-------|---------|
+| `bearer` | Bearer-token / JWT / access-token middleware matched |
+| `api_key` | API-key middleware matched |
+| `session` | Session / cookie / passport-local middleware matched |
+| `basic` | HTTP Basic-auth middleware matched |
+| `oauth` | OAuth / OIDC / OpenID middleware matched |
+| `none` | Explicit `auth_required: false` on a non-admin route |
+| `unknown` | Zero evidence, or evidence present but no rule matched |
+
+**Closed `evidence_source` enum (five values):** `middleware_name`, `route_prefix`, `auth_required_flag`, `sensitivity_class_propagation`, `none`.
+
+**Frozen six-rule first-match-wins decision table:**
+
+| Rule | Condition | `auth_scheme` | `evidence_source` |
+|------|-----------|---------------|-------------------|
+| R1 | middleware name matches `/bearer\|jwt\|access[_-]?token/i` | `bearer` | `middleware_name` |
+| R2 | middleware name matches `/api[_-]?key\|x-api-key/i` | `api_key` | `middleware_name` |
+| R3 | middleware name matches `/session\|cookie\|passport-local/i` | `session` | `middleware_name` |
+| R4 | middleware name matches `/basic[_-]?auth/i` | `basic` | `middleware_name` |
+| R5 | middleware name matches `/oauth\|oidc\|openid/i` | `oauth` | `middleware_name` |
+| R6 | `auth_required === false` + non-admin route | `none` | `auth_required_flag` |
+| Default | evidence present, no rule matched | `unknown` | `none` |
+
+**Zero-evidence guard (first check before R1):** capabilities with no auth-related middleware, no route prefix, no auth flag, and no sensitivity signal receive `auth_scheme: "unknown"` with empty arrays — never silently `"none"`. `"none"` is reachable only from R6 (explicit `auth_required: false`).
+
+**Scope/role extraction:** `auth_scopes` and `auth_roles` are extracted from middleware annotation literals in the capability record using frozen patterns (`/scopes?:\s*\[([^\]]+)\]/` and `/role[s]?:\s*\[([^\]]+)\]/`). Declaration order is preserved, deduplication is case-sensitive, and both arrays are always present (never `null`).
+
+**Digest-flip and re-approval (AC-5):** `auth_requirements` is included in the content fields hashed into `capability_digest`. When M29 first computes a non-`"unknown"` value for a capability that previously had no `auth_requirements`, the digest changes and `approved` resets to `false`. Use `tusq diff` to review the change, then re-approve via `tusq approve`.
+
+**Compile and MCP surface (AC-7):** `auth_requirements` is NOT included in compiled tool definitions (`tusq-tools/*.json`) or MCP `tools/list`/`tools/call`/`dry_run_plan` responses. It is a manifest-and-review-surface field only.
+
+**Framing boundary (SYSTEM_SPEC Constraint 22):** `auth_requirements` is reviewer-aid framing only. tusq DOES NOT authenticate or authorize requests at runtime, DOES NOT certify OAuth/OIDC/SAML/SOC2/ISO27001 compliance, and DOES NOT validate token signatures or scope grants. `auth_scheme: "bearer"` means a middleware matched the R1 regex — not that tusq verifies bearer tokens. Reviewers own all AAA decisions.
+
+**`tusq review` filter:** Use `--auth-scheme <scheme>` to display only capabilities matching a given scheme. Mutually compatible with `--sensitivity` (AND-style intersection). An unknown scheme value exits 1 with `Unknown auth scheme: <value>` on stderr.
+
 ## Examples and constraints (V1)
 
 `examples` and `constraints` are part of the manifest in `v0.1.0` so downstream tooling can keep governance and usage context stable.

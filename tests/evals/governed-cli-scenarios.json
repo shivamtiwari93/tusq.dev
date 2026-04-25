@@ -310,6 +310,63 @@
           "expected_sensitivity_class": "unknown"
         }
       ]
+    },
+    {
+      "id": "auth-scheme-bearer-r1-precedence",
+      "description": "M29 AC-8: R1 rule — middleware matching bearer/jwt pattern produces auth_scheme=bearer with evidence_source=middleware_name",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "GET",
+          "path": "/me",
+          "handler": "getMe",
+          "middleware": ["requireBearerToken"],
+          "expected_auth_scheme": "bearer",
+          "expected_evidence_source": "middleware_name"
+        },
+        {
+          "method": "GET",
+          "path": "/public/status",
+          "handler": "getStatus",
+          "middleware": [],
+          "expected_auth_scheme": "unknown",
+          "expected_evidence_source": "none"
+        }
+      ]
+    },
+    {
+      "id": "auth-scheme-zero-evidence-unknown-bucket",
+      "description": "M29 AC-4: zero-evidence guard — capability with no middleware, no path, no sensitivity signal produces auth_scheme=unknown (NOT none) with empty arrays",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "",
+          "path": "",
+          "handler": "noop",
+          "middleware": [],
+          "expected_auth_scheme": "unknown",
+          "expected_evidence_source": "none",
+          "expected_auth_scopes": [],
+          "expected_auth_roles": []
+        }
+      ]
+    },
+    {
+      "id": "auth-scheme-scopes-extraction-order",
+      "description": "M29 AC-3: scope/role extraction with order-preserving case-sensitive dedup from middleware annotations",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "GET",
+          "path": "/users",
+          "handler": "listUsers",
+          "middleware": ["requireBearerToken"],
+          "expected_auth_scheme": "bearer",
+          "expected_evidence_source": "middleware_name",
+          "expected_auth_scopes": [],
+          "expected_auth_roles": []
+        }
+      ]
     }
   ]
 }
