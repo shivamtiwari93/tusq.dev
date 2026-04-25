@@ -563,8 +563,9 @@ async function runPiiCategoryLabelScenario(tmpRoot, scenario) {
       if (actualPiiFields.length !== actualPiiCategories.length) {
         fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: pii_fields/pii_categories length mismatch`);
       }
-      if (capability.sensitivity_class !== 'unknown') {
-        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: sensitivity_class must remain unknown`);
+      const expectedSensitivity = expected.expected_sensitivity_class || 'unknown';
+      if (capability.sensitivity_class !== expectedSensitivity) {
+        fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: expected sensitivity_class=${expectedSensitivity}, got ${capability.sensitivity_class}`);
       }
       if (redaction.retention_days !== null || redaction.log_level !== 'full' || redaction.mask_in_traces !== false) {
         fail(`${scenario.id}: run ${i + 1}: ${expected.method} ${expected.path}: M26 must not alter redaction policy defaults`);

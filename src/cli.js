@@ -408,7 +408,7 @@ function cmdManifest(args) {
   }
 
   const approvalMap = new Map();
-  const sensitivityMap = new Map();
+  const preserveMap = new Map();
   const examplesMap = new Map();
   const constraintsMap = new Map();
   const redactionMap = new Map();
@@ -418,7 +418,10 @@ function cmdManifest(args) {
     for (const capability of existing.capabilities) {
       const key = capabilityKey(capability.method, capability.path);
       approvalMap.set(key, Boolean(capability.approved));
-      sensitivityMap.set(key, normalizeSensitivityClass(capability.sensitivity_class));
+      // M28: preserve flag is human-editable; carry it forward when set to true
+      if (capability.preserve === true) {
+        preserveMap.set(key, true);
+      }
       examplesMap.set(key, normalizeExamples(capability.examples));
       constraintsMap.set(key, normalizeConstraints(capability.constraints));
       redactionMap.set(key, normalizeRedaction(capability.redaction));
@@ -439,7 +442,7 @@ function cmdManifest(args) {
       input_schema: route.input_schema,
       output_schema: route.output_schema,
       side_effect_class: classifySideEffect(method, route.path, route.handler),
-      sensitivity_class: sensitivityMap.get(key) || classifySensitivity(method, route.path, route.handler, route.auth_hints),
+      sensitivity_class: 'unknown', // M28: computed below after pii_categories are populated
       auth_hints: route.auth_hints,
       examples: examplesMap.has(key) ? examplesMap.get(key) : defaultExamples(),
       constraints: constraintsMap.has(key) ? constraintsMap.get(key) : defaultConstraints(),
@@ -452,11 +455,17 @@ function cmdManifest(args) {
       approved_at: approvedAtMap.has(key) ? approvedAtMap.get(key) : null,
       domain: route.domain
     };
+    // M28: preserve flag carried forward from existing manifest (human-editable)
+    if (preserveMap.has(key)) {
+      capability.preserve = true;
+    }
     // M25: auto-extract PII field-name hints from the scanned input_schema.properties
     capability.redaction.pii_fields = extractPiiFieldHints(
       capability.input_schema && capability.input_schema.properties
     );
     capability.redaction.pii_categories = extractPiiFieldCategories(capability.redaction.pii_fields);
+    // M28: compute sensitivity_class as a pure function of the full manifest evidence
+    capability.sensitivity_class = classifySensitivity(capability);
     capability.capability_digest = computeCapabilityDigest(capability);
     return capability;
   });
@@ -535,7 +544,6 @@ function cmdCompile(args) {
     parameters: capability.input_schema || { type: 'object', additionalProperties: true },
     returns: capability.output_schema || { type: 'object', additionalProperties: true },
     side_effect_class: capability.side_effect_class,
-    sensitivity_class: normalizeSensitivityClass(capability.sensitivity_class),
     auth_hints: capability.auth_hints || [],
     examples: normalizeExamples(capability.examples),
     constraints: normalizeConstraints(capability.constraints),
@@ -655,7 +663,6 @@ function cmdServe(args) {
             parameters: tool.parameters,
             returns: tool.returns,
             side_effect_class: tool.side_effect_class,
-            sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
             auth_hints: tool.auth_hints || []
           }))
         };
@@ -728,7 +735,6 @@ function cmdServe(args) {
               headers: planFields.headers,
               auth_context: { hints: authHints, required: authHints.length > 0 },
               side_effect_class: tool.side_effect_class,
-              sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
               redaction: normalizeRedaction(tool.redaction),
               plan_hash: planHash,
               evaluated_at: new Date().toISOString()
@@ -750,7 +756,6 @@ function cmdServe(args) {
             returns: tool.returns
           },
           side_effect_class: tool.side_effect_class,
-          sensitivity_class: normalizeSensitivityClass(tool.sensitivity_class),
           auth_hints: tool.auth_hints || [],
           examples: normalizeExamples(tool.examples),
           constraints: normalizeConstraints(tool.constraints),
@@ -792,9 +797,19 @@ function cmdServe(args) {
 }
 
 function cmdReview(args) {
+  // M28: pre-check for --sensitivity without a value before parseCommandArgs
+  const sensIdx = args.indexOf('--sensitivity');
+  if (sensIdx !== -1) {
+    const nextArg = args[sensIdx + 1];
+    if (!nextArg || nextArg.startsWith('--')) {
+      throw new CliError('--sensitivity requires a value', 1);
+    }
+  }
+
   const { opts, positionals } = parseCommandArgs('review', args, {
     format: 'value',
-    strict: 'boolean'
+    strict: 'boolean',
+    sensitivity: 'value'
   });
 
   if (opts.help) {
@@ -803,11 +818,19 @@ function cmdReview(args) {
   }
 
   if (positionals.length > 0) {
-    throw new CliError('Usage: tusq review [--format json] [--strict]', 1);
+    throw new CliError('Usage: tusq review [--format json] [--strict] [--sensitivity <class>]', 1);
   }
 
   if (opts.format && opts.format !== 'json') {
     throw new CliError('Invalid --format value. Supported: json', 1);
+  }
+
+  // M28: validate --sensitivity filter value
+  if (opts.sensitivity !== undefined && !SENSITIVITY_CLASSES.includes(opts.sensitivity)) {
+    throw new CliError(
+      `Unknown sensitivity class: ${opts.sensitivity}. Legal values: ${SENSITIVITY_CLASSES.join(', ')}`,
+      1
+    );
   }
 
   const root = process.cwd();
@@ -822,6 +845,7 @@ function cmdReview(args) {
   }
 
   const manifest = readJson(manifestPath);
+  // M28: exit code based on ALL capabilities regardless of --sensitivity filter
   const reviewStats = getReviewStats(manifest);
 
   if (opts.format === 'json') {
@@ -830,8 +854,14 @@ function cmdReview(args) {
     return;
   }
 
+  // M28: apply --sensitivity filter for display only (does not affect exit code)
+  const allCapabilities = manifest.capabilities || [];
+  const displayCapabilities = opts.sensitivity !== undefined
+    ? allCapabilities.filter((c) => normalizeSensitivityClass(c.sensitivity_class) === opts.sensitivity)
+    : allCapabilities;
+
   const grouped = new Map();
-  for (const capability of manifest.capabilities || []) {
+  for (const capability of displayCapabilities) {
     const domain = capability.domain || 'general';
     if (!grouped.has(domain)) {
       grouped.set(domain, []);
@@ -846,11 +876,12 @@ function cmdReview(args) {
     for (const capability of capabilities) {
       const approved = capability.approved ? 'x' : ' ';
       const lowFlag = capability.review_needed ? ' LOW_CONFIDENCE' : '';
+      const sensitivityLabel = normalizeSensitivityClass(capability.sensitivity_class);
       const inputSummary = summarizeInputSchemaForReview(capability.input_schema);
       const outputSummary = summarizeOutputSchemaForReview(capability.output_schema);
       const provenanceSummary = summarizeProvenanceForReview(capability.provenance);
       process.stdout.write(
-        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag} inputs=${inputSummary} returns=${outputSummary} source=${provenanceSummary}\n`
+        `- [${approved}] ${capability.name} (${capability.method} ${capability.path}) confidence=${capability.confidence}${lowFlag} sensitivity=${sensitivityLabel} inputs=${inputSummary} returns=${outputSummary} source=${provenanceSummary}\n`
       );
     }
   }
@@ -2667,8 +2698,46 @@ function classifySideEffect(method, routePath, handler) {
   return 'write';
 }
 
-function classifySensitivity(_method, _routePath, _handler, _authHints) {
-  return 'unknown';
+function classifySensitivity(cap) {
+  // M28: six-rule first-match-wins decision table (frozen — any rule change is a governance event)
+  const verb = (cap.method || '').toLowerCase();
+  const route = cap.path || '';
+  const piiCats = cap.redaction && cap.redaction.pii_categories;
+  const preserve = cap.preserve === true;
+  const authRequired = !!(cap.auth_hints && cap.auth_hints.length > 0);
+
+  // Zero-evidence guard: no verb, no route, no PII, no preserve, no auth → unknown
+  if (!verb && !route && !(piiCats && piiCats.length) && !preserve && !authRequired) {
+    return 'unknown';
+  }
+
+  // R1: preserve flag signals irreversible or destructive-by-intent semantics
+  if (preserve) return 'restricted';
+
+  // R2: admin/destructive verb or admin-namespaced route
+  const RESTRICTED_VERBS = new Set(['delete', 'drop', 'truncate', 'admin', 'destroy', 'purge', 'wipe']);
+  if (RESTRICTED_VERBS.has(verb)) return 'restricted';
+  if (/^(admin|root|superuser)(\/|$)/i.test(route)) return 'restricted';
+
+  // R3: confirmed PII-category evidence from M26 static labels
+  if (piiCats && piiCats.length) return 'confidential';
+
+  // R4: write verb into financial or regulated context
+  const WRITE_VERBS = new Set(['create', 'update', 'write', 'post', 'put', 'patch']);
+  const FINANCIAL_RE = /payment|invoice|charge|billing|ssn|tax|account_number/i;
+  if (WRITE_VERBS.has(verb)) {
+    const props = (cap.input_schema && cap.input_schema.properties) || {};
+    if (FINANCIAL_RE.test(route) || Object.keys(props).some((k) => FINANCIAL_RE.test(k))) {
+      return 'confidential';
+    }
+  }
+
+  // R5: auth gate or narrow write that does not meet R3/R4 threshold
+  if (authRequired) return 'internal';
+  if (WRITE_VERBS.has(verb)) return 'internal';
+
+  // R6: default — evidence is present and no stronger rule matched
+  return 'public';
 }
 
 function normalizeSensitivityClass(value) {

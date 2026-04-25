@@ -195,7 +195,8 @@
           "expected_pii_categories": [
             "email",
             "secrets"
-          ]
+          ],
+          "expected_sensitivity_class": "confidential"
         },
         {
           "method": "POST",
@@ -209,7 +210,8 @@
             "email",
             "name",
             "phone"
-          ]
+          ],
+          "expected_sensitivity_class": "confidential"
         },
         {
           "method": "POST",
@@ -223,13 +225,15 @@
             "email",
             "government_id",
             "payment"
-          ]
+          ],
+          "expected_sensitivity_class": "confidential"
         },
         {
           "method": "GET",
           "path": "/catalog",
           "expected_pii_fields": [],
-          "expected_pii_categories": []
+          "expected_pii_categories": [],
+          "expected_sensitivity_class": "public"
         }
       ]
     },
