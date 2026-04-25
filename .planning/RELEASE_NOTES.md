@@ -564,6 +564,10 @@ tusq redaction review [--manifest <path>] [--capability <name>] [--json]
 
 **Known limitation (V1.10):** The `auth_required` field is not set by the scanner in V1.10, making R6 (`auth_required === false` → `auth_scheme: 'none'`) reachable only via manually-edited manifests. The implementation is correct for manual edits. A future milestone may populate `auth_required` from scanner evidence.
 
+## QA M29 Re-Verification (turn_c72ee10c438066e0, run_44a179ccf81697c3, 2026-04-25)
+
+`npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands. `node bin/tusq.js review --help` → includes `--auth-scheme <scheme>` and `--sensitivity <class>`. Dev turn (turn_91da85658fdfe27c) made zero source changes — M29 already on HEAD bc5e2fe. OBJ-001 (medium, non-blocking) carried forward: R6 dead code in automated pipeline; implementation correct. All 124 acceptance criteria (REQ-001–REQ-124) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA M29 Verification (turn_f01a675bc13a2594, 2026-04-25)
 
 `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands. `node bin/tusq.js review --help` → includes `--auth-scheme <scheme>`. OBJ-001 (medium) raised: AC-8 Case 6 (R6) is dead code in the automated pipeline — `auth_required` is never set by scanner; implementation is correct for manual manifest edits; non-blocking. All 124 acceptance criteria (REQ-001–REQ-124) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).

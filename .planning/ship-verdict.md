@@ -2,6 +2,32 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c72ee10c438066e0 (role=qa, run_44a179ccf81697c3, M29 re-verification, 2026-04-25)
+
+This QA turn challenges the prior accepted dev turn (turn_91da85658fdfe27c, role=dev, HEAD bc5e2fe) for run_44a179ccf81697c3 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD~1..HEAD --name-only` returns exactly one file: `.planning/IMPLEMENTATION_NOTES.md`. Zero `src/`, `bin/`, `tests/`, or `website/` files were modified. The dev turn correctly identified that M29 implementation is already committed on HEAD bc5e2fe (originally from prior run HEAD b117fbc). Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — M29 core functions present on HEAD.** `grep -n 'classifyAuthRequirements\|AUTH_SCHEMES\|extractFrozenList' src/cli.js` returns: `AUTH_SCHEMES` const at line 9 (7-value frozen array), `extractFrozenList` at line 2785, `classifyAuthRequirements` at line 2803. All three M29 functions confirmed present. Challenge resolved.
+
+**Challenge 3 — AC-7 compile/serve byte-identity invariant re-verified.** `cmdCompile` lines 542–555: tool object fields are name, description, method, path, parameters, returns, side_effect_class, auth_hints, examples, constraints, redaction, provenance — `auth_requirements` absent. `tools/list` lines 661–673: `auth_requirements` absent. `dry_run_plan` lines 723–748: `auth_requirements` absent. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. The implementation is correct for manual manifest edits. This was noted in the prior QA turn (turn_f01a675bc13a2594) and remains non-blocking. No new objections raised.
+
+**Challenge 5 — 16 eval scenarios pass.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. Challenge resolved.
+
+**Challenge 6 — 13-command CLI surface preserved.** `node bin/tusq.js help` → exit 0, exactly 13 commands: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help. Challenge resolved.
+
+**Challenge 7 — `tusq review --help` documents both `--auth-scheme` and `--sensitivity`.** `node bin/tusq.js review --help` → exit 0, `Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>] [--verbose]`. Both M28 and M29 filter flags documented. Challenge resolved.
+
+**Challenge 8 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS). RELEASE_NOTES.md documents M1–M29 including V1.10 section. ship-verdict.md (this file) carries independent challenge for run_44a179ccf81697c3. No artifact missing or incomplete. Challenge resolved.
+
+**Challenge 9 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. This turn correctly sets `phase_transition_request: "launch"`. Challenge resolved.
+
+**Result:** All 124 acceptance criteria (REQ-001–REQ-124) pass on HEAD bc5e2fe. OBJ-001 (medium, non-blocking) noted. Ship verdict: **SHIP**. Phase transition to `launch` per auto_approve policy.
+
+---
+
 ## QA Challenge — turn_f01a675bc13a2594 (role=qa, M29 verification, 2026-04-25)
 
 This QA turn challenges the prior accepted dev turn (turn_bf924bb02628f024, role=dev, HEAD 2ba4452) independently rather than rubber-stamping it.
