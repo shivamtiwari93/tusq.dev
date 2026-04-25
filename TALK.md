@@ -2484,3 +2484,28 @@ Canonical human-readable handoff log for all agents.
 
 ---
 
+## Turn 7774b27e — qa (qa)
+
+- **Status:** completed
+- **Summary:** Independent M29 re-verification on HEAD fa7853e: npm test exits 0 with 16 eval scenarios, zero source drift since last QA checkpoint (ab436bf), all 124 acceptance criteria PASS, ship verdict SHIP, phase_transition_request launch (auto_approve policy).
+- **Decision DEC-001:** Challenged prior accepted turn (turn_430f9b5d0f850456, role=qa, labeled 'ghost') independently — it produced no verification evidence. This turn performs a full independent re-verification from scratch on HEAD fa7853e.
+- **Decision DEC-002:** Zero source drift confirmed between last verified QA checkpoint (ab436bf, turn_ee155e3062a2395e) and current HEAD (fa7853e). Only launch artifacts and AgentXchain bug documentation changed — no src/, bin/, tests/, or website/ files were modified.
+- **Decision DEC-003:** All 124 acceptance criteria (REQ-001–REQ-124) pass on HEAD fa7853e. OBJ-001 (medium, non-blocking) carried forward: R6 (auth_required === false → auth_scheme: 'none') is dead code in the automated pipeline — auth_required is never set by the scanner; implementation is correct for manually-edited manifests.
+- **Decision DEC-004:** Ship verdict stands as SHIP. Setting phase_transition_request: 'launch' per auto_approve policy. All three qa_ship_verdict gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) updated with this turn's re-verification record.
+- **Objection OBJ-001 (medium):** R6 (auth_required === false → auth_scheme: 'none') in classifyAuthRequirements is dead code in the automated pipeline. auth_required is never populated by the scanner, making R6 unreachable without manual manifest editing. Implementation is correct; the gap is test coverage only.
+- **Proposed next:** product_marketing
+
+---
+
+## Turn 29fbd9e9 — product_marketing (launch)
+
+- **Status:** completed
+- **Summary:** Challenged prior QA re-verification turn (turn_7774b27ecf2a7a31), independently re-verified the M29 (V1.10) launch boundary on HEAD b225861: npm test 16 scenarios PASS, 13-command CLI surface intact, tusq review --help shows --sensitivity and --auth-scheme flags, all four launch_ready gate artifacts already comprehensively cover M28 (V1.9) and M29 (V1.10) per prior PM pass at ca221a0; no duplicate launch-artifact pass produced per DEC-908/DEC-909 anti-churn policy.
+- **Decision DEC-001:** Challenged the prior accepted turn (turn_7774b27ecf2a7a31, role=qa, phase=qa, HEAD b225861) rather than rubber-stamping it. That turn was a QA re-verification pass that modified only QA-owned artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) and three AgentXchain bug-report files; it did NOT mutate any of the four launch_ready gate artifacts. The launch artifacts on HEAD b225861 are byte-identical to their state at ca221a0 (turn_5c928016067e555a), where the prior product_marketing turn already added comprehensive M28 (V1.9) and M29 (V1.10) coverage.
+- **Decision DEC-002:** Did NOT produce a third comprehensive PM pass on the four launch_ready artifacts this turn. Per DEC-908 (treat duplicate launch-ready turns as recovery turns, not content passes) and DEC-909 (launch-ready evidence is sufficient for completion approval), no further launch-artifact edits are defensible without a new shipped scope. The current artifacts already enumerate: M27 redaction review (V1.8), M28 sensitivity_class (V1.9) with --sensitivity filter, M29 auth_requirements (V1.10) with --auth-scheme filter, the 13-command CLI surface preserved exactly, the 16-scenario eval harness, zero new dependencies, frozen R1-R6 decision tables, AC-4 zero-evidence guards, and Constraints 19/20/21/22 reviewer-aid framing.
+- **Decision DEC-003:** All upstream gates passed (planning_signoff, implementation_complete, qa_ship_verdict). All four launch_ready gate artifacts (.planning/MESSAGING.md, .planning/LAUNCH_PLAN.md, .planning/CONTENT_CALENDAR.md, .planning/ANNOUNCEMENT.md) exist and accurately describe the shipped V1.10 boundary. Setting status=completed with run_completion_request=true and proposed_next_role='human' per the explicit run_completion auto_approve policy. phase_transition_request is null because launch is the terminal phase.
+- **Objection OBJ-001 (medium):** OBJ-001 carried forward from QA: R6 in classifyAuthRequirements (auth_required === false → auth_scheme: 'none') is dead code in the automated scanner pipeline because the scanner does not populate auth_required. The implementation is correct for manually-edited manifests; the gap is test/coverage only, not a behavioral regression. This V1.10 limitation is already disclosed verbatim in MESSAGING.md, LAUNCH_PLAN.md, CONTENT_CALENDAR.md, ANNOUNCEMENT.md, RELEASE_NOTES.md, and ship-verdict.md.
+- **Proposed next:** human
+
+---
+
