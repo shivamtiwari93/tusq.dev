@@ -2,6 +2,67 @@
 
 ---
 
+## Dev Turn turn_91da85658fdfe27c — M29 Re-verification (run_44a179ccf81697c3, 2026-04-25)
+
+**Run:** run_44a179ccf81697c3
+**HEAD:** b117fbc79a29ffe533aaeabc3a0255ef6927f438
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_018f55250ec41d6d, role=pm, phase=planning) re-anchored the M29 charter across all four PM-owned planning_signoff gate artifacts (.planning/PM_SIGNOFF.md, .planning/ROADMAP.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md) and set `phase_transition_request: "implementation"`.
+
+Not rubber-stamping: The PM turn modified only planning artifacts — zero source changes. Independently verified: `git diff HEAD --stat -- src/ bin/ tests/ website/` confirms no diff; all M29 source changes (classifyAuthRequirements, AUTH_SCHEMES, extractFrozenList, --auth-scheme filter, 16 eval scenarios) are already committed on HEAD b117fbc from the prior run (run_39a58e0a4318421c, dev turn turn_bf924bb02628f024). This dev turn re-verifies the implementation is correct and complete against the M29 charter as re-anchored in this run's planning artifacts.
+
+### Re-Verification of M29 Implementation on HEAD
+
+M29 (Static Auth Requirements Inference from Manifest Evidence) is fully present on HEAD b117fbc:
+
+- `AUTH_SCHEMES` closed 7-value enum at `src/cli.js:9`
+- `extractFrozenList(annotations, pattern)` pure helper at `src/cli.js:2785`
+- `classifyAuthRequirements(cap)` pure function (frozen 6-rule first-match-wins) at `src/cli.js:2803`
+- Zero-evidence guard fires first (before R1), returns `auth_scheme: 'unknown'` — NOT `'none'`
+- `cmdManifest` integrates classifyAuthRequirements after classifySensitivity (src/cli.js:471)
+- `computeCapabilityDigest` includes `auth_requirements` in payload (AC-5 digest-flip)
+- `cmdReview` supports `--auth-scheme <scheme>` filter with AND-style intersection with `--sensitivity`
+- `cmdCompile` NOT modified — auth_requirements absent from compiled output (AC-7 compile-invariant)
+- `cmdServe` NOT modified — auth_requirements absent from all MCP response shapes (AC-7 serve-invariant)
+- 16 eval scenarios (13 prior + 3 M29-specific): auth-scheme-bearer-r1-precedence, auth-scheme-zero-evidence-unknown-bucket, auth-scheme-scopes-extraction-order
+- Website docs updated: website/docs/manifest-format.md § Auth Requirements (V1.10), website/docs/cli-reference.md
+
+### AC Verification Table
+
+| AC | Criterion | Status | Evidence |
+|----|-----------|--------|----------|
+| AC-1 | Closed-shape record + 7-value auth_scheme + 5-value evidence_source enums | PASS | AUTH_SCHEMES at src/cli.js:9; normalizeAuthScheme validates |
+| AC-2 | Frozen 6-rule first-match-wins decision table | PASS | R1–R6 at src/cli.js:2803–2844 |
+| AC-3 | Frozen scope/role extraction from middleware annotations | PASS | extractFrozenList at src/cli.js:2785; order-preserving dedup |
+| AC-4 | Zero-evidence guard returns unknown (NOT none) | PASS | Zero-evidence check first at src/cli.js:2807 |
+| AC-5 | Digest-flip + M13 approved=false reset on auth_requirements change | PASS | auth_requirements in computeCapabilityDigest payload |
+| AC-6 | tusq review --auth-scheme filter (review-surface-only, no new noun) | PASS | --auth-scheme on cmdReview; validated; AND-style with --sensitivity |
+| AC-7 | Compile/serve byte-identity invariants | PASS | auth_requirements NOT in compile output; NOT in tools/list or tools/call |
+| AC-8 | 8-case smoke matrix | PASS | Cases 1-8 in tests/smoke.mjs |
+| AC-9 | ≥3 new eval scenarios → ≥16 total | PASS | 3 auth_requirements_synthetic scenarios; eval count 13→16 |
+| AC-10 | Zero runtime/policy/redaction/serve coupling | PASS | auth_requirements removed from compile/serve paths |
+| AC-11 | SYSTEM_SPEC § M29 + Constraint 22 | PASS | Present in .planning/SYSTEM_SPEC.md (re-affirmed this run) |
+
+### Baseline Verification
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | b117fbc79a29ffe533aaeabc3a0255ef6927f438 |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface confirmed |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/` | Exit 0 — no output (zero source drift from HEAD) |
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` updated with run_44a179ccf81697c3 dev turn record.
+- Independent re-verification: `npm test` exits 0 with 16 scenarios.
+- 13-command CLI surface preserved exactly.
+- `implementation_complete` gate satisfied. Phase transition to `qa` requested.
+
+---
+
 ## Dev Turn turn_bf924bb02628f024 — M29 Static Auth Requirements Inference (2026-04-25)
 
 **Run:** run_39a58e0a4318421c
