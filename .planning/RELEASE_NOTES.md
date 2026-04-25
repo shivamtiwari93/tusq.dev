@@ -465,3 +465,7 @@ tusq redaction review [--manifest <path>] [--capability <name>] [--json]
 ## QA Re-Verification (turn_5584c661462c5226, attempt 2, 2026-04-25, HEAD 6b2cc50)
 
 `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands, `redaction` at position 11. All 108 acceptance criteria (REQ-001–REQ-108) remain PASS. No source drift from prior QA-verified baseline — git diff 7756d19..6b2cc50 confirms only `.planning/IMPLEMENTATION_NOTES.md` changed.
+
+## QA Re-Verification (turn_a769aa550ba55c00, attempt 8, 2026-04-25, HEAD 524520f)
+
+`npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help), `redaction` at position 11. All 108 acceptance criteria (REQ-001–REQ-108) remain PASS. No source drift from prior QA-verified baseline — `git diff HEAD~1..HEAD --name-only` confirms only `.planning/IMPLEMENTATION_NOTES.md` changed in the dev turn (turn_56af307abe6071b2). Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
