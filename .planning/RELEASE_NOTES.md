@@ -469,3 +469,49 @@ tusq redaction review [--manifest <path>] [--capability <name>] [--json]
 ## QA Re-Verification (turn_a769aa550ba55c00, attempt 8, 2026-04-25, HEAD 524520f)
 
 `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (10 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help), `redaction` at position 11. All 108 acceptance criteria (REQ-001–REQ-108) remain PASS. No source drift from prior QA-verified baseline — `git diff HEAD~1..HEAD --name-only` confirms only `.planning/IMPLEMENTATION_NOTES.md` changed in the dev turn (turn_56af307abe6071b2). Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
+## Static Sensitivity Class Inference (M28 — V1.9)
+
+`tusq manifest` now automatically infers `capability.sensitivity_class` from existing manifest evidence using a frozen six-rule first-match-wins decision table. No new command, no new dependency, and no runtime coupling.
+
+**Five sensitivity class values:**
+- `restricted` — irreversible/admin/destructive operations (R1: preserve flag; R2: admin or destructive verb/route)
+- `confidential` — confirmed PII evidence (R3) or write to financial/regulated route (R4)
+- `internal` — auth-gated or write operations below the confidential threshold (R5)
+- `public` — evidence present, no stronger rule matched (R6)
+- `unknown` — zero static evidence (no verb, path, PII categories, preserve flag, or auth hints)
+
+**Frozen six-rule decision table (R1 beats all — any rule change is a governance event):**
+
+| Rule | Trigger | Class |
+|------|---------|-------|
+| R1 | `preserve: true` flag | `restricted` |
+| R2 | Admin/destructive verb or admin-namespaced route | `restricted` |
+| R3 | `redaction.pii_categories` non-empty | `confidential` |
+| R4 | Write verb + financial/regulated route or parameter | `confidential` |
+| R5 | `auth_hints` present or write verb | `internal` |
+| R6 | Default — evidence present, no stronger rule matched | `public` |
+
+**New review filter — `tusq review --sensitivity <class>`:** Optional flag limits displayed output to capabilities with the specified sensitivity class. Legal values: `unknown`, `public`, `internal`, `confidential`, `restricted`. Unrecognized value exits 1 before any output. Filter is display-only — it does not affect exit code (unapproved or low-confidence capabilities outside the filter still count for `--strict` failure).
+
+**Compile and MCP surface unchanged:** `sensitivity_class` is NOT in compiled tool definitions or MCP `tools/list`/`tools/call` responses. Only `tusq review`, `tusq docs`, and `tusq diff` surface it as reviewer-aid metadata.
+
+**Upgrade note — expected digest flip and re-approval sweep:** M28 changes how `sensitivity_class` is computed. On first `tusq manifest` run after M28, capabilities that previously had `sensitivity_class: "unknown"` will now receive a computed value. Because M13 hashes `sensitivity_class` into `capability_digest`, any value change flips the digest and resets `approved` to `false`. Use `tusq diff` to see which capabilities changed, then re-approve with `tusq approve`. This is the expected M28 adoption path.
+
+**Key invariants:**
+- 13-command CLI surface preserved exactly (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help).
+- `tusq compile` output is byte-identical before and after M28 adoption.
+- `tusq approve` gate logic is unchanged.
+- `tusq serve` MCP surface is unchanged.
+- `tusq policy verify` (default and `--strict`) behavior is unchanged.
+- No new dependency added to `package.json`.
+
+**Framing boundary** (SYSTEM_SPEC Constraint 21): `sensitivity_class` is reviewer-aid framing only. It MUST NOT be presented as runtime PII enforcement, automated compliance certification, or GDPR/HIPAA/PCI/SOC2 attestation. The classifier is a deterministic pure function of already-shipped manifest evidence with zero network, runtime, or policy calls.
+
+**Three new eval scenarios** extend the governed-cli eval harness to 13 scenarios: `sensitivity-class-r4-financial-inference` (R4: POST /payments → confidential without PII), `sensitivity-class-r1-preserve-precedence` (R1 beats R3: preserve=true+PII → restricted), and `sensitivity-class-zero-evidence-unknown` (zero-evidence guard: no method/path/PII/auth → unknown).
+
+**All 115 acceptance criteria** (REQ-001–REQ-115) pass on HEAD 6fb4fa1 + QA working tree: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (13 scenarios)`.
+
+## QA M28 Verification (turn_bff61126f4accd83, 2026-04-25)
+
+`npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (13 scenarios)`. `node bin/tusq.js help` → exit 0, 13 commands. `node bin/tusq.js review --help` → exit 0, includes `--sensitivity <class>`. Challenged dev turn (turn_6f3041947dd2a211) on three objections (AC-8 eval count gap, missing review --help doc, missing website docs). All three resolved by QA fixes applied directly (write authority: authoritative). All 115 acceptance criteria (REQ-001–REQ-115) pass. Ship verdict: SHIP. Gate artifacts (acceptance-matrix.md, ship-verdict.md, RELEASE_NOTES.md) fully updated; phase_transition_request: launch (auto_approve policy).

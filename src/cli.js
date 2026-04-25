@@ -2186,7 +2186,7 @@ function printCommandHelp(command) {
     manifest: 'Usage: tusq manifest [--out <path>] [--format json] [--verbose]',
     compile: 'Usage: tusq compile [--out <path>] [--dry-run] [--verbose]',
     serve: 'Usage: tusq serve [--port <n>] [--policy <path>] [--verbose]',
-    review: 'Usage: tusq review [--format json] [--strict] [--verbose]',
+    review: 'Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--verbose]',
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',

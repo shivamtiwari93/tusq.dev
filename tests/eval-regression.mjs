@@ -657,6 +657,122 @@ async function runRedactionReviewDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runSensitivityClassSyntheticScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+  await fs.mkdir(path.join(project, '.tusq'), { recursive: true });
+
+  runCli(['init'], { cwd: project });
+
+  const scanData = {
+    generated_at: new Date().toISOString(),
+    framework: 'express',
+    routes: scenario.synthetic_routes.map((route) => ({
+      method: route.method,
+      path: route.path,
+      handler: route.handler,
+      domain: route.path ? route.path.split('/').filter(Boolean)[0] || '' : '',
+      auth_hints: [],
+      confidence: 0.7,
+      input_schema: { type: 'object', properties: {}, required: [], additionalProperties: true },
+      output_schema: { type: 'object', additionalProperties: true },
+      provenance: { file: 'src/app.ts', line: 1, handler: route.handler, framework: 'express' }
+    }))
+  };
+  await writeJson(path.join(project, '.tusq', 'scan.json'), scanData);
+  runCli(['manifest'], { cwd: project });
+
+  const manifest = await readJson(path.join(project, 'tusq.manifest.json'));
+
+  for (const expected of scenario.synthetic_routes) {
+    const cap = manifest.capabilities.find(
+      (c) => c.method === (expected.method || '').toUpperCase() && c.path === (expected.path || '/')
+    ) || manifest.capabilities.find(
+      (c) => c.method === (expected.method || '').toUpperCase()
+    );
+    if (!cap && expected.expected_sensitivity_class === 'unknown' && expected.method === '') {
+      // Zero-evidence: empty method maps to '' in manifest
+      const zeroCap = manifest.capabilities.find((c) => c.method === '');
+      if (!zeroCap) {
+        fail(`${scenario.id}: expected zero-evidence capability not found`);
+      }
+      if (zeroCap.sensitivity_class !== expected.expected_sensitivity_class) {
+        fail(`${scenario.id}: ${expected.method} ${expected.path}: expected sensitivity_class=${expected.expected_sensitivity_class}, got ${zeroCap.sensitivity_class}`);
+      }
+      continue;
+    }
+    if (!cap) {
+      fail(`${scenario.id}: expected capability ${expected.method} ${expected.path} not found in manifest`);
+    }
+    if (cap.sensitivity_class !== expected.expected_sensitivity_class) {
+      fail(`${scenario.id}: ${expected.method} ${expected.path}: expected sensitivity_class=${expected.expected_sensitivity_class}, got ${cap.sensitivity_class}`);
+    }
+  }
+}
+
+async function runSensitivityClassPreserveScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+  await fs.mkdir(path.join(project, '.tusq'), { recursive: true });
+
+  runCli(['init'], { cwd: project });
+
+  const scanData = {
+    generated_at: new Date().toISOString(),
+    framework: 'express',
+    routes: [
+      {
+        method: scenario.route.method,
+        path: scenario.route.path,
+        handler: scenario.route.handler,
+        domain: scenario.route.path.split('/').filter(Boolean)[0] || '',
+        auth_hints: [],
+        confidence: 0.7,
+        input_schema: {
+          type: 'object',
+          properties: { [scenario.route.pii_field]: { type: 'string' } },
+          required: [],
+          additionalProperties: false
+        },
+        output_schema: { type: 'object', additionalProperties: true },
+        provenance: { file: 'src/app.ts', line: 1, handler: scenario.route.handler, framework: 'express' }
+      }
+    ]
+  };
+  await writeJson(path.join(project, '.tusq', 'scan.json'), scanData);
+
+  // First manifest run: expect confidential (R3 — PII, no preserve)
+  runCli(['manifest'], { cwd: project });
+  let manifest = await readJson(path.join(project, 'tusq.manifest.json'));
+  const capBefore = manifest.capabilities.find(
+    (c) => c.method === scenario.route.method.toUpperCase() && c.path === scenario.route.path
+  );
+  if (!capBefore) {
+    fail(`${scenario.id}: capability ${scenario.route.method} ${scenario.route.path} not found in manifest (before preserve)`);
+  }
+  if (capBefore.sensitivity_class !== scenario.expected_before_preserve) {
+    fail(`${scenario.id}: before preserve=true: expected sensitivity_class=${scenario.expected_before_preserve}, got ${capBefore.sensitivity_class}`);
+  }
+
+  // Set preserve=true and re-run manifest: expect restricted (R1 beats R3)
+  manifest.capabilities[0].preserve = true;
+  await writeJson(path.join(project, 'tusq.manifest.json'), manifest);
+  runCli(['manifest'], { cwd: project });
+  manifest = await readJson(path.join(project, 'tusq.manifest.json'));
+  const capAfter = manifest.capabilities.find(
+    (c) => c.method === scenario.route.method.toUpperCase() && c.path === scenario.route.path
+  );
+  if (!capAfter) {
+    fail(`${scenario.id}: capability ${scenario.route.method} ${scenario.route.path} not found in manifest (after preserve)`);
+  }
+  if (capAfter.sensitivity_class !== scenario.expected_after_preserve) {
+    fail(`${scenario.id}: after preserve=true: expected sensitivity_class=${scenario.expected_after_preserve}, got ${capAfter.sensitivity_class}`);
+  }
+  if (capAfter.preserve !== true) {
+    fail(`${scenario.id}: preserve=true flag must be carried forward in manifest`);
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -680,6 +796,10 @@ async function run() {
       await runPiiCategoryLabelScenario(tmpRoot, scenario);
     } else if (scenario.id === 'redaction-review-determinism') {
       await runRedactionReviewDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'sensitivity_class_synthetic') {
+      await runSensitivityClassSyntheticScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'sensitivity_class_preserve') {
+      await runSensitivityClassPreserveScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

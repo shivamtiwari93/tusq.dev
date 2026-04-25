@@ -214,11 +214,36 @@ V1 confidence is heuristic and capped at `0.95`.
 
 ### `sensitivity_class` rules
 
-In `v0.1.0`, `sensitivity_class` is always emitted as `unknown` by default. The field is present now so:
+Starting with M28, `sensitivity_class` is computed automatically by `tusq manifest` using a frozen six-rule first-match-wins decision table. The five legal values are:
 
-1. Human reviewers can manually set sensitivity in `tusq.manifest.json` before compile.
-2. Compiled tool files and MCP metadata keep sensitivity available downstream.
-3. Future inference can populate this field without changing the manifest shape.
+| Value | Meaning |
+|-------|---------|
+| `restricted` | Irreversible, admin, or destructive operations — highest governance tier |
+| `confidential` | Confirmed PII category evidence or write operations on financial/regulated routes |
+| `internal` | Auth-gated or write operations that do not qualify for a higher tier |
+| `public` | Evidence is present and no stronger rule matched |
+| `unknown` | Zero static evidence (no verb, path, PII, auth, or preserve flag) |
+
+**Six-rule decision table (frozen — any change is a governance event):**
+
+| Rule | Trigger | Class |
+|------|---------|-------|
+| R1 | `preserve: true` flag | `restricted` |
+| R2 | Admin/destructive verb (`delete`, `drop`, `truncate`, `admin`, `destroy`, `purge`, `wipe`) or admin-namespaced route | `restricted` |
+| R3 | `redaction.pii_categories` is non-empty (from M25/M26 PII field-name detection) | `confidential` |
+| R4 | Write verb + financial or regulated route/param (`payment`, `invoice`, `charge`, `billing`, `ssn`, `tax`, `account_number`) | `confidential` |
+| R5 | `auth_hints` present or write verb (`create`, `update`, `write`, `post`, `put`, `patch`) | `internal` |
+| R6 | Default — evidence present, no stronger rule matched | `public` |
+
+Rules are evaluated top-to-bottom; the first match wins. R1 beats all — a capability with `preserve: true` is always `restricted` regardless of other signals.
+
+**Zero-evidence guard:** Capabilities with no verb, no path, no PII categories, no `preserve` flag, and no auth hints receive `sensitivity_class: "unknown"` — never silently `"public"`.
+
+**Digest-flip and re-approval (M13 semantics):** `sensitivity_class` is included in the content fields hashed into `capability_digest`. When M28 first computes a non-`"unknown"` value for a capability that previously had `"unknown"`, the digest changes and `approved` resets to `false`. Use `tusq diff` to review the change, then re-approve via `tusq approve`.
+
+**Framing boundary (SYSTEM_SPEC Constraint 21):** `sensitivity_class` is reviewer-aid framing only. It MUST NOT be interpreted as runtime PII enforcement, automated compliance certification, or GDPR/HIPAA/PCI/SOC2 attestation. The classifier performs zero network, runtime, or policy calls. Reviewers own final sensitivity, masking, logging, and retention decisions.
+
+**Compile and MCP surface:** `sensitivity_class` is NOT included in compiled tool definitions (`tusq-tools/*.json`) or MCP `tools/list`/`tools/call` responses. It is a manifest-and-review-surface field only.
 
 ## Examples and constraints (V1)
 

@@ -265,6 +265,51 @@
           "expected_advisory_order": []
         }
       ]
+    },
+    {
+      "id": "sensitivity-class-r4-financial-inference",
+      "description": "M28 AC-8: R4 rule — POST to financial-context route produces confidential without any PII category evidence",
+      "scenario_type": "sensitivity_class_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "POST",
+          "path": "/payments/new",
+          "handler": "processPayment",
+          "expected_sensitivity_class": "confidential"
+        },
+        {
+          "method": "GET",
+          "path": "/users",
+          "handler": "listUsers",
+          "expected_sensitivity_class": "public"
+        }
+      ]
+    },
+    {
+      "id": "sensitivity-class-r1-preserve-precedence",
+      "description": "M28 AC-8: R1 rule beats R3 — preserve=true capability with PII produces restricted, not confidential",
+      "scenario_type": "sensitivity_class_preserve",
+      "route": {
+        "method": "POST",
+        "path": "/protected",
+        "handler": "protectedOp",
+        "pii_field": "email"
+      },
+      "expected_before_preserve": "confidential",
+      "expected_after_preserve": "restricted"
+    },
+    {
+      "id": "sensitivity-class-zero-evidence-unknown",
+      "description": "M28 AC-8: zero-evidence guard — capability with no method, path, PII, auth, or preserve produces unknown",
+      "scenario_type": "sensitivity_class_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "",
+          "path": "",
+          "handler": "noop",
+          "expected_sensitivity_class": "unknown"
+        }
+      ]
     }
   ]
 }

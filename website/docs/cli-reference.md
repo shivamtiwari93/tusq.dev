@@ -66,21 +66,23 @@ See [Execution Policy](./execution-policy.md) for the full policy file shape, mo
 
 ## `tusq review`
 
-Print grouped manifest summary for review. The text output includes approval state, confidence, inferred input/output shape summaries, and source provenance so reviewers can triage the manifest without opening every capability object.
+Print grouped manifest summary for review. The text output includes approval state, confidence, inferred input/output shape summaries, source provenance, and sensitivity class so reviewers can triage the manifest without opening every capability object.
 
 ```bash
-tusq review [--format json] [--strict] [--verbose]
+tusq review [--format json] [--strict] [--sensitivity <class>] [--verbose]
 ```
 
 Example text row:
 
 ```text
-- [x] get_users_users (GET /users) confidence=0.76 LOW_CONFIDENCE inputs=none returns=array<object> source=src/app.ts:13 handler=listUsers framework=express
+- [x] get_users_users (GET /users) confidence=0.76 LOW_CONFIDENCE sensitivity=public inputs=none returns=array<object> source=src/app.ts:13 handler=listUsers framework=express
 ```
 
 Use `--format json` when you need the full raw manifest.
 
 Use `--strict` in CI to fail with exit code `1` when any capability is unapproved or marked `review_needed`.
+
+Use `--sensitivity <class>` to filter the displayed output to capabilities with a specific M28 sensitivity class. Legal values: `unknown`, `public`, `internal`, `confidential`, `restricted`. An unrecognized value exits `1` before any output. The filter is display-only — it does not change the exit code (unapproved or low-confidence capabilities outside the filter still trigger a `--strict` failure).
 
 ## `tusq docs`
 
