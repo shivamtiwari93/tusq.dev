@@ -1112,3 +1112,38 @@ All 115 acceptance criteria (REQ-001–REQ-115) pass. Ship verdict: **SHIP**.
 | `git diff HEAD --stat -- src/ bin/ tests/ website/` | Empty — zero source drift |
 
 All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
+## QA Challenge — turn_ee155e3062a2395e (role=qa, run_6d12fe85d0e51576, M29 re-verification, 2026-04-25)
+
+This QA turn challenges the prior accepted dev turn (turn_768db52384611260, role=dev, HEAD ab436bf) for run_6d12fe85d0e51576 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD~1..HEAD --name-only` returns exactly one file: `.planning/IMPLEMENTATION_NOTES.md`. Zero `src/`, `bin/`, `tests/`, or `website/` files were modified. The dev turn correctly identified that M29 implementation is already committed on HEAD ab436bf from prior runs. Challenge resolved: no source regression possible.
+
+**Challenge 2 — M29 core functions present on HEAD.** `AUTH_SCHEMES` const at `src/cli.js:9` (7-value frozen array), `extractFrozenList` at `src/cli.js:2785`, `classifyAuthRequirements` at `src/cli.js:2803`. All three M29 functions confirmed present on HEAD ab436bf. Challenge resolved.
+
+**Challenge 3 — Zero-evidence guard fires before R1.** `src/cli.js` lines 2808–2814: guard checks `!hasMiddleware && !hasRoute && !hasAuthFlag && !hasSensitivitySignal` before the RULES loop. Returns `auth_scheme: 'unknown'` (never `'none'`). AC-4 invariant confirmed. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. Implementation is correct for manual manifest edits. Non-blocking per all prior QA turns. No new objections raised.
+
+**Challenge 5 — AC-7 compile/serve byte-identity invariant.** `cmdCompile` tool object (lines 542–555) does NOT include `auth_requirements`. `tools/list` (lines 661–673) and `dry_run_plan` (lines 723–748) also exclude `auth_requirements`. Smoke assertions throw if it appears. Challenge resolved.
+
+**Challenge 6 — 16 eval scenarios pass.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. Challenge resolved.
+
+**Challenge 7 — `tusq review --help` documents both `--auth-scheme` and `--sensitivity`.** `node bin/tusq.js review --help` → exit 0, usage line includes both flags. Challenge resolved.
+
+**Challenge 8 — All three qa_ship_verdict gate artifacts complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS, this run's re-verification appended). RELEASE_NOTES.md includes this run's re-verification record. ship-verdict.md (this file) carries this turn's independent 9-point challenge. Challenge resolved.
+
+**Challenge 9 — 13-command CLI surface preserved.** `node bin/tusq.js help` → exit 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). No new top-level noun added by M29. Challenge resolved.
+
+**Baseline re-verification (HEAD ab436bf):**
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface preserved |
+| `node bin/tusq.js review --help` | Exit 0 — includes `--auth-scheme <scheme>` and `--sensitivity <class>` |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/` | Empty — zero source drift |
+
+All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
