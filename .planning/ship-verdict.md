@@ -1214,3 +1214,35 @@ This QA turn challenges the prior accepted turn (turn_430f9b5d0f850456, role=qa,
 | `git diff ab436bf..fa7853e -- src/ bin/ tests/ website/` | Empty — zero source drift since last QA checkpoint |
 
 All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
+## QA Challenge — turn_ceaedc5c7d5bbf1a (role=qa, run_42732dba3268a739, static-MCP-descriptor idle-expansion re-verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_cdcec89ff1d6683d, role=dev, HEAD fcc623a) for run_42732dba3268a739 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` returns no output. Zero `src/`, `bin/`, `tests/`, or `website/` files were modified. The dev turn correctly identified that the static-MCP-descriptor charter (intent_1777173722739_5899) is an unbound candidate in `.planning/ROADMAP_NEXT_CANDIDATES.md` only — none of the four PM-owned planning_signoff artifacts bind it, and no implementation is warranted without human operator binding. Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — Dev OBJ-001 (form decision A/B/C) correctly raised and remains open.** The PM's PM OBJ-001 (three candidate forms: (A) `tusq mcp export` as new top-level noun, (B) flag-only `tusq serve --export <path>`, (C) subcommand under a future `plan` hub) is unresolved. Adding two new top-level nouns in consecutive milestones would violate surface discipline cadence. Challenge resolved: scope discipline confirmed, form decision remains a pre-binding blocker.
+
+**Challenge 3 — Two unbound charter candidates in backlog (dev OBJ-002).** The embeddable-surface charter and static-MCP-descriptor charter now coexist in ROADMAP_NEXT_CANDIDATES.md without operator prioritization. Non-blocking for V1.10 ship. Challenge resolved.
+
+**Challenge 4 — Baseline re-verification on HEAD fcc623a.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` exits 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` returns no output — zero source drift. Challenge resolved.
+
+**Challenge 5 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. Implementation is correct for manually-edited manifests. Non-blocking per all prior QA turns.
+
+**Challenge 6 — No new acceptance criteria required.** No new scope was shipped. REQ-001–REQ-124 remain the complete and accurate acceptance coverage for the V1.10 (M1–M29) shipped boundary. Challenge resolved.
+
+**Challenge 7 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS). RELEASE_NOTES.md documents M1–M29. ship-verdict.md (this file) carries this turn's independent challenge. Challenge resolved.
+
+**Challenge 8 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD fcc623a, run_42732dba3268a739, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | Empty output — zero source drift |
+
+All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
