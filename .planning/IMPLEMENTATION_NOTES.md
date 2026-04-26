@@ -2,6 +2,62 @@
 
 ---
 
+## Dev Turn turn_73dc44cfb9cef2c7 — Implementation Phase: M30 Static Embeddable-Surface Plan Export (run_24ccd92f593d8647, 2026-04-26)
+
+**Run:** run_24ccd92f593d8647
+**Phase:** implementation
+**HEAD:** d6d6bef76cbc94e130512aadada5a0f35f32028e (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_5f551e9f95cc3829 (role=pm, phase=planning)
+
+That PM turn correctly challenged the stale gate state, re-affirmed all four planning_signoff gate artifacts with dated re-affirmation blocks, ran npm test exit 0 (20 scenarios), confirmed zero source drift, and set phase_transition_request='implementation'. Challenge resolved: all five PM decisions are upheld. OBJ-001 (gate evaluator non_progress_signature desync, medium) recorded in that turn has resolved — the orchestrator advanced to implementation phase.
+
+OBJ-002 (MCP-descriptor candidate in ROADMAP_NEXT_CANDIDATES.md, low) remains unbound — the form-decision A/B/C blocker is unresolved. Not blocking M30 implementation.
+
+### Implementation Work
+
+**Milestone:** M30 — Static Embeddable-Surface Plan Export from Manifest Evidence (V1.11 PROPOSED)
+
+All M30 source deliverables are implemented in this turn:
+
+**`src/cli.js` changes:**
+- Added M30 constants: `SURFACE_ENUM` (frozen four-value `['chat','palette','widget','voice']`), `GATED_REASON_ENUM` (frozen Set of six values), `BRAND_INPUTS_REQUIRED` (per-surface named-list map)
+- Implemented `classifyGating(capability, surface)` — six-gate first-match-wins logic per surface; synchronous throw if returned reason would be outside the closed six-value set (`_guardGatedReason`)
+- Implemented `buildSurfacePlan(manifest, manifestPath, surfaceFilter)` — reads manifest evidence, builds per-surface `eligible_capabilities[]`, `gated_capabilities[]`, `entry_points`, `redaction_posture`, `auth_posture`, `brand_inputs_required[]`; read-only (no manifest mutation)
+- Implemented `formatSurfacePlan(plan)` — human-readable plan with planning-aid framing note and empty-capabilities guard
+- Implemented `cmdSurface(args)` dispatcher and `cmdSurfacePlan(args)` handler with `parseSurfacePlanArgs` — four flags (`--surface`, `--manifest`, `--out`, `--json`); detection-before-output on all error paths; `.tusq/` path rejection; empty stdout on every exit-1 path
+- Updated `dispatch()` to add `case 'surface'`
+- Updated `printHelp()` to add `surface` noun between `redaction` and `version` (CLI surface 13 → 14)
+- Updated `printCommandHelp()` to add `'surface'` enumerator help and `'surface plan'` detailed help with planning-aid framing callout
+
+**`tests/smoke.mjs` changes:**
+- Added M30 smoke matrix covering 16 test assertions: (a) default plan produces exit 0 with all four surfaces; (b) --surface chat/palette/widget/voice each emit one surface section; (c) --surface all emits all four in frozen order; (d) unknown surface exits 1 with empty stdout; (e) missing manifest exits 1; (f) malformed JSON exits 1; (g) byte-identical output across two runs (human and JSON); (h) manifest content unchanged after plan run; (i) capability_digest unchanged after plan run; (l) empty-capabilities exits 0 with documented line + surfaces:[]; (m) --out writes to path with empty stdout; (n) --out unwritable exits 1; (o) every gating reason in closed six-value set; (p) destructive gated for palette/voice, allowed for chat/widget; .tusq/ path rejection; unknown flag rejection; missing capabilities array rejection; planning-aid framing in help; brand_inputs_required shape; compile byte-identity
+
+**`tests/evals/governed-cli-scenarios.json` changes:**
+- Added `surface-plan-determinism` scenario (scenario_type: `surface_plan_determinism`): asserts byte-identical stdout across three runs on the same manifest and closed gated_reason enum. Eval scenario count: 20 → 21
+
+**`tests/eval-regression.mjs` changes:**
+- Added `runSurfacePlanDeterminismScenario` function handling the new `surface_plan_determinism` scenario type
+- Added dispatch case in the main scenario loop
+
+### Verification
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (21 scenarios)'
+- Zero source drift in prior commands (tusq compile, tusq serve, tusq policy verify, tusq redaction review — behavior unchanged)
+- CLI surface: 14 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help)
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_5f551e9f95cc3829) explicitly; all five decisions upheld; OBJ-001 resolved; OBJ-002 (MCP-descriptor) remains non-blocking.
+- DEC-002: Implemented M30 (V1.11 PROPOSED) in src/cli.js — `classifyGating`, `buildSurfacePlan`, `cmdSurface`, `cmdSurfacePlan`, updated dispatch/printHelp/printCommandHelp. CLI surface grows 13 → 14.
+- DEC-003: Added M30 smoke tests (16 assertions) and eval scenario (surface-plan-determinism, scenario 21). npm test exits 0 with 21 scenarios.
+- DEC-004: Modified files: src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs, .planning/IMPLEMENTATION_NOTES.md. Did NOT modify reserved orchestrator state files. Did NOT modify PM-owned planning artifacts.
+- DEC-005: Setting phase_transition_request='qa'. Gate requirements met: IMPLEMENTATION_NOTES.md exists and updated, npm test exit 0 (21 scenarios), all M30 deliverables complete.
+
+---
+
 ## Dev Turn turn_682fe7bd80e6064f — Planning Phase: Loop-Break Diagnosis, PM Participation Required (run_24ccd92f593d8647, 2026-04-26)
 
 **Run:** run_24ccd92f593d8647

@@ -62,6 +62,30 @@ const PII_CATEGORY_BY_NAME = Object.freeze({
 });
 const PII_CANONICAL_NAMES = new Set(Object.keys(PII_CATEGORY_BY_NAME));
 
+// M30: frozen four-value surface enum. Immutable once M30 ships.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const SURFACE_ENUM = Object.freeze(['chat', 'palette', 'widget', 'voice']);
+
+// M30: frozen six-value gated_reason enum. Immutable once M30 ships.
+// An implementation-time guard fires if classifyGating returns a value outside this set.
+const GATED_REASON_ENUM = Object.freeze(new Set([
+  'unapproved',
+  'restricted_sensitivity',
+  'confidential_sensitivity',
+  'destructive_side_effect',
+  'auth_scheme_unknown',
+  'auth_scheme_oauth_pending_v2'
+]));
+
+// M30: frozen brand_inputs_required named-lists (names only; no values).
+// Immutable once M30 ships — adding a name is a material governance event.
+const BRAND_INPUTS_REQUIRED = Object.freeze({
+  chat: Object.freeze(['brand.tone', 'brand.color_primary', 'brand.color_secondary', 'brand.font_family']),
+  palette: Object.freeze(['brand.color_primary', 'brand.font_family']),
+  widget: Object.freeze(['brand.color_primary', 'brand.color_accent', 'brand.layout_density', 'brand.radius']),
+  voice: Object.freeze(['brand.tone', 'voice.persona', 'voice.greeting'])
+});
+
 // M27: frozen reviewer advisory set for tusq redaction review.
 // Wording and em-dash usage are part of the governance contract.
 const PII_REVIEW_ADVISORY_BY_CATEGORY = Object.freeze({
@@ -150,6 +174,9 @@ function dispatch(argv) {
       return;
     case 'redaction':
       cmdRedaction(args);
+      return;
+    case 'surface':
+      cmdSurface(args);
       return;
     default:
       printHelp();
@@ -1596,6 +1623,337 @@ function cmdRedaction(args) {
   throw new CliError(`Unknown subcommand: ${sub}`, 1);
 }
 
+// M30: tusq surface — dispatcher
+function cmdSurface(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('surface');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'plan') {
+    cmdSurfacePlan(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M30: tusq surface plan — handler
+function cmdSurfacePlan(args) {
+  const { opts, positionals } = parseSurfacePlanArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('surface plan');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const surfaceFilter = opts.surface || 'all';
+  const VALID_SURFACE_TOKENS = new Set([...SURFACE_ENUM, 'all']);
+  if (!VALID_SURFACE_TOKENS.has(surfaceFilter)) {
+    throw new CliError(`Unknown surface: ${surfaceFilter}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Reject any path whose resolved components include '.tusq' (governance directory guard)
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    // Validate writable (attempt mkdir of parent; actual write happens after plan is built)
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const plan = buildSurfacePlan(manifest, manifestPath, surfaceFilter);
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatSurfacePlan(plan));
+}
+
+function parseSurfacePlanArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['surface', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M30: classifyGating(capability, surface) → gated_reason | null
+// Returns the first failing gate's reason (first-match-wins), or null if eligible.
+// Throws synchronously if the returned reason would be outside the closed six-value set.
+function classifyGating(capability, surface) {
+  const approved = capability.approved === true;
+  const sensitivityClass = capability.sensitivity_class || 'unknown';
+  const sideEffectClass = capability.side_effect_class || 'read';
+  const authScheme = (capability.auth_requirements && capability.auth_requirements.auth_scheme) || 'unknown';
+
+  // Gate 1 (all surfaces): approved === true
+  if (!approved) return _guardGatedReason('unapproved');
+
+  // Gate 2 (chat, palette, voice; NOT widget): sensitivity_class !== 'restricted'
+  if (surface !== 'widget') {
+    if (sensitivityClass === 'restricted') return _guardGatedReason('restricted_sensitivity');
+  }
+
+  // Gate 3 (chat, palette, voice; NOT widget): sensitivity_class !== 'confidential'
+  if (surface !== 'widget') {
+    if (sensitivityClass === 'confidential') return _guardGatedReason('confidential_sensitivity');
+  }
+
+  // Gate 4 (palette, voice; NOT chat, NOT widget): destructive side effect forbidden
+  if (surface === 'palette' || surface === 'voice') {
+    if (sideEffectClass === 'destructive') return _guardGatedReason('destructive_side_effect');
+  }
+
+  // Gate 5 (all surfaces): auth_scheme !== 'unknown'
+  if (authScheme === 'unknown') return _guardGatedReason('auth_scheme_unknown');
+
+  // Gate 6 (all surfaces): auth_scheme !== 'oauth' (deferred to V2)
+  if (authScheme === 'oauth') return _guardGatedReason('auth_scheme_oauth_pending_v2');
+
+  return null;
+}
+
+function _guardGatedReason(reason) {
+  if (!GATED_REASON_ENUM.has(reason)) {
+    throw new Error(`Internal error: classifyGating returned unknown reason: ${reason}`);
+  }
+  return reason;
+}
+
+// M30: derive deterministic intent/action label from capability
+function _deriveSurfaceLabel(capability) {
+  const desc = typeof capability.description === 'string' && capability.description.trim();
+  if (desc) return desc;
+  return String(capability.name || '').replace(/[_-]/g, ' ');
+}
+
+// M30: buildSurfacePlan(manifest, manifestPath, surfaceFilter) → plan object
+function buildSurfacePlan(manifest, manifestPath, surfaceFilter) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      surfaces: []
+    };
+  }
+
+  const surfacesToPlan = surfaceFilter === 'all' ? SURFACE_ENUM.slice() : [surfaceFilter];
+
+  const surfaces = surfacesToPlan.map((surface) => {
+    const eligibleCapabilities = [];
+    const gatedCapabilities = [];
+
+    for (const capability of capabilities) {
+      const reason = classifyGating(capability, surface);
+      if (reason === null) {
+        eligibleCapabilities.push(capability.name);
+      } else {
+        gatedCapabilities.push({ name: capability.name, reason });
+      }
+    }
+
+    // entry_points: derived deterministically from capability data
+    let entryPoints;
+    if (surface === 'chat') {
+      entryPoints = {
+        intents: eligibleCapabilities.map((name) => {
+          const cap = capabilities.find((c) => c.name === name);
+          return { capability: name, intent_label: _deriveSurfaceLabel(cap) };
+        })
+      };
+    } else if (surface === 'palette') {
+      entryPoints = {
+        actions: eligibleCapabilities.map((name) => {
+          const cap = capabilities.find((c) => c.name === name);
+          return { capability: name, action_label: _deriveSurfaceLabel(cap) };
+        })
+      };
+    } else if (surface === 'widget') {
+      const actionWidgets = [];
+      const insightWidgets = [];
+      for (const name of eligibleCapabilities) {
+        const cap = capabilities.find((c) => c.name === name);
+        const sideEffect = (cap && cap.side_effect_class) || 'read';
+        if (sideEffect === 'read') {
+          insightWidgets.push({ capability: name });
+        } else {
+          actionWidgets.push({ capability: name });
+        }
+      }
+      entryPoints = { action_widgets: actionWidgets, insight_widgets: insightWidgets };
+    } else {
+      // voice
+      entryPoints = {
+        voice_intents: eligibleCapabilities.map((name) => {
+          const cap = capabilities.find((c) => c.name === name);
+          return { capability: name, intent_label: _deriveSurfaceLabel(cap) };
+        })
+      };
+    }
+
+    // redaction_posture: copy-forward of M27 advisory set verbatim per eligible capability
+    const redactionPosture = {};
+    for (const name of eligibleCapabilities) {
+      const cap = capabilities.find((c) => c.name === name);
+      const redaction = (cap && cap.redaction && typeof cap.redaction === 'object') ? cap.redaction : {};
+      const piiFields = Array.isArray(redaction.pii_fields) ? redaction.pii_fields.slice() : [];
+      const piiCategories = Array.isArray(redaction.pii_categories) ? redaction.pii_categories.slice() : [];
+      redactionPosture[name] = {
+        pii_fields: piiFields,
+        pii_categories: piiCategories,
+        advisories: buildPiiReviewAdvisories(piiCategories)
+      };
+    }
+
+    // auth_posture: copy-forward of M29 auth_requirements record verbatim per eligible capability
+    const authPosture = {};
+    for (const name of eligibleCapabilities) {
+      const cap = capabilities.find((c) => c.name === name);
+      authPosture[name] = (cap && cap.auth_requirements && typeof cap.auth_requirements === 'object')
+        ? cap.auth_requirements
+        : { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' };
+    }
+
+    return {
+      surface,
+      eligible_capabilities: eligibleCapabilities,
+      gated_capabilities: gatedCapabilities,
+      entry_points: entryPoints,
+      redaction_posture: redactionPosture,
+      auth_posture: authPosture,
+      brand_inputs_required: BRAND_INPUTS_REQUIRED[surface].slice()
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    surfaces
+  };
+}
+
+// M30: format surface plan as human-readable text
+function formatSurfacePlan(plan) {
+  if (plan.surfaces.length === 0) {
+    return 'No capabilities in manifest — nothing to plan.\n';
+  }
+
+  const version = plan.manifest_version === null ? 'unknown' : String(plan.manifest_version);
+  const generatedAt = plan.generated_at === null ? 'unknown' : plan.generated_at;
+  const lines = [
+    `Surface Plan: ${plan.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime surface generator.',
+    ''
+  ];
+
+  for (const surfacePlan of plan.surfaces) {
+    lines.push(`[${surfacePlan.surface}]`);
+    lines.push(`  eligible: ${surfacePlan.eligible_capabilities.join(', ') || '(none)'}`);
+    if (surfacePlan.gated_capabilities.length > 0) {
+      lines.push('  gated:');
+      for (const gated of surfacePlan.gated_capabilities) {
+        lines.push(`    - ${gated.name}: ${gated.reason}`);
+      }
+    } else {
+      lines.push('  gated: (none)');
+    }
+    lines.push(`  brand_inputs_required: ${surfacePlan.brand_inputs_required.join(', ')}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function cmdRedactionReview(args) {
   const { opts, positionals } = parseRedactionReviewArgs(args);
 
@@ -2206,6 +2564,7 @@ function printHelp() {
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
+  process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
 }
@@ -2225,6 +2584,22 @@ function printCommandHelp(command) {
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    surface: 'Usage: tusq surface <subcommand>\n  Subcommands: plan',
+    'surface plan': [
+      'Usage: tusq surface plan [--surface <chat|palette|widget|voice|all>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --surface <chat|palette|widget|voice|all>  Surface filter (default: all)',
+      '  --manifest <path>                          Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                               Write plan to file (no stdout on success)',
+      '  --json                                     Emit machine-readable JSON',
+      '',
+      'Exit codes:',
+      '  0  Plan produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown surface, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime surface generator.'
+    ].join('\n'),
     'redaction review': [
       'Usage: tusq redaction review [--manifest <path>] [--capability <name>] [--json]',
       '',

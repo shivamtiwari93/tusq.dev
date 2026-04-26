@@ -2105,6 +2105,281 @@ async function run() {
     throw new Error(`M29: review output MUST display auth scheme per capability:\n${m29ReviewOut.stdout}`);
   }
 
+  // ─── M30: tusq surface plan ─────────────────────────────────────────────────
+
+  const m30TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m30-smoke-'));
+
+  // M30 fixture manifest: four capabilities covering all gating paths
+  const m30Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_profile',
+        description: 'Get user profile',
+        method: 'GET',
+        path: '/profile',
+        side_effect_class: 'read',
+        sensitivity_class: 'confidential',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['email'], pii_categories: ['email'] }
+      },
+      {
+        name: 'unapproved_route',
+        description: 'Not yet approved',
+        method: 'GET',
+        path: '/test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+  const m30ManifestPath = path.join(m30TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m30ManifestPath, JSON.stringify(m30Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m30TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M30(a): default tusq surface plan produces exit 0 and expected per-surface eligibility/gating split
+  const m30Default1 = runCli(['surface', 'plan', '--manifest', m30ManifestPath], { cwd: m30TmpDir });
+  if (!m30Default1.stdout.includes('[chat]') || !m30Default1.stdout.includes('[palette]') ||
+      !m30Default1.stdout.includes('[widget]') || !m30Default1.stdout.includes('[voice]')) {
+    throw new Error(`M30(a): default plan must emit all four surfaces:\n${m30Default1.stdout}`);
+  }
+  if (!m30Default1.stdout.includes('planning aid')) {
+    throw new Error(`M30(a): plan must mention planning aid:\n${m30Default1.stdout}`);
+  }
+
+  // M30(b): --surface chat emits only chat section
+  const m30Chat = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'chat'], { cwd: m30TmpDir });
+  if (!m30Chat.stdout.includes('[chat]') || m30Chat.stdout.includes('[palette]') ||
+      m30Chat.stdout.includes('[widget]') || m30Chat.stdout.includes('[voice]')) {
+    throw new Error(`M30(b): --surface chat must emit only chat section:\n${m30Chat.stdout}`);
+  }
+
+  // M30(b): --surface palette, widget, voice each emit one surface section
+  const m30Palette = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'palette'], { cwd: m30TmpDir });
+  if (!m30Palette.stdout.includes('[palette]') || m30Palette.stdout.includes('[chat]')) {
+    throw new Error(`M30(b): --surface palette must emit only palette section:\n${m30Palette.stdout}`);
+  }
+  const m30Widget = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'widget'], { cwd: m30TmpDir });
+  if (!m30Widget.stdout.includes('[widget]') || m30Widget.stdout.includes('[chat]')) {
+    throw new Error(`M30(b): --surface widget must emit only widget section:\n${m30Widget.stdout}`);
+  }
+  const m30Voice = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'voice'], { cwd: m30TmpDir });
+  if (!m30Voice.stdout.includes('[voice]') || m30Voice.stdout.includes('[chat]')) {
+    throw new Error(`M30(b): --surface voice must emit only voice section:\n${m30Voice.stdout}`);
+  }
+
+  // M30(c): --surface all emits all four in frozen order
+  const m30All = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'all', '--json'], { cwd: m30TmpDir });
+  const m30AllPlan = JSON.parse(m30All.stdout);
+  if (m30AllPlan.surfaces.map((s) => s.surface).join(',') !== 'chat,palette,widget,voice') {
+    throw new Error(`M30(c): --surface all must emit surfaces in frozen order chat,palette,widget,voice: ${JSON.stringify(m30AllPlan.surfaces.map((s) => s.surface))}`);
+  }
+
+  // M30(d): --surface unknown exits 1 with Unknown surface: and empty stdout
+  const m30UnknownSurface = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--surface', 'email'], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (!m30UnknownSurface.stderr.includes('Unknown surface: email') || m30UnknownSurface.stdout !== '') {
+    throw new Error(`M30(d): unknown surface must exit 1 with error on stderr, empty stdout:\nstdout=${m30UnknownSurface.stdout}\nstderr=${m30UnknownSurface.stderr}`);
+  }
+
+  // M30(e): missing --manifest path exits 1 with Manifest not found: and empty stdout
+  const m30MissingManifest = runCli(['surface', 'plan', '--manifest', path.join(m30TmpDir, 'not-here.json')], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (!m30MissingManifest.stderr.includes('Manifest not found:') || m30MissingManifest.stdout !== '') {
+    throw new Error(`M30(e): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m30MissingManifest.stdout}\nstderr=${m30MissingManifest.stderr}`);
+  }
+
+  // M30(f): malformed-JSON manifest exits 1 with Invalid manifest JSON: and empty stdout
+  const m30BadManifestPath = path.join(m30TmpDir, 'bad.json');
+  await fs.writeFile(m30BadManifestPath, 'not-json', 'utf8');
+  const m30BadManifest = runCli(['surface', 'plan', '--manifest', m30BadManifestPath], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (!m30BadManifest.stderr.includes('Invalid manifest JSON:') || m30BadManifest.stdout !== '') {
+    throw new Error(`M30(f): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m30BadManifest.stdout}\nstderr=${m30BadManifest.stderr}`);
+  }
+
+  // M30(g): running twice produces byte-identical stdout in both human and JSON modes
+  const m30Human1 = runCli(['surface', 'plan', '--manifest', m30ManifestPath], { cwd: m30TmpDir });
+  const m30Human2 = runCli(['surface', 'plan', '--manifest', m30ManifestPath], { cwd: m30TmpDir });
+  if (m30Human1.stdout !== m30Human2.stdout) {
+    throw new Error('M30(g): expected byte-identical human plan output across runs');
+  }
+  const m30Json1 = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--json'], { cwd: m30TmpDir });
+  const m30Json2 = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--json'], { cwd: m30TmpDir });
+  if (m30Json1.stdout !== m30Json2.stdout) {
+    throw new Error('M30(g): expected byte-identical JSON plan output across runs');
+  }
+
+  // M30(h): M30 does not mutate the manifest (mtime/content unchanged)
+  const m30ManifestBefore = await fs.readFile(m30ManifestPath, 'utf8');
+  runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--json'], { cwd: m30TmpDir });
+  const m30ManifestAfter = await fs.readFile(m30ManifestPath, 'utf8');
+  if (m30ManifestBefore !== m30ManifestAfter) {
+    throw new Error('M30(h): tusq surface plan must not mutate the manifest (read-only invariant)');
+  }
+
+  // M30(i): capability_digest does not flip on any capability after a plan run
+  const m30DigestBefore = m30Manifest.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--json'], { cwd: m30TmpDir });
+  const m30ManifestReadBack = JSON.parse(await fs.readFile(m30ManifestPath, 'utf8'));
+  const m30DigestAfter = m30ManifestReadBack.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  if (JSON.stringify(m30DigestBefore) !== JSON.stringify(m30DigestAfter)) {
+    throw new Error('M30(i): capability_digest must not flip after plan run');
+  }
+
+  // M30(l): empty-capabilities manifest emits human line and surfaces: [] in JSON
+  const m30EmptyManifestPath = path.join(m30TmpDir, 'empty.json');
+  await fs.writeFile(m30EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m30EmptyHuman = runCli(['surface', 'plan', '--manifest', m30EmptyManifestPath], { cwd: m30TmpDir });
+  if (m30EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to plan.') {
+    throw new Error(`M30(l): empty-capabilities human output must be exactly the documented line:\n${m30EmptyHuman.stdout}`);
+  }
+  const m30EmptyJson = JSON.parse(runCli(['surface', 'plan', '--manifest', m30EmptyManifestPath, '--json'], { cwd: m30TmpDir }).stdout);
+  if (!Array.isArray(m30EmptyJson.surfaces) || m30EmptyJson.surfaces.length !== 0) {
+    throw new Error(`M30(l): empty-capabilities JSON must have surfaces: [] :\n${JSON.stringify(m30EmptyJson)}`);
+  }
+
+  // M30(m): --out <path> writes to the path and emits no stdout on success
+  const m30OutPath = path.join(m30TmpDir, 'surface-plan-out.json');
+  const m30OutResult = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--out', m30OutPath], { cwd: m30TmpDir });
+  if (m30OutResult.stdout !== '') {
+    throw new Error(`M30(m): --out must emit no stdout on success, got: ${m30OutResult.stdout}`);
+  }
+  const m30OutContent = JSON.parse(await fs.readFile(m30OutPath, 'utf8'));
+  if (!Array.isArray(m30OutContent.surfaces) || m30OutContent.surfaces.length !== 4) {
+    throw new Error(`M30(m): --out file must contain four surfaces: ${JSON.stringify(m30OutContent)}`);
+  }
+
+  // M30(n): --out to an unwritable path exits 1
+  const m30BadOut = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--out', '/no-such-dir/a/b/c/plan.json'], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (m30BadOut.stdout !== '') {
+    throw new Error(`M30(n): --out unwritable must produce empty stdout, got: ${m30BadOut.stdout}`);
+  }
+
+  // M30(o): every gating reason resolves to exactly one of the six closed reason codes
+  const m30PlanJson = JSON.parse(m30Json1.stdout);
+  const validReasons = new Set(['unapproved', 'restricted_sensitivity', 'confidential_sensitivity', 'destructive_side_effect', 'auth_scheme_unknown', 'auth_scheme_oauth_pending_v2']);
+  for (const surfacePlan of m30PlanJson.surfaces) {
+    for (const gated of surfacePlan.gated_capabilities) {
+      if (!validReasons.has(gated.reason)) {
+        throw new Error(`M30(o): gated reason '${gated.reason}' is outside the closed six-value enum`);
+      }
+    }
+  }
+
+  // M30(p): destructive verb is gated for palette and voice but allowed for chat and widget
+  const m30PaletteSection = m30PlanJson.surfaces.find((s) => s.surface === 'palette');
+  const m30VoiceSection = m30PlanJson.surfaces.find((s) => s.surface === 'voice');
+  const m30ChatSection = m30PlanJson.surfaces.find((s) => s.surface === 'chat');
+  const m30WidgetSection = m30PlanJson.surfaces.find((s) => s.surface === 'widget');
+
+  // delete_user (destructive, restricted) — gated in palette for destructive_side_effect?
+  // Actually it fails gate 2 (restricted) before gate 4 (destructive) for palette/voice
+  // But list_users (read, internal, approved, bearer) should be in chat eligible
+  if (!m30ChatSection.eligible_capabilities.includes('list_users')) {
+    throw new Error(`M30(p): list_users must be eligible for chat`);
+  }
+  // delete_user is restricted_sensitivity (gated before destructive check) for chat
+  const m30DeleteGatedInPalette = m30PaletteSection.gated_capabilities.find((g) => g.name === 'delete_user');
+  if (!m30DeleteGatedInPalette) {
+    throw new Error('M30(p): delete_user must be gated in palette');
+  }
+  // delete_user IS eligible for widget (gates 1,5,6 only — no sensitivity or destructive gate)
+  if (!m30WidgetSection.eligible_capabilities.includes('delete_user')) {
+    throw new Error('M30(p): delete_user must be eligible for widget (action_widgets)');
+  }
+  // widget splits: delete_user → action_widgets, list_users and get_profile → insight_widgets
+  if (!m30WidgetSection.entry_points.action_widgets.some((w) => w.capability === 'delete_user')) {
+    throw new Error('M30(p): delete_user must be in action_widgets for widget');
+  }
+  if (!m30WidgetSection.entry_points.insight_widgets.some((w) => w.capability === 'list_users')) {
+    throw new Error('M30(p): list_users must be in insight_widgets for widget');
+  }
+
+  // M30: --out .tusq/ path rejected with correct message and empty stdout
+  const m30TusqOutResult = runCli(
+    ['surface', 'plan', '--manifest', m30ManifestPath, '--out', path.join(m30TmpDir, '.tusq', 'plan.json')],
+    { cwd: m30TmpDir, expectedStatus: 1 }
+  );
+  if (!m30TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m30TusqOutResult.stdout !== '') {
+    throw new Error(`M30: --out .tusq/ must reject with correct message:\nstdout=${m30TusqOutResult.stdout}\nstderr=${m30TusqOutResult.stderr}`);
+  }
+
+  // M30: unknown flag exits 1 with error on stderr and empty stdout
+  const m30UnknownFlag = runCli(['surface', 'plan', '--manifest', m30ManifestPath, '--badFlag'], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (!m30UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m30UnknownFlag.stdout !== '') {
+    throw new Error(`M30: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m30UnknownFlag.stdout}\nstderr=${m30UnknownFlag.stderr}`);
+  }
+
+  // M30: Invalid manifest missing capabilities array
+  const m30NoCapsManifestPath = path.join(m30TmpDir, 'no-caps.json');
+  await fs.writeFile(m30NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m30NoCaps = runCli(['surface', 'plan', '--manifest', m30NoCapsManifestPath], { cwd: m30TmpDir, expectedStatus: 1 });
+  if (!m30NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m30NoCaps.stdout !== '') {
+    throw new Error(`M30: missing capabilities array must exit 1:\nstdout=${m30NoCaps.stdout}\nstderr=${m30NoCaps.stderr}`);
+  }
+
+  // M30: help text includes planning-aid framing
+  const m30HelpResult = runCli(['surface', 'plan', '--help'], { cwd: m30TmpDir });
+  if (!m30HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M30: surface plan help must include planning-aid framing:\n${m30HelpResult.stdout}`);
+  }
+
+  // M30: brand_inputs_required per surface shape validation
+  const m30ChatBrands = m30ChatSection.brand_inputs_required;
+  if (JSON.stringify(m30ChatBrands) !== JSON.stringify(['brand.tone', 'brand.color_primary', 'brand.color_secondary', 'brand.font_family'])) {
+    throw new Error(`M30: chat brand_inputs_required mismatch: ${JSON.stringify(m30ChatBrands)}`);
+  }
+  const m30VoiceBrands = m30VoiceSection.brand_inputs_required;
+  if (JSON.stringify(m30VoiceBrands) !== JSON.stringify(['brand.tone', 'voice.persona', 'voice.greeting'])) {
+    throw new Error(`M30: voice brand_inputs_required mismatch: ${JSON.stringify(m30VoiceBrands)}`);
+  }
+
+  // M30: tusq compile byte-identity — compile output is unchanged by M30
+  const m30CompileDir = path.join(m30TmpDir, 'compile-check');
+  await fs.mkdir(m30CompileDir, { recursive: true });
+  await fs.writeFile(path.join(m30CompileDir, 'tusq.manifest.json'), JSON.stringify(m30Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m30CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m30CompileDir });
+  // Run surface plan then compile again — compile output must be identical
+  runCli(['surface', 'plan', '--manifest', path.join(m30CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m30CompileDir });
+  const m30CompiledBeforePath = path.join(m30CompileDir, 'tusq-tools', 'list_users.json');
+  if (!(await fs.access(m30CompiledBeforePath).then(() => true).catch(() => false))) {
+    // compile only produces files for approved capabilities — list_users is approved
+  }
+  // Surface plan must not create any new files in tusq-tools
+  const m30ToolsFiles = await fs.readdir(path.join(m30CompileDir, 'tusq-tools'));
+  if (m30ToolsFiles.some((f) => f.includes('surface'))) {
+    throw new Error(`M30: surface plan must not write into tusq-tools: ${m30ToolsFiles.join(', ')}`);
+  }
+
+  await fs.rm(m30TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 

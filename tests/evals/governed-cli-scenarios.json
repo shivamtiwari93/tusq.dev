@@ -427,6 +427,71 @@
           "expected_evidence_source": "middleware_name"
         }
       ]
+    },
+    {
+      "id": "surface-plan-determinism",
+      "description": "M30: tusq surface plan --json produces byte-identical stdout across three runs on the same manifest; every gated capability reason is one of the six closed gated_reason enum values",
+      "scenario_type": "surface_plan_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "description": "List all users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "delete_user",
+          "description": "Delete a user",
+          "method": "DELETE",
+          "path": "/users/:id",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "oauth_resource",
+          "description": "OAuth protected resource",
+          "method": "GET",
+          "path": "/resource",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "oauth"
+        },
+        {
+          "name": "unknown_auth",
+          "description": "Unknown auth endpoint",
+          "method": "GET",
+          "path": "/open",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        },
+        {
+          "name": "unapproved_cap",
+          "description": "Not yet approved",
+          "method": "POST",
+          "path": "/pending",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "auth_scheme": "bearer"
+        }
+      ],
+      "expected_valid_gated_reasons": [
+        "unapproved",
+        "restricted_sensitivity",
+        "confidential_sensitivity",
+        "destructive_side_effect",
+        "auth_scheme_unknown",
+        "auth_scheme_oauth_pending_v2"
+      ]
     }
   ]
 }

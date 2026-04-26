@@ -849,6 +849,70 @@ async function runAuthRequirementsSyntheticScenario(tmpRoot, scenario) {
   }
 }
 
+async function runSurfacePlanDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => ({
+    name: cap.name,
+    description: cap.description || cap.name,
+    method: cap.method || 'GET',
+    path: cap.path || '/',
+    side_effect_class: cap.side_effect_class || 'read',
+    sensitivity_class: cap.sensitivity_class || 'unknown',
+    approved: cap.approved === true,
+    auth_requirements: {
+      auth_scheme: cap.auth_scheme || 'unknown',
+      auth_scopes: [],
+      auth_roles: [],
+      evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+    },
+    redaction: { pii_fields: [], pii_categories: [] }
+  }));
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq surface plan --json three times and assert byte-identical output
+  const run1 = runCli(['surface', 'plan', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['surface', 'plan', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['surface', 'plan', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: surface plan --json output is not byte-identical across three runs`);
+  }
+
+  // Assert gated_reason enum is closed — every reason is one of the valid six
+  const plan = JSON.parse(run1.stdout);
+  const validReasons = new Set(scenario.expected_valid_gated_reasons);
+  for (const surfacePlan of plan.surfaces) {
+    for (const gated of surfacePlan.gated_capabilities) {
+      if (!validReasons.has(gated.reason)) {
+        fail(`${scenario.id}: gated reason '${gated.reason}' is outside the closed six-value enum`);
+      }
+    }
+  }
+
+  // Assert plan has four surfaces in frozen order
+  const surfaceOrder = plan.surfaces.map((s) => s.surface).join(',');
+  if (surfaceOrder !== 'chat,palette,widget,voice') {
+    fail(`${scenario.id}: surfaces must appear in frozen order chat,palette,widget,voice; got: ${surfaceOrder}`);
+  }
+
+  // Assert manifest is not mutated
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  if (JSON.stringify(JSON.parse(manifestAfter)) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by surface plan`);
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -878,6 +942,8 @@ async function run() {
       await runSensitivityClassPreserveScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'auth_requirements_synthetic') {
       await runAuthRequirementsSyntheticScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'surface_plan_determinism') {
+      await runSurfacePlanDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
