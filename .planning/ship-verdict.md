@@ -2,6 +2,46 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_76e3bd05609910ce (role=qa, run_4506c41d74e23e8e, M33 Static Capability Sensitivity Index Export verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_42c7748a59fa5ef3, role=dev, HEAD 31a0bd9) for run_4506c41d74e23e8e independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn implemented M33 across nine dev-owned files.** `git diff HEAD~1..HEAD --name-only` → `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`, `.planning/IMPLEMENTATION_NOTES.md`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`. All nine files are dev-owned; zero PM-owned gate artifacts, QA-owned artifacts, launch-owned artifacts, or reserved state files were modified. Challenge resolved: all changes are within M33 scope and correctly dev-owned.
+
+**Challenge 2 — CLI surface grows 16→17 with correct alphabetic insertion.** `node bin/tusq.js help` exits 0; stdout lists all 17 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, effect, policy, redaction, sensitivity, surface, version, help) with `sensitivity` between `redaction` and `surface` (s-e < s-u alphabetic ordering confirmed). `node bin/tusq.js sensitivity index --help` exits 0 with planning-aid framing: `This is a planning aid, not a runtime sensitivity enforcer or compliance certifier.` and bucket iteration order `public → internal → confidential → restricted → unknown`. Challenge resolved.
+
+**Challenge 3 — M33 Key Risk: M28 SENSITIVITY_CLASSES referenced directly.** `src/cli.js:8` shows `const SENSITIVITY_CLASSES = ['unknown', 'public', 'internal', 'confidential', 'restricted']` (M28 constant, unchanged). Lines 88-94 show `SENSITIVITY_INDEX_BUCKET_ORDER = Object.freeze(['public', 'internal', 'confidential', 'restricted'])` with comment `NOTE: bucket-key enum reuses SENSITIVITY_CLASSES (M28, line 8) directly — no independent enum declared (M33 Key Risk)`. `_guardSensitivityBucketKey` at line 2668 uses `SENSITIVITY_CLASSES.includes(key)` directly. `cmdSensitivityIndex` at line 2595 uses `SENSITIVITY_CLASSES.includes(sensitivityFilter)`. No independent enum redeclaration found. M33 Key Risk fully mitigated. Challenge resolved.
+
+**Challenge 4 — Five-value closed-enum bucket iteration order.** SENSITIVITY_INDEX_BUCKET_ORDER = ['public','internal','confidential','restricted'] (four named classes); `buildSensitivityIndex` at lines 2730-2731 spreads named classes in order then appends unknown last. Bucket order public→internal→confidential→restricted→unknown confirmed. Challenge resolved.
+
+**Challenge 5 — npm test exits 0 with 24 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (24 scenarios)`. `tests/evals/governed-cli-scenarios.json` contains id `sensitivity-index-determinism` (the 24th scenario). `tests/eval-regression.mjs` has `runSensitivityIndexDeterminismScenario` handler at line 1048. `tests/smoke.mjs` contains the M33 smoke matrix at line 2992 (21 assertions covering cases a-u plus edge cases). Challenge resolved.
+
+**Challenge 6 — Zero new dependencies.** `git diff HEAD -- package.json package-lock.json` → empty output (no new top-level packages added). Challenge resolved.
+
+**Challenge 7 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking.
+
+**Challenge 8 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 9 — OBJ-003 (low, non-blocking) carried forward.** M31 flag value assertions not independently smoke-asserted. M32 closes its own analogous gap at REQ-189; M33 closes it at REQ-213 (has_destructive_side_effect) and REQ-214 (has_unknown_auth). Non-blocking.
+
+**Challenge 10 — All 215 acceptance criteria (REQ-001–REQ-215) pass.** REQ-192–REQ-215 (24 new M33 criteria) added to acceptance-matrix.md. All acceptance criteria for V1.14 (M1–M33) are PASS. Challenge resolved.
+
+**Challenge 11 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 31a0bd9, run_4506c41d74e23e8e, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (24 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 17-command surface: sensitivity between redaction and surface |
+| `node bin/tusq.js sensitivity index --help` | Exit 0 — planning-aid framing, bucket order public→internal→confidential→restricted→unknown |
+| `node bin/tusq.js sensitivity index --sensitivity bogus` | Exit 1 — stderr: "Unknown sensitivity", stdout: empty |
+| `git diff HEAD -- package.json package-lock.json` | Empty output — zero dependency drift |
+
+All 215 acceptance criteria (REQ-001–REQ-215) pass. OBJ-001/OBJ-002/OBJ-003 non-blocking. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
 ## QA Challenge — turn_5ae9cd7ed8e985f1 (role=qa, run_7183d8c70482329b, M32 re-verification no-source-change cycle, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_02b2c0e4dceeead3, role=dev, HEAD 0a38455) for run_7183d8c70482329b independently rather than rubber-stamping it.
