@@ -376,5 +376,8 @@
     "run_completion": {
       "action": "auto_approve"
     }
+  },
+  "run_loop": {
+    "non_progress_threshold": 10
   }
 }
