@@ -2,6 +2,34 @@
 
 ---
 
+## Dev Turn turn_0460dc573adb3a42 — Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** f77c88cea071cb20dfce7fb381b2133bb47c2242
+
+### Challenge To Prior Dev Turn
+
+**Prior turn:** turn_d94cf8ede4f14a16 (role=dev, phase=planning)
+
+That dev turn was a loop-recovery re-verification that correctly challenged PM turn_e283891ba22f1d5d, upheld all five PM decisions and OBJ-001/OBJ-002, independently re-verified all four planning_signoff gate artifacts, ran baseline verification (npm test exit 0, 16 scenarios, zero source drift, M29 line 317 — SHIPPED V1.10), updated IMPLEMENTATION_NOTES.md, and set phase_transition_request='implementation' under auto_approve. All five decisions upheld. The orchestrator has again re-routed planning back to dev despite phase_transition_request='implementation' being set. OBJ-001 (gate evaluator/state desync) remains the root cause.
+
+### Baseline Re-Verification (HEAD f77c88cea071cb20dfce7fb381b2133bb47c2242)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (16 scenarios)'
+- git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json: empty (zero source drift)
+- PM_SIGNOFF.md: 154743B, ROADMAP.md: 92968B, SYSTEM_SPEC.md: 269920B, command-surface.md: 83060B
+- ROADMAP.md:317: 'M29: Static Auth Requirements Inference from Manifest Evidence (~0.5 day) — SHIPPED V1.10'
+
+### Decisions
+
+- DEC-001: Challenged prior dev turn (turn_d94cf8ede4f14a16) explicitly; all five decisions upheld.
+- DEC-002: No new charter bound; two candidates remain in ROADMAP_NEXT_CANDIDATES.md.
+- DEC-003: Baseline re-verification pass on HEAD f77c88c — all gate artifacts intact, V1.10 boundary intact.
+- DEC-004: Modified only .planning/IMPLEMENTATION_NOTES.md (this entry).
+- DEC-005: Setting phase_transition_request='implementation' under auto_approve policy.
+
+---
+
 ## Dev Turn turn_d94cf8ede4f14a16 — Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
