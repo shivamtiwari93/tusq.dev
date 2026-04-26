@@ -2,6 +2,35 @@
 
 ---
 
+## Dev Turn turn_97629476209a9171 — M29 Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** c37bc29a39920792d81d5f29d9edca3741dbd328
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_22c095af94007ac1 (role=pm, phase=planning)
+
+That PM turn was a zero-edit recovery turn that (a) challenged the prior dev turn_8f7f9beb44dae855's needs_human escalation as a mandate protocol violation, (b) independently re-verified all four planning_signoff gate artifacts (PM_SIGNOFF.md 154743B, ROADMAP.md 92968B, SYSTEM_SPEC.md 269920B, command-surface.md 83060B), (c) confirmed npm test exits 0 (16 scenarios), 13-command CLI surface, zero source drift, M29 line 317 — SHIPPED V1.10, (d) set phase_transition_request='implementation' and status=completed. The challenge to the dev's needs_human is upheld: the mandate explicitly forbids needs_human solely for phase-gate approval requests under auto_approve, and the cited intent_1777183295943_20ab shows status=completed on disk. All five PM decisions are upheld. No edits to PM-owned artifacts are warranted.
+
+### Decisions
+
+- No new charter bound. No source changes required.
+- Two unbound candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+- Shipped V1.10 boundary (M1–M29) is intact.
+- Setting phase_transition_request='implementation' per mandate and auto_approve policy.
+
+### Verification
+
+- `git rev-parse HEAD` → exit 0: c37bc29a39920792d81d5f29d9edca3741dbd328
+- `ls -la .planning/PM_SIGNOFF.md .planning/ROADMAP.md .planning/SYSTEM_SPEC.md .planning/command-surface.md` → exit 0: all four gate artifacts exist with substantive sizes
+- `npm test` → exit 0: Smoke tests passed, Eval regression harness passed (16 scenarios)
+- `node bin/tusq.js help` → exit 0: 13-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help)
+- `grep -n '^### M29:' .planning/ROADMAP.md` → exit 0: line 317 reads '— SHIPPED V1.10'
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0: empty (zero source drift)
+
+---
+
 ## Dev Turn turn_8f7f9beb44dae855 — M29 Loop Recovery Re-Verification #3 / Human Escalation (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
