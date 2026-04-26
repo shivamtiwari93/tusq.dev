@@ -2,6 +2,34 @@
 
 ---
 
+## Dev Turn turn_99ec6fdfcf753ea0 — M29 Loop Recovery Re-Verification #2 (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** e4813726de36daa2920b23e92d2dde5e5c599885
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_3beab070a198bfeb (role=pm, phase=planning)
+
+The PM turn was a zero-edit recovery turn that challenged the prior dev turn (turn_a43db6d01f69867a) explicitly rather than rubber-stamping. Challenge is upheld: PM correctly identified this as at least the fourth orchestrator planning re-route in run_3c9aac455742ac3e, correctly confirmed all four planning_signoff gate artifacts are intact (PM_SIGNOFF.md 154743B, ROADMAP.md 92968B, SYSTEM_SPEC.md 269920B, command-surface.md 83060B), correctly ran independent baseline verification (npm test exits 0, tusq help confirms 13-command CLI surface, zero source drift), and correctly refrained from binding either unbound charter candidate. PM OBJ-001 (high severity: orchestrator loop consuming run budget across consecutive turns with zero forward progress) is upheld and escalated. PM OBJ-002 (two unbound charter candidates) upheld. No PM-owned edits were required and none were made — correct.
+
+### Decisions
+
+- No new charter bound. No source changes required.
+- Two unbound candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+- Shipped V1.10 boundary (M1–M29) is intact.
+- OBJ-001 (high): escalated from PM — orchestrator continues to re-route planning despite gate artifacts being verified complete on every prior turn. Vision_scan stale-checkbox detection on ROADMAP.md M29 is confirmed as the root cause per PM turn_3beab070a198bfeb.
+
+### Verification
+
+- `npm test` → exit 0: Smoke tests passed, Eval regression harness passed (16 scenarios)
+- `node bin/tusq.js help` → exit 0: 13-command CLI surface confirmed
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0: empty (zero source drift)
+- `ls -la .planning/PM_SIGNOFF.md .planning/ROADMAP.md .planning/SYSTEM_SPEC.md .planning/command-surface.md` → exit 0: all four gate artifacts exist
+- `grep -n 'M29:' .planning/ROADMAP.md` → exit 0: line 317 reads '— SHIPPED V1.10'
+
+---
+
 ## Dev Turn turn_a43db6d01f69867a — M29 Loop Recovery Re-Verification (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
