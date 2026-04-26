@@ -2,6 +2,48 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_1192bec565305f72 (role=qa, run_0b373a30d182816a, M35 verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_e2b7cb50cd77d1d5, role=dev, HEAD b9de3af) for run_0b373a30d182816a independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn scope verified: 12 files changed, all within M35 scope.** `git diff b129ca9..HEAD --name-only` → 12 files: 4 PM-owned (`.planning/PM_SIGNOFF.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md` from PM turn 455be4e), 9 dev-owned (`src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`, `.planning/IMPLEMENTATION_NOTES.md`), plus `TALK.md` operational. Zero reserved state, QA-owned, or launch-owned files modified. Challenge resolved.
+
+**Challenge 2 — npm test exits 0 with 26 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (26 scenarios)`. One new eval scenario: `auth-scheme-index-determinism` (26th). Zero dependency drift in `package.json`/`package-lock.json`. Challenge resolved.
+
+**Challenge 3 — CLI surface confirmed at 19 commands.** `node bin/tusq.js help` → exit 0; 19 commands with `auth` inserted between `approve` and `diff` (a < au < d alphabetically). Challenge resolved.
+
+**Challenge 4 — `auth index --help` exits 0 with planning-aid framing.** Help includes `This is a planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier.` Bucket iteration order `bearer → api_key → session → basic → oauth → none → unknown` confirmed. Challenge resolved.
+
+**Challenge 5 — Case-sensitive --scheme enforcement confirmed.** `node bin/tusq.js auth index --scheme BEARER --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown auth scheme: BEARER`, empty stdout. Lowercase `--scheme unknown` filter → exit 0 with unknown-only bucket on express-sample fixture. Challenge resolved.
+
+**Challenge 6 — Default index on fixture produces valid JSON output.** `node bin/tusq.js auth index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `schemes[]` with `unknown` bucket (3 capabilities), all 8 per-bucket fields present. Challenge resolved.
+
+**Challenge 7 — Zero source drift confirmed.** `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0. Zero uncommitted changes. Challenge resolved.
+
+**Challenge 8 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline; implementation correct for manually-edited manifests. Non-blocking.
+
+**Challenge 9 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 10 — OBJ-003 (low, non-blocking) carried forward.** M31 per-domain flag value assertions not independently smoke-asserted; M32/M33/M34/M35 close their own analogs. Non-blocking.
+
+**Challenge 11 — 24 new acceptance criteria added (REQ-240–REQ-263).** All 263 acceptance criteria (REQ-001–REQ-263) pass. npm test exit 0 + 26 scenarios independently confirms. Challenge resolved.
+
+**Challenge 12 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD b9de3af, run_0b373a30d182816a, 2026-04-26)
+
+| Command | Exit Code | Notes |
+|---------|-----------|-------|
+| `npm test` | 0 | Smoke tests passed; Eval regression harness passed (26 scenarios) |
+| `node bin/tusq.js help` | 0 | 19 commands; `auth` between `approve` and `diff` |
+| `node bin/tusq.js auth index --help` | 0 | Planning-aid framing confirmed; bearer→api_key→session→basic→oauth→none→unknown order |
+| `node bin/tusq.js auth index --scheme BEARER --manifest tests/fixtures/express-sample/tusq.manifest.json` | 1 | stderr: `Unknown auth scheme: BEARER`; empty stdout (case-sensitive enforcement) |
+| `node bin/tusq.js auth index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` | 0 | Valid JSON with `schemes[]`; unknown bucket with 3 capabilities, all 8 fields |
+| `git diff --quiet HEAD -- package.json package-lock.json` | 0 | Zero dependency drift |
+| `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | 0 | Zero source drift |
+
+---
+
 ## QA Challenge — turn_38cdeb85330f729b (role=qa, run_9b4197b36f01ca42, M34 re-verification no-source-change cycle, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_de5362f531cf37b9, role=dev, HEAD 035126b) for run_9b4197b36f01ca42 independently rather than rubber-stamping it.
