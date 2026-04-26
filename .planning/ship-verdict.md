@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_0f67c476b8fd6477 (role=qa, run_3c9aac455742ac3e, M29 R2-R5 eval regression coverage, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_4553eefe4fa30a21, role=dev, HEAD 4cb312c) for run_3c9aac455742ac3e independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn added 4 eval scenarios for M29 R2-R5.** `git diff HEAD~1 --stat -- tests/ .planning/` shows `tests/evals/governed-cli-scenarios.json` +60 lines (4 new scenarios) and `.planning/IMPLEMENTATION_NOTES.md` +40 lines. Source files (`src/`, `bin/`, `website/`, `package.json`) are unchanged — zero source regression risk. The 4 scenarios (auth-scheme-api-key-r2-precedence, auth-scheme-session-r3-precedence, auth-scheme-basic-r4-precedence, auth-scheme-oauth-r5-precedence) are legitimately within M29 scope. Challenge resolved: scenarios are additive test coverage, no production code changed.
+
+**Challenge 2 — R2-R5 eval scenarios correctly target the first-match-wins rules.** The eval scenarios use `synthetic_routes` with distinct middleware names (`apiKeyAuth`, `sessionAuth`, `basicAuth`, `oauthMiddleware`) to exercise each rule independently. Each expected `auth_scheme` value matches the implementation in `src/cli.js` RULES array. There is no scenario overlap with existing R1/zero-evidence scenarios. REQ-125–REQ-128 added to acceptance matrix to formally cover the 4 new scenarios. Challenge resolved.
+
+**Challenge 3 — Baseline re-verification on HEAD 4cb312c.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (20 scenarios)`. `node bin/tusq.js help` exits 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). `git diff HEAD --stat -- src/ bin/ website/ package.json package-lock.json` returns empty — zero source drift vs prior QA checkpoint. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking at V1.10. No new objections raised.
+
+**Challenge 5 — OBJ-002 (low, non-blocking) carried forward.** Two unbound vision-derived charters coexist in the candidate backlog (embeddable-surface + static-MCP-descriptor). Non-blocking for the current V1.10 ship decision; both await human operator binding.
+
+**Challenge 6 — OBJ-003 (low, non-blocking) carried forward.** vision_scan has produced multiple false-positive intents from stale ROADMAP checkboxes. Operator-level configuration concern; non-blocking for V1.10.
+
+**All 128 acceptance criteria (REQ-001–REQ-128) pass. Ship verdict: SHIP.** Phase transition requested: launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_9abf910a0efb4468 (role=qa, run_d69cb0392607d170, M28 stale-checkbox reconciliation re-verification, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_76e50fc1cfd4ef0f, role=dev, HEAD 31031e3) for run_d69cb0392607d170 independently rather than rubber-stamping it.
