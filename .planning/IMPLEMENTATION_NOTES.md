@@ -2,6 +2,35 @@
 
 ---
 
+## Dev Turn turn_de5362f531cf37b9 — Implementation Phase: M34 Stale-Checkbox Re-Verification (run_9b4197b36f01ca42, 2026-04-26)
+
+**Run:** run_9b4197b36f01ca42
+**Phase:** implementation
+**HEAD:** e63b515 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_2ef90ba3bbd49667 (role=pm, phase=planning)
+
+PM correctly challenged intake charter intent_1777241694258_a438 (vision_scan, category roadmap_open_work_detected) which re-injected the M34 V1.15 (PROPOSED) http_method bucket-key enum acceptance line as if unshipped. PM confirmed M34 is fully shipped at V1.15 in the prior run chain (run_bf8efb6b9c733000 completed all four phases with run_completion_request=true). PM reconciled 20 M34 ROADMAP checkboxes from [ ] to [x] and prepended dated re-affirmation preambles to PM_SIGNOFF.md, SYSTEM_SPEC.md, and command-surface.md.
+
+Independent verification confirms PM turn modified exactly 4 PM-owned files (git diff 88762ba..e63b515 --name-only: .planning/PM_SIGNOFF.md, .planning/ROADMAP.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md). Zero dev-owned src/, bin/, tests/, website/, package.json, package-lock.json touched. All five PM decisions upheld. This is the 7th recurrence of the vision_scan stale-checkbox false-positive pattern (M28→M30→M31→M32→M33→M33-again→M34-again). Challenge resolved: no objections.
+
+### What Was Implemented
+
+No new source code modifications. M34 (Static Capability HTTP Method Index Export) is fully implemented at V1.15 — all deliverables (src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs) are present and verified. The V1.15 shipped boundary is carried forward unchanged.
+
+Modified exactly one dev-owned artifact: `.planning/IMPLEMENTATION_NOTES.md` (this turn entry prepended).
+
+### Verification
+
+- `npm test` exits 0 — "Smoke tests passed" and "Eval regression harness passed (25 scenarios)"
+- `node bin/tusq.js help` exits 0 — 18 commands confirmed with `method` between `effect` and `policy`
+- `node bin/tusq.js method index --help` exits 0 — planning-aid framing callout + closed-enum bucket iteration order GET→POST→PUT→PATCH→DELETE→unknown
+- `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` exits 0 (zero source drift)
+
+---
+
 ## Dev Turn turn_c530db27dd4d2941 — Implementation Phase: M34 Static Capability HTTP Method Index Export (run_bf8efb6b9c733000, 2026-04-26)
 
 **Run:** run_bf8efb6b9c733000
