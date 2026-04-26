@@ -2,6 +2,45 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_a291b557e6bf6051 (role=qa, run_cd98cdad0fb83285, M33 re-verification no-source-change cycle, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_0e359b277c048d1f, role=dev, HEAD 0f4ecaa) for run_cd98cdad0fb83285 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn made zero source changes; M33 already shipped at V1.14.** `git diff 753cf31..0f4ecaa --name-only` → `.planning/IMPLEMENTATION_NOTES.md`, `.planning/PM_SIGNOFF.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. No changes in `src/`, `bin/`, `tests/`, `website/`, `package.json`, or `package-lock.json`. Dev turn's zero-source-drift claim is independently confirmed. Challenge resolved.
+
+**Challenge 2 — PM turn (turn_73d77d855d310a6c) correctly reconciled 20 M33 ROADMAP checkboxes as a stale-checkbox false positive.** Charter intake intent_1777238952808_4fd5 (vision_scan, roadmap_open_work_detected) re-injected M33 as if unshipped. PM turn disproved this by verifying M33 was shipped in run_4506c41d74e23e8e (all four phases completed with run_completion_request=true) and reconciling the 20 stale `[ ]` checkboxes to `[x]`. This is the sixth recurrence of the stale-checkbox pattern (M28→M30→M31→M32→M33→M33-again). Challenge resolved.
+
+**Challenge 3 — CLI surface confirmed at 17 commands with correct alphabetic insertion.** `node bin/tusq.js help` exits 0; stdout lists all 17 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, effect, policy, redaction, sensitivity, surface, version, help) with `sensitivity` between `redaction` and `surface` (s-e < s-u alphabetic ordering confirmed). `node bin/tusq.js sensitivity index --help` exits 0 with planning-aid framing: `This is a planning aid, not a runtime sensitivity enforcer or compliance certifier.` Bucket iteration order `public → internal → confidential → restricted → unknown` confirmed. Challenge resolved.
+
+**Challenge 4 — M33 Key Risk: M28 SENSITIVITY_CLASSES still referenced directly (no drift).** Zero source changes this run; the M28 `SENSITIVITY_CLASSES` constant at `src/cli.js:8` and `_guardSensitivityBucketKey` at line 2668 are unchanged from the M33 implementation. No independent enum redeclaration introduced. M33 Key Risk mitigation carried forward intact. Challenge resolved.
+
+**Challenge 5 — npm test exits 0 with 24 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (24 scenarios)`. Zero source drift in `src/`, `bin/`, `tests/`, `website/`, `package.json`, `package-lock.json`. Challenge resolved.
+
+**Challenge 6 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking.
+
+**Challenge 7 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 8 — OBJ-003 (low, non-blocking) carried forward.** M31 flag value assertions not independently smoke-asserted. M32 closes its own analogous gap at REQ-189; M33 closes at REQ-213 (has_destructive_side_effect) and REQ-214 (has_unknown_auth). Non-blocking.
+
+**Challenge 9 — All 215 acceptance criteria (REQ-001–REQ-215) pass.** No new scope shipped in this run; all 215 criteria remain accurate and PASS. `npm test` exit 0 + 24 scenarios independently confirms. Challenge resolved.
+
+**Challenge 10 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 0f4ecaa, run_cd98cdad0fb83285, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (24 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 17-command surface: sensitivity between redaction and surface |
+| `node bin/tusq.js sensitivity index --help` | Exit 0 — planning-aid framing, bucket order public→internal→confidential→restricted→unknown |
+| `node bin/tusq.js sensitivity index --sensitivity bogus` | Exit 1 — stderr: "Unknown sensitivity", stdout: empty |
+| `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | Empty output — zero source drift |
+| `git diff 753cf31..0f4ecaa --name-only` | 5 planning files only — zero src/bin/tests/website drift |
+
+All 215 acceptance criteria (REQ-001–REQ-215) pass. OBJ-001/OBJ-002/OBJ-003 non-blocking. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
 ## QA Challenge — turn_76e3bd05609910ce (role=qa, run_4506c41d74e23e8e, M33 Static Capability Sensitivity Index Export verification, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_42c7748a59fa5ef3, role=dev, HEAD 31a0bd9) for run_4506c41d74e23e8e independently rather than rubber-stamping it.
