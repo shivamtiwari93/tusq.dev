@@ -2,336 +2,754 @@
 
 ## Mission
 
-tusq.dev exists to arm every incumbent SaaS company with the weapon it already owns but cannot currently fire: years of accumulated product logic, turned into AI-callable capabilities in days instead of quarters.
+tusq.dev exists to turn existing SaaS products into governed AI-native products.
 
-This is not merely a safety product. It is a survival product for the companies that will be attacked by AI-native competitors in the next 24 months.
+The user should not experience tusq.dev as "we generated a manifest." The user should experience it as: "we pointed this at our SaaS codebase and got a working branded AI layer we can put in front of users, employees, and external AI ecosystems."
 
-Safety, governance, and reviewability are not side concerns. They are part of what makes the product deployable fast enough to matter.
+The manifest, tools, MCP server, policies, evals, and governance metadata are the machinery. The product outcome is an AI-capable SaaS experience: chat, voice, widgets, skills, marketplace packages, and safe action execution that respects the same business logic and IAM boundaries as the original SaaS portal.
 
-## The fight
+## The Fight
 
-Every established SaaS product is about to be targeted by a smaller, faster team rebuilding the same workflows with a conversational interface on top. Those teams have no legacy, no customers to protect, and no patience.
+Every established SaaS product is about to be attacked by AI-native competitors that start with conversational workflows, embedded copilots, voice actions, and agentic interfaces.
 
-Incumbents have exactly one structural advantage: their product already works. It has permission models, edge cases, integrations, billing rules, and operational workflows that took years to encode. That logic is the moat.
+Incumbents already have the harder asset: years of product logic, permission models, tenant rules, edge cases, workflows, billing behavior, integrations, and operational knowledge. But that logic is trapped inside codebases and UI flows built for the pre-AI era.
 
-But that logic is trapped. It lives behind APIs designed for UI flows, schemas designed for databases, and endpoints designed for frontends that no longer describe how users want to work.
+tusq.dev unlocks that moat. It compiles the existing SaaS product into AI surfaces that can be shipped quickly, governed rigorously, and kept in sync as the product changes.
 
-tusq.dev unlocks that moat.
+## The Promise
 
-## The promise
+Point tusq.dev at a SaaS codebase. Get a working, brand-matched AI product layer in days.
 
-Point tusq.dev at a repository. Get a working, AI-callable version of the product in days.
+That layer includes:
 
-Not a chatbot. Not a wrapper. A compiled set of capabilities, governed by default, exposed through MCP and embedded surfaces, grounded in the code that already runs the business.
+- AI tools with strict schemas
+- skill packs grouped by product domain
+- embeddable chat, widget, command-palette, and voice surfaces
+- a self-hostable runtime and MCP server
+- marketplace-ready packages for OpenAI, Claude, and other AI ecosystems
+- governance, policy, audit, drift detection, and rollout artifacts
 
-The measure of success is time-to-capability. Everything else is plumbing.
+The promise is not "generate docs about your APIs." The promise is "ship your SaaS product's AI interface faster than an AI-native competitor can rebuild your workflows from scratch."
 
-## What tusq.dev does
+## Input Sources
 
-tusq.dev is a capability compiler for existing SaaS codebases. It:
+tusq.dev should ingest every source that helps reconstruct how the SaaS product works, how users are allowed to act, what the company promises publicly, and how employees actually operate the business.
 
-1. Reads the repository, APIs, schemas, and runtime signals.
-2. Infers the real capabilities the product already performs.
-3. Produces a reviewable manifest describing those capabilities as stable, versioned units.
-4. Compiles approved capabilities into strict tools and domain skills.
-5. Runs them locally through a self-hostable runtime and a standards-based MCP server.
+The core inputs are codebase, databases, public docs, and internal docs. The full input universe is broader.
 
-The engine is deterministic where it can be, AI-assisted where it must be, and explicit about the difference.
+### Code And API Surface
 
-## The core insight
+- REST routes, GraphQL resolvers, RPC/gRPC methods, webhooks, jobs, queues, and cron tasks
+- request and response schemas from types, DTOs, validators, route definitions, and framework metadata
+- status codes, error patterns, retry semantics, and normalized failure modes
+- read, write, destructive, financial, security-sensitive, and admin-only side effects
+- API contracts such as OpenAPI specs, GraphQL schemas, Postman collections, gRPC proto files, SDK definitions, and webhook specs
 
-API endpoints are the wrong abstraction for AI.
+### Database, Warehouse, And Data Model
 
-An endpoint like `POST /invoices/refund` is an implementation artifact. A capability like "refund the last invoice for this customer if it is eligible, attribute it correctly, and return the final status" is what a user, operator, or agent actually wants.
+- relational schemas, document collections, indexes, constraints, foreign keys, and migration history
+- ORM models, query builders, repositories, DTOs, serializers, and validation layers
+- warehouse schemas, dbt models, saved SQL, BI dashboard definitions, metric catalogs, and semantic-layer conventions
+- entity relationships, ownership paths, tenant boundaries, state fields, and lifecycle timestamps
+- data lineage between operational tables, APIs, analytics events, and customer-facing surfaces
 
-Incumbents have thousands of endpoints and dozens of real capabilities. tusq.dev exists to find the capabilities inside the endpoints and make them first-class.
+### Auth, IAM, Permissions, And Tenant Boundaries
 
-## The canonical artifact
+- auth mechanisms such as JWT, session cookies, OAuth, API keys, basic auth, and custom middleware
+- role checks, scope checks, policy checks, tenant scoping, and impersonation paths
+- organization/workspace/project boundaries and ownership constraints
+- the places where existing SaaS IAM is enforced and the places where it is ambiguous
+- feature flags, entitlements, plan gates, SSO/SAML/OIDC settings, RBAC/ABAC policy files, permission tables, and admin overrides
 
-`tusq.manifest.json` is the product.
+The generated AI layer must respect the same access rules the logged-in user would have inside the SaaS portal.
 
-It is the reviewable contract between code and agent. It describes:
+### Frontend, Design System, And Product UX
 
-- capabilities with provenance back to source
-- input and output shapes
-- side effects and sensitivity class
-- auth and permission expectations
-- examples and constraints
-- redaction and approval metadata
-- version history and diffs
+- frontend routes, page components, dashboard layouts, forms, action menus, modals, tables, and command surfaces
+- UI-side permission checks and feature gates
+- design tokens, CSS variables, Tailwind config, theme files, component libraries, icons, logos, typography, radius, spacing, and motion conventions
+- empty states, error states, onboarding flows, tooltips, product terminology, and microcopy
+- user journeys that reveal how backend capabilities are actually exposed in the product
 
-The manifest is how a product team ships AI behavior as software. It is how an engineering team reviews changes. It is how a security team audits the surface. Most importantly, it is how the company iterates on its AI interface at the same pace it iterates on the underlying product.
+### Domain Model And Workflows
 
-## Why we move fast
+- entities such as users, organizations, invoices, projects, tickets, plans, subscriptions, and accounts
+- relationships between entities
+- state machines, workflow steps, eligibility logic, limits, required fields, and approval paths
+- business processes hidden across routes, services, jobs, integrations, and UI conventions
 
-We are writing this with AI. Our customers are shipping their products with AI. The entire category is being rewritten in months, not years. Being conservative is a losing move.
+tusq.dev should infer workflows first, then store them in explicit workflow/state artifacts that developers can inspect and edit when needed.
 
-tusq.dev should aim to:
+### Integrations And Side Effects
 
-- support the most common framework stacks deeply within the first release
-- produce manifests that are usable on first pass for real codebases, not toy examples
-- treat manual manifest authoring as a failure of the engine, not a feature
-- ship a working MCP server on day one, not as a future milestone
-- close the loop from code to running tool in minutes, not hours
+- third-party API calls such as billing, email, CRM, support, analytics, and identity providers
+- emitted and consumed webhooks
+- emails, notifications, background jobs, queue messages, and scheduled tasks
+- external systems that may be affected by an AI-triggered action
+- integration configs for Slack, Teams, Zendesk, Intercom, Salesforce, HubSpot, Gainsight, Stripe, Segment, data warehouses, and identity providers
 
-The bar is "competitive with a team of three engineers spending six months on an internal build." If we are not clearly better than that, we are not done.
+### Public Docs And Market-Facing Truth
 
-## Why wide works for us
+- help center articles, API docs, developer docs, public changelogs, release notes, status-page language, pricing pages, and onboarding docs
+- public feature descriptions, support boundaries, legal disclaimers, trust/security pages, and integration marketplace listings
+- brand voice, product terminology, customer-facing claims, and claims the company intentionally avoids
 
-The obvious critique of this vision is scope. Twelve transition domains, three roadmap tiers, a plugin ecosystem, an MCP server, and a capability compiler are more than most pre-product teams can credibly attempt. That critique is directionally correct if we try to ship the whole surface at once.
+Public docs prevent generated AI surfaces from contradicting what customers have already been told.
 
-We are not doing that. This product is being built with AI acceleration, which makes implementation faster, but it does not remove the real constraints: product judgment, sequencing, testing, integration depth, and customer trust. Under those constraints, the right move is not to shrink the vision. The right move is to keep the wide surface as the destination and ship it in a narrow, opinionated order.
+### Internal Docs And Company Operating Knowledge
 
-Three reasons this matters:
+- support macros, escalation guides, troubleshooting trees, runbooks, incident retrospectives, security procedures, SOC2 controls, and audit processes
+- sales engineering notes, CSM playbooks, implementation guides, onboarding plans, renewal-risk notes, customer-success health signals, and account plans
+- product specs, PRDs, Linear/Jira tickets, roadmap docs, launch plans, deprecation plans, and internal changelogs
+- compliance guidance, data-handling rules, legal review notes, and operational constraints
 
-### Coherence is expensive, implementation is cheaper than before
+Internal docs make employee copilots, support copilots, implementation copilots, and governance artifacts substantially more useful than code alone.
 
-The hard part of tusq.dev is not merely writing twelve domains. It is deciding they belong inside one product with one manifest and one opinionated workflow, then sequencing them so the first release is real instead of diffuse. A competitor who copies three of the domains is not a competitor. The coherence of the surface is the defensible artifact.
+### Data, Risk, And Sensitivity
 
-### Wide OSS compounds faster than narrow OSS
+- PII, payment data, secrets, regulated data, and customer-sensitive fields
+- retention, redaction, logging, and trace-safety hints
+- capability risk tags and review recommendations
+- provenance back to the source files and runtime evidence used to infer each claim
 
-Every domain we ship opens a plugin surface. Every plugin surface invites contribution. Framework detectors, auth adapters, schema extractors, skill packs, rollout checklists, and eval fixtures are all leverage we do not have to build ourselves. Narrow OSS projects stall. Wide opinionated ones become ecosystems, provided the core stays sharp enough that contributors know where to attach.
+### Optional Runtime Learning
 
-### Breadth turns into retention
+When installed, middleware/SDK/runtime import paths should capture:
 
-A customer who adopts tusq.dev for capability discovery stays for evals, rollout, and competitive intelligence because the system already knows their product. Each additional domain deepens the integration and raises the cost of replacement. Surface area matters, but only when each added surface makes the core system more useful instead of more vague.
+- real payload shapes without raw sensitive values
+- common action sequences
+- real failure cases and retry behavior
+- usage frequency and hot paths
+- latency and instability signals
+- drift between static code assumptions and production behavior
 
-### The guardrails on width
+Runtime learning sharpens the manifest and generated surfaces over time, but the OSS product must still be useful from static code alone.
 
-Wide only works if three rules hold:
+### Source Inventory And Confidence
 
-- **V1 ships narrow and deep.** The full surface is the destination; the first release is opinionated and complete in the domains it claims.
-- **Opinions, not options.** Every domain has a strong default. Configurability is never a substitute for judgment. A wide surface full of knobs is a framework; a wide surface full of decisions is a product.
-- **The OSS and cloud boundary stays crisp.** Wide OSS is an advantage. Overlapping OSS and cloud is not. OSS ships the primitives; cloud ships hosted delivery, environment-aware rollout, and cross-customer intelligence. The boundary is operational, not conceptual.
-- **Trust is preserved as we expand.** Every new surface must remain reviewable, testable, and governable. Breadth without trust is just sprawl.
+tusq.dev should produce an input inventory before it claims understanding.
 
-Under those guardrails, width is the strategy. It is what an AI-accelerated product should look like in a category moving this fast, and it is the shape competitors working under narrower assumptions will struggle to match in time.
+The inventory should record:
 
-## Design principles
+- which sources were found
+- which sources were missing
+- which sources were configured but inaccessible
+- confidence by domain: code, schema, auth, workflow, brand, docs, support, data, runtime, marketplace
+- contradictions between sources, such as docs promising behavior the code does not expose
+- the provenance behind every generated claim
 
-### Velocity over surface area
+The engine should not pretend all inputs are equal. Code may be authoritative for execution, docs may be authoritative for promise, and support tickets may be authoritative for friction.
 
-Support fewer stacks, deeper. Node plus Python plus one or two serious backend frameworks, done correctly, beats thin support for twelve.
+## The Canonical Artifact
 
-### Reviewable over opaque
+The canonical artifact is the Tusq Capability Manifest.
 
-The manifest, the tool definitions, the side-effect metadata, and the provenance chain must all be human-readable. The engine should surface what it does not know, not hide it.
+`tusq.manifest.json` describes what the SaaS product can safely expose to AI:
 
-### Explicit side effects
+- capabilities with source provenance
+- input and output schemas
+- examples and expected tool-call shapes
+- auth, IAM, tenant, role, and scope expectations
+- side effects, sensitivity, redaction, retention, and risk tags
+- workflow and state-machine references
+- approval state and review metadata
+- version history, digests, and drift signals
 
-Writes are not reads. Destructive actions are not soft actions. Anything that moves money, changes permissions, or mutates production state must be tagged, by default, as something the calling agent cannot invoke without an explicit gate.
+The manifest is not the whole product, but it is the contract that makes the generated AI product layer reviewable.
 
-### Self-hostable or it does not ship
+## What We Output
 
-The OSS engine has to be genuinely useful without ever touching tusq.cloud. Teams that want to keep code, data, and runtime inside their own walls must get real value from tusq.dev alone.
+tusq.dev outputs a complete self-hostable AI product layer.
 
-### Plugins are how we scale
+### Tools
 
-Framework detectors, auth detectors, schema extractors, skill grouping packs, and interface adapters all live behind plugin interfaces. The core stays small. The ecosystem grows around it.
+Tools are the lowest-level AI-callable units. They are generated from approved capabilities and include:
 
-## Product modules
+- strict schemas
+- normalized errors
+- dry-run and confirmation support
+- IAM context requirements
+- audit metadata
+- provenance back to source
 
-- **Ingestion.** Local repos, GitHub, monorepos, multi-repo configurations. Fast scanning that finds high-value surfaces first.
-- **Static understanding.** AST parsing, routing conventions, schema extraction, auth detection, service graphs, read/write/destructive classification.
-- **Runtime learning.** Real payload shapes, error distributions, hot paths, and drift signals that sharpen the manifest over time.
-- **Capability compiler.** Converts discovered behavior into capability candidates with side effects, sensitivity, and permissions attached.
-- **Tool compiler.** Emits strict, normalized tools with schemas, examples, and error semantics suitable for any modern agent runtime.
-- **Skill and domain grouping.** Organizes tools into domains such as billing, users, provisioning, support, and admin.
-- **Local runtime.** Executes tools with identity binding, dry-run, confirmation, and trace capture.
-- **MCP server.** Standards-based, versioned, environment-aware. A default output, not a future milestone.
-- **Interface primitives.** Enough embedded assistant surface to prove the system in front of real users without pretending to be a full UX platform.
+### Skills
 
-## The full transition we automate
+Skills group tools into domain-level packs such as:
 
-If tusq.dev is going to matter, it cannot just convert endpoints into tools. Conventional SaaS companies need help making a much broader transition into AI-native product architecture.
+- Billing operations
+- Customer support
+- Admin operations
+- User and organization management
+- Project or workflow management
 
-That transition includes all of the following:
+Skills are V1 outputs. They should be useful to humans, MCP clients, generated widgets, and later domain agents.
 
-### Capability discovery and normalization
+### Agents
 
-- understand routes, handlers, background jobs, services, validators, and integrations
-- identify real business capabilities rather than raw implementation surfaces
-- collapse several low-level endpoints into one higher-level governed capability where appropriate
-- keep provenance back to code so the output stays reviewable
+Domain agents are a later layer, not the first V1 bet.
 
-### Auth and permission mapping
+V1 should generate tools, skills, UI surfaces, and workflow definitions first. Agents such as Billing Agent, Support Agent, and Admin Agent become first-class once workflow confidence, eval coverage, and governance controls are strong enough.
 
-- infer roles, scopes, tenant boundaries, admin-only surfaces, and impersonation paths
-- determine which capabilities are read, write, destructive, financial, or security-sensitive
-- generate least-privilege hints and approval recommendations
+### Brand-Matched Chat Interface
 
-### Data and schema understanding
+The first user-facing AI surface is an embedded chat assistant, generated as a self-hostable output.
 
-- inspect database schemas, ORM models, migrations, DTOs, and validators
-- map relationships and domain entities
-- detect sensitive fields such as PII, payments, secrets, and regulated data
-- produce redaction and retention defaults
+It should:
 
-### Runtime instrumentation
+- use generated tools and skills
+- understand the logged-in user's IAM context
+- support safe action confirmation
+- match the SaaS brand through extracted and configured brand tokens
+- allow developers to override all CSS
+- be embeddable in the SaaS dashboard
 
-- capture real payload shapes and failure modes
-- observe auth context, retries, latency, and unstable endpoints
-- identify which APIs matter most in practice
-- refine the model based on what the product actually does, not just what static code suggests
+### Brand-Matched Voice Interface
 
-### Safe execution wrappers
+Voice is a real V1 surface, not just future metadata.
 
-- turn capabilities into strict tools with schemas and normalized errors
-- attach dry-run, confirm, approve, and execute ladders
-- preserve retry, timeout, idempotency, and audit metadata
-- make risky operations explicit and governable
+The voice interface should:
 
-### Skill and agent composition
+- use the same tools, skills, IAM context, and governance rules as chat
+- support speech input and speech output
+- require confirmation for risky actions
+- share the same brand and tone configuration as chat
+- be self-hostable by the SaaS team
 
-- group tools into domains such as billing, users, projects, support, and admin
-- generate skills or domain agents from those groups
-- create checkpointed multi-step flows where that improves usability
+### Embeddable Widgets And Command Surfaces
 
-### AI-facing interface generation
+tusq.dev should generate framework-agnostic embeddable surfaces:
 
-- emit MCP by default
-- emit embedded assistant and command-surface primitives
-- support both internal copilots and customer-facing AI surfaces
-- create outputs that can later be connected to hosted distribution
+- action widgets for workflows such as refund, assign, create, update, upgrade, suspend, or invite
+- insight widgets for summaries, anomalies, recommendations, and next-best actions
+- command palette / Ctrl+K style surfaces
+- script-tag or web-component style embeds with config
 
-### Eval and regression infrastructure
+React/Vue/Svelte packages can come later. V1 should prioritize framework-agnostic embeds that work in any SaaS frontend.
 
-- generate golden tasks and expected tool-call sequences
-- generate permission and schema regression checks
-- detect drift when the underlying product changes
-- make the AI surface testable like software
+### MCP Server
 
-### Documentation and adoption surfaces
+MCP is a first-class output.
 
-- generate capability docs, examples, permission docs, and review artifacts
-- help product, engineering, support, and security teams understand what was generated
-- reduce the enablement burden of adopting the system
+The generated MCP server exposes tools and skills with:
 
-### Migration and rollout tooling
+- versioned registry metadata
+- approval-aware tool listing
+- IAM-aware execution context
+- dry-run and confirmation paths
+- self-hosted runtime support
 
-- support dev, staging, and production transitions
-- support internal-only, operator-only, and customer-facing rollout paths
-- generate kill-switch, fallback, and staged rollout guidance
+### Marketplace Packages
 
-### Governance and review workflows
+Marketplace packaging and publishing are V1 outputs.
 
-- produce manifest diffs and review queues
-- keep AI surface changes inspectable and code-reviewable
-- create structured places for humans to approve or reject risky boundaries
+tusq.dev should always be able to package/export the artifacts needed for external AI ecosystems:
 
-### Competitive transition intelligence
+- OpenAI ecosystem metadata
+- Claude/Anthropic ecosystem metadata
+- MCP registry metadata
+- descriptions, example prompts, categories, icons, auth scopes, and version information
+- validation reports and drift warnings
 
-- identify the most strategically exposed product areas
-- rank the capabilities that should be AI-enabled first
-- help incumbents move on the interfaces that matter before competitors do
+If developer accounts and credentials are provided, tusq.dev should optionally publish or update marketplace listings. Package/export always works; publish/update is credentialed and optional.
 
-## Roadmap shape: V1, V2, V3
+### Governance And Observability
 
-Tusq.dev should be built in three layers: the minimum system that proves the transformation, the second layer that makes adoption much easier, and the third layer that becomes the moat.
+Every output must be governed by default:
 
-### Must-have in V1
+- approval gates for destructive, financial, admin, or sensitive actions
+- audit logs and traces
+- replay and dry-run artifacts
+- policy files and review queues
+- drift detection when the SaaS codebase changes
+- evals and regression fixtures for generated tools, skills, and surfaces
 
-V1 should prove that an incumbent SaaS company can point Tusq.dev at a real codebase and get a working AI-callable capability surface quickly.
+Governance exists to make the AI layer shippable, not to slow it down.
 
-- Capability discovery and normalization:
-  code and API inspection, framework detection, route extraction, capability inference, provenance to source.
-- Auth and permission mapping:
-  role and scope detection, tenant boundary awareness, and risk classification for actions.
-- Data and schema understanding:
-  DTO extraction, schema and ORM inspection, relationship mapping, sensitivity tagging.
-- Capability manifest generation:
-  `tusq.manifest.json` with schemas, side effects, permissions, examples, and reviewable metadata.
-- Safe execution wrappers:
-  strict tools, normalized error semantics, dry-run support, confirmation and approval metadata.
-- Basic skill composition:
-  domain grouping for generated tools.
-- MCP server:
-  versioned local MCP as a default output.
-- Basic interface primitives:
-  enough embedded or command-surface UI to prove value with real usage.
-- Basic generated docs:
-  capability docs, examples, and review artifacts.
+### Knowledge Artifacts
 
-V1 wins if it compresses time-to-capability from quarters to days.
+tusq.dev should generate knowledge artifacts from public docs, internal docs, support systems, and code-derived product truth.
 
-### High-leverage in V2
+Outputs include:
 
-V2 should make the system much easier to adopt across product and platform teams.
+- canonical product Q&A
+- RAG indexes and retrieval manifests
+- support macros
+- troubleshooting trees
+- escalation playbooks
+- onboarding guides
+- customer-facing help flows
+- internal operator guides
 
-- Runtime instrumentation:
-  payload observation, auth context capture, failure and latency analysis, hot-path identification.
-- Eval and regression infrastructure:
-  golden-path tests, permission regression, schema regression, and drift detection.
-- Migration and rollout tooling:
-  staged environment rollout, internal-first rollout modes, kill switches, fallback paths, rollout checklists.
-- Richer docs and adoption surfaces:
-  support docs, operator docs, security review artifacts, optional typed SDK generation.
-- Richer skill and workflow generation:
-  multi-step skill packs with checkpoints and domain-specific logic.
-- Richer interface generation:
-  stronger embedded surfaces and cleaner export paths into external AI environments.
-- Stronger governance workflows:
-  better diffs, review queues, version review, and human approval surfaces.
+Knowledge artifacts must cite source provenance and flag contradictions between docs, code, and observed runtime behavior.
 
-V2 wins if the engine stops being a powerful specialist tool and becomes a practical migration system for real teams.
+### Employee Copilots
 
-### Moat features in V3
+Beyond customer-facing surfaces, tusq.dev should generate employee-facing copilots:
 
-V3 should make the product compounding and strategically hard to replace.
+- Support Copilot
+- Sales Engineer Copilot
+- CSM / Account Copilot
+- Implementation / Onboarding Copilot
+- Admin / Operations Copilot
+- Security Review Copilot
 
-- Runtime learning loop:
-  refine schemas, examples, tool boundaries, and skills from production observations.
-- Advanced usage intelligence:
-  detect which capabilities matter most and where the most value or fragility lives.
-- Competitive transition intelligence:
-  rank the product surfaces that incumbents must AI-enable first.
-- Automated improvement proposals:
-  suggest manifest changes, tool boundary improvements, and risk reclassification based on evidence.
-- Deep governance and change intelligence:
-  capability, policy, and schema diffs tied to replay and operational diagnostics.
-- Mature ecosystem outputs:
-  stronger export and packaging surfaces for broader AI distribution.
+These copilots should combine tools, skills, workflows, knowledge artifacts, IAM context, customer/account context, and governance policies. They are not separate products; they are generated roles over the same capability graph.
 
-V3 is where tusq.dev becomes not just a compiler, but the system that helps conventional SaaS products continuously evolve into AI-native products faster than competitors can copy them.
+### Data And Analytics Artifacts
 
-## Who this is for
+When database, warehouse, metrics, and BI inputs are available, tusq.dev should generate AI-safe data artifacts:
 
-tusq.dev is for the product and engineering leaders at established SaaS companies who already see the threat and want a credible response. It is for the platform teams who will have to own the AI interface long-term. It is for the open-source builders who want to extend the engine to their own stack.
+- semantic-layer summaries
+- metric catalogs
+- entity graphs
+- lineage maps
+- safe SQL tool definitions
+- dashboard Q&A tools
+- anomaly explanation helpers
+- data-access governance notes
 
-It is not for teams that want a chatbot. It is not for teams that want a retrieval demo. It is for teams that want their product to survive.
+Data artifacts must respect tenant isolation, role permissions, masking rules, and metric definitions. A generated data tool is not allowed to bypass the SaaS company's data access model.
 
-## Why open source
+### Ecosystem Bots And Integrations
 
-The engine has to be trusted, inspected, extended, and self-hosted. Closed-source capability compilers will not earn the trust of the companies we most want to serve.
+tusq.dev should generate integration packages for where SaaS employees and customers already work:
 
-Open source is also the fastest distribution path in a category moving this fast. Developer adoption compounds. Every plugin someone else writes is leverage we did not have to build.
+- Slack bots
+- Microsoft Teams bots
+- Zendesk apps or macros
+- Intercom apps or workflows
+- Salesforce and HubSpot copilots
+- Gainsight / CSM assistants
+- internal admin console embeds
 
-The commercial split is clean: the engine is open, the hosted control plane is commercial. That boundary is defensible because the cloud product exists to eliminate operational drag, not to gate the engine.
+These integrations should reuse the same tools, skills, auth adapters, policy gates, and audit trails as chat, voice, widgets, and MCP.
 
-## What we resist
+### Product Intelligence Artifacts
 
-- Becoming a chatbot framework. The product is capability compilation, not chat UI.
-- Auto-converting every endpoint into a tool. The product is judgment about what should be a capability, not naive exposure.
-- Supporting everything shallowly. The product is depth in the stacks that matter.
-- Hiding ambiguity. The product is honesty about what the engine does not yet know.
-- Framing ourselves as only a safety layer. The product is competitive velocity through governed execution. Safety is built in, not bolted on.
+tusq.dev should turn product understanding into prioritization intelligence:
 
-## Vision for maturity
+- capability maps
+- feature usage maps
+- workflow bottleneck reports
+- support-friction reports
+- churn-risk explainers
+- automation opportunity rankings
+- competitive exposure rankings
+- "AI-enable this next" recommendations
 
-At maturity, it should be normal for a VP of Engineering to say:
+These reports should be evidence-based and should separate code-derived facts, runtime-derived facts, support-derived signals, and speculative recommendations.
 
-"We ran tusq.dev against our main repo on Monday. By Friday we had a reviewed manifest, a compiled tool set, and an MCP endpoint that our internal assistant and our partners' AI clients can both use. We are shipping this month."
+### Developer Artifacts
 
-That is the bar. Not a concept demo. Not a research project. A credible, opinionated engine that turns existing product logic into the company's AI surface faster than any internal team could build it.
+tusq.dev should make the generated AI layer maintainable by developers:
 
-## Relationship to tusq.cloud
+- SDK type definitions
+- API/tool schemas
+- generated integration tests
+- eval fixtures
+- drift reports
+- migration plans
+- changelog entries
+- marketplace validation reports
+- local development fixtures
 
-tusq.dev is the engine. tusq.cloud is the accelerator that takes the engine from "running on a laptop" to "running in production across environments and teams."
+Developer artifacts are what keep the AI layer from becoming a one-time demo.
 
-The stronger tusq.dev is as an engine, the more obvious tusq.cloud becomes as the shortest path to production. Neither product has to weaken the other to justify itself.
+## Brand System
 
-## Final statement
+The generated AI surfaces should feel native to the SaaS product.
 
-tusq.dev is the open-source engine that turns the product an incumbent already owns into the AI-native product its competitors are trying to build from scratch.
+tusq.dev should infer brand tokens from the codebase where possible:
 
-It exists so the companies with the most product logic stop losing to the companies with the fastest interfaces.
+- CSS variables
+- Tailwind config
+- theme files
+- design-token files
+- fonts
+- logo references
+- radius, spacing, color, and shadow conventions
+
+But `tusq.brand.json` is the source-of-truth override layer. The flow is hybrid:
+
+1. infer from the codebase when possible
+2. write or update `tusq.brand.json`
+3. let developers edit the file
+4. generate chat, voice, widget, and marketplace surfaces from it
+5. allow full CSS override for teams that want total control
+
+Brand is not decoration. A SaaS company will only ship the generated AI layer if it feels like part of its product.
+
+## IAM And Execution Model
+
+The generated AI layer must follow the same IAM rules as the SaaS portal.
+
+V1 should support two execution patterns.
+
+### Same-Session Proxy
+
+For embedded SaaS use, the default path should route AI actions through the SaaS app/session so existing cookies, JWTs, tenant context, middleware, and permission checks apply naturally.
+
+The logged-in user can only do what they could have done in the SaaS portal.
+
+### Generated Auth Adapter
+
+For MCP, marketplace, voice, off-platform, and self-hosted runtime use, tusq.dev should generate auth adapters from detected codebase patterns and explicit configuration.
+
+The adapter should carry:
+
+- user identity
+- tenant or organization context
+- roles and scopes
+- auth scheme
+- policy requirements
+- audit metadata
+
+The adapter is not allowed to invent access. If tusq.dev cannot determine how access should work, the capability must require review or configuration before execution.
+
+### Action Execution Policy
+
+V1 should allow direct execution for low-risk, approved actions when IAM and policy allow it.
+
+Risky actions require confirmation or approval:
+
+- destructive actions
+- financial actions
+- admin actions
+- permission changes
+- sensitive data exports
+- ambiguous or low-confidence actions
+
+The default should be useful, but never reckless.
+
+## Workflow And State Understanding
+
+tusq.dev should infer business workflows and state machines from code.
+
+It should inspect:
+
+- routes
+- services
+- jobs
+- validators
+- enums
+- database models
+- status fields
+- state transition functions
+- integration handlers
+- UI flow hints where available
+
+It should produce explicit artifacts for inferred workflows and states so developers can inspect and correct them.
+
+Candidate artifacts:
+
+- `.tusq/workflows.json`
+- `.tusq/state-machines.json`
+- workflow references in `tusq.manifest.json`
+
+The product should prefer inference, but it must make the inferred workflow model editable. Manual correction is not a failure; hidden inference is.
+
+## OSS And Cloud Boundary
+
+tusq.dev OSS should do everything needed to generate and self-host the AI product layer from the CLI.
+
+OSS includes:
+
+- codebase scanning
+- manifest generation
+- tools, skills, MCP server
+- chat, voice, and widget artifacts
+- marketplace package/export
+- optional marketplace publish/update when credentials are configured
+- local/self-hosted runtime
+- config files
+- policies
+- audit files
+- evals
+- docs and rollout artifacts
+
+OSS is CLI-first and self-hosted. It should not require tusq.cloud.
+
+tusq.cloud does everything OSS does, plus provides a visual hosted control plane where employees of the SaaS company can:
+
+- log in
+- inspect everything tusq found in the codebase
+- browse capabilities, schemas, auth, workflows, side effects, and integrations visually
+- inspect generated tools, skills, chat, voice, widgets, MCP, and marketplace packages
+- edit configuration and generated artifacts
+- manage governance, approvals, teams, environments, and audit trails
+- operate the system through a polished UI instead of CLI files
+- use managed hosting, fleet observability, marketplace operations, and enterprise controls
+
+Cloud is not where core capability lives. Cloud is where the same capability becomes easier to operate, review, govern, and scale across teams.
+
+## Product Modules
+
+### Ingestion
+
+Local repos, GitHub repos, monorepos, multi-repo configurations, connected org systems, optional runtime imports, and explicit config files.
+
+### Static Understanding
+
+Framework detection, route extraction, schema extraction, auth detection, IAM mapping, service graphs, workflow inference, integration discovery, sensitivity tagging, and side-effect classification.
+
+### Runtime Learning
+
+Payload shape observation, error distributions, latency, retries, hot paths, usage frequency, and drift signals that improve generated artifacts over time.
+
+### Capability Compiler
+
+Converts discovered behavior into capability candidates with schemas, provenance, side effects, IAM requirements, examples, workflow references, and risk metadata.
+
+### Tool And Skill Compiler
+
+Compiles approved capabilities into strict tools and domain skill packs for chat, voice, widgets, MCP, and marketplace outputs.
+
+### Surface Generator
+
+Generates brand-matched chat, voice, command palette, action widgets, insight widgets, and framework-agnostic embeds.
+
+### Runtime
+
+Self-hostable execution runtime with same-session proxy, generated auth adapters, dry-run, confirmation, direct execution for approved low-risk actions, audit, trace, and policy enforcement.
+
+### MCP And Marketplace
+
+Generates MCP server output, marketplace packages, ecosystem metadata, icons, descriptions, example prompts, auth scopes, and optional credentialed publishing/update flows.
+
+### Evals And Regression
+
+Generates golden tasks, permission regression checks, schema drift checks, workflow tests, UI surface smoke tests, and marketplace package validation.
+
+### Governance And Rollout
+
+Produces review queues, diffs, approval gates, launch checklists, kill-switch/fallback guidance, staged rollout plans, audit logs, and operator documentation.
+
+### Knowledge And Copilot Compiler
+
+Combines public docs, internal docs, support artifacts, code-derived truth, and runtime signals into RAG indexes, Q&A packs, troubleshooting trees, employee copilots, and customer-facing help experiences.
+
+### Data Intelligence Compiler
+
+Converts database and warehouse understanding into semantic-layer summaries, metric catalogs, safe SQL tools, dashboard Q&A surfaces, anomaly explanations, and data-governance artifacts.
+
+### Ecosystem Integration Compiler
+
+Packages the generated tools, skills, surfaces, and copilots for Slack, Teams, Zendesk, Intercom, Salesforce, HubSpot, Gainsight, OpenAI, Claude, MCP, and other AI or SaaS ecosystems.
+
+## Artifact Dependency Order
+
+The fastest path to the full product is not to build every visible AI surface first. The visible surfaces should sit on a stable compiler stack.
+
+The dependency order should be:
+
+1. Input inventory and source confidence.
+2. Capability manifest with provenance.
+3. IAM, tenant, entitlement, and policy model.
+4. Domain, entity, workflow, and state model.
+5. Governance, approval, audit, and eval layer.
+6. Tool layer.
+7. Skill layer.
+8. Knowledge layer from docs, support, and internal operating knowledge.
+9. Brand system and surface configuration.
+10. User-facing chat, command palette, widgets, and voice.
+11. Employee copilots.
+12. Ecosystem and marketplace packages.
+13. Data and analytics artifacts.
+14. Product intelligence and continuous-improvement artifacts.
+
+This order matters because each layer accelerates the next. Skills are easier when tools are stable. Chat and widgets are safer when IAM and policy are explicit. Employee copilots are useful when knowledge artifacts and workflows exist. Product intelligence is credible only after runtime, support, and data signals have provenance.
+
+## The Full Transition We Automate
+
+The transition is not endpoint-to-tool. It is SaaS-to-AI-product.
+
+The complete transition includes:
+
+- codebase understanding
+- capability discovery
+- auth and tenant mapping
+- workflow and state inference
+- schema and domain modeling
+- integration and side-effect discovery
+- risk, sensitivity, and governance classification
+- tool and skill generation
+- branded chat, voice, and widget generation
+- MCP and marketplace packaging
+- self-hosted runtime generation
+- IAM parity and policy enforcement
+- eval, drift, and regression infrastructure
+- knowledge and support artifact generation
+- employee copilots
+- data and analytics artifacts
+- SaaS ecosystem bots and integrations
+- product intelligence artifacts
+- rollout and adoption artifacts
+- runtime learning and continuous improvement
+
+## Roadmap Shape: V1, V2, V3
+
+tusq.dev should be built in three layers.
+
+### Must-Have In V1
+
+V1 proves that a SaaS company can point tusq.dev at a real codebase and get a usable AI product layer it can self-host.
+
+V1 must include:
+
+- input inventory and confidence report across code, database/schema, docs, brand, IAM, and runtime-configured sources
+- capability discovery from common SaaS backend stacks
+- schema, auth, IAM, tenant, sensitivity, side-effect, and workflow inference
+- a reviewable Tusq Capability Manifest
+- strict tool generation
+- domain skill-pack generation
+- basic knowledge artifacts from public/internal docs when provided
+- self-hosted runtime
+- same-session proxy for embedded use
+- generated auth adapters for MCP/marketplace/off-platform use
+- direct execution for low-risk approved actions
+- confirmation gates for risky actions
+- MCP server
+- brand-token extraction plus `tusq.brand.json`
+- framework-agnostic embedded chat
+- working browser voice interface
+- framework-agnostic action/insight widgets and command palette
+- marketplace package/export
+- optional marketplace publish/update when credentials are configured
+- audit logs, traces, policies, evals, and rollout docs
+- developer artifacts such as SDK types, tool schemas, drift reports, and eval fixtures
+
+V1 wins if a SaaS team can run tusq.dev locally, review the generated artifacts, host them themselves, and put a branded AI surface into their product without waiting for tusq.cloud.
+
+### High-Leverage In V2
+
+V2 makes the system easier to adopt and safer to operate across product and platform teams.
+
+V2 should deepen:
+
+- runtime instrumentation and runtime learning
+- richer workflow/state-machine inference
+- stronger generated skill packs and checkpointed workflows
+- employee copilots for support, sales engineering, CSM, implementation, admin, and security review
+- richer knowledge artifacts from support systems and internal docs
+- data and analytics artifacts such as semantic-layer summaries, metric catalogs, safe SQL tools, and dashboard Q&A
+- ecosystem bots for Slack, Teams, Zendesk, Intercom, Salesforce, HubSpot, and Gainsight
+- better UI theming and component variants
+- deeper marketplace synchronization and drift repair
+- broader framework support
+- stronger eval and regression suites
+- more complete rollout and migration tooling
+- stronger governance files and review automation
+
+V2 wins if tusq.dev becomes the practical migration system teams use to convert a serious SaaS product into an AI-native product layer.
+
+### Moat Features In V3
+
+V3 makes the product compounding and strategically hard to replace.
+
+V3 should add:
+
+- production feedback loops that refine schemas, tools, skills, workflows, and UI surfaces
+- advanced usage intelligence
+- competitive transition intelligence
+- churn-risk explainers, workflow bottleneck reports, support-friction reports, and automation opportunity rankings
+- automated improvement proposals
+- deep governance and change intelligence
+- stronger marketplace operations
+- mature plugin ecosystem
+- enterprise-grade cloud workflows built on the OSS engine
+
+V3 wins if tusq.dev becomes the system of record for how conventional SaaS products evolve into AI-native products faster than competitors can copy them.
+
+## Who This Is For
+
+tusq.dev is for SaaS companies that already have valuable product logic and need to turn it into AI-native interfaces quickly.
+
+It is for:
+
+- product and engineering leaders who see AI-native competitors coming
+- platform teams who will own the AI layer long-term
+- developers who need a self-hostable CLI-first system
+- security and governance teams who need reviewable AI behavior
+- open-source builders who want to extend the compiler to more stacks and surfaces
+
+It is not for teams that want a generic chatbot. It is not for teams that only want retrieval over docs. It is for teams that want their existing product to become AI-native without throwing away the codebase that already runs the business.
+
+## What We Resist
+
+- Becoming only a chatbot framework. Chat is one output; the product is SaaS-to-AI compilation.
+- Becoming only an MCP generator. MCP is one output; the product includes chat, voice, widgets, skills, marketplace packages, governance, and runtime.
+- Exposing every endpoint naively. The product is judgment about capabilities, workflows, IAM, and risk.
+- Treating brand as cosmetic. Generated AI surfaces must feel native to the SaaS product.
+- Treating governance as a blocker. Governance is what makes fast deployment credible.
+- Hiding ambiguity. Unknown auth, schema, workflow, or IAM behavior must be surfaced, not guessed.
+- Locking core value behind cloud. OSS must generate and self-host the full stack from the CLI.
+
+## Risks We Guard Against
+
+### IAM Drift
+
+The generated AI layer must never let a user do something they could not do in the SaaS portal. Same-session proxy, generated auth adapters, policy checks, and audit logs all exist to preserve IAM parity.
+
+### Capability Overexposure
+
+Raw endpoints are not automatically safe AI tools. tusq.dev must classify side effects, risk, sensitivity, tenant context, and business intent before exposing a capability.
+
+### Bad Workflow Inference
+
+Inferred workflows can look plausible while violating real business rules. Workflow artifacts must be explicit, editable, provenance-backed, and eval-tested.
+
+### Stale Or Contradictory Docs
+
+Public docs, internal docs, support tickets, and code can disagree. tusq.dev must surface contradictions instead of allowing stale docs to silently shape generated AI behavior.
+
+### Data Leakage
+
+Runtime traces, support tickets, docs, and databases can contain customer secrets. Imports must minimize raw value capture, redact aggressively, preserve provenance, and make unsafe source handling visible.
+
+### False Governance Confidence
+
+Labels such as `approved`, `restricted`, `confidential`, or `auth_scheme: bearer` are not magic. The product must distinguish reviewer-aid metadata from runtime enforcement.
+
+### Brand Mismatch
+
+A generated AI surface that feels bolted on will not ship. Brand extraction, `tusq.brand.json`, and full CSS override are product-critical, not cosmetic.
+
+### Marketplace And Ecosystem Misrepresentation
+
+Marketplace packages must not overclaim security, compliance, auth behavior, or data handling. Publishing requires validation, versioning, rollback, and credentialed operator consent.
+
+### Artifact Sprawl
+
+Tools, skills, knowledge packs, widgets, copilots, evals, and marketplace packages must all trace back to the manifest and source inventory. The manifest remains the contract that prevents generated artifacts from drifting apart.
+
+### OSS And Cloud Confusion
+
+OSS must remain able to generate and self-host the full stack through CLI files. Cloud may make the system visual, collaborative, hosted, and easier to operate, but cloud must not be required for core value.
+
+## Vision For Maturity
+
+At maturity, a VP of Product or Engineering should be able to say:
+
+"We ran tusq.dev against our SaaS repo. It found our capabilities, workflows, auth boundaries, and integrations. It generated a reviewed manifest, tools, skills, MCP server, branded chat, voice, widgets, marketplace packages, evals, and rollout artifacts. We hosted the OSS output ourselves first, then used tusq.cloud so our teams could review and govern everything visually."
+
+That is the bar.
+
+Not a demo. Not a chatbot. Not a manifest-only developer tool.
+
+A credible compiler that turns the SaaS product a company already owns into the AI-native product its competitors are trying to build from scratch.
+
+## Relationship To tusq.cloud
+
+tusq.dev is the open-source CLI engine.
+
+tusq.cloud is the visual operating layer for teams.
+
+The stronger the OSS engine is, the more valuable the cloud product becomes. Cloud should not exist because OSS is incomplete. Cloud should exist because operating this system across employees, environments, approvals, generated artifacts, marketplace destinations, and audit trails is easier in a visual hosted product.
+
+## Final Statement
+
+tusq.dev is the open-source SaaS-to-AI product compiler.
+
+It extracts the product logic, permissions, workflows, schemas, integrations, and risks already inside a SaaS codebase, then outputs the AI-native surfaces that product needs: tools, skills, branded chat, voice, widgets, MCP, marketplace packages, runtime, governance, and evals.
+
+It exists so incumbent SaaS companies can turn the product they already own into the AI product their competitors are racing to build.
