@@ -2,6 +2,46 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_28b0298523d838a3 (role=qa, run_bf8efb6b9c733000, M34 verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_c530db27dd4d2941, role=dev, HEAD ddfa687) for run_bf8efb6b9c733000 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn scope verified: nine files changed, all dev-owned.** `git diff 8921229..HEAD --name-only` → `.planning/IMPLEMENTATION_NOTES.md`, `.planning/PM_SIGNOFF.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`, `src/cli.js`, `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/smoke.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`. Zero reserved state, QA-owned, or launch-owned files modified. Challenge resolved.
+
+**Challenge 2 — npm test exits 0 with 25 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (25 scenarios)`. One new eval scenario: `method-index-determinism` (25th). Zero dependency drift in `package.json`/`package-lock.json`. Challenge resolved.
+
+**Challenge 3 — CLI surface confirmed at 18 commands.** `node bin/tusq.js help` exits 0; 18 commands confirmed with `method` inserted between `effect` and `policy` (e < m < p alphabetically). Challenge resolved.
+
+**Challenge 4 — `method index --help` exits 0 with planning-aid framing.** Help includes `This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.` Bucket iteration order `GET → POST → PUT → PATCH → DELETE → unknown` confirmed. Challenge resolved.
+
+**Challenge 5 — Case-sensitive --method enforcement confirmed.** `node bin/tusq.js method index --method get --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown method: get`, empty stdout. Uppercase `GET` filter → exit 0 with GET-only bucket. Challenge resolved.
+
+**Challenge 6 — Default index on fixture produces valid human and JSON output.** Human output includes [GET] and [POST] buckets with planning-aid note. JSON output includes `methods[]` array with 8-field entries per bucket. Both exit 0. Challenge resolved.
+
+**Challenge 7 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation correct for manually-edited manifests. Non-blocking.
+
+**Challenge 8 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 9 — OBJ-003 (low, non-blocking) carried forward.** M31 per-domain flag value assertions not independently smoke-asserted; M32 closes its own analogous gap at REQ-189; M34 closes its own at REQ-236/REQ-237. Non-blocking.
+
+**Challenge 10 — All 239 acceptance criteria (REQ-001–REQ-239) pass.** 24 new M34 criteria added (REQ-216–REQ-239). npm test exit 0 + 25 scenarios independently confirms. Challenge resolved.
+
+**Challenge 11 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD ddfa687, run_bf8efb6b9c733000, 2026-04-26)
+
+| Command | Exit Code | Notes |
+|---------|-----------|-------|
+| `npm test` | 0 | Smoke tests passed; Eval regression harness passed (25 scenarios) |
+| `node bin/tusq.js help` | 0 | 18 commands; `method` between `effect` and `policy` |
+| `node bin/tusq.js method index --help` | 0 | planning-aid framing; GET→POST→PUT→PATCH→DELETE→unknown |
+| `node bin/tusq.js method index --method get --manifest tests/fixtures/express-sample/tusq.manifest.json` | 1 | stderr: `Unknown method: get`; stdout: empty |
+| `node bin/tusq.js method index --manifest tests/fixtures/express-sample/tusq.manifest.json` | 0 | [GET] and [POST] buckets; planning-aid note |
+| `node bin/tusq.js method index --json --manifest tests/fixtures/express-sample/tusq.manifest.json` | 0 | `methods[]` array; 8-field entries per bucket |
+| `git diff HEAD -- package.json package-lock.json` | 0 | empty output (zero dependency drift) |
+
+---
+
 ## QA Challenge — turn_a291b557e6bf6051 (role=qa, run_cd98cdad0fb83285, M33 re-verification no-source-change cycle, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_0e359b277c048d1f, role=dev, HEAD 0f4ecaa) for run_cd98cdad0fb83285 independently rather than rubber-stamping it.
