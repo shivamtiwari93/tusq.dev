@@ -2,6 +2,32 @@
 
 ---
 
+## Dev Turn turn_a43db6d01f69867a — M29 Loop Recovery Re-Verification (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** a4eca246ac09dafc66960aa061a1b3e5bbaab706 (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_cb54b409e2ee7440 (role=pm, phase=planning)
+
+The PM turn was a zero-edit recovery turn that challenged the prior dev turn (turn_c9732a9f04c371a1) explicitly rather than rubber-stamping. Challenge is upheld: PM correctly identified the orchestrator loop pattern (planning phase re-routed back to PM despite phase_transition_request='implementation' from dev), correctly confirmed all four planning_signoff gate artifacts are intact (PM_SIGNOFF.md 154KB, ROADMAP.md 93KB, SYSTEM_SPEC.md 270KB, command-surface.md 83KB), correctly ran independent baseline verification (npm test exits 0, tusq help confirms 13-command CLI surface, zero source drift), and correctly refrained from binding either unbound charter candidate. PM OBJ-001 (static-MCP-descriptor form decision A/B/C) is unresolved and remains a pre-binding blocker — upheld. PM OBJ-002 (two unbound charter candidates) — upheld. No PM-owned edits were required and none were made — correct.
+
+### Decisions
+
+- No new charter bound. No source changes required.
+- Two unbound candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+- Shipped V1.10 boundary (M1–M29) is intact.
+
+### Verification
+
+- `npm test` → exit 0: Smoke tests passed, Eval regression harness passed (16 scenarios)
+- `node bin/tusq.js help` → exit 0: 13-command CLI surface confirmed
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0: empty (zero source drift)
+- `ls -la .planning/PM_SIGNOFF.md .planning/ROADMAP.md .planning/SYSTEM_SPEC.md .planning/command-surface.md` → exit 0: all four gate artifacts exist
+
+---
+
 ## Dev Turn turn_c9732a9f04c371a1 — M29 Stale-Checkbox Reconciliation Baseline Re-Verification (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
