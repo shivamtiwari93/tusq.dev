@@ -8,6 +8,76 @@ It intentionally does **not** replace `/Users/shivamtiwari.highlevel/VS Code/100
 
 The sequence below keeps work incremental and locally verifiable. It favors static/plugin/eval/rollout scaffolds before harder runtime-learning features, so each milestone can be implemented by the current CLI without needing hosted infrastructure.
 
+## Vision-Derived Charter Candidate: Static Embeddable-Surface Plan Export (V2 First Step)
+
+VISION source: `.planning/VISION.md` line 27 ("embeddable chat, widget, command-palette, and voice surfaces" — listed under **The Promise**); lines 193–224 (Brand-Matched Chat Interface, Brand-Matched Voice Interface, Embeddable Widgets And Command Surfaces). VISION enumerates these as V1 surfaces, but **shipped reality M1–M29 ships only the compiler/governance half** — none of the four embeddable surfaces have any implementation today. This charter candidate is the smallest first increment that addresses the vision goal **without** committing the project to runtime chat/voice/widget rendering inside V1.x.
+
+**Intake intent:** `intent_1777171732846_289f` (vision_scan, p2, charter "[vision] The Promise: embeddable chat, widget, command-palette, and voice surfaces"). Acceptance contract: "Vision goal addressed: embeddable chat, widget, command-palette, and voice surfaces."
+
+**PM challenge to a naive read of the charter:** "Vision goal addressed" does **not** mean ship the four runtime surfaces in one milestone. Generating a working brand-matched embedded chat client, a voice interface, framework-agnostic action/insight widgets, and a Ctrl+K command palette — each with its own brand/tone configuration, IAM mapping, and embed-host story — is a multi-quarter V2 program, not a 1-day increment. Forcing it into one milestone would break the local-only / static-only / no-new-runtime-dependency invariants that M25–M29 hold and would not be reviewable in the PM/dev/QA pattern this run uses.
+
+**Proposed first increment (charter sketch — not yet bound to an M-number; operator decides ordering):** `tusq surface plan` — a read-only, deterministic, manifest-only command that emits a per-surface **plan** (not a runtime artifact) describing what each of the four embeddable surfaces would look like for the approved capabilities in the current manifest.
+
+**Frozen four-value `surface` enum:** `chat | palette | widget | voice`. No fifth value in V1.x; future surfaces (e.g., email reply, slack-bot) require a new milestone.
+
+**Per-surface plan shape (deterministic JSON):**
+
+- `surface`: one of the four enum values
+- `eligible_capabilities[]`: capability names whose `approved === true` AND whose `sensitivity_class` ∈ {`public`, `internal`} (chat/palette default) or whose side-effect class is read-only (widget read variant) — exact eligibility rules per surface frozen in the charter
+- `gated_capabilities[]`: capabilities present in the manifest but excluded from this surface, with frozen reason codes (`unapproved`, `restricted_sensitivity`, `confidential_sensitivity`, `destructive_side_effect`, `auth_scheme_unknown`, `auth_scheme_oauth_pending_v2`)
+- `entry_points[]`: per-surface suggested entry points derived from capability domain (M9/M15) and verb (M9), e.g., for `chat` an `intents[]` list paired with capability names; for `palette` an `actions[]` list with verb-prefixed labels; for `widget` an `action_widgets[]` and `insight_widgets[]` split keyed off side-effect class; for `voice` a `voice_intents[]` list constrained to non-destructive read/update flows
+- `redaction_posture`: copy-forward of the M27 advisory set per eligible capability (no recomputation, no drift)
+- `auth_posture`: copy-forward of M29 `auth_requirements` per eligible capability (no recomputation, no `auth_scheme: "none"` for unknown)
+- `brand_inputs_required[]`: frozen list of brand fields the surface would need to be **rendered** in a future milestone (e.g., `brand.tone`, `brand.color_primary`, `voice.persona`, `widget.layout_density`) — names only, no values; this is the planning seam where a future increment could plug in a brand profile
+- `manifest_version`, `generated_at` copy-forward verbatim from manifest top-level (null/unknown fallback per M27 pattern)
+
+**Frozen invariants (mirroring M27/M28/M29 reviewer-aid pattern):**
+
+- Read-only: `tusq.manifest.json` mtime/content unchanged; no `.tusq/` write; `capability_digest` MUST NOT flip; `tusq compile` and `tusq serve` byte-for-byte unchanged
+- Deterministic: byte-identical output across runs for the same manifest; locked by an eval scenario
+- Empty-capabilities valid-exit-0 with explicit `No capabilities in manifest — nothing to plan.` human line and `surfaces: []` JSON
+- Empty-stdout-on-every-exit-1 path with stderr-only error text
+- New top-level noun `surface` with single subcommand `plan` and the flag set `--surface <chat|palette|widget|voice|all>`, `--manifest <path>`, `--out <path>`, `--json`. No new dependency in `package.json`. CLI surface grows from 13 → 14 commands. (PM **explicitly** flags this as the first new top-level noun since `redaction` (M27) — operator should weigh whether `tusq plan surface` as a sub-noun under a future planning hub is preferable; this is an open scope decision.)
+- Reviewer-aid framing: SYSTEM_SPEC Constraint 23 (proposed) — "`tusq surface plan` is a planning aid that describes what an embeddable surface **would** look like for the current manifest. It does NOT generate runnable chat/widget/palette/voice code, does NOT host any runtime, does NOT execute capabilities, and does NOT certify brand or accessibility compliance. Subsequent milestones (chat-only generator, palette-only generator, widget-only generator, voice-only generator) ship under their own ROADMAP entries with fresh acceptance contracts."
+
+**Acceptance contract sketch (~10 items, mapped 1:1 to AC-1..AC-10 once chartered):**
+
+- AC-1: `tusq surface plan` command exists; `--help` documents the four-value `surface` enum and the four flags
+- AC-2: per-surface plan emitted for each enum value; default is `--surface all` emitting all four
+- AC-3: deterministic byte-identical output across runs (locked by an eval scenario `surface-plan-determinism`)
+- AC-4: zero-evidence guard — empty `capabilities: []` exits 0 with the documented human line and `surfaces: []` JSON
+- AC-5: read-only invariant — manifest mtime/content unchanged, no `.tusq/` write, no `capability_digest` flip, golden-file assertion on `tusq compile` byte-identity, golden-file assertion on `tusq serve tools/list` byte-identity
+- AC-6: gated_capabilities reason-code enum is closed (six values listed above); unknown gating reason is an implementation-time error
+- AC-7: brand_inputs_required is a frozen named-list (no values, no placeholders, no template strings) per surface
+- AC-8: empty-stdout-on-exit-1 across every error path, asserted by the smoke suite for both `--manifest` and `--surface` validation failures
+- AC-9: at least one new eval regression scenario named `surface-plan-determinism` is added; total eval scenarios become **≥17**
+- AC-10: SYSTEM_SPEC Constraint 23 is added; docs/README/CLI-help MUST NOT describe `tusq surface plan` as "generates a chat client," "renders a widget," "hosts a voice interface," "runs a command palette," or any phrase implying runtime surface generation
+
+**Explicit non-goals for this V1.x increment (PM scope-protection list):**
+
+- No actual chat client code is generated
+- No actual widget HTML/JS/CSS is generated
+- No actual voice client (browser or otherwise) is generated
+- No actual command-palette UI is generated
+- No brand profile read from disk; `brand_inputs_required` is a **list of names**, not a values lookup
+- No new dependency in `package.json` (no React, no Vue, no Lit, no Web Speech polyfill, no audio runtime, no markdown renderer)
+- No network I/O
+- No mutation of any existing command's behavior beyond the new top-level noun
+- No new `.tusq/` directory or file; output goes to stdout (with `--json`) or to a path passed via `--out`
+
+**Successor milestones (deferred, not chartered yet):**
+
+- M-Chat-1: branded chat-client static-bundle generator (read-only deterministic emit; future)
+- M-Palette-1: framework-agnostic command-palette static-bundle generator (read-only deterministic emit; future)
+- M-Widget-1: action-widget and insight-widget static-bundle generators (read-only deterministic emit; future)
+- M-Voice-1: browser-voice-interface static-bundle generator (read-only deterministic emit; future)
+
+Each successor milestone ships under its own ROADMAP entry with a fresh acceptance contract, fresh re-approval expectation, and fresh non-claims list. The operator decides the ordering once `surface plan` is shipped and exercised against real manifests.
+
+**Why a planner-first increment, not a generator-first increment:** The shipped pattern (M27/M28/M29) consistently introduces a reviewer-aid that surfaces what the manifest already implies, before any milestone that mutates downstream artifacts. Shipping `tusq surface plan` first lets the project (a) discover which capabilities are actually viable for each surface under current sensitivity/auth posture, (b) discover which brand fields the project doesn't yet have, and (c) catch capability-domain gaps **before** any code-generating milestone bakes assumptions into a chat/widget/voice runtime. This is the same logic that put `tusq redaction review` ahead of any runtime PII-redaction enforcement (M27 Constraints 19–20).
+
+**Status:** Charter sketch only — not yet a frozen ROADMAP entry. Operator/human approval is required before this becomes M30-Surface (or whatever number the operator assigns). The four PM-owned planning_signoff artifacts in this run are re-affirmed unchanged for the V1.10 boundary; this charter sketch lives in the candidate backlog until the operator chooses to bind it.
+
 ## M30: Static Adapter Plugin Manifest Skeleton (~0.5 day)
 
 VISION source: "Plugins are how we scale", "Capability discovery and normalization", "Auth and permission mapping", "Data and schema understanding".
