@@ -2,6 +2,57 @@
 
 ---
 
+## Dev Turn turn_a40426e0c05703da — Loop Root-Cause Diagnosis / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** ce82ddb480674db0ecb0f76fa5f0e6021855f2ef
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_ebf53166803ce78e (role=pm, phase=planning)
+
+That PM turn was a zero-edit loop-recovery turn that correctly challenged dev turn_87bd0bcb32c4f96e, upheld all five prior decisions, independently re-verified all four planning_signoff gate artifacts and baseline (npm test exit 0, 16 scenarios, zero source drift, M29 line 317 — SHIPPED V1.10) on HEAD ce82ddb, raised OBJ-001 (orchestrator loop, high severity), and set phase_transition_request='implementation' under auto_approve. All PM decisions upheld.
+
+### Root Cause Analysis (NEW — not in prior turns)
+
+Investigated state.json and history.jsonl directly to identify loop root cause. Key findings:
+
+1. **State inconsistency**: `state.json` has `last_completed_turn_id: "turn_ebf53166803ce78e"` (PM turn) but `last_completed_turn` object shows `turn_87bd0bcb32c4f96e` (dev turn). These two fields are inconsistent — the full turn object was not updated in sync with the ID field.
+
+2. **non_progress_signature** in state.json: `".planning/PM_SIGNOFF.md" requires participation from role "pm" in phase "planning", but no accepted turn from that role was found` — same for all four artifacts including ROADMAP.md.
+
+3. **PM files_changed per turn** (from history.jsonl query):
+   - turn_df1112d797428a6b: files_changed=[".planning/ROADMAP.md"] ← PM DID modify
+   - turn_cb54b409e2ee7440: files_changed=[]
+   - turn_3beab070a198bfeb: files_changed=[]
+   - turn_22c095af94007ac1: files_changed=[]
+   - turn_ebf53166803ce78e: files_changed=[]
+
+4. The gate evaluator says even ROADMAP.md (modified by PM in turn_df11...) has "no accepted turn from that role found" — meaning the evaluator is NOT reading from history.jsonl for this check, OR is using a different condition beyond files_changed.
+
+5. `last_gate_failure: null` in state.json — the gate isn't recording explicit failures, it simply never advances to "pass."
+
+6. `non_progress_count: 4` — consistent signature for 4 consecutive turns.
+
+**Resolution path (for operator)**: The gate evaluator's PM-participation lookup is not finding turns that exist in history.jsonl. Root causes to investigate: (a) evaluator queries a different index/snapshot rather than history.jsonl; (b) `last_completed_turn` object state desync prevents the evaluator from finding the PM turn; (c) the evaluator checks `artifact.type: "workspace"` but zero-edit PM turns use `artifact.type: "review"`.
+
+### Decisions
+
+- No new charter bound. No source changes required.
+- Two unbound candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+- Shipped V1.10 boundary (M1–M29) is intact.
+- Setting phase_transition_request='implementation' per mandate and auto_approve policy.
+
+### Verification
+
+- `git rev-parse HEAD` → exit 0: ce82ddb480674db0ecb0f76fa5f0e6021855f2ef
+- `npm test` → exit 0: Smoke tests passed, Eval regression harness passed (16 scenarios)
+- `ls -la .planning/*.md` → exit 0: PM_SIGNOFF.md 154743B, ROADMAP.md 92968B, SYSTEM_SPEC.md 269920B, command-surface.md 83060B
+- `grep -n '^### M29:' .planning/ROADMAP.md` → exit 0: line 317 reads '— SHIPPED V1.10'
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0: empty (zero source drift)
+
+---
+
 ## Dev Turn turn_87bd0bcb32c4f96e — M29 Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
