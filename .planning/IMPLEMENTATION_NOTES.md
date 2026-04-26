@@ -2,6 +2,65 @@
 
 ---
 
+## Dev Turn turn_42c7748a59fa5ef3 — Implementation Phase: M33 Static Capability Sensitivity Index Export (run_4506c41d74e23e8e, 2026-04-26)
+
+**Run:** run_4506c41d74e23e8e
+**Phase:** implementation
+**HEAD:** 18e864c24f1b653c889a1f450957d48a27d74197 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_8803f8edb25d1a0e (role=pm, phase=planning)
+
+PM correctly challenged intake charter intent_1777237013665_c189 (vision_scan, category roadmap_exhausted_vision_open). PM independently verified ROADMAP is checked through M32 (Static Capability Side-Effect Index Export — V1.13 SHIPPED in run_ae841429202c5bb7), confirmed the candidate pool from VISION.md contains unbound material, and correctly bound exactly one new bounded testable milestone (M33: Static Capability Sensitivity Index Export from Manifest Evidence — V1.14 PROPOSED). PM froze: the closed five-value `sensitivity_class` bucket-key enum (`public | internal | confidential | restricted | unknown`) aligned 1:1 with the M28 `SENSITIVITY_CLASSES` constant, the closed two-value `aggregation_key` enum (`class | unknown`), the closed-enum bucket iteration order (`public → internal → confidential → restricted → unknown`), the per-bucket 8-field entry shape (`sensitivity_class`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_unknown_auth`), and the M33 implementation MUST-reference-M28-SENSITIVITY_CLASSES rule (no independent enum redeclaration). All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+**M33 core implementation in `src/cli.js`:**
+- `SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM` — frozen two-value Set `{class, unknown}` (parallel to M32).
+- `SENSITIVITY_INDEX_BUCKET_ORDER` — frozen array `['public', 'internal', 'confidential', 'restricted']` (excludes `unknown`; closed-enum iteration order).
+- `cmdSensitivity(args)` — top-level noun handler; no-subcommand/`--help` prints help; routes `index` subcommand; unknown subcommands exit 1.
+- `cmdSensitivityIndex(args)` — full handler: detection-before-output `--out .tusq/` rejection, manifest read, JSON parse, `buildSensitivityIndex`, `--sensitivity` filter (uses `SENSITIVITY_CLASSES.includes()` to reference M28 constant directly), `--out` write, `--json` output, human output.
+- `parseSensitivityIndexArgs(args)` — flag parser for `{sensitivity, manifest, out, json}`; unknown flags exit 1; missing values exit 1.
+- `_guardSensitivityBucketKey(key)` — validation guard using `SENSITIVITY_CLASSES.includes(key)` (M28 constant reference, per M33 Key Risk).
+- `_guardSensitivityAggregationKey(key)` — validation guard using `SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM`.
+- `buildSensitivityIndex(manifest, manifestPath)` — pure deterministic function; uses `normalizeSensitivityClass()` (M28 helper) to resolve each capability's sensitivity class; buckets by `SENSITIVITY_INDEX_BUCKET_ORDER` (closed-enum order); `unknown` bucket appended last; empty buckets MUST NOT appear; per-bucket entry has all 8 frozen fields including `has_destructive_side_effect` (side_effect_class === 'destructive') and `has_unknown_auth`.
+- `formatSensitivityIndex(index)` — human-readable output with planning-aid framing callout "This is a planning aid, not a runtime sensitivity enforcer or compliance certifier."
+- `dispatch()` updated: `case 'sensitivity'` inserted between `case 'redaction'` and `case 'surface'`.
+- `printHelp()` updated: `sensitivity` line inserted between `redaction` and `surface` (CLI surface 16 → 17).
+- `printCommandHelp()` updated: `sensitivity` and `'sensitivity index'` entries added.
+
+**M33 smoke matrix in `tests/smoke.mjs`:**
+21 assertions covering spec-required cases a-u (plus unknown-flag/missing-caps/help/unknown-subcommand edge cases): closed-enum order, per-filter, unknown filter, missing manifest, malformed JSON, byte-identity (×2), read-only invariant, digest non-flip, compile byte-identity, domain/effect/surface byte-identity, empty-capabilities, `--out` write, `--out` unwritable, `--out .tusq/` rejection, unknown bucket last, aggregation_key enum closure, empty-buckets omitted, within-bucket manifest declared order, `has_destructive_side_effect` correctness, `has_unknown_auth` correctness.
+
+**M33 eval scenario in `tests/evals/governed-cli-scenarios.json`:**
+Added `sensitivity-index-determinism` (23 → 24 scenarios): type `sensitivity_index_determinism`, synthetic capabilities across `public/internal/confidential/restricted/unknown` classes, assertions for byte-identical output × 3 runs, closed `sensitivity_class` five-value enum, closed `aggregation_key` two-value enum, closed-enum order `public,internal,confidential,restricted,unknown`.
+
+**M33 eval handler in `tests/eval-regression.mjs`:**
+Added `runSensitivityIndexDeterminismScenario` function; dispatched from `run()` on `scenario.scenario_type === 'sensitivity_index_determinism'`.
+
+**Planning artifacts materialized (dev-owned):**
+- `.planning/SYSTEM_SPEC.md` — full § M33 detail block (purpose, command shape, frozen enums, per-bucket entry shape, iteration order, empty-capabilities rules, read-only invariants, deliverables) + Constraint 26.
+- `.planning/command-surface.md` — full § M33 Product CLI Surface (command table, flags, enums, entry shape, iteration order, default-preservation, failure UX, local-only invariants).
+- `website/docs/cli-reference.md` — `tusq sensitivity index` documentation section.
+- `website/docs/manifest-format.md` — Sensitivity Index subsection.
+
+### Verification
+
+- `npm test` exits 0: "Smoke tests passed" and "Eval regression harness passed (24 scenarios)".
+- `node bin/tusq.js help` enumerates the **17**-command CLI surface with `sensitivity` inserted alphabetically between `redaction` and `surface`.
+- `node bin/tusq.js sensitivity index --help` exits 0 with planning-aid framing callout.
+- Zero new dependencies in `package.json`/`package-lock.json`.
+- `git diff HEAD -- package.json package-lock.json` → empty.
+
+### Key Decisions
+
+- `SENSITIVITY_CLASSES` (M28, line 8) is referenced directly in `_guardSensitivityBucketKey` and `cmdSensitivityIndex` filter validation — no independent enum redeclared (per M33 Key Risk / PM DEC-003).
+- `normalizeSensitivityClass()` (M28 helper) is used inside `buildSensitivityIndex` to resolve each capability's effective sensitivity class, ensuring the unknown-bucket catchall logic is consistent with M28's definition of `unknown`.
+- Bucket order `public → internal → confidential → restricted` (then unknown last) is a deterministic stable-output convention, NOT a risk-precedence statement — documented explicitly in help text and SYSTEM_SPEC.
+
+---
+
 ## Dev Turn turn_02b2c0e4dceeead3 — Implementation Phase: V1.13 No-Regression Carry-Forward (run_7183d8c70482329b, 2026-04-26)
 
 **Run:** run_7183d8c70482329b

@@ -84,6 +84,15 @@ const EFFECT_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unkno
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const EFFECT_INDEX_BUCKET_ORDER = Object.freeze(['read', 'write', 'destructive']);
 
+// M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
+// An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
+const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
+
+// M33: closed-enum bucket iteration order (public → internal → confidential → restricted). NOT risk-precedence — deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+// NOTE: bucket-key enum reuses SENSITIVITY_CLASSES (M28, line 8) directly — no independent enum declared (M33 Key Risk).
+const SENSITIVITY_INDEX_BUCKET_ORDER = Object.freeze(['public', 'internal', 'confidential', 'restricted']);
+
 // M30: frozen six-value gated_reason enum. Immutable once M30 ships.
 // An implementation-time guard fires if classifyGating returns a value outside this set.
 const GATED_REASON_ENUM = Object.freeze(new Set([
@@ -198,6 +207,9 @@ function dispatch(argv) {
       return;
     case 'redaction':
       cmdRedaction(args);
+      return;
+    case 'sensitivity':
+      cmdSensitivity(args);
       return;
     case 'surface':
       cmdSurface(args);
@@ -2511,6 +2523,277 @@ function formatEffectIndex(index) {
   return lines.join('\n');
 }
 
+function cmdSensitivity(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('sensitivity');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdSensitivityIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M33: tusq sensitivity index — handler
+function cmdSensitivityIndex(args) {
+  const { opts, positionals } = parseSensitivityIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('sensitivity index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildSensitivityIndex(manifest, manifestPath);
+
+  const sensitivityFilter = opts.sensitivity || null;
+  let outputIndex;
+  if (sensitivityFilter !== null) {
+    if (!SENSITIVITY_CLASSES.includes(sensitivityFilter)) {
+      throw new CliError(`Unknown sensitivity: ${sensitivityFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.sensitivities.find((e) => e.sensitivity_class === sensitivityFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown sensitivity: ${sensitivityFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { sensitivities: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatSensitivityIndex(outputIndex));
+}
+
+function parseSensitivityIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['sensitivity', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardSensitivityBucketKey(key) {
+  if (!SENSITIVITY_CLASSES.includes(key)) {
+    throw new Error(`Internal error: sensitivity_class outside closed five-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardSensitivityAggregationKey(key) {
+  if (!SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M33: buildSensitivityIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered sensitivity index from the manifest's capabilities[].
+// Bucket iteration order: public → internal → confidential → restricted (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// NOTE: bucket-key enum uses SENSITIVITY_CLASSES (M28 constant) directly — no independent enum declared.
+function buildSensitivityIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      sensitivities: []
+    };
+  }
+
+  // Collect capabilities into buckets keyed by their sensitivity_class.
+  // The four named classes follow manifest declared order within each bucket.
+  // The unknown bucket collects capabilities with null/missing/empty-string/invalid sensitivity_class.
+  const validNamedClasses = new Set(SENSITIVITY_INDEX_BUCKET_ORDER);
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const normalizedClass = normalizeSensitivityClass(capability.sensitivity_class);
+    const isValid = normalizedClass !== 'unknown' && validNamedClasses.has(normalizedClass);
+    const bucketKey = isValid ? normalizedClass : '__unknown__';
+
+    if (!isValid) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: public → internal → confidential → restricted, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...SENSITIVITY_INDEX_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const sensitivities = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const sensitivityClass = isUnknownBucket ? _guardSensitivityBucketKey('unknown') : _guardSensitivityBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardSensitivityAggregationKey('unknown') : _guardSensitivityAggregationKey('class');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasUnknownAuth = caps.some((c) => {
+      if (!c.auth_requirements || typeof c.auth_requirements !== 'object') return true;
+      return c.auth_requirements.auth_scheme === 'unknown';
+    });
+
+    return {
+      sensitivity_class: sensitivityClass,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_unknown_auth: hasUnknownAuth
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    sensitivities
+  };
+}
+
+// M33: format sensitivity index as human-readable text
+function formatSensitivityIndex(index) {
+  if (index.sensitivities.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Sensitivity Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime sensitivity enforcer or compliance certifier.',
+    ''
+  ];
+
+  for (const entry of index.sensitivities) {
+    lines.push(`[${entry.sensitivity_class}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_unknown_auth: ${entry.has_unknown_auth}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function cmdRedactionReview(args) {
   const { opts, positionals } = parseRedactionReviewArgs(args);
 
@@ -3123,6 +3406,7 @@ function printHelp() {
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
+  process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
@@ -3177,6 +3461,24 @@ function printCommandHelp(command) {
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    sensitivity: 'Usage: tusq sensitivity <subcommand>\n  Subcommands: index',
+    'sensitivity index': [
+      'Usage: tusq sensitivity index [--sensitivity <public|internal|confidential|restricted|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --sensitivity <public|internal|confidential|restricted|unknown>  Filter to a single sensitivity class bucket (default: all classes)',
+      '  --manifest <path>                                                 Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                                                      Write index to file (no stdout on success)',
+      '  --json                                                            Emit machine-readable JSON',
+      '',
+      'Bucket iteration order: public → internal → confidential → restricted → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown sensitivity, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime sensitivity enforcer or compliance certifier.'
+    ].join('\n'),
     surface: 'Usage: tusq surface <subcommand>\n  Subcommands: plan',
     'surface plan': [
       'Usage: tusq surface plan [--surface <chat|palette|widget|voice|all>] [--manifest <path>] [--out <path>] [--json]',

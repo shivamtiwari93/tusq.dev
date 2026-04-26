@@ -1265,3 +1265,98 @@ Bucket iteration follows the **closed-enum order: `read → write → destructiv
 | Closed-enum order is NOT risk-precedence | The `read → write → destructive → unknown` order is a stable-output convention; docs/README/CLI-help MUST NOT describe it as "risk-ascending," "low-to-high," "safety-ordered," or any phrase implying risk semantics |
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces side-effect policy", "derives risk tier", "generates confirmation flows", "certifies destructive-action safety", or "alters the M30 gating rule" |
 | Future side-effect milestones reserved | M-Risk-1, M-Confirm-1 ship under their own ROADMAP entries with fresh acceptance contracts; M32 is **not** a substitute for any of them |
+
+## M33 Product CLI Surface
+
+M33 (Static Capability Sensitivity Index Export from Manifest Evidence — V1.14) adds the `sensitivity` top-level noun with a single subcommand `index`. The CLI surface grows from **16 → 17** commands, with `sensitivity` inserted alphabetically between `redaction` and `surface` (`sensitivity` vs `surface`: `s-e` < `s-u`).
+
+### M33 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq sensitivity` | Enumerate subcommands block (mirrors `tusq effect`, `tusq domain`, `tusq surface`, etc.) |
+| `tusq sensitivity index` | Produce a read-only, deterministic sensitivity-class index of the manifest's capabilities |
+
+### M33 Flags
+
+| Flag | Type | Default | Notes |
+|------|------|---------|-------|
+| `--sensitivity <class>` | string | all classes | Filter to a single sensitivity class bucket; unrecognized value exits 1 with `Unknown sensitivity: <value>` |
+| `--manifest <path>` | string | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | string | — | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | boolean | false | Emit machine-readable JSON |
+
+### M33 Frozen Five-Value `sensitivity_class` Bucket-Key Enum
+
+| Value | Description |
+|-------|-------------|
+| `public` | Named class: publicly-accessible capability |
+| `internal` | Named class: internal-use capability |
+| `confidential` | Named class: confidential capability |
+| `restricted` | Named class: restricted/high-sensitivity capability |
+| `unknown` | Zero-evidence catchall for null/missing/invalid `sensitivity_class` |
+
+The five-value enum aligns 1:1 with the M28 `SENSITIVITY_CLASSES` constant. M33 MUST reference `SENSITIVITY_CLASSES` directly — no independent enum is declared. The enum is immutable once M33 ships; any addition is a material governance event requiring its own ROADMAP milestone.
+
+### M33 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `class` | Named buckets (`public`, `internal`, `confidential`, `restricted`) |
+| `unknown` | Zero-evidence catchall bucket |
+
+The two-value enum is immutable once M33 ships. Any addition is a material governance event requiring its own ROADMAP milestone.
+
+### M33 Per-Bucket Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `sensitivity_class` | string | One of the five enum values |
+| `aggregation_key` | string | `"class"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability in bucket has `side_effect_class === "destructive"` |
+| `has_unknown_auth` | boolean | True iff any capability in bucket has `auth_requirements.auth_scheme === "unknown"` |
+
+### M33 Bucket Iteration Order
+
+Closed-enum order: `public → internal → confidential → restricted`, then `unknown` last. This is a deterministic stable-output convention — **NOT** a risk-precedence statement. Within each bucket, capabilities appear in manifest declared order.
+
+### M33 Default-Preservation Table (16 Commands Unchanged)
+
+| Commands | Invariant |
+|----------|-----------|
+| All 16 existing commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, effect, policy, redaction, surface, version, help) | Byte-identical stdout, stderr, and exit codes before and after M33 |
+
+### M33 Failure UX
+
+| Error condition | Exit code | stderr | stdout |
+|-----------------|-----------|--------|--------|
+| Missing manifest file | 1 | `Manifest not found: <path>` | empty |
+| Invalid JSON in manifest | 1 | `Invalid manifest JSON: <path>` | empty |
+| Missing capabilities array | 1 | `Invalid manifest: missing capabilities array` | empty |
+| Unknown `--sensitivity` value | 1 | `Unknown sensitivity: <value>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+
+### M33 Local-Only Invariants
+
+| Invariant | Verification |
+|-----------|-------------|
+| Read-only manifest | mtime/content byte-identical before and after every `tusq sensitivity index` invocation |
+| No `.tusq/` writes | Confirmed by absence of new files in `.tusq/` after any invocation |
+| Zero `capability_digest` flips | Hash-before vs hash-after assertion is byte-identical on every capability |
+| `tusq compile` byte-identity | Golden-file smoke assertion confirms compile output is byte-identical pre and post-M33 |
+| `tusq surface plan` byte-identity | `tusq surface plan` output byte-for-byte unchanged pre and post-M33 |
+| `tusq domain index` byte-identity | `tusq domain index` output byte-for-byte unchanged pre and post-M33 |
+| `tusq effect index` byte-identity | `tusq effect index` output byte-for-byte unchanged pre and post-M33 |
+| Deterministic output | Running twice on the same manifest produces byte-identical stdout in both human and `--json` modes; iteration order is fixed by the closed enum (`public → internal → confidential → restricted → unknown`); no wall-clock fields inside per-bucket entries |
+| Frozen five-value `sensitivity_class` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Frozen two-value `aggregation_key` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Closed-enum order is NOT risk-precedence | The `public → internal → confidential → restricted → unknown` order is a stable-output convention; docs/README/CLI-help MUST NOT describe it as "risk-ascending," "sensitivity-ordered," "low-to-high," or any phrase implying risk semantics |
+| Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
+| Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |

@@ -591,6 +591,66 @@
       "expected_valid_side_effect_classes": ["read", "write", "destructive", "unknown"],
       "expected_valid_aggregation_keys": ["class", "unknown"],
       "expected_effect_order": "read,write,destructive,unknown"
+    },
+    {
+      "id": "sensitivity-index-determinism",
+      "description": "M33: tusq sensitivity index --json produces byte-identical output across three runs on the same manifest; sensitivity_class bucket-key enum is closed (five values); aggregation_key enum is closed (two values); bucket iteration order is the frozen closed-enum order (public → internal → confidential → restricted → unknown)",
+      "scenario_type": "sensitivity_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "create_invoice",
+          "domain": "billing",
+          "method": "POST",
+          "path": "/billing/invoices",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "get_status",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/status",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        },
+        {
+          "name": "delete_user",
+          "domain": "users",
+          "method": "DELETE",
+          "path": "/users/:id",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "no_class_route",
+          "domain": null,
+          "method": "GET",
+          "path": "/ping",
+          "side_effect_class": "read",
+          "sensitivity_class": null,
+          "approved": true,
+          "auth_scheme": "unknown"
+        }
+      ],
+      "expected_valid_sensitivity_classes": ["public", "internal", "confidential", "restricted", "unknown"],
+      "expected_valid_aggregation_keys": ["class", "unknown"],
+      "expected_sensitivity_order": "public,internal,confidential,restricted,unknown"
     }
   ]
 }

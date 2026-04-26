@@ -1045,6 +1045,76 @@ async function runEffectIndexDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runSensitivityIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => ({
+    name: cap.name,
+    description: cap.description || cap.name,
+    method: cap.method || 'GET',
+    path: cap.path || '/',
+    domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+    side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+    sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+    approved: cap.approved === true,
+    auth_requirements: {
+      auth_scheme: cap.auth_scheme || 'unknown',
+      auth_scopes: [],
+      auth_roles: [],
+      evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+    }
+  }));
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq sensitivity index --json three times and assert byte-identical output
+  const run1 = runCli(['sensitivity', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['sensitivity', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['sensitivity', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: sensitivity index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert sensitivity_class bucket-key enum is closed — every key is one of the five valid values
+  const index = JSON.parse(run1.stdout);
+  const validSensitivityClasses = new Set(scenario.expected_valid_sensitivity_classes);
+  for (const entry of index.sensitivities) {
+    if (!validSensitivityClasses.has(entry.sensitivity_class)) {
+      fail(`${scenario.id}: sensitivity_class '${entry.sensitivity_class}' is outside the closed five-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.sensitivities) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for sensitivity '${entry.sensitivity_class}'`);
+    }
+  }
+
+  // Assert sensitivities appear in closed-enum order (public → internal → confidential → restricted → unknown)
+  const sensitivityOrder = index.sensitivities.map((e) => e.sensitivity_class).join(',');
+  if (sensitivityOrder !== scenario.expected_sensitivity_order) {
+    fail(`${scenario.id}: sensitivities must appear in closed-enum order '${scenario.expected_sensitivity_order}'; got: ${sensitivityOrder}`);
+  }
+
+  // Assert manifest is not mutated
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  if (JSON.stringify(JSON.parse(manifestAfter)) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by sensitivity index`);
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -1080,6 +1150,8 @@ async function run() {
       await runDomainIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'effect_index_determinism') {
       await runEffectIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'sensitivity_index_determinism') {
+      await runSensitivityIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

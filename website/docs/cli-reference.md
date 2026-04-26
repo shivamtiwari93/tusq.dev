@@ -408,6 +408,50 @@ tusq effect index --effect unknown --json
 tusq effect index --out effect-index.json
 ```
 
+## `tusq sensitivity index`
+
+Emit a deterministic, per-sensitivity-class capability index from manifest evidence. Groups capabilities by their M28-derived `sensitivity_class` field in closed-enum order (`public → internal → confidential → restricted → unknown`), with a special `unknown` bucket for capabilities whose `sensitivity_class` is `null`, missing, empty-string, or any value outside the closed four-value named set. This is a **planning aid, not a runtime sensitivity enforcer or compliance certifier**.
+
+```bash
+tusq sensitivity index [--sensitivity <public|internal|confidential|restricted|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--sensitivity <public\|internal\|confidential\|restricted\|unknown>` | all classes | Filter to a single sensitivity class bucket |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown sensitivity class, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `public → internal → confidential → restricted → unknown` (closed-enum order — NOT manifest first-appearance order and NOT a risk-precedence statement). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- Bucket iteration order follows the closed enum (`public → internal → confidential → restricted`, then `unknown` last); within each bucket, capabilities appear in manifest declared order.
+- The five-value `sensitivity_class` enum (aligned 1:1 with the M28 `SENSITIVITY_CLASSES` constant) and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A sensitivity index is NOT a runtime sensitivity enforcer, NOT a compliance certifier, NOT a retention-policy generator, does NOT modify the M28 `sensitivity_class` derivation rules, and does NOT alter the M30 surface-plan gating rules.
+
+```bash
+# All classes (human-readable)
+tusq sensitivity index
+
+# All classes (JSON)
+tusq sensitivity index --json
+
+# Single class
+tusq sensitivity index --sensitivity confidential --json
+
+# Zero-evidence bucket
+tusq sensitivity index --sensitivity unknown --json
+
+# Write to file
+tusq sensitivity index --out sensitivity-index.json
+```
+
 ## `tusq redaction review`
 
 Emit a deterministic, per-capability reviewer report aggregating M25 `redaction.pii_fields`, M26 `redaction.pii_categories`, and frozen per-category advisory text from `PII_REVIEW_ADVISORY_BY_CATEGORY`. This is a **reviewer aid, not a runtime enforcement gate**.

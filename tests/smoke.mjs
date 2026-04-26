@@ -2989,6 +2989,369 @@ async function run() {
 
   await fs.rm(m32TmpDir, { recursive: true, force: true });
 
+  // ── M33: Static Capability Sensitivity Index Export ───────────────────────────
+  const m33TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m33-smoke-'));
+
+  // M33 fixture manifest: capabilities across public/internal/confidential/restricted + one unknown bucket.
+  // Capabilities declared in this order: internal, confidential, public, restricted, internal, unknown-sensitivity
+  // to verify within-bucket manifest declared order AND closed-enum bucket order (public→internal→confidential→restricted→unknown,
+  // NOT manifest first-appearance which would be internal→confidential→public→restricted→unknown).
+  const m33Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'create_invoice',
+        description: 'Create an invoice',
+        method: 'POST',
+        path: '/billing/invoices',
+        domain: 'billing',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'confidential',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_status',
+        description: 'Get system status',
+        method: 'GET',
+        path: '/status',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'internal_report',
+        description: 'Fetch internal report',
+        method: 'GET',
+        path: '/reports/internal',
+        domain: 'reports',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_class_route',
+        description: 'Route with no sensitivity_class',
+        method: 'GET',
+        path: '/ping',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: null,
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m33ManifestPath = path.join(m33TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m33ManifestPath, JSON.stringify(m33Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m33TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M33(a): default tusq sensitivity index produces exit 0 and per-bucket entries in closed-enum order
+  // (public → internal → confidential → restricted → unknown), NOT manifest first-appearance order
+  const m33DefaultResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath], { cwd: m33TmpDir });
+  if (!m33DefaultResult.stdout.includes('[public]') || !m33DefaultResult.stdout.includes('[internal]') || !m33DefaultResult.stdout.includes('[confidential]') || !m33DefaultResult.stdout.includes('[restricted]') || !m33DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M33(a): default index must include all five buckets:\n${m33DefaultResult.stdout}`);
+  }
+  if (!m33DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M33(a): default index must include planning-aid framing:\n${m33DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: public before internal before confidential before restricted before unknown
+  const m33DefaultLines = m33DefaultResult.stdout.split('\n');
+  const m33PublicIdx = m33DefaultLines.findIndex((l) => l.includes('[public]'));
+  const m33InternalIdx = m33DefaultLines.findIndex((l) => l.includes('[internal]'));
+  const m33ConfidentialIdx = m33DefaultLines.findIndex((l) => l.includes('[confidential]'));
+  const m33RestrictedIdx = m33DefaultLines.findIndex((l) => l.includes('[restricted]'));
+  const m33UnknownIdx = m33DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m33PublicIdx < m33InternalIdx && m33InternalIdx < m33ConfidentialIdx && m33ConfidentialIdx < m33RestrictedIdx && m33RestrictedIdx < m33UnknownIdx)) {
+    throw new Error(`M33(a): buckets must appear in closed-enum order (public,internal,confidential,restricted,unknown):\n${m33DefaultResult.stdout}`);
+  }
+
+  // M33(b): --sensitivity public / --sensitivity internal / --sensitivity confidential / --sensitivity restricted / --sensitivity unknown each emit exactly one matching entry
+  const m33PublicResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'public'], { cwd: m33TmpDir });
+  if (!m33PublicResult.stdout.includes('[public]') || m33PublicResult.stdout.includes('[internal]') || m33PublicResult.stdout.includes('[confidential]') || m33PublicResult.stdout.includes('[restricted]') || m33PublicResult.stdout.includes('[unknown]')) {
+    throw new Error(`M33(b): --sensitivity public must emit only public bucket:\n${m33PublicResult.stdout}`);
+  }
+  const m33InternalResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'internal'], { cwd: m33TmpDir });
+  if (!m33InternalResult.stdout.includes('[internal]') || m33InternalResult.stdout.includes('[public]') || m33InternalResult.stdout.includes('[confidential]') || m33InternalResult.stdout.includes('[restricted]') || m33InternalResult.stdout.includes('[unknown]')) {
+    throw new Error(`M33(b): --sensitivity internal must emit only internal bucket:\n${m33InternalResult.stdout}`);
+  }
+  const m33ConfidentialResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'confidential'], { cwd: m33TmpDir });
+  if (!m33ConfidentialResult.stdout.includes('[confidential]') || m33ConfidentialResult.stdout.includes('[public]') || m33ConfidentialResult.stdout.includes('[internal]') || m33ConfidentialResult.stdout.includes('[restricted]') || m33ConfidentialResult.stdout.includes('[unknown]')) {
+    throw new Error(`M33(b): --sensitivity confidential must emit only confidential bucket:\n${m33ConfidentialResult.stdout}`);
+  }
+  const m33RestrictedResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'restricted'], { cwd: m33TmpDir });
+  if (!m33RestrictedResult.stdout.includes('[restricted]') || m33RestrictedResult.stdout.includes('[public]') || m33RestrictedResult.stdout.includes('[internal]') || m33RestrictedResult.stdout.includes('[confidential]') || m33RestrictedResult.stdout.includes('[unknown]')) {
+    throw new Error(`M33(b): --sensitivity restricted must emit only restricted bucket:\n${m33RestrictedResult.stdout}`);
+  }
+  const m33UnknownResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'unknown'], { cwd: m33TmpDir });
+  if (!m33UnknownResult.stdout.includes('[unknown]') || m33UnknownResult.stdout.includes('[public]') || m33UnknownResult.stdout.includes('[internal]') || m33UnknownResult.stdout.includes('[confidential]') || m33UnknownResult.stdout.includes('[restricted]')) {
+    throw new Error(`M33(b): --sensitivity unknown must emit only unknown bucket:\n${m33UnknownResult.stdout}`);
+  }
+
+  // M33(c): --sensitivity bogus exits 1 with Unknown sensitivity: and empty stdout
+  const m33BogusResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--sensitivity', 'bogus'], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33BogusResult.stderr.includes('Unknown sensitivity: bogus') || m33BogusResult.stdout !== '') {
+    throw new Error(`M33(c): unknown sensitivity must exit 1 with error on stderr, empty stdout:\nstdout=${m33BogusResult.stdout}\nstderr=${m33BogusResult.stderr}`);
+  }
+
+  // M33(d): missing --manifest path exits 1 with Manifest not found: and empty stdout
+  const m33MissingManifest = runCli(['sensitivity', 'index', '--manifest', path.join(m33TmpDir, 'not-here.json')], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33MissingManifest.stderr.includes('Manifest not found:') || m33MissingManifest.stdout !== '') {
+    throw new Error(`M33(d): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m33MissingManifest.stdout}\nstderr=${m33MissingManifest.stderr}`);
+  }
+
+  // M33(e): malformed-JSON manifest exits 1 with Invalid manifest JSON: and empty stdout
+  const m33BadManifestPath = path.join(m33TmpDir, 'bad.json');
+  await fs.writeFile(m33BadManifestPath, 'not-json', 'utf8');
+  const m33BadManifest = runCli(['sensitivity', 'index', '--manifest', m33BadManifestPath], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33BadManifest.stderr.includes('Invalid manifest JSON:') || m33BadManifest.stdout !== '') {
+    throw new Error(`M33(e): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m33BadManifest.stdout}\nstderr=${m33BadManifest.stderr}`);
+  }
+
+  // M33(f): running twice produces byte-identical stdout in both human and JSON modes
+  const m33Human1 = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath], { cwd: m33TmpDir });
+  const m33Human2 = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath], { cwd: m33TmpDir });
+  if (m33Human1.stdout !== m33Human2.stdout) {
+    throw new Error('M33(f): expected byte-identical human index output across runs');
+  }
+  const m33Json1 = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33Json2 = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  if (m33Json1.stdout !== m33Json2.stdout) {
+    throw new Error('M33(f): expected byte-identical JSON index output across runs');
+  }
+
+  // M33(g): M33 does not mutate the manifest (mtime/content unchanged)
+  const m33ManifestBefore = await fs.readFile(m33ManifestPath, 'utf8');
+  runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33ManifestAfter = await fs.readFile(m33ManifestPath, 'utf8');
+  if (m33ManifestBefore !== m33ManifestAfter) {
+    throw new Error('M33(g): tusq sensitivity index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M33(h): capability_digest does not flip on any capability after an index run
+  const m33DigestBefore = m33Manifest.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33ManifestReadBack = JSON.parse(await fs.readFile(m33ManifestPath, 'utf8'));
+  const m33DigestAfter = m33ManifestReadBack.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  if (JSON.stringify(m33DigestBefore) !== JSON.stringify(m33DigestAfter)) {
+    throw new Error('M33(h): capability_digest must not flip after sensitivity index run');
+  }
+
+  // M33(i): tusq compile golden-file output is byte-identical pre and post-M33
+  const m33CompileDir = path.join(m33TmpDir, 'compile-check');
+  await fs.mkdir(m33CompileDir, { recursive: true });
+  const m33CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m33CompileDir, 'tusq.manifest.json'), JSON.stringify(m33CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m33CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m33CompileDir });
+  const m33CompiledToolPath = path.join(m33CompileDir, 'tusq-tools', 'list_users.json');
+  const m33CompileContentBefore = await fs.readFile(m33CompiledToolPath, 'utf8');
+  runCli(['sensitivity', 'index', '--manifest', path.join(m33CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m33CompileDir });
+  const m33CompileContentAfter = await fs.readFile(m33CompiledToolPath, 'utf8');
+  if (m33CompileContentBefore !== m33CompileContentAfter) {
+    throw new Error('M33(i): tusq compile output must be byte-identical before and after sensitivity index run');
+  }
+  const m33ToolsFiles = await fs.readdir(path.join(m33CompileDir, 'tusq-tools'));
+  if (m33ToolsFiles.some((f) => f.includes('sensitivity'))) {
+    throw new Error(`M33(i): sensitivity index must not write into tusq-tools: ${m33ToolsFiles.join(', ')}`);
+  }
+
+  // M33(j): tusq surface plan, tusq domain index, and tusq effect index outputs are byte-identical pre and post-M33
+  const m33SurfaceBefore = runCli(['surface', 'plan', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33SurfaceAfter = runCli(['surface', 'plan', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  if (m33SurfaceBefore !== m33SurfaceAfter) {
+    throw new Error('M33(j): tusq surface plan output must be byte-identical before and after sensitivity index run');
+  }
+  const m33DomainBefore = runCli(['domain', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33DomainAfter = runCli(['domain', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  if (m33DomainBefore !== m33DomainAfter) {
+    throw new Error('M33(j): tusq domain index output must be byte-identical before and after sensitivity index run');
+  }
+  const m33EffectBefore = runCli(['effect', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir });
+  const m33EffectAfter = runCli(['effect', 'index', '--manifest', m33ManifestPath, '--json'], { cwd: m33TmpDir }).stdout;
+  if (m33EffectBefore !== m33EffectAfter) {
+    throw new Error('M33(j): tusq effect index output must be byte-identical before and after sensitivity index run');
+  }
+
+  // M33(l): empty-capabilities manifest emits documented human line and sensitivities: [] in JSON
+  const m33EmptyManifestPath = path.join(m33TmpDir, 'empty.json');
+  await fs.writeFile(m33EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m33EmptyHuman = runCli(['sensitivity', 'index', '--manifest', m33EmptyManifestPath], { cwd: m33TmpDir });
+  if (m33EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M33(l): empty-capabilities human output must be exactly the documented line:\n${m33EmptyHuman.stdout}`);
+  }
+  const m33EmptyJson = JSON.parse(runCli(['sensitivity', 'index', '--manifest', m33EmptyManifestPath, '--json'], { cwd: m33TmpDir }).stdout);
+  if (!Array.isArray(m33EmptyJson.sensitivities) || m33EmptyJson.sensitivities.length !== 0) {
+    throw new Error(`M33(l): empty-capabilities JSON must have sensitivities: [] :\n${JSON.stringify(m33EmptyJson)}`);
+  }
+
+  // M33(m): --out <path> writes to the path and emits no stdout on success
+  const m33OutPath = path.join(m33TmpDir, 'sensitivity-index-out.json');
+  const m33OutResult = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--out', m33OutPath], { cwd: m33TmpDir });
+  if (m33OutResult.stdout !== '') {
+    throw new Error(`M33(m): --out must emit no stdout on success, got: ${m33OutResult.stdout}`);
+  }
+  const m33OutContent = JSON.parse(await fs.readFile(m33OutPath, 'utf8'));
+  if (!Array.isArray(m33OutContent.sensitivities) || m33OutContent.sensitivities.length !== 5) {
+    throw new Error(`M33(m): --out file must contain five sensitivity entries: ${JSON.stringify(m33OutContent.sensitivities)}`);
+  }
+
+  // M33(n): --out to an unwritable path exits 1 with empty stdout
+  const m33BadOut = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (m33BadOut.stdout !== '') {
+    throw new Error(`M33(n): --out unwritable must produce empty stdout, got: ${m33BadOut.stdout}`);
+  }
+
+  // M33(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m33TusqOutResult = runCli(
+    ['sensitivity', 'index', '--manifest', m33ManifestPath, '--out', path.join(m33TmpDir, '.tusq', 'index.json')],
+    { cwd: m33TmpDir, expectedStatus: 1 }
+  );
+  if (!m33TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m33TusqOutResult.stdout !== '') {
+    throw new Error(`M33(o): --out .tusq/ must reject with correct message:\nstdout=${m33TusqOutResult.stdout}\nstderr=${m33TusqOutResult.stderr}`);
+  }
+
+  // M33(p): capability with sensitivity_class: null is bucketed into unknown and unknown bucket appears last
+  const m33IndexJson = JSON.parse(m33Json1.stdout);
+  const m33LastSensitivity = m33IndexJson.sensitivities[m33IndexJson.sensitivities.length - 1];
+  if (m33LastSensitivity.sensitivity_class !== 'unknown') {
+    throw new Error(`M33(p): unknown bucket must appear last; got: ${m33LastSensitivity.sensitivity_class}`);
+  }
+  const m33UnknownEntry = m33IndexJson.sensitivities.find((e) => e.sensitivity_class === 'unknown');
+  if (!m33UnknownEntry || !m33UnknownEntry.capabilities.includes('no_class_route')) {
+    throw new Error(`M33(p): no_class_route (sensitivity_class: null) must be in unknown bucket:\n${JSON.stringify(m33UnknownEntry)}`);
+  }
+
+  // M33(q): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m33ValidAggregationKeys = new Set(['class', 'unknown']);
+  for (const entry of m33IndexJson.sensitivities) {
+    if (!m33ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M33(q): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for sensitivity '${entry.sensitivity_class}'`);
+    }
+  }
+  const m33PublicEntry = m33IndexJson.sensitivities.find((e) => e.sensitivity_class === 'public');
+  if (m33PublicEntry.aggregation_key !== 'class') {
+    throw new Error(`M33(q): named class 'public' must have aggregation_key 'class', got: ${m33PublicEntry.aggregation_key}`);
+  }
+  if (m33UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M33(q): unknown bucket must have aggregation_key 'unknown', got: ${m33UnknownEntry.aggregation_key}`);
+  }
+
+  // M33(r): empty buckets MUST NOT appear in output
+  const m33PresentClasses = m33IndexJson.sensitivities.map((e) => e.sensitivity_class);
+  if (m33PresentClasses.length !== 5) {
+    throw new Error(`M33(r): expected exactly 5 non-empty buckets (public,internal,confidential,restricted,unknown); got: ${m33PresentClasses.join(',')}`);
+  }
+  // Verify a manifest with only public capabilities produces exactly one bucket
+  const m33PublicOnlyManifestPath = path.join(m33TmpDir, 'public-only.json');
+  await fs.writeFile(m33PublicOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m33PublicOnlyJson = JSON.parse(runCli(['sensitivity', 'index', '--manifest', m33PublicOnlyManifestPath, '--json'], { cwd: m33TmpDir }).stdout);
+  if (m33PublicOnlyJson.sensitivities.length !== 1 || m33PublicOnlyJson.sensitivities[0].sensitivity_class !== 'public') {
+    throw new Error(`M33(r): public-only manifest must produce exactly one bucket [public]; got: ${JSON.stringify(m33PublicOnlyJson.sensitivities.map((e) => e.sensitivity_class))}`);
+  }
+
+  // M33(s): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // internal bucket: list_users declared before internal_report → list_users must appear first
+  const m33InternalEntry = m33IndexJson.sensitivities.find((e) => e.sensitivity_class === 'internal');
+  if (!m33InternalEntry || m33InternalEntry.capabilities[0] !== 'list_users' || m33InternalEntry.capabilities[1] !== 'internal_report') {
+    throw new Error(`M33(s): within internal bucket, capabilities must follow manifest declared order (list_users, internal_report); got: ${JSON.stringify(m33InternalEntry ? m33InternalEntry.capabilities : null)}`);
+  }
+
+  // M33(t): has_destructive_side_effect flag is correct per bucket
+  // confidential bucket has create_invoice (side_effect_class: destructive) → must be true
+  const m33ConfidentialEntry = m33IndexJson.sensitivities.find((e) => e.sensitivity_class === 'confidential');
+  if (!m33ConfidentialEntry || m33ConfidentialEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M33(t): confidential bucket must have has_destructive_side_effect=true (create_invoice is destructive); got: ${JSON.stringify(m33ConfidentialEntry)}`);
+  }
+  // public bucket has get_status (side_effect_class: read) → must be false
+  if (!m33PublicEntry || m33PublicEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M33(t): public bucket must have has_destructive_side_effect=false (get_status is read); got: ${JSON.stringify(m33PublicEntry)}`);
+  }
+
+  // M33(u): has_unknown_auth flag is correct per bucket
+  // public bucket has get_status (auth_scheme: unknown) → must be true
+  if (m33PublicEntry.has_unknown_auth !== true) {
+    throw new Error(`M33(u): public bucket must have has_unknown_auth=true (get_status has auth_scheme: unknown); got: ${m33PublicEntry.has_unknown_auth}`);
+  }
+  // confidential bucket has create_invoice (auth_scheme: bearer) → must be false
+  if (m33ConfidentialEntry.has_unknown_auth !== false) {
+    throw new Error(`M33(u): confidential bucket must have has_unknown_auth=false (create_invoice has auth_scheme: bearer); got: ${m33ConfidentialEntry.has_unknown_auth}`);
+  }
+
+  // M33: unknown flag exits 1 with error on stderr and empty stdout
+  const m33UnknownFlag = runCli(['sensitivity', 'index', '--manifest', m33ManifestPath, '--badFlag'], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m33UnknownFlag.stdout !== '') {
+    throw new Error(`M33: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m33UnknownFlag.stdout}\nstderr=${m33UnknownFlag.stderr}`);
+  }
+
+  // M33: Invalid manifest missing capabilities array
+  const m33NoCapsManifestPath = path.join(m33TmpDir, 'no-caps.json');
+  await fs.writeFile(m33NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m33NoCaps = runCli(['sensitivity', 'index', '--manifest', m33NoCapsManifestPath], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m33NoCaps.stdout !== '') {
+    throw new Error(`M33: missing capabilities array must exit 1:\nstdout=${m33NoCaps.stdout}\nstderr=${m33NoCaps.stderr}`);
+  }
+
+  // M33: help text includes planning-aid framing
+  const m33HelpResult = runCli(['sensitivity', 'index', '--help'], { cwd: m33TmpDir });
+  if (!m33HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M33: sensitivity index help must include planning-aid framing:\n${m33HelpResult.stdout}`);
+  }
+
+  // M33: unknown subcommand exits 1 with Unknown subcommand: message
+  const m33UnknownSub = runCli(['sensitivity', 'bogusub'], { cwd: m33TmpDir, expectedStatus: 1 });
+  if (!m33UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m33UnknownSub.stdout !== '') {
+    throw new Error(`M33: unknown subcommand must exit 1 with error on stderr, empty stdout:\nstdout=${m33UnknownSub.stdout}\nstderr=${m33UnknownSub.stderr}`);
+  }
+
+  await fs.rm(m33TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 

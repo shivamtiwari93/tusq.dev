@@ -518,6 +518,45 @@ tusq effect index --effect unknown
 tusq effect index --json
 ```
 
+## Sensitivity Index
+
+The `sensitivity_class` field on each capability (derived by the M28 classifier) drives per-bucket aggregation in `tusq sensitivity index`. The command groups capabilities by their `sensitivity_class` value in a deterministic closed-enum order and emits a per-bucket index with name-and-counters fields only.
+
+**How bucketing works:**
+
+| `sensitivity_class` field value | Bucket | `aggregation_key` |
+|---------------------------------|--------|-------------------|
+| `"public"` | `public` bucket | `"class"` |
+| `"internal"` | `internal` bucket | `"class"` |
+| `"confidential"` | `confidential` bucket | `"class"` |
+| `"restricted"` | `restricted` bucket | `"class"` |
+| `null`, missing, empty-string, or any other value | Zero-evidence `unknown` bucket | `"unknown"` |
+
+**Bucket iteration order:** `public → internal → confidential → restricted → unknown` (closed-enum order). This is distinct from M31's domain-index first-appearance rule — M33 buckets on a closed enum (the M28 `SENSITIVITY_CLASSES` constant), so the output order is globally deterministic regardless of the order capabilities appear in the manifest. The `unknown` bucket is always appended last. Empty buckets do not appear.
+
+**Within each bucket:** Capability names appear in manifest declared order (NOT alphabetized), mirroring M31 and M32.
+
+**What sensitivity index reads and what it never does:**
+
+- Reads: `capability.sensitivity_class`, `capability.name`, `capability.approved`, `capability.side_effect_class`, `capability.auth_requirements.auth_scheme`.
+- Never modifies the manifest. Never flips `capability_digest`. Never writes to `.tusq/`.
+- Never modifies the M28 `sensitivity_class` derivation rules. Never alters the M30 `gated_reason: restricted_sensitivity` or `gated_reason: confidential_sensitivity` surface-eligibility rules.
+- `tusq sensitivity index` is a planning aid only — it does NOT enforce sensitivity policy at runtime, does NOT enforce data-class access control, does NOT certify GDPR/HIPAA/SOC2/PCI compliance, does NOT generate retention policy, and does NOT derive a composite risk tier.
+
+```bash
+# View sensitivity index
+tusq sensitivity index
+
+# Filter to a single class
+tusq sensitivity index --sensitivity confidential
+
+# View the zero-evidence bucket
+tusq sensitivity index --sensitivity unknown
+
+# Machine-readable JSON
+tusq sensitivity index --json
+```
+
 ## Regeneration behavior
 
 When you regenerate a manifest, previously approved capabilities are preserved by method+path key when possible.
