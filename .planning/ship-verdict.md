@@ -2,6 +2,39 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_98d87515fa014a92 (role=qa, run_7894753f9c47c8e3, M30 re-verification no-source-change cycle, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_f766c529523ce892, role=dev, HEAD e67c9d5) for run_7894753f9c47c8e3 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn made zero source changes; M30 already shipped at V1.11.** The dev turn's DEC-002 declares "No new source code modifications made this turn. M30 (Static Embeddable-Surface Plan Export) is fully implemented at V1.11." `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` returns empty output — confirmed on HEAD e67c9d5. No regression possible from a zero-source-change turn. Challenge resolved.
+
+**Challenge 2 — M30 deliverables confirmed present and functional.** `node bin/tusq.js help` exits 0 with 14 commands including `surface` between `redaction` and `version`. `node bin/tusq.js surface plan --help` exits 0 with planning-aid framing callout. CLI surface, enum values, flag surface, and exit codes all match the M30 spec. Challenge resolved.
+
+**Challenge 3 — All 21 eval scenarios pass.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (21 scenarios)`. The 21st scenario (`surface-plan-determinism`) exercises byte-identical JSON output across 3 runs with closed-enum gated_reason values. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. Implementation is correct for manually-edited manifests. Non-blocking at V1.11. No new objections raised.
+
+**Challenge 5 — OBJ-001-M30 (low, non-blocking) carried forward.** `surface-plan-determinism` eval uses `synthetic_capabilities` rather than a scanned fixture, same pattern as M29 auth_requirements_synthetic scenarios. Acceptable for determinism testing; scanned fixture variant deferred.
+
+**Challenge 6 — All 145 acceptance criteria (REQ-001–REQ-145) remain PASS.** REQ-129–REQ-145 were added in prior run QA turn (turn_f95801133a76aecb, run_24ccd92f593d8647) and remain accurate coverage for M30. No new REQs required since no new scope shipped. Challenge resolved.
+
+**Challenge 7 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-145 (all PASS). RELEASE_NOTES.md documents M1–M30 including V1.11. ship-verdict.md (this file) carries this turn's independent challenge. Challenge resolved.
+
+**Challenge 8 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD e67c9d5, run_7894753f9c47c8e3, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (21 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 14-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help |
+| `node bin/tusq.js surface plan --help` | Exit 0 — planning-aid framing callout present |
+| `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | Empty output — zero source drift |
+
+All 145 acceptance criteria (REQ-001–REQ-145) pass. OBJ-001 (medium, non-blocking) and OBJ-001-M30 (low, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
 ## QA Challenge — turn_f95801133a76aecb (role=qa, run_24ccd92f593d8647, M30 surface plan implementation, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_73dc44cfb9cef2c7, role=dev, HEAD db26400) for run_24ccd92f593d8647 independently rather than rubber-stamping it.
