@@ -367,6 +367,66 @@
           "expected_auth_roles": []
         }
       ]
+    },
+    {
+      "id": "auth-scheme-api-key-r2-precedence",
+      "description": "M29 R2: middleware matching api_key pattern produces auth_scheme=api_key with evidence_source=middleware_name",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "POST",
+          "path": "/data",
+          "handler": "postData",
+          "middleware": ["apiKeyAuth"],
+          "expected_auth_scheme": "api_key",
+          "expected_evidence_source": "middleware_name"
+        }
+      ]
+    },
+    {
+      "id": "auth-scheme-session-r3-precedence",
+      "description": "M29 R3: middleware matching session pattern produces auth_scheme=session with evidence_source=middleware_name",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "GET",
+          "path": "/profile",
+          "handler": "getProfile",
+          "middleware": ["sessionGuard"],
+          "expected_auth_scheme": "session",
+          "expected_evidence_source": "middleware_name"
+        }
+      ]
+    },
+    {
+      "id": "auth-scheme-basic-r4-precedence",
+      "description": "M29 R4: middleware matching basic pattern produces auth_scheme=basic with evidence_source=middleware_name",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "GET",
+          "path": "/admin/stats",
+          "handler": "getStats",
+          "middleware": ["basicAuth"],
+          "expected_auth_scheme": "basic",
+          "expected_evidence_source": "middleware_name"
+        }
+      ]
+    },
+    {
+      "id": "auth-scheme-oauth-r5-precedence",
+      "description": "M29 R5: middleware matching oauth pattern produces auth_scheme=oauth with evidence_source=middleware_name",
+      "scenario_type": "auth_requirements_synthetic",
+      "synthetic_routes": [
+        {
+          "method": "GET",
+          "path": "/resources",
+          "handler": "getResources",
+          "middleware": ["oauthGuard"],
+          "expected_auth_scheme": "oauth",
+          "expected_evidence_source": "middleware_name"
+        }
+      ]
     }
   ]
 }

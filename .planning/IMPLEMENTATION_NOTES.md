@@ -2,6 +2,46 @@
 
 ---
 
+## Dev Turn turn_4553eefe4fa30a21 — Implementation Phase: M29 R2-R5 Eval Coverage (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**Phase:** implementation
+**HEAD:** 6451478f35b6e431f3b7c63efff3befed99ed005
+
+### Challenge To Prior Dev Turn
+
+**Prior turn:** turn_74d79d0c8b04830f (role=dev, phase=planning)
+
+That turn was a loop-recovery re-verification in the planning phase that correctly challenged PM turn_dbadf32b59bc79ce, upheld all five decisions and OBJ-001/OBJ-002, ran baseline verification (npm test exit 0, 16 scenarios, zero source drift, M29 line 317 — SHIPPED V1.10), and set phase_transition_request='implementation'. All five decisions and both objections are upheld. OBJ-001 (gate evaluator/state desync, high severity) has resolved itself — the orchestrator has now successfully advanced to the implementation phase, confirming the gate evaluator loop is cleared.
+
+### Implementation Work
+
+V1.10 (M1-M29) is fully shipped in src/cli.js. The implementation phase confirms the charter is complete and addresses the one genuine coverage gap discovered during review: M29 R2-R5 auth-scheme rules were covered in smoke.mjs but absent from the governed eval-regression scenarios.
+
+**Change:** `tests/evals/governed-cli-scenarios.json` — added 4 `auth_requirements_synthetic` scenarios:
+- `auth-scheme-api-key-r2-precedence`: `apiKeyAuth` middleware → `auth_scheme=api_key`
+- `auth-scheme-session-r3-precedence`: `sessionGuard` middleware → `auth_scheme=session`
+- `auth-scheme-basic-r4-precedence`: `basicAuth` middleware → `auth_scheme=basic`
+- `auth-scheme-oauth-r5-precedence`: `oauthGuard` middleware → `auth_scheme=oauth`
+
+These follow the exact pattern of `auth-scheme-bearer-r1-precedence` and exercise the remaining four rules of the M29 six-rule first-match-wins decision table. The eval scenario count advances from 16 to 20.
+
+### Verification
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (20 scenarios)'
+- git diff HEAD --stat — src/ bin/ tests/ website/ package.json package-lock.json: one file changed (governed-cli-scenarios.json)
+- M29 ROADMAP.md:317: 'M29: Static Auth Requirements Inference from Manifest Evidence (~0.5 day) — SHIPPED V1.10'
+
+### Decisions
+
+- DEC-001: Challenged prior planning-phase dev turn (turn_74d79d0c8b04830f) explicitly; all five decisions and OBJ-001/OBJ-002 upheld. OBJ-001 resolved by orchestrator advancing to implementation phase.
+- DEC-002: No new charter bound beyond V1.10. The 4 new eval scenarios are within M29 scope (already approved and shipped).
+- DEC-003: Added R2-R5 eval-regression scenarios to governed-cli-scenarios.json. Scenario count: 16 → 20. npm test exit 0.
+- DEC-004: Modified only dev-owned files: tests/evals/governed-cli-scenarios.json and .planning/IMPLEMENTATION_NOTES.md. Did NOT modify reserved orchestrator state files.
+- DEC-005: Setting phase_transition_request='qa'. Implementation complete: V1.10 (M1-M29) verified, R2-R5 eval coverage added, npm test exit 0 (20 scenarios).
+
+---
+
 ## Dev Turn turn_74d79d0c8b04830f — Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
