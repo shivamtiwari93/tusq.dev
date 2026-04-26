@@ -2,6 +2,44 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_38cdeb85330f729b (role=qa, run_9b4197b36f01ca42, M34 re-verification no-source-change cycle, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_de5362f531cf37b9, role=dev, HEAD 035126b) for run_9b4197b36f01ca42 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn scope verified: only IMPLEMENTATION_NOTES.md changed.** `git diff e63b515..HEAD --name-only` → `.planning/IMPLEMENTATION_NOTES.md` only. Zero src/, bin/, tests/, website/, package.json, package-lock.json changes. Zero reserved state, QA-owned, or launch-owned files modified. This is the 8th recurrence of the vision_scan stale-checkbox false-positive pattern (M28→M30→M31→M32→M33→M33-again→M34-again→M34-again-again). Challenge resolved.
+
+**Challenge 2 — npm test exits 0 with 25 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (25 scenarios)`. No regression since turn_28b0298523d838a3 (run_bf8efb6b9c733000). Challenge resolved.
+
+**Challenge 3 — CLI surface confirmed at 18 commands.** `node bin/tusq.js help` → exit 0; 18 commands with `method` between `effect` and `policy`. Challenge resolved.
+
+**Challenge 4 — `method index --help` exits 0 with planning-aid framing.** Includes `This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.` Bucket iteration order `GET → POST → PUT → PATCH → DELETE → unknown` confirmed. Challenge resolved.
+
+**Challenge 5 — Zero source drift since M34 shipping run.** `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0. V1.15 shipped boundary is fully intact. Challenge resolved.
+
+**Challenge 6 — No new acceptance criteria required.** No new scope shipped in this run. REQ-001–REQ-239 remain complete and accurate coverage for the V1.15 (M1–M34) shipped boundary. Challenge resolved.
+
+**Challenge 7 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline; implementation correct for manually-edited manifests. Non-blocking.
+
+**Challenge 8 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 9 — OBJ-003 (low, non-blocking) carried forward.** M31 per-domain flag value assertions not independently smoke-asserted; M32/M33/M34 close their own analogs. Non-blocking.
+
+**Challenge 10 — All 239 acceptance criteria (REQ-001–REQ-239) pass.** No new REQs added (no new scope). npm test exit 0 + 25 scenarios independently confirms. Challenge resolved.
+
+**Challenge 11 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 035126b, run_9b4197b36f01ca42, 2026-04-26)
+
+| Command | Exit Code | Notes |
+|---------|-----------|-------|
+| `npm test` | 0 | Smoke tests passed; Eval regression harness passed (25 scenarios) |
+| `node bin/tusq.js help` | 0 | 18 commands; `method` between `effect` and `policy` |
+| `node bin/tusq.js method index --help` | 0 | Planning-aid framing confirmed; GET→POST→PUT→PATCH→DELETE→unknown order |
+| `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | 0 | Zero source drift |
+| `git diff e63b515..HEAD --name-only` | 0 | Only .planning/IMPLEMENTATION_NOTES.md changed since PM turn |
+
+---
+
 ## QA Challenge — turn_28b0298523d838a3 (role=qa, run_bf8efb6b9c733000, M34 verification, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_c530db27dd4d2941, role=dev, HEAD ddfa687) for run_bf8efb6b9c733000 independently rather than rubber-stamping it.
