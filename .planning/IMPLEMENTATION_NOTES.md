@@ -2,6 +2,36 @@
 
 ---
 
+## Dev Turn turn_d94cf8ede4f14a16 — Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** a185872714ed74b7925197a8405721abbbc594f2
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_e283891ba22f1d5d (role=pm, phase=planning)
+
+That PM turn was a zero-edit recovery turn that correctly challenged dev turn_a40426e0c05703da, upheld all five decisions and OBJ-001/OBJ-002, independently re-verified all four planning_signoff gate artifacts, ran baseline verification (npm test exit 0, 16 scenarios, zero source drift, M29 line 317 — SHIPPED V1.10), and set phase_transition_request='implementation' under auto_approve. All PM decisions upheld.
+
+The prior PM turn's challenge of the prior dev turn was correct: the dev turn's root-cause investigation (state.json last_completed_turn desync, gate evaluator PM-participation lookup failure) is documented and upheld. OBJ-001 (high) remains open.
+
+### Baseline Re-Verification (HEAD a185872714ed74b7925197a8405721abbbc594f2)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (16 scenarios)'
+- git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json: empty (zero source drift)
+- PM_SIGNOFF.md: 154743B, ROADMAP.md: 92968B, SYSTEM_SPEC.md: 269920B, command-surface.md: 83060B
+- ROADMAP.md:317: 'M29: Static Auth Requirements Inference from Manifest Evidence (~0.5 day) — SHIPPED V1.10'
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_e283891ba22f1d5d) explicitly; all five decisions upheld.
+- DEC-002: No new charter bound; two candidates remain in ROADMAP_NEXT_CANDIDATES.md.
+- DEC-003: Baseline re-verification pass on HEAD a185872 — all gate artifacts intact, V1.10 boundary intact.
+- DEC-004: Modified only .planning/IMPLEMENTATION_NOTES.md (this entry).
+- DEC-005: phase_transition_request='implementation' under auto_approve.
+
+---
+
 ## Dev Turn turn_a40426e0c05703da — Loop Root-Cause Diagnosis / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
