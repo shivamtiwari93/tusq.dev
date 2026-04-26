@@ -2,6 +2,64 @@
 
 ---
 
+## Dev Turn turn_c9732a9f04c371a1 — M29 Stale-Checkbox Reconciliation Baseline Re-Verification (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** c4a38fd08fbe83597e76255b1aadc4429d740077 (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_df1112d797428a6b, role=pm, phase=planning, intent_1777183295943_20ab) operated on intake intent vision_scan p? with charter "[roadmap] M29: Static Auth Requirements Inference from Manifest Evidence (~0.5 day)."
+
+Not rubber-stamping. Explicit challenges registered:
+
+1. **PM DEC-001 is correct** — The vision_scan re-detected the 17 unchecked M29 ROADMAP checkboxes literally. PM correctly identified this as a stale-checkbox false positive (the third such occurrence across consecutive runs). M29 shipped in full at V1.10 (run_b784b6baf905fc02). The 17 verifiable shipped artifacts (classifyAuthRequirements at src/cli.js:2803, zero-evidence guard at :2814, R6 branch at :2839, default-unknown fallback at :2843, invocation at :471, --auth-scheme at :812-849, intersection-with-sensitivity at :886, tusq docs auth-scheme rendering at :1193, SYSTEM_SPEC § M29 at line 2954, Constraint 22, website/docs/manifest-format.md and website/docs/cli-reference.md both referencing auth_requirements/--auth-scheme, 16-scenario eval) provide complete reconciliation evidence. Upheld.
+
+2. **PM DEC-002 is correct** — Flipping all 17 M29 sub-item checkboxes `[ ]` → `[x]` and prepending a reconciliation note with file:line evidence per sub-item is the correct remediation. The M29 milestone heading now reads "SHIPPED V1.10". OBJ-001 (R6 dead-code) acknowledged as non-defect in reconciliation note. Upheld.
+
+3. **PM DEC-003 gate discipline is correct** — PM modified only .planning/ROADMAP.md (17 checkbox flips + reconciliation note). Zero source/test/website drift confirmed. PM_SIGNOFF.md, SYSTEM_SPEC.md, and command-surface.md were correctly left untouched since they already accurately describe the V1.10 boundary (SYSTEM_SPEC § M29 at line 2954, Constraint 22 present). Upheld.
+
+4. **PM DEC-004 auto_approve transition is correct** — The planning_signoff gate required artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md) all exist with the V1.10 charter intact; ROADMAP.md M29 checkboxes now match shipped reality. Phase transition to implementation is valid under auto_approve policy. Upheld.
+
+5. **PM OBJ-001 (systemic stale-checkbox noise) is valid** — Three consecutive stale-checkbox false positives from vision_scan is a systemic issue. Operator-level filter configuration is warranted. Carried forward as non-blocking.
+
+**Consequence for this dev turn:** No new charter was bound. The V1.10 shipped boundary (M1–M29) remains operative. NO new source code is required. This turn is a baseline re-verification pass only.
+
+### Scope of This Turn
+
+This run (run_3c9aac455742ac3e) was triggered by intake intent `intent_1777183295943_20ab` (vision_scan M29 stale-checkbox re-detection). The PM correctly determined this was a false positive and remediated by reconciling the ROADMAP checkboxes only. The PM set `phase_transition_request: 'implementation'` per `auto_approve` policy. This dev turn's responsibility is:
+
+1. Challenge the prior PM turn explicitly (done above — challenges noted, PM logic upheld)
+2. Independently verify the baseline is stable on HEAD c4a38fd
+3. Confirm no source drift was introduced by the PM's planning-artifact update
+4. Close the `implementation_complete` gate with no source changes
+
+No new charter is present in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md. The two existing unbound charter candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+
+### Baseline Re-Verification (HEAD c4a38fd)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | c4a38fd08fbe83597e76255b1aadc4429d740077 |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` | empty — no source drift |
+
+**No source changes were made or required.** The PM's planning-artifact edit (M29 checkbox reconciliation in ROADMAP.md) did not touch src/, bin/, tests/, or website/ — confirmed by zero-diff above. Shipped V1.10 boundary (M1–M29, 13 CLI commands, 16 eval scenarios) is intact.
+
+### Shipped Boundary Confirmation
+
+- **CLI surface:** 13 top-level commands (unchanged from M29 / V1.10)
+- **Eval scenarios:** 16 (unchanged)
+- **New dependencies:** 0
+- **New source files:** 0
+- **M29 charter status:** fully shipped at V1.10; ROADMAP checkboxes reconciled by PM this turn
+- **Unbound charter candidates:** 2 (embeddable-surface, static-MCP-descriptor) — in ROADMAP_NEXT_CANDIDATES.md only
+
+---
+
 ## Dev Turn turn_76e50fc1cfd4ef0f — M28 Stale-Checkbox Reconciliation Baseline Re-Verification (run_d69cb0392607d170, 2026-04-26)
 
 **Run:** run_d69cb0392607d170
