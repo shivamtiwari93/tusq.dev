@@ -651,6 +651,76 @@
       "expected_valid_sensitivity_classes": ["public", "internal", "confidential", "restricted", "unknown"],
       "expected_valid_aggregation_keys": ["class", "unknown"],
       "expected_sensitivity_order": "public,internal,confidential,restricted,unknown"
+    },
+    {
+      "id": "method-index-determinism",
+      "description": "M34: tusq method index --json produces byte-identical output across three runs on the same manifest; http_method bucket-key enum is closed (six values: GET/POST/PUT/PATCH/DELETE/unknown); aggregation_key enum is closed (two values: method/unknown); bucket iteration order is the frozen closed-enum order (GET → POST → PUT → PATCH → DELETE, then unknown last)",
+      "scenario_type": "method_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "create_invoice",
+          "domain": "billing",
+          "method": "POST",
+          "path": "/billing/invoices",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "get_status",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/status",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        },
+        {
+          "name": "delete_user",
+          "domain": "users",
+          "method": "DELETE",
+          "path": "/users/:id",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "update_user",
+          "domain": "users",
+          "method": "PATCH",
+          "path": "/users/:id",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "no_method_route",
+          "domain": null,
+          "method": null,
+          "path": "/ping",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        }
+      ],
+      "expected_valid_http_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "unknown"],
+      "expected_valid_aggregation_keys": ["method", "unknown"],
+      "expected_method_order": "GET,POST,PATCH,DELETE,unknown"
     }
   ]
 }

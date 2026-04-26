@@ -1364,3 +1364,101 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Closed-enum order is NOT risk-precedence | The `public → internal → confidential → restricted → unknown` order is a stable-output convention; docs/README/CLI-help MUST NOT describe it as "risk-ascending," "sensitivity-ordered," "low-to-high," or any phrase implying risk semantics |
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
+
+## M34 Product CLI Surface
+
+M34 (Static Capability HTTP Method Index Export from Manifest Evidence — V1.15) adds the `method` top-level noun with a single subcommand `index`. The CLI surface grows from **17 → 18** commands, with `method` inserted alphabetically between `effect` and `policy` (`method` vs `policy`: `m` < `p`; `method` vs `effect`: `e` < `m`).
+
+### M34 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq method` | Enumerate subcommands block (mirrors `tusq sensitivity`, `tusq effect`, `tusq domain`, `tusq surface`, etc.) |
+| `tusq method index` | Produce a read-only, deterministic HTTP method index of the manifest's capabilities |
+
+### M34 Flags
+
+| Flag | Type | Default | Notes |
+|------|------|---------|-------|
+| `--method <value>` | string | all methods | Filter to a single HTTP method bucket; **case-sensitive uppercase only**; unrecognized value exits 1 with `Unknown method: <value>` |
+| `--manifest <path>` | string | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | string | — | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | boolean | false | Emit machine-readable JSON |
+
+### M34 Frozen Six-Value `http_method` Bucket-Key Enum
+
+| Value | Description |
+|-------|-------------|
+| `GET` | Named method: HTTP GET (read/query) |
+| `POST` | Named method: HTTP POST (create/submit) |
+| `PUT` | Named method: HTTP PUT (replace) |
+| `PATCH` | Named method: HTTP PATCH (partial update) |
+| `DELETE` | Named method: HTTP DELETE (delete) |
+| `unknown` | Zero-evidence catchall for null/missing/empty-string/HEAD/OPTIONS/non-canonical `method` values |
+
+The enum is immutable once M34 ships; any addition is a material governance event requiring its own ROADMAP milestone. M34 MUST NOT modify, override, or augment the upstream scanner's `method` field; the enum is a bucket-key, not a re-classifier.
+
+### M34 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `method` | Named buckets (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) |
+| `unknown` | Zero-evidence catchall bucket |
+
+The two-value enum is immutable once M34 ships. Any addition is a material governance event requiring its own ROADMAP milestone.
+
+### M34 Per-Bucket Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `http_method` | string | One of the six enum values (`"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`, `"unknown"`) |
+| `aggregation_key` | string | `"method"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability in bucket has `side_effect_class === "destructive"` |
+| `has_unknown_auth` | boolean | True iff any capability in bucket has `auth_requirements.auth_scheme === "unknown"` |
+
+### M34 Bucket Iteration Order
+
+Closed-enum order: `GET → POST → PUT → PATCH → DELETE`, then `unknown` last. This is a deterministic stable-output convention that matches the conventional REST CRUD reading order but carries **no risk semantic** — **NOT** a risk-precedence statement, NOT destructive-ascending, NOT safety-ordered. Within each bucket, capabilities appear in manifest declared order.
+
+### M34 Default-Preservation Table (17 Commands Unchanged)
+
+| Commands | Invariant |
+|----------|-----------|
+| All 17 existing commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, effect, policy, redaction, sensitivity, surface, version, help) | Byte-identical stdout, stderr, and exit codes before and after M34 |
+
+### M34 Failure UX
+
+| Error condition | Exit code | stderr | stdout |
+|-----------------|-----------|--------|--------|
+| Missing manifest file | 1 | `Manifest not found: <path>` | empty |
+| Invalid JSON in manifest | 1 | `Invalid manifest JSON: <path>` | empty |
+| Missing capabilities array | 1 | `Invalid manifest: missing capabilities array` | empty |
+| Unknown `--method` value (including lowercase like `get`) | 1 | `Unknown method: <value>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+
+### M34 Local-Only Invariants
+
+| Invariant | Verification |
+|-----------|-------------|
+| Read-only manifest | mtime/content byte-identical before and after every `tusq method index` invocation |
+| No `.tusq/` writes | Confirmed by absence of new files in `.tusq/` after any invocation |
+| Zero `capability_digest` flips | Hash-before vs hash-after assertion is byte-identical on every capability |
+| `tusq compile` byte-identity | Golden-file smoke assertion confirms compile output is byte-identical pre and post-M34 |
+| `tusq surface plan` byte-identity | Output byte-for-byte unchanged pre and post-M34 |
+| `tusq domain index` byte-identity | Output byte-for-byte unchanged pre and post-M34 |
+| `tusq effect index` byte-identity | Output byte-for-byte unchanged pre and post-M34 |
+| `tusq sensitivity index` byte-identity | Output byte-for-byte unchanged pre and post-M34 |
+| Deterministic output | Running twice on the same manifest produces byte-identical stdout in both human and `--json` modes; iteration order is fixed by the closed enum (`GET → POST → PUT → PATCH → DELETE → unknown`); no wall-clock fields inside per-bucket entries |
+| Frozen six-value `http_method` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Frozen two-value `aggregation_key` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Case-sensitive `--method` filter | `get`, `delete`, etc. exit 1 with `Unknown method:`; only uppercase canonical values accepted |
+| Closed-enum order is NOT risk-precedence | The `GET → POST → PUT → PATCH → DELETE → unknown` order is a stable-output convention; docs/README/CLI-help MUST NOT describe it as "risk-ascending," "destructive-ascending," "safety-ordered," or any phrase implying risk semantics |
+| Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "routes HTTP methods at runtime", "validates REST conventions", "certifies idempotency", "alters the M32 side_effect_class derivation", or "alters the M30 gating rule" |
+| Future method milestones reserved | M-Risk-1, M-Idempotency-1, M-RestConv-1 ship under their own ROADMAP entries with fresh acceptance contracts; M34 is **not** a substitute for any of them |

@@ -3627,6 +3627,94 @@ Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manife
 - `website/docs/cli-reference.md` — `tusq sensitivity index` documentation.
 - `website/docs/manifest-format.md` — Sensitivity Index subsection.
 
+## M34: Static Capability HTTP Method Index Export from Manifest Evidence (V1.15 — PROPOSED)
+
+> Materialized by dev in run_bf8efb6b9c733000, turn_c530db27dd4d2941, implementation phase. Charter bound by PM in turn_8656b25a486eaa6d.
+
+### M34 Purpose and Boundary
+
+`tusq method index` produces a static, deterministic, read-only HTTP method index of the manifest's capabilities bucketed by their verbatim `method` field value. It is a planning aid that helps reviewers answer "which HTTP methods does this manifest expose, how many capabilities use each verb, and which buckets contain destructive or unknown-auth capabilities?" It does NOT route HTTP methods at runtime, does NOT validate REST conventions (idempotency, safety, cacheability), does NOT certify idempotency class, does NOT automatically classify destructive verbs (DELETE is a bucket label — not a destructive-side-effect attestation), does NOT modify the M32 `side_effect_class` derivation rules (which use `method` as one of several inputs), and does NOT alter the M30 `gated_reason: destructive_side_effect` surface-eligibility rule.
+
+### M34 Command Shape
+
+```
+tusq method index [--method <GET|POST|PUT|PATCH|DELETE|unknown>]
+                  [--manifest <path>] [--out <path>] [--json]
+```
+
+`tusq method` (no subcommand) prints a short enumerate-subcommands block. Unknown subcommands exit 1 with `Unknown subcommand: <name>` on stderr, empty stdout. CLI surface grows from 17 → 18 commands with `method` inserted alphabetically between `effect` and `policy`.
+
+### M34 Frozen Six-Value `http_method` Bucket-Key Enum
+
+```
+GET | POST | PUT | PATCH | DELETE | unknown
+```
+
+The five named methods are the canonical REST verbs that tusq's scanner already emits verbatim in the manifest's `method` field. The `unknown` bucket aggregates every capability whose `method` field is `null`, missing, empty-string, or any value outside the five canonical values (e.g., HEAD, OPTIONS, TRACE, CONNECT, non-standard verbs). M34 MUST NOT modify, override, or augment the upstream scanner's `method` field; the enum is a bucket-key, not a re-classifier. The enum is immutable once M34 ships; any addition is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation.
+
+### M34 Frozen Two-Value `aggregation_key` Enum
+
+```
+method | unknown
+```
+
+Parallel to M31's `domain | unknown`, M32's `class | unknown`, M33's `class | unknown`. The `unknown` aggregation-key marks the zero-evidence bucket; the `method` aggregation-key marks every named method bucket (GET/POST/PUT/PATCH/DELETE). The enum is immutable once M34 ships.
+
+### M34 Frozen Per-Bucket Entry Shape (name-and-counters only)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `http_method` | string | One of the six enum values (`"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`, `"unknown"`) |
+| `aggregation_key` | string | `"method"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability has `side_effect_class === "destructive"` |
+| `has_unknown_auth` | boolean | True iff any capability has `auth_requirements.auth_scheme === "unknown"` |
+
+Deliberately omitted (parallel to M31/M32/M33): no `domains_represented[]`, no `auth_schemes_represented[]`, no `side_effect_classes_represented[]`, no `sensitivity_classes_represented[]`, no `idempotency_class`, no `risk_tier`. Cross-axis roll-ups belong in future M-Risk-1 / M-Idempotency-1 milestones.
+
+Top-level fields `manifest_path`, `manifest_version`, `generated_at` are copied verbatim from the input manifest (fallback: `null` in `--json` mode and `unknown` in human mode when the manifest lacks the field).
+
+### M34 Closed-Enum Bucket Iteration Order
+
+Bucket iteration follows the **closed-enum order: `GET → POST → PUT → PATCH → DELETE`**, then `unknown` last. This is distinct from M31's first-appearance rule because M34 buckets on a closed enum, not an open string. The closed-enum order matches the conventional REST CRUD reading order (GET=read, POST=create, PUT=replace, PATCH=update, DELETE=delete) but carries no risk semantic and MUST NOT be described as "low-to-high risk," "destructive-ascending," "safety-ordered," or any phrase implying risk semantics.
+
+Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manifest declared order (NOT alphabetized).
+
+### M34 Case-Sensitive `--method` Filter Rule
+
+The `--method <value>` flag limits output to a single bucket. Filter matching is **case-sensitive uppercase only** — mirroring the manifest's verbatim uppercase `method` field convention. Lowercase values like `get` or `delete` exit 1 with `Unknown method: <value>` (rather than being upper-cased silently) so reviewer scripts cannot accidentally drift from the canonical uppercase form.
+
+### M34 Empty-Capabilities and stdout-Discipline Rules
+
+- `capabilities: []` → exit 0; human: `No capabilities in manifest — nothing to index.\n`; JSON: `{manifest_path, manifest_version, generated_at, methods: []}`.
+- Every error path writes exclusively to stderr; stdout MUST be empty on every exit-1 path.
+- Error messages: `Manifest not found:`, `Invalid manifest JSON:`, `Invalid manifest: missing capabilities array`, `Unknown method:`, `Unknown subcommand:`, `Unknown flag:`, `Cannot write to --out path:`, `--out path must not be inside .tusq/`.
+
+### M34 Read-Only Invariants
+
+| Invariant | Verification |
+|-----------|-------------|
+| `tusq.manifest.json` mtime/content unchanged after every invocation | Smoke assertion |
+| No write to `.tusq/`; no write to any path other than `--out <path>` when supplied | Smoke assertion |
+| `capability_digest` MUST NOT flip on any capability | Smoke assertion: hash before vs after |
+| `tusq compile` output byte-identical pre and post-M34 | Smoke assertion: golden-file comparison |
+| `tusq surface plan` output byte-identical pre and post-M34 | Smoke assertion |
+| `tusq domain index` output byte-identical pre and post-M34 | Smoke assertion |
+| `tusq effect index` output byte-identical pre and post-M34 | Smoke assertion |
+| `tusq sensitivity index` output byte-identical pre and post-M34 | Smoke assertion |
+
+### M34 Deliverables (dev-owned)
+
+- `src/cli.js` — `METHOD_INDEX_AGGREGATION_KEY_ENUM`, `METHOD_INDEX_BUCKET_ORDER`, `METHOD_INDEX_VALID_METHODS`, `cmdMethod`, `cmdMethodIndex`, `parseMethodIndexArgs`, `buildMethodIndex`, `formatMethodIndex`, `_guardMethodBucketKey`, `_guardMethodAggregationKey`; updated `dispatch()`, `printHelp()`, `printCommandHelp()` (CLI surface 17 → 18).
+- `tests/smoke.mjs` — M34 smoke matrix (assertions a-u per ROADMAP § M34).
+- `tests/evals/governed-cli-scenarios.json` — `method-index-determinism` scenario (eval harness 24 → 25).
+- `tests/eval-regression.mjs` — `runMethodIndexDeterminismScenario` handler.
+- `website/docs/cli-reference.md` — `tusq method index` documentation.
+- `website/docs/manifest-format.md` — HTTP Method Index subsection.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -3669,3 +3757,5 @@ Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manife
 29. **M31 domain-index planning-aid framing invariant (Constraint 24 per ROADMAP § M31; appended at constraints tail to preserve numbering continuity with prior re-affirmation entries)** — `tusq domain index` is a planning aid that surfaces what domains the manifest exposes and the shape of each domain. It MUST NOT be presented as a skill-pack generator, rollout-plan generator, workflow-definition generator, agent-persona derivation engine, domain-ownership certifier, or domain-level access-control enforcer in any docs, marketing, README, CLI help, launch artifact, or eval scenario. Forbidden framings include but are not limited to: "generates skill packs," "produces rollout checklists," "emits workflow definitions," "derives agent personas," "certifies domain ownership," "enforces domain access control." The closed two-value `aggregation_key` enum `{domain, unknown}` is derived purely from already-shipped manifest evidence (`capability.domain` field) by a deterministic pure function (`buildDomainIndex`) that performs zero network calls, reads zero source files beyond the manifest, executes zero compiled tools, imports zero graph/schema/markdown/AI libraries, and writes nothing to `.tusq/`. The frozen manifest first-appearance ordering rule (per-domain iteration follows manifest `capabilities[]` declaration order; `unknown` bucket is always appended last regardless of where the first domainless capability appears) is immutable once M31 ships; any ordering change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. An implementation-time error (synchronous throw via `_guardAggregationKey`) MUST fire if `buildDomainIndex` ever produces an `aggregation_key` value outside the closed two-value set. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq domain index`. `capability_digest` MUST NOT flip on any capability. `tusq compile` output, `tusq serve` MCP responses (`tools/list`, `tools/call`, `dry_run_plan`), `tusq policy verify` (default and `--strict`), `tusq redaction review`, `tusq surface plan`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq scan`, `tusq manifest`, `tusq init`, `tusq version`, and `tusq help` MUST be byte-for-byte unchanged. The domain index output fields (`domains[]`, per-domain counters and flags) MUST NOT appear in any MCP response. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to index.` (single trailing newline) or `{manifest_path, manifest_version, generated_at, domains: []}` in `--json`. Subsequent domain-export milestones (M-Skills-1 skill-pack export, M-Rollout-1 rollout-plan generator, M-Workflow-1 workflow plan, M-Agent-Persona-1 agent persona derivation) ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations; M31 is **not** a substitute for any of them. The CLI surface grows from 14 → 15 (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help) and the new noun `domain` is inserted alphabetically between `diff` and `policy` in help output.
 
 28. **Run-specific binding — run_24ccd92f593d8647 / turn_fa7dbb75b01943f5 (M30 PM-level scope materialization)** — This SYSTEM_SPEC entry records that PM has materialized the M30 scope contract in the new `## M30: Static Embeddable-Surface Plan Export from Manifest Evidence` § directly above the Constraints heading on HEAD `e41237e` (run `run_24ccd92f593d8647`, turn `turn_fa7dbb75b01943f5`, planning phase, runtime `local-pm`). The previous PM turn (`turn_33f4e15b33cf141c`) bound M30 in `.planning/ROADMAP.md` and `.planning/PM_SIGNOFF.md` but explicitly deferred SYSTEM_SPEC and command-surface materialization to the dev role; the gate evaluator's `non_progress_signature` then required PM participation in **all four** planning_signoff artifacts (`PM_SIGNOFF.md`, `ROADMAP.md`, `SYSTEM_SPEC.md`, `command-surface.md`), preventing phase advance. This turn closes the gate by adding the M30 § to SYSTEM_SPEC.md and the M30 Product CLI Surface § to command-surface.md, both at PM scope-level (frozen enums, eligibility precedence, read-only invariants, planning-aid framing). The dev role retains accountability for implementing the algorithm details (`classifyGating`, `buildSurfacePlan`, command wiring, smoke fixtures, eval scenario) during the implementation phase per the M27/M28/M29 precedent. Independent verification on HEAD e41237e: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (20 scenarios)`; the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is intact (M30 is unchecked planned work, not shipped). Shipped V1.10 boundary (M1-M29) remains intact. M30 is V1.11 (PROPOSED), implementation-ready planned work.
+
+32. **M34 method-index planning-aid framing invariant (Constraint 27 per ROADMAP § M34; appended at constraints tail to preserve numbering continuity)** — `tusq method index` is a planning aid that surfaces what HTTP methods the manifest exposes and the shape of each bucket. It does NOT route HTTP methods at runtime, does NOT validate REST conventions (idempotency, safety, cacheability), does NOT certify idempotency class, does NOT automatically classify destructive verbs (DELETE is a bucket label, not a destructive-side-effect attestation), does NOT modify the M32 `side_effect_class` derivation rules (which use `method` as one of several inputs), and does NOT alter the M30 `gated_reason: destructive_side_effect` surface-eligibility rule. Subsequent milestones (M-Risk-1 composite risk-tier classifier, M-Idempotency-1 idempotency-class derivation, M-RestConv-1 REST-convention conformance check) ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations. The five-value `http_method` bucket-key enum (`GET | POST | PUT | PATCH | DELETE`) plus the `unknown` zero-evidence catchall (six total) and the two-value `aggregation_key` enum (`method | unknown`) are frozen; any addition is a material governance event. The `--method` filter is case-sensitive uppercase-only; lowercase or mixed-case filter values exit 1 with `Unknown method:`. The closed-enum bucket iteration order (`GET → POST → PUT → PATCH → DELETE → unknown`) is a deterministic stable-output convention that matches the conventional REST CRUD reading order but carries no risk semantic and MUST NOT be described as "low-to-high risk," "destructive-ascending," "safety-ordered," or any phrase implying risk semantics. An implementation-time error (synchronous throw via `_guardMethodBucketKey` and `_guardMethodAggregationKey`) MUST fire if `buildMethodIndex` ever produces a value outside either closed enum. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq method index`. `capability_digest` MUST NOT flip. `tusq compile`, `tusq serve`, `tusq policy verify`, `tusq redaction review`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, and all other commands MUST be byte-for-byte unchanged. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to index.` or `{manifest_path, manifest_version, generated_at, methods: []}` in `--json`. The CLI surface grows from 17 → 18 and the new noun `method` is inserted alphabetically between `effect` and `policy` in help output.

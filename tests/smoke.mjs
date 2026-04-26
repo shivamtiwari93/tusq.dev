@@ -3352,6 +3352,406 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M34: Static Capability HTTP Method Index Export ───────────────────────────
+  const m34TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m34-smoke-'));
+
+  // M34 fixture manifest: capabilities across GET/POST/PUT/PATCH/DELETE + one unknown bucket.
+  // Capabilities declared in this order: GET(list_users), POST(create_invoice), GET(get_status),
+  // DELETE(delete_user), PATCH(update_user), GET(internal_report), null-method(no_method_route)
+  // to verify within-bucket manifest declared order AND closed-enum bucket order
+  // (GET → POST → PUT → PATCH → DELETE → unknown, NOT manifest first-appearance).
+  const m34Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'create_invoice',
+        description: 'Create an invoice',
+        method: 'POST',
+        path: '/billing/invoices',
+        domain: 'billing',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'confidential',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_status',
+        description: 'Get system status',
+        method: 'GET',
+        path: '/status',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'update_user',
+        description: 'Update a user',
+        method: 'PATCH',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'internal_report',
+        description: 'Fetch internal report',
+        method: 'GET',
+        path: '/reports/internal',
+        domain: 'reports',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_method_route',
+        description: 'Route with no method',
+        method: null,
+        path: '/ping',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m34ManifestPath = path.join(m34TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m34ManifestPath, JSON.stringify(m34Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m34TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M34(a): default tusq method index produces exit 0 and per-bucket entries in closed-enum order
+  // (GET → POST → PATCH → DELETE → unknown; PUT is absent because no capability has method: PUT)
+  const m34DefaultResult = runCli(['method', 'index', '--manifest', m34ManifestPath], { cwd: m34TmpDir });
+  if (!m34DefaultResult.stdout.includes('[GET]') || !m34DefaultResult.stdout.includes('[POST]') || !m34DefaultResult.stdout.includes('[PATCH]') || !m34DefaultResult.stdout.includes('[DELETE]') || !m34DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M34(a): default index must include all present buckets (GET,POST,PATCH,DELETE,unknown):\n${m34DefaultResult.stdout}`);
+  }
+  if (!m34DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M34(a): default index must include planning-aid framing:\n${m34DefaultResult.stdout}`);
+  }
+  // PUT bucket must NOT appear (no capabilities with method: PUT)
+  if (m34DefaultResult.stdout.includes('[PUT]')) {
+    throw new Error(`M34(a): PUT bucket must NOT appear when no capabilities have method: PUT:\n${m34DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: GET before POST before PATCH before DELETE before unknown
+  const m34DefaultLines = m34DefaultResult.stdout.split('\n');
+  const m34GetIdx = m34DefaultLines.findIndex((l) => l.includes('[GET]'));
+  const m34PostIdx = m34DefaultLines.findIndex((l) => l.includes('[POST]'));
+  const m34PatchIdx = m34DefaultLines.findIndex((l) => l.includes('[PATCH]'));
+  const m34DeleteIdx = m34DefaultLines.findIndex((l) => l.includes('[DELETE]'));
+  const m34UnknownIdx = m34DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m34GetIdx < m34PostIdx && m34PostIdx < m34PatchIdx && m34PatchIdx < m34DeleteIdx && m34DeleteIdx < m34UnknownIdx)) {
+    throw new Error(`M34(a): buckets must appear in closed-enum order (GET,POST,PATCH,DELETE,unknown):\n${m34DefaultResult.stdout}`);
+  }
+
+  // M34(b): --method GET / --method POST / --method PATCH / --method DELETE / --method unknown each emit exactly one matching entry
+  const m34GetResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'GET'], { cwd: m34TmpDir });
+  if (!m34GetResult.stdout.includes('[GET]') || m34GetResult.stdout.includes('[POST]') || m34GetResult.stdout.includes('[PUT]') || m34GetResult.stdout.includes('[PATCH]') || m34GetResult.stdout.includes('[DELETE]') || m34GetResult.stdout.includes('[unknown]')) {
+    throw new Error(`M34(b): --method GET must emit only GET bucket:\n${m34GetResult.stdout}`);
+  }
+  const m34PostResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'POST'], { cwd: m34TmpDir });
+  if (!m34PostResult.stdout.includes('[POST]') || m34PostResult.stdout.includes('[GET]') || m34PostResult.stdout.includes('[PUT]') || m34PostResult.stdout.includes('[PATCH]') || m34PostResult.stdout.includes('[DELETE]') || m34PostResult.stdout.includes('[unknown]')) {
+    throw new Error(`M34(b): --method POST must emit only POST bucket:\n${m34PostResult.stdout}`);
+  }
+  const m34PatchResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'PATCH'], { cwd: m34TmpDir });
+  if (!m34PatchResult.stdout.includes('[PATCH]') || m34PatchResult.stdout.includes('[GET]') || m34PatchResult.stdout.includes('[POST]') || m34PatchResult.stdout.includes('[PUT]') || m34PatchResult.stdout.includes('[DELETE]') || m34PatchResult.stdout.includes('[unknown]')) {
+    throw new Error(`M34(b): --method PATCH must emit only PATCH bucket:\n${m34PatchResult.stdout}`);
+  }
+  const m34DeleteResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'DELETE'], { cwd: m34TmpDir });
+  if (!m34DeleteResult.stdout.includes('[DELETE]') || m34DeleteResult.stdout.includes('[GET]') || m34DeleteResult.stdout.includes('[POST]') || m34DeleteResult.stdout.includes('[PUT]') || m34DeleteResult.stdout.includes('[PATCH]') || m34DeleteResult.stdout.includes('[unknown]')) {
+    throw new Error(`M34(b): --method DELETE must emit only DELETE bucket:\n${m34DeleteResult.stdout}`);
+  }
+  const m34UnknownResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'unknown'], { cwd: m34TmpDir });
+  if (!m34UnknownResult.stdout.includes('[unknown]') || m34UnknownResult.stdout.includes('[GET]') || m34UnknownResult.stdout.includes('[POST]') || m34UnknownResult.stdout.includes('[PUT]') || m34UnknownResult.stdout.includes('[PATCH]') || m34UnknownResult.stdout.includes('[DELETE]')) {
+    throw new Error(`M34(b): --method unknown must emit only unknown bucket:\n${m34UnknownResult.stdout}`);
+  }
+
+  // M34(c): --method bogus exits 1 with Unknown method: and empty stdout
+  const m34BogusResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'bogus'], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34BogusResult.stderr.includes('Unknown method: bogus') || m34BogusResult.stdout !== '') {
+    throw new Error(`M34(c): unknown method must exit 1 with error on stderr, empty stdout:\nstdout=${m34BogusResult.stdout}\nstderr=${m34BogusResult.stderr}`);
+  }
+
+  // M34(c2): --method get (lowercase) exits 1 with Unknown method: (case-sensitive enforcement)
+  const m34LowercaseResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--method', 'get'], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34LowercaseResult.stderr.includes('Unknown method: get') || m34LowercaseResult.stdout !== '') {
+    throw new Error(`M34(c2): lowercase method must exit 1 with error on stderr, empty stdout:\nstdout=${m34LowercaseResult.stdout}\nstderr=${m34LowercaseResult.stderr}`);
+  }
+
+  // M34(d): missing --manifest path exits 1 with Manifest not found: and empty stdout
+  const m34MissingManifest = runCli(['method', 'index', '--manifest', path.join(m34TmpDir, 'not-here.json')], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34MissingManifest.stderr.includes('Manifest not found:') || m34MissingManifest.stdout !== '') {
+    throw new Error(`M34(d): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m34MissingManifest.stdout}\nstderr=${m34MissingManifest.stderr}`);
+  }
+
+  // M34(e): malformed-JSON manifest exits 1 with Invalid manifest JSON: and empty stdout
+  const m34BadManifestPath = path.join(m34TmpDir, 'bad.json');
+  await fs.writeFile(m34BadManifestPath, 'not-json', 'utf8');
+  const m34BadManifest = runCli(['method', 'index', '--manifest', m34BadManifestPath], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34BadManifest.stderr.includes('Invalid manifest JSON:') || m34BadManifest.stdout !== '') {
+    throw new Error(`M34(e): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m34BadManifest.stdout}\nstderr=${m34BadManifest.stderr}`);
+  }
+
+  // M34(f): running twice produces byte-identical stdout in both human and JSON modes
+  const m34Human1 = runCli(['method', 'index', '--manifest', m34ManifestPath], { cwd: m34TmpDir });
+  const m34Human2 = runCli(['method', 'index', '--manifest', m34ManifestPath], { cwd: m34TmpDir });
+  if (m34Human1.stdout !== m34Human2.stdout) {
+    throw new Error('M34(f): expected byte-identical human index output across runs');
+  }
+  const m34Json1 = runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34Json2 = runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  if (m34Json1.stdout !== m34Json2.stdout) {
+    throw new Error('M34(f): expected byte-identical JSON index output across runs');
+  }
+
+  // M34(g): M34 does not mutate the manifest (mtime/content unchanged)
+  const m34ManifestBefore = await fs.readFile(m34ManifestPath, 'utf8');
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34ManifestAfter = await fs.readFile(m34ManifestPath, 'utf8');
+  if (m34ManifestBefore !== m34ManifestAfter) {
+    throw new Error('M34(g): tusq method index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M34(h): capability_digest does not flip on any capability after an index run
+  const m34DigestBefore = m34Manifest.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34ManifestReadBack = JSON.parse(await fs.readFile(m34ManifestPath, 'utf8'));
+  const m34DigestAfter = m34ManifestReadBack.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  if (JSON.stringify(m34DigestBefore) !== JSON.stringify(m34DigestAfter)) {
+    throw new Error('M34(h): capability_digest must not flip after method index run');
+  }
+
+  // M34(i): tusq compile golden-file output is byte-identical pre and post-M34
+  const m34CompileDir = path.join(m34TmpDir, 'compile-check');
+  await fs.mkdir(m34CompileDir, { recursive: true });
+  const m34CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m34CompileDir, 'tusq.manifest.json'), JSON.stringify(m34CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m34CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m34CompileDir });
+  const m34CompiledToolPath = path.join(m34CompileDir, 'tusq-tools', 'list_users.json');
+  const m34CompileContentBefore = await fs.readFile(m34CompiledToolPath, 'utf8');
+  runCli(['method', 'index', '--manifest', path.join(m34CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m34CompileDir });
+  const m34CompileContentAfter = await fs.readFile(m34CompiledToolPath, 'utf8');
+  if (m34CompileContentBefore !== m34CompileContentAfter) {
+    throw new Error('M34(i): tusq compile output must be byte-identical before and after method index run');
+  }
+  const m34ToolsFiles = await fs.readdir(path.join(m34CompileDir, 'tusq-tools'));
+  if (m34ToolsFiles.some((f) => f.includes('method'))) {
+    throw new Error(`M34(i): method index must not write into tusq-tools: ${m34ToolsFiles.join(', ')}`);
+  }
+
+  // M34(k): tusq surface plan, tusq domain index, tusq effect index, and tusq sensitivity index outputs are byte-identical pre and post-M34
+  const m34SurfaceBefore = runCli(['surface', 'plan', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34SurfaceAfter = runCli(['surface', 'plan', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  if (m34SurfaceBefore !== m34SurfaceAfter) {
+    throw new Error('M34(k): tusq surface plan output must be byte-identical before and after method index run');
+  }
+  const m34DomainBefore = runCli(['domain', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34DomainAfter = runCli(['domain', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  if (m34DomainBefore !== m34DomainAfter) {
+    throw new Error('M34(k): tusq domain index output must be byte-identical before and after method index run');
+  }
+  const m34EffectBefore = runCli(['effect', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34EffectAfter = runCli(['effect', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  if (m34EffectBefore !== m34EffectAfter) {
+    throw new Error('M34(k): tusq effect index output must be byte-identical before and after method index run');
+  }
+  const m34SensitivityBefore = runCli(['sensitivity', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  runCli(['method', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir });
+  const m34SensitivityAfter = runCli(['sensitivity', 'index', '--manifest', m34ManifestPath, '--json'], { cwd: m34TmpDir }).stdout;
+  if (m34SensitivityBefore !== m34SensitivityAfter) {
+    throw new Error('M34(k): tusq sensitivity index output must be byte-identical before and after method index run');
+  }
+
+  // M34(l): empty-capabilities manifest emits documented human line and methods: [] in JSON
+  const m34EmptyManifestPath = path.join(m34TmpDir, 'empty.json');
+  await fs.writeFile(m34EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m34EmptyHuman = runCli(['method', 'index', '--manifest', m34EmptyManifestPath], { cwd: m34TmpDir });
+  if (m34EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M34(l): empty-capabilities human output must be exactly the documented line:\n${m34EmptyHuman.stdout}`);
+  }
+  const m34EmptyJson = JSON.parse(runCli(['method', 'index', '--manifest', m34EmptyManifestPath, '--json'], { cwd: m34TmpDir }).stdout);
+  if (!Array.isArray(m34EmptyJson.methods) || m34EmptyJson.methods.length !== 0) {
+    throw new Error(`M34(l): empty-capabilities JSON must have methods: [] :\n${JSON.stringify(m34EmptyJson)}`);
+  }
+
+  // M34(m): --out <path> writes to the path and emits no stdout on success
+  const m34OutPath = path.join(m34TmpDir, 'method-index-out.json');
+  const m34OutResult = runCli(['method', 'index', '--manifest', m34ManifestPath, '--out', m34OutPath], { cwd: m34TmpDir });
+  if (m34OutResult.stdout !== '') {
+    throw new Error(`M34(m): --out must emit no stdout on success, got: ${m34OutResult.stdout}`);
+  }
+  const m34OutContent = JSON.parse(await fs.readFile(m34OutPath, 'utf8'));
+  if (!Array.isArray(m34OutContent.methods) || m34OutContent.methods.length < 4) {
+    throw new Error(`M34(m): --out file must contain at least four method entries: ${JSON.stringify(m34OutContent.methods)}`);
+  }
+
+  // M34(n): --out to an unwritable path exits 1 with empty stdout
+  const m34BadOut = runCli(['method', 'index', '--manifest', m34ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (m34BadOut.stdout !== '') {
+    throw new Error(`M34(n): --out unwritable must produce empty stdout, got: ${m34BadOut.stdout}`);
+  }
+
+  // M34(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m34TusqOutResult = runCli(
+    ['method', 'index', '--manifest', m34ManifestPath, '--out', path.join(m34TmpDir, '.tusq', 'index.json')],
+    { cwd: m34TmpDir, expectedStatus: 1 }
+  );
+  if (!m34TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m34TusqOutResult.stdout !== '') {
+    throw new Error(`M34(o): --out .tusq/ must reject with correct message:\nstdout=${m34TusqOutResult.stdout}\nstderr=${m34TusqOutResult.stderr}`);
+  }
+
+  // M34(p): capability with method: null (or missing/empty-string/HEAD/OPTIONS/non-canonical-value) is bucketed into unknown and unknown bucket appears last
+  const m34IndexJson = JSON.parse(m34Json1.stdout);
+  const m34LastMethod = m34IndexJson.methods[m34IndexJson.methods.length - 1];
+  if (m34LastMethod.http_method !== 'unknown') {
+    throw new Error(`M34(p): unknown bucket must appear last; got: ${m34LastMethod.http_method}`);
+  }
+  const m34UnknownEntry = m34IndexJson.methods.find((e) => e.http_method === 'unknown');
+  if (!m34UnknownEntry || !m34UnknownEntry.capabilities.includes('no_method_route')) {
+    throw new Error(`M34(p): no_method_route (method: null) must be in unknown bucket:\n${JSON.stringify(m34UnknownEntry)}`);
+  }
+  // Also test that HEAD/OPTIONS/non-canonical values go to unknown
+  const m34HeadManifestPath = path.join(m34TmpDir, 'head-method.json');
+  await fs.writeFile(m34HeadManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'options_route', description: 'Options', method: 'OPTIONS', path: '/options', domain: null, side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m34HeadJson = JSON.parse(runCli(['method', 'index', '--manifest', m34HeadManifestPath, '--json'], { cwd: m34TmpDir }).stdout);
+  if (m34HeadJson.methods.length !== 1 || m34HeadJson.methods[0].http_method !== 'unknown') {
+    throw new Error(`M34(p): OPTIONS method must aggregate into unknown bucket; got: ${JSON.stringify(m34HeadJson.methods.map((e) => e.http_method))}`);
+  }
+
+  // M34(q): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m34ValidAggregationKeys = new Set(['method', 'unknown']);
+  for (const entry of m34IndexJson.methods) {
+    if (!m34ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M34(q): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for method '${entry.http_method}'`);
+    }
+  }
+  const m34GetEntry = m34IndexJson.methods.find((e) => e.http_method === 'GET');
+  if (m34GetEntry.aggregation_key !== 'method') {
+    throw new Error(`M34(q): named method 'GET' must have aggregation_key 'method', got: ${m34GetEntry.aggregation_key}`);
+  }
+  if (m34UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M34(q): unknown bucket must have aggregation_key 'unknown', got: ${m34UnknownEntry.aggregation_key}`);
+  }
+
+  // M34(r): empty buckets (e.g., manifest has only GET capabilities) MUST NOT appear in output
+  // Verify a manifest with only GET capabilities produces exactly one bucket [GET]
+  const m34GetOnlyManifestPath = path.join(m34TmpDir, 'get-only.json');
+  await fs.writeFile(m34GetOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m34GetOnlyJson = JSON.parse(runCli(['method', 'index', '--manifest', m34GetOnlyManifestPath, '--json'], { cwd: m34TmpDir }).stdout);
+  if (m34GetOnlyJson.methods.length !== 1 || m34GetOnlyJson.methods[0].http_method !== 'GET') {
+    throw new Error(`M34(r): GET-only manifest must produce exactly one bucket [GET]; got: ${JSON.stringify(m34GetOnlyJson.methods.map((e) => e.http_method))}`);
+  }
+
+  // M34(s): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // GET bucket: list_users declared before get_status before internal_report → must appear in that order
+  if (!m34GetEntry || m34GetEntry.capabilities[0] !== 'list_users' || m34GetEntry.capabilities[1] !== 'get_status' || m34GetEntry.capabilities[2] !== 'internal_report') {
+    throw new Error(`M34(s): within GET bucket, capabilities must follow manifest declared order (list_users, get_status, internal_report); got: ${JSON.stringify(m34GetEntry ? m34GetEntry.capabilities : null)}`);
+  }
+
+  // M34(t): has_destructive_side_effect flag is correct per bucket
+  // POST bucket has create_invoice (side_effect_class: destructive) → must be true
+  const m34PostEntry = m34IndexJson.methods.find((e) => e.http_method === 'POST');
+  if (!m34PostEntry || m34PostEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M34(t): POST bucket must have has_destructive_side_effect=true (create_invoice is destructive); got: ${JSON.stringify(m34PostEntry)}`);
+  }
+  // PATCH bucket has update_user (side_effect_class: write) → must be false
+  const m34PatchEntry = m34IndexJson.methods.find((e) => e.http_method === 'PATCH');
+  if (!m34PatchEntry || m34PatchEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M34(t): PATCH bucket must have has_destructive_side_effect=false (update_user is write); got: ${JSON.stringify(m34PatchEntry)}`);
+  }
+
+  // M34(u): has_unknown_auth flag is correct per bucket
+  // GET bucket has get_status (auth_scheme: unknown) → must be true
+  if (!m34GetEntry || m34GetEntry.has_unknown_auth !== true) {
+    throw new Error(`M34(u): GET bucket must have has_unknown_auth=true (get_status has auth_scheme: unknown); got: ${m34GetEntry ? m34GetEntry.has_unknown_auth : null}`);
+  }
+  // POST bucket has create_invoice (auth_scheme: bearer) → must be false
+  if (!m34PostEntry || m34PostEntry.has_unknown_auth !== false) {
+    throw new Error(`M34(u): POST bucket must have has_unknown_auth=false (create_invoice has auth_scheme: bearer); got: ${m34PostEntry ? m34PostEntry.has_unknown_auth : null}`);
+  }
+
+  // M34: unknown flag exits 1 with error on stderr and empty stdout
+  const m34UnknownFlag = runCli(['method', 'index', '--manifest', m34ManifestPath, '--badFlag'], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m34UnknownFlag.stdout !== '') {
+    throw new Error(`M34: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m34UnknownFlag.stdout}\nstderr=${m34UnknownFlag.stderr}`);
+  }
+
+  // M34: Invalid manifest missing capabilities array
+  const m34NoCapsManifestPath = path.join(m34TmpDir, 'no-caps.json');
+  await fs.writeFile(m34NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m34NoCaps = runCli(['method', 'index', '--manifest', m34NoCapsManifestPath], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m34NoCaps.stdout !== '') {
+    throw new Error(`M34: missing capabilities array must exit 1:\nstdout=${m34NoCaps.stdout}\nstderr=${m34NoCaps.stderr}`);
+  }
+
+  // M34: help text includes planning-aid framing
+  const m34HelpResult = runCli(['method', 'index', '--help'], { cwd: m34TmpDir });
+  if (!m34HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M34: method index help must include planning-aid framing:\n${m34HelpResult.stdout}`);
+  }
+
+  // M34: unknown subcommand exits 1 with Unknown subcommand: message
+  const m34UnknownSub = runCli(['method', 'bogusub'], { cwd: m34TmpDir, expectedStatus: 1 });
+  if (!m34UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m34UnknownSub.stdout !== '') {
+    throw new Error(`M34: unknown subcommand must exit 1 with error on stderr, empty stdout:\nstdout=${m34UnknownSub.stdout}\nstderr=${m34UnknownSub.stderr}`);
+  }
+
+  await fs.rm(m34TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 

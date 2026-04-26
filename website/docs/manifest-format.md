@@ -557,6 +557,50 @@ tusq sensitivity index --sensitivity unknown
 tusq sensitivity index --json
 ```
 
+## HTTP Method Index
+
+The `method` field on each capability (emitted verbatim by the scanner since M1 with the value as declared in the source route, e.g., `"GET"`, `"POST"`, `"DELETE"`) drives per-bucket aggregation in `tusq method index`. The command groups capabilities by their `method` value in a deterministic closed-enum order and emits a per-bucket index with name-and-counters fields only.
+
+**How bucketing works:**
+
+| `method` field value | Bucket | `aggregation_key` |
+|----------------------|--------|-------------------|
+| `"GET"` | `GET` bucket | `"method"` |
+| `"POST"` | `POST` bucket | `"method"` |
+| `"PUT"` | `PUT` bucket | `"method"` |
+| `"PATCH"` | `PATCH` bucket | `"method"` |
+| `"DELETE"` | `DELETE` bucket | `"method"` |
+| `null`, missing, empty-string, `"HEAD"`, `"OPTIONS"`, `"TRACE"`, `"CONNECT"`, or any non-canonical value | Zero-evidence `unknown` bucket | `"unknown"` |
+
+**Bucket iteration order:** `GET → POST → PUT → PATCH → DELETE → unknown` (closed-enum order). This is distinct from M31's domain-index first-appearance rule — M34 buckets on a closed enum (the five canonical REST verbs), so the output order is globally deterministic regardless of the order capabilities appear in the manifest. The `unknown` bucket is always appended last. Empty buckets do not appear.
+
+**Important:** The iteration order (`GET → POST → PUT → PATCH → DELETE`) matches the conventional REST CRUD reading order (GET=read, POST=create, PUT=replace, PATCH=update, DELETE=delete) but carries **no risk semantic**. It is a stable-output convention only — docs, README, CLI help, and launch artifacts MUST NOT describe it as "low-to-high risk," "destructive-ascending," "safety-ordered," or any phrase implying risk semantics.
+
+**Within each bucket:** Capability names appear in manifest declared order (NOT alphabetized), mirroring M31, M32, and M33.
+
+**Case-sensitive `--method` filter:** The `--method` filter matches verbatim against the closed-enum values. Lowercase values like `get` or `delete` exit 1 with `Unknown method: <value>` — do not silently coerce case. The manifest's `method` field is emitted verbatim uppercase by the scanner; reviewer scripts should use uppercase filter values consistently.
+
+**What HTTP method index reads and what it never does:**
+
+- Reads: `capability.method`, `capability.name`, `capability.approved`, `capability.side_effect_class`, `capability.auth_requirements.auth_scheme`.
+- Never modifies the manifest. Never flips `capability_digest`. Never writes to `.tusq/`.
+- Never modifies the M32 `side_effect_class` derivation rules (which use `method` as one of several inputs). Never alters the M30 `gated_reason: destructive_side_effect` surface-eligibility rule.
+- `tusq method index` is a planning aid only — it does NOT route HTTP methods at runtime, does NOT validate REST conventions (idempotency, safety, cacheability), does NOT certify idempotency class, does NOT automatically classify destructive verbs (DELETE appearing in the index is a bucket label, not a destructive-side-effect attestation), and does NOT derive a composite risk tier.
+
+```bash
+# View HTTP method index
+tusq method index
+
+# Filter to a single method (case-sensitive uppercase)
+tusq method index --method DELETE
+
+# View the zero-evidence bucket
+tusq method index --method unknown
+
+# Machine-readable JSON
+tusq method index --json
+```
+
 ## Regeneration behavior
 
 When you regenerate a manifest, previously approved capabilities are preserved by method+path key when possible.

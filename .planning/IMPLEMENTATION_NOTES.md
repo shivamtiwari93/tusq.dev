@@ -2,6 +2,56 @@
 
 ---
 
+## Dev Turn turn_c530db27dd4d2941 — Implementation Phase: M34 Static Capability HTTP Method Index Export (run_bf8efb6b9c733000, 2026-04-26)
+
+**Run:** run_bf8efb6b9c733000
+**Phase:** implementation
+**HEAD:** 8921229 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_8656b25a486eaa6d (role=pm, phase=planning)
+
+PM correctly challenged intake charter intent_1777239733034_e0fb (vision_scan, roadmap_exhausted_vision_open), confirmed ROADMAP is checked through M33 (V1.14 SHIPPED in run_4506c41d74e23e8e and re-verified in run_cd98cdad0fb83285), and bound exactly one new milestone M34 = Static Capability HTTP Method Index Export (~0.5 day) — V1.15 (PROPOSED). PM froze: five-value `http_method` bucket-key enum (GET|POST|PUT|PATCH|DELETE) plus `unknown` zero-evidence catchall (six total), two-value `aggregation_key` enum (method|unknown), closed-enum bucket iteration order (GET→POST→PUT→PATCH→DELETE→unknown), per-bucket 8-field entry shape, case-sensitive uppercase-only `--method` filter rule (lowercase exits 1), and the six M34 Key Risk rows. All five PM decisions upheld. Baseline re-verified: npm test exits 0 (24 scenarios) on HEAD 8921229. Challenge resolved: no objections.
+
+### What Was Implemented
+
+**Source (new, all in `src/cli.js`):**
+- `METHOD_INDEX_AGGREGATION_KEY_ENUM` — frozen Set(`['method', 'unknown']`). Immutable once M34 ships.
+- `METHOD_INDEX_BUCKET_ORDER` — frozen array `['GET', 'POST', 'PUT', 'PATCH', 'DELETE']`. Defines closed-enum iteration order. NOT risk-precedence.
+- `METHOD_INDEX_VALID_METHODS` — frozen Set of canonical REST verbs for bucket assignment.
+- `cmdMethod(args)` — top-level noun dispatcher; enumerates subcommands when no subcommand given; unknown subcommand → exit 1.
+- `cmdMethodIndex(args)` — full handler: detection-before-output `--out .tusq/` rejection, manifest read + parse + validation, `buildMethodIndex`, `--method` case-sensitive filter (uppercase only; lowercase exits 1 with `Unknown method:`), `--out` write, `--json` JSON output, human format fallback.
+- `parseMethodIndexArgs(args)` — 4-flag parser (`--method`, `--manifest`, `--out`, `--json`); unknown flags exit 1 with `Unknown flag:`.
+- `_guardMethodBucketKey(key)` — synchronous throw on out-of-six-value-set return.
+- `_guardMethodAggregationKey(key)` — synchronous throw on out-of-two-value-set return.
+- `buildMethodIndex(manifest, manifestPath)` — closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, verbatim uppercase method matching.
+- `formatMethodIndex(index)` — human output with planning-aid callout "not a runtime HTTP-method router, REST-convention validator, or idempotency classifier".
+- Updated `dispatch()` — `'method'` inserted between `'effect'` and `'policy'`.
+- Updated `printHelp()` — `method` line inserted between `effect` and `policy` (CLI surface 17 → 18).
+- Updated `printCommandHelp()` — `method` and `method index` entries added.
+
+**Tests:**
+- `tests/smoke.mjs` — M34 smoke matrix (cases a-u + edge cases: unknown flag, missing caps array, help, unknown subcommand). Mirrors M33 structure with HTTP method fixtures.
+- `tests/evals/governed-cli-scenarios.json` — `method-index-determinism` scenario (eval harness 24 → 25); six synthetic capabilities across GET/POST/PATCH/DELETE/null-method.
+- `tests/eval-regression.mjs` — `runMethodIndexDeterminismScenario` handler; dispatched on `scenario_type === 'method_index_determinism'`.
+
+**Planning artifacts:**
+- `.planning/SYSTEM_SPEC.md` — § M34 full detail block + Constraint 27 (M34 method-index planning-aid framing invariant) appended at constraints tail.
+- `.planning/command-surface.md` — § M34 Product CLI Surface block appended.
+- `website/docs/cli-reference.md` — `tusq method index` section added (between `tusq effect index` and `tusq sensitivity index`).
+- `website/docs/manifest-format.md` — HTTP Method Index subsection added (before Regeneration behavior).
+
+### Verification
+
+- `npm test` exits 0 — "Smoke tests passed" and "Eval regression harness passed (25 scenarios)"
+- `node bin/tusq.js help` exits 0 — 18 commands confirmed with `method` between `effect` and `policy`
+- `node bin/tusq.js method index --help` exits 0 — planning-aid framing callout + closed-enum bucket iteration order GET→POST→PUT→PATCH→DELETE→unknown
+- `node bin/tusq.js method index --method get` exits 1 with `Unknown method: get` on stderr (case-sensitive enforcement)
+- `git diff HEAD -- package.json package-lock.json` — empty output (zero new dependencies)
+
+---
+
 ## Dev Turn turn_0e359b277c048d1f — Implementation Phase: M33 Stale-Checkbox Re-Verification (run_cd98cdad0fb83285, 2026-04-26)
 
 **Run:** run_cd98cdad0fb83285

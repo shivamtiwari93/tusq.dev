@@ -84,6 +84,19 @@ const EFFECT_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unkno
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const EFFECT_INDEX_BUCKET_ORDER = Object.freeze(['read', 'write', 'destructive']);
 
+// M34: frozen two-value aggregation_key enum (parallel to M31/M32/M33). Immutable once M34 ships.
+// An implementation-time guard fires if buildMethodIndex produces a key outside this set.
+const METHOD_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['method', 'unknown']));
+
+// M34: closed-enum bucket iteration order (GET → POST → PUT → PATCH → DELETE). NOT risk-precedence —
+// matches the conventional REST CRUD reading order (read, create, replace, update, delete) but carries
+// no risk semantic. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const METHOD_INDEX_BUCKET_ORDER = Object.freeze(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+
+// M34: valid canonical REST method values that map to named buckets (verbatim uppercase from manifest).
+// Any other value (null, empty-string, HEAD, OPTIONS, TRACE, CONNECT, non-canonical) maps to unknown.
+const METHOD_INDEX_VALID_METHODS = Object.freeze(new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']));
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -201,6 +214,9 @@ function dispatch(argv) {
       return;
     case 'effect':
       cmdEffect(args);
+      return;
+    case 'method':
+      cmdMethod(args);
       return;
     case 'policy':
       cmdPolicy(args);
@@ -2523,6 +2539,279 @@ function formatEffectIndex(index) {
   return lines.join('\n');
 }
 
+// M34: tusq method — top-level noun dispatcher
+function cmdMethod(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('method');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdMethodIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M34: tusq method index — handler
+function cmdMethodIndex(args) {
+  const { opts, positionals } = parseMethodIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('method index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildMethodIndex(manifest, manifestPath);
+
+  const methodFilter = opts.method || null;
+  let outputIndex;
+  if (methodFilter !== null) {
+    // Case-sensitive: uppercase canonical methods + literal 'unknown'; anything else exits 1
+    const validMethodFilterValues = new Set([...METHOD_INDEX_BUCKET_ORDER, 'unknown']);
+    if (!validMethodFilterValues.has(methodFilter)) {
+      throw new CliError(`Unknown method: ${methodFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.methods.find((e) => e.http_method === methodFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown method: ${methodFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { methods: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatMethodIndex(outputIndex));
+}
+
+function parseMethodIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['method', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardMethodBucketKey(key) {
+  const validKeys = new Set([...METHOD_INDEX_BUCKET_ORDER, 'unknown']);
+  if (!validKeys.has(key)) {
+    throw new Error(`Internal error: http_method outside closed six-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardMethodAggregationKey(key) {
+  if (!METHOD_INDEX_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M34: buildMethodIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered HTTP method index from the manifest's capabilities[].
+// Bucket iteration order: GET → POST → PUT → PATCH → DELETE (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+function buildMethodIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      methods: []
+    };
+  }
+
+  // Collect capabilities into buckets keyed by their method value (verbatim uppercase from manifest).
+  // The five named methods follow manifest declared order within each bucket.
+  // The unknown bucket collects capabilities with null/missing/empty-string/non-canonical method.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const methodValue = typeof capability.method === 'string' ? capability.method : null;
+    const isValid = methodValue !== null && METHOD_INDEX_VALID_METHODS.has(methodValue);
+    const bucketKey = isValid ? methodValue : '__unknown__';
+
+    if (!isValid) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: GET → POST → PUT → PATCH → DELETE, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...METHOD_INDEX_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const methods = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const httpMethod = isUnknownBucket ? _guardMethodBucketKey('unknown') : _guardMethodBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardMethodAggregationKey('unknown') : _guardMethodAggregationKey('method');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasUnknownAuth = caps.some((c) => {
+      if (!c.auth_requirements || typeof c.auth_requirements !== 'object') return true;
+      return c.auth_requirements.auth_scheme === 'unknown';
+    });
+
+    return {
+      http_method: httpMethod,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_unknown_auth: hasUnknownAuth
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    methods
+  };
+}
+
+// M34: format method index as human-readable text
+function formatMethodIndex(index) {
+  if (index.methods.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `HTTP Method Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.',
+    ''
+  ];
+
+  for (const entry of index.methods) {
+    lines.push(`[${entry.http_method}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_unknown_auth: ${entry.has_unknown_auth}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function cmdSensitivity(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     printCommandHelp('sensitivity');
@@ -3404,6 +3693,7 @@ function printHelp() {
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
+  process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
@@ -3456,6 +3746,24 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown effect, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.'
+    ].join('\n'),
+    method: 'Usage: tusq method <subcommand>\n  Subcommands: index',
+    'method index': [
+      'Usage: tusq method index [--method <GET|POST|PUT|PATCH|DELETE|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --method <GET|POST|PUT|PATCH|DELETE|unknown>  Filter to a single HTTP method bucket (default: all methods; case-sensitive uppercase)',
+      '  --manifest <path>                             Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                                  Write index to file (no stdout on success)',
+      '  --json                                        Emit machine-readable JSON',
+      '',
+      'Bucket iteration order: GET → POST → PUT → PATCH → DELETE → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown method, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.'
     ].join('\n'),
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',

@@ -408,6 +408,52 @@ tusq effect index --effect unknown --json
 tusq effect index --out effect-index.json
 ```
 
+## `tusq method index`
+
+Emit a deterministic, per-HTTP-method capability index from manifest evidence. Groups capabilities by their verbatim `method` field value in closed-enum order (`GET → POST → PUT → PATCH → DELETE → unknown`), with a special `unknown` bucket for capabilities whose `method` is `null`, missing, empty-string, or any non-canonical value (HEAD, OPTIONS, etc.). This is a **planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier**.
+
+```bash
+tusq method index [--method <GET|POST|PUT|PATCH|DELETE|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--method <GET\|POST\|PUT\|PATCH\|DELETE\|unknown>` | all methods | Filter to a single HTTP method bucket; **case-sensitive uppercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown method, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `GET → POST → PUT → PATCH → DELETE → unknown` (closed-enum order — NOT manifest first-appearance order and NOT a risk-precedence statement). Empty buckets do not appear. The order matches the conventional REST CRUD reading order (read, create, replace, update, delete) but carries no risk semantic.
+
+**Case-sensitive filter:** `--method` values are matched verbatim. Lowercase values like `get` or `delete` exit 1 with `Unknown method: <value>` — do not silently coerce case.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- Bucket iteration order follows the closed enum (`GET → POST → PUT → PATCH → DELETE`, then `unknown` last); within each bucket, capabilities appear in manifest declared order.
+- The six-value `http_method` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A method index is NOT a runtime HTTP-method router, NOT a REST-convention validator, NOT an idempotency classifier, does NOT modify the M32 `side_effect_class` derivation rules, and does NOT alter the M30 surface-plan gating rules.
+
+```bash
+# All methods (human-readable)
+tusq method index
+
+# All methods (JSON)
+tusq method index --json
+
+# Single method (uppercase — case-sensitive)
+tusq method index --method DELETE --json
+
+# Zero-evidence bucket
+tusq method index --method unknown --json
+
+# Write to file
+tusq method index --out method-index.json
+```
+
 ## `tusq sensitivity index`
 
 Emit a deterministic, per-sensitivity-class capability index from manifest evidence. Groups capabilities by their M28-derived `sensitivity_class` field in closed-enum order (`public → internal → confidential → restricted → unknown`), with a special `unknown` bucket for capabilities whose `sensitivity_class` is `null`, missing, empty-string, or any value outside the closed four-value named set. This is a **planning aid, not a runtime sensitivity enforcer or compliance certifier**.
