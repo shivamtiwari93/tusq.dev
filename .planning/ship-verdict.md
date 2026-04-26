@@ -2,6 +2,40 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_131a847ada2fad7c (role=qa, run_ae841429202c5bb7, M32 effect index implementation, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_18e3b3d9ce515cf1, role=dev, HEAD e9d2d10) for run_ae841429202c5bb7 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn implemented M32 (Static Capability Side-Effect Index Export) across nine files.** Verified: `git diff c349eec..e9d2d10 --name-only` → `.planning/IMPLEMENTATION_NOTES.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`, `src/cli.js`, `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/smoke.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`. All nine files are dev-owned. `src/cli.js` verified to contain `EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM` (4-value frozen Set: read/write/destructive/unknown), `EFFECT_INDEX_AGGREGATION_KEY_ENUM` (2-value frozen Set: class/unknown), `EFFECT_INDEX_BUCKET_ORDER` (frozen array ['read','write','destructive']), `cmdEffect`, `cmdEffectIndex`, `parseEffectIndexArgs`, `_guardEffectBucketKey`, `_guardEffectAggregationKey`, `buildEffectIndex`, `formatEffectIndex`. No reserved state files, PM-owned gate artifacts, QA-owned artifacts, or launch-owned artifacts were modified. Challenge resolved: all nine file categories are dev-owned and within M32 scope.
+
+**Challenge 2 — CLI surface grows from 15 to 16 commands as spec'd.** `node bin/tusq.js help` exits 0 and stdout lists `effect` between `domain` and `policy`. `node bin/tusq.js effect index --help` exits 0 with planning-aid framing: `This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.` Bucket iteration order `read → write → destructive → unknown` is documented in help. Challenge resolved: CLI surface matches the PM charter and SYSTEM_SPEC § M32.
+
+**Challenge 3 — All M32 smoke assertions pass (cases a-u plus edge cases).** Cases verified: default all-effect run in closed-enum order (a), --effect filter for all four values (b), unknown effect exit 1 (c), missing manifest exit 1 (d), malformed JSON exit 1 (e), byte-identical determinism (f), read-only manifest invariant (g), digest non-flip (h), compile byte-identity (i), surface plan + domain index byte-identity (j), empty-capabilities exit 0 (l), --out to valid path (m), --out unwritable path exit 1 (n), --out .tusq/ rejection (o), unknown bucket appended last (p), closed aggregation_key enum (q), empty buckets MUST NOT appear (r), manifest declared order within bucket (s), has_restricted_or_confidential_sensitivity values per bucket (t), has_unknown_auth values per bucket (u). npm test exits 0 with 23 scenarios. Challenge resolved.
+
+**Challenge 4 — M32 closes the OBJ-002-M31 flag-value coverage gap.** M31 had three boolean flags (`has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`, `has_unknown_auth`) not independently smoke-asserted for correctness (OBJ-002-M31, low, non-blocking). M32 smoke cases (t) and (u) now explicitly assert correct per-bucket flag values: write bucket `has_restricted_or_confidential_sensitivity=true`, read bucket `has_restricted_or_confidential_sensitivity=false`, read bucket `has_unknown_auth=true`, write bucket `has_unknown_auth=false`. REQ-189 formally captures this. M31 flag gap remains non-blocking; M32 flag gap is closed. Challenge resolved.
+
+**Challenge 5 — OBJ-001 (medium, non-blocking) and OBJ-002 (low, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline. surface-plan-determinism eval uses synthetic_capabilities. Both non-blocking. No new blocking objections raised.
+
+**Challenge 6 — All 191 acceptance criteria (REQ-001–REQ-191) pass.** REQ-168–REQ-191 (24 new criteria) added to cover M32 CLI surface, default run, filtering, error paths, determinism, read-only invariants, empty-capabilities, --out variants, unknown bucket ordering, closed enums, empty-bucket rule, per-bucket entry shape, flag value assertions, and eval regression. Challenge resolved.
+
+**Challenge 7 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-191 (all PASS). RELEASE_NOTES.md documents M1–M32 including V1.13. ship-verdict.md (this file) carries this turn's independent challenge. Challenge resolved.
+
+**Challenge 8 — Zero new dependencies.** `git diff HEAD -- package.json package-lock.json` produces empty output. Challenge resolved.
+
+**Challenge 9 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD e9d2d10, run_ae841429202c5bb7, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | exit 0, Smoke tests passed, Eval regression harness passed (23 scenarios) |
+| `node bin/tusq.js help` | exit 0, 16 commands, effect between domain and policy |
+| `node bin/tusq.js effect index --help` | exit 0, planning-aid framing callout present, bucket order read→write→destructive→unknown |
+| `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | empty (zero source drift) |
+| `git diff HEAD -- package.json package-lock.json` | empty (zero new dependencies) |
+
+---
+
 ## QA Challenge — turn_21e6a71b08014338 (role=qa, run_25308eabf162ba8b, M31 re-verification no-source-change cycle, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_2a28545f82ce5e1b, role=dev, HEAD 8c80a26) for run_25308eabf162ba8b independently rather than rubber-stamping it.
