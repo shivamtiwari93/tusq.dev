@@ -2,6 +2,38 @@
 
 ---
 
+## Dev Turn turn_682fe7bd80e6064f — Planning Phase: Loop-Break Diagnosis, PM Participation Required (run_24ccd92f593d8647, 2026-04-26)
+
+**Run:** run_24ccd92f593d8647
+**Phase:** planning
+**HEAD:** be094a6a319216f5e0be79f728510abf188f6334
+
+### Challenge To Prior Dev Turn
+
+**Prior turn:** turn_1be10c4cf3c1e0f8 (role=dev, phase=planning)
+
+That dev turn correctly challenged PM turn_fa7dbb75b01943f5, upheld all five PM decisions, re-verified all four gate artifacts (PM_SIGNOFF.md 158414B, ROADMAP.md 110285B, SYSTEM_SPEC.md 295713B, command-surface.md 94405B), confirmed npm test exit 0 (20 scenarios), and set phase_transition_request='implementation'. Challenge resolved: all five decisions are correct and the baseline evidence is accurate.
+
+**Critical challenge**: DEC-005 of that turn and all prior turns in this run set phase_transition_request='implementation', but the orchestrator has rejected it three times (non_progress_count: 3). Reading .agentxchain/state.json reveals the root cause: the non_progress_signature states all four planning_signoff artifacts require participation from role "pm" in the *current run* (run_24ccd92f593d8647), but no accepted PM turn exists in this run's history. The artifacts were modified by PM turns in prior runs; this run has had only dev turns. Setting phase_transition_request='implementation' again would be incorrect — the gate will reject it a fourth time. The correct action is to route to PM so that PM makes at least one accepted turn in this run's planning phase.
+
+### Baseline Re-Verification (HEAD be094a6a319216f5e0be79f728510abf188f6334)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (20 scenarios)'
+- git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json: empty (zero source drift)
+- PM_SIGNOFF.md: 158414B, ROADMAP.md: 110285B, SYSTEM_SPEC.md: 295713B, command-surface.md: 94405B
+- M30 confirmed in SYSTEM_SPEC.md at line 3198; confirmed in command-surface.md at line 958
+- Shipped V1.10 boundary (M1-M29) intact; M30 is V1.11 (PROPOSED) unchecked planned work
+
+### Decisions
+
+- DEC-001: Challenged prior dev turn (turn_1be10c4cf3c1e0f8) explicitly. All five prior decisions upheld. Critical issue surfaced: DEC-005's phase_transition_request='implementation' has been rejected three times by the gate evaluator because this run has no PM turns.
+- DEC-002: Root cause of planning loop: gate evaluator requires PM participation in run_24ccd92f593d8647 during planning phase; history.jsonl shows zero PM turns for this run. Prior PM turns (da8a75e, dacdfa1) were from different runs and do not satisfy the current run's gate check.
+- DEC-003: Baseline re-verification confirms npm test exit 0 (20 scenarios), zero source drift, all four gate artifacts present at expected sizes, M30 content confirmed in SYSTEM_SPEC.md and command-surface.md.
+- DEC-004: Modified only dev-owned artifact: .planning/IMPLEMENTATION_NOTES.md (this entry prepended). Did NOT modify reserved orchestrator state files or PM-owned planning artifacts.
+- DEC-005: Setting phase_transition_request=null (gate requirements NOT met — PM must first participate in this run). Setting proposed_next_role='pm' so the orchestrator routes PM to make its planning-phase turn for run_24ccd92f593d8647.
+
+---
+
 ## Dev Turn turn_1be10c4cf3c1e0f8 — Planning Phase: M30 PM Artifacts Verified, Gate Advance (run_24ccd92f593d8647, 2026-04-26)
 
 **Run:** run_24ccd92f593d8647
