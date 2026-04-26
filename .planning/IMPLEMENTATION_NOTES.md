@@ -2,6 +2,62 @@
 
 ---
 
+## Dev Turn turn_59bd0fdb1abd4a32 — Implementation Phase: M31 Static Capability Domain Index Export (run_e40832d436a42d75, 2026-04-26)
+
+**Run:** run_e40832d436a42d75
+**Phase:** implementation
+**HEAD:** 57f6fe6e52571059954b4116336dce4fdf9660d4 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_104e8064c293ba9f (role=pm, phase=planning)
+
+That PM turn correctly bound M31 (Static Capability Domain Index Export from Manifest Evidence — V1.12 PROPOSED) under intake charter `intent_1777224728413_a063` (vision_scan, roadmap_exhausted_vision_open). PM verified M30 is shipped at V1.11, froze the two-value `aggregation_key` enum (`domain | unknown`), the 8-field per-domain entry shape, the manifest first-appearance ordering rule, the empty-capabilities exit-0 rule, the read-only invariants, and the four flags (`--domain`, `--manifest`, `--out`, `--json`). PM reserved SYSTEM_SPEC § M31 and command-surface § M31 detail blocks for dev materialization per the M27/M28/M29/M30 PM-vs-dev ownership split, ran npm test exit 0 (21 scenarios), and set phase_transition_request='implementation'. All five PM decisions upheld. Challenge resolved: the charter is valid, the scope decisions are correct, and the frozen invariants are properly specified.
+
+OBJ-001 from prior runs (MCP-descriptor candidate in ROADMAP_NEXT_CANDIDATES.md, low, form-decision A/B/C unresolved) remains unbound and non-blocking.
+
+### Implementation Work
+
+**Milestone:** M31 — Static Capability Domain Index Export from Manifest Evidence (V1.12)
+
+#### Source changes
+
+- `src/cli.js`: Added `DOMAIN_INDEX_AGGREGATION_KEY_ENUM` (frozen two-value Set), `_guardAggregationKey` (synchronous throw guard), `cmdDomain` (enumerator), `cmdDomainIndex` (main handler), `parseDomainIndexArgs` (four-flag parser: `--domain`, `--manifest`, `--out`, `--json`), `buildDomainIndex` (pure deterministic function: first-appearance bucketing, unknown-appended-last, all 8 per-domain fields), `formatDomainIndex` (human-readable output with planning-aid callout); updated `dispatch()` (added `domain` case between `diff` and `policy`), `printHelp()` (added `domain` line between `diff` and `policy`), `printCommandHelp()` (added `domain` and `domain index` entries). CLI surface: 14 → 15 commands.
+
+#### Test changes
+
+- `tests/smoke.mjs`: M31 smoke matrix — 17 assertions covering all spec-required cases a-q: default index with first-appearance ordering, `--domain` filter (named + unknown), unknown domain exit 1, missing manifest exit 1, malformed JSON exit 1, byte-identical determinism (human + JSON), manifest immutability, digest non-flip, compile byte-identity, surface plan byte-identity, empty-capabilities exit 0, `--out` write + empty stdout, unwritable `--out` exit 1, `.tusq/` path rejection, null-domain bucketed to unknown last, aggregation_key closed-enum check, unknown flag exit 1, missing capabilities array exit 1, help planning-aid framing, unknown subcommand exit 1.
+- `tests/evals/governed-cli-scenarios.json`: Added `domain-index-determinism` scenario (eval harness 21 → 22). Asserts byte-identical `--json` output across 3 runs, closed two-value `aggregation_key` enum, manifest first-appearance ordering (users → billing → unknown).
+- `tests/eval-regression.mjs`: Added `runDomainIndexDeterminismScenario` handler + routing case for `scenario_type === 'domain_index_determinism'`.
+
+#### Planning files
+
+- `.planning/SYSTEM_SPEC.md`: Added § M31 (purpose/boundary, command shape, frozen two-value enum, frozen 8-field per-domain shape, first-appearance ordering rule, empty-capabilities/stdout-discipline rules, read-only invariants, deliverables list); added Constraint 29 (logical Constraint 24 per ROADMAP § M31: planning-aid framing invariant for `tusq domain index`).
+- `.planning/command-surface.md`: Added § M31 Product CLI Surface (command table, flag table, `aggregation_key` enum table, per-domain shape table, iteration order, default-preservation table, failure UX table, local-only invariants table).
+- `.planning/IMPLEMENTATION_NOTES.md`: This entry.
+
+#### Website docs
+
+- `website/docs/cli-reference.md`: Added `tusq domain index` section with flag table, exit code table, `aggregation_key` enum table, invariants, and usage examples.
+- `website/docs/manifest-format.md`: Added Domain Index subsection explaining `domain` field bucketing, `unknown` bucket, ordering rules, and planning-aid boundary.
+
+### Verification (HEAD 57f6fe6e52571059954b4116336dce4fdf9660d4 + M31 changes)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (22 scenarios)'
+- `node bin/tusq.js help`: 15-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help)
+- `node bin/tusq.js domain index --help`: planning-aid framing callout confirmed
+- `git diff HEAD -- package.json package-lock.json`: empty (zero new dependencies)
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_104e8064c293ba9f) explicitly; all five PM decisions upheld; M31 scope/enums/invariants correctly specified; implementation phase proceeds to materialize all M31 deliverables.
+- DEC-002: Implemented M31 in src/cli.js: `DOMAIN_INDEX_AGGREGATION_KEY_ENUM`, `_guardAggregationKey`, `cmdDomain`, `cmdDomainIndex`, `parseDomainIndexArgs`, `buildDomainIndex` (first-appearance bucketing, unknown-last, all 8 per-domain fields), `formatDomainIndex`; updated dispatch/printHelp/printCommandHelp (CLI surface 14 → 15).
+- DEC-003: Added M31 smoke tests to tests/smoke.mjs (17 assertions covering all spec-required cases a-q), `domain-index-determinism` eval scenario to governed-cli-scenarios.json (21 → 22), and `runDomainIndexDeterminismScenario` handler to eval-regression.mjs. npm test exits 0 with 22 scenarios.
+- DEC-004: Modified exactly nine files: src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs, .planning/SYSTEM_SPEC.md (§ M31 + Constraint 29), .planning/command-surface.md (§ M31 CLI Surface), .planning/IMPLEMENTATION_NOTES.md (this entry), website/docs/cli-reference.md, website/docs/manifest-format.md. Did NOT modify reserved orchestrator state files. Did NOT modify PM-owned gate artifacts (PM_SIGNOFF.md, ROADMAP.md). Did NOT modify QA-owned or launch-owned artifacts. Did NOT modify package.json or package-lock.json.
+- DEC-005: Setting phase_transition_request='qa'. Implementation exit gate requirements satisfied: .planning/IMPLEMENTATION_NOTES.md exists and updated with this turn entry; verification pass achieved (npm test exit 0, 22 scenarios); all M31 source deliverables present and verified.
+
+---
+
 ## Dev Turn turn_f766c529523ce892 — Implementation Phase: V1.11 No-Regression Carry-Forward (run_7894753f9c47c8e3, 2026-04-26)
 
 **Run:** run_7894753f9c47c8e3

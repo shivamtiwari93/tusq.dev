@@ -448,6 +448,39 @@ V1 approval is explicit and repo-local.
 
 `tusq approve` sets `approved: true`, clears `review_needed`, and records `approved_by` plus `approved_at`. Use `--dry-run` before writing and `--json` for automation-friendly output.
 
+## Domain Index
+
+The `domain` field on each capability drives per-domain bucketing in `tusq domain index`. The command groups capabilities by their declared `domain` value in manifest first-appearance order and emits a per-domain index with name-and-counters fields only.
+
+**How bucketing works:**
+
+| `domain` field value | Bucket |
+|----------------------|--------|
+| A non-empty string (e.g. `"users"`, `"billing"`) | Named domain bucket with `aggregation_key: "domain"` |
+| `null`, missing, or empty-string | Zero-evidence `unknown` bucket with `aggregation_key: "unknown"` |
+
+The `unknown` bucket is always appended last in the output, regardless of where the first domainless capability appears in the manifest. The ordering of named domain buckets follows the manifest's `capabilities[]` first-appearance order — never alphabetized.
+
+**What domain index reads and what it never does:**
+
+- Reads: `capability.domain`, `capability.name`, `capability.approved`, `capability.side_effect_class`, `capability.sensitivity_class`, `capability.auth_requirements.auth_scheme`.
+- Never modifies the manifest. Never flips `capability_digest`. Never writes to `.tusq/`.
+- `tusq domain index` is a planning aid only — it does NOT generate skill packs, rollout plans, workflow definitions, or agent personas.
+
+```bash
+# View domain index
+tusq domain index
+
+# Filter to a single domain
+tusq domain index --domain users
+
+# View the zero-evidence bucket
+tusq domain index --domain unknown
+
+# Machine-readable JSON
+tusq domain index --json
+```
+
 ## Regeneration behavior
 
 When you regenerate a manifest, previously approved capabilities are preserved by method+path key when possible.

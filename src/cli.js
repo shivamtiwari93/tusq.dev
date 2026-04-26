@@ -66,6 +66,11 @@ const PII_CANONICAL_NAMES = new Set(Object.keys(PII_CATEGORY_BY_NAME));
 // Expansion is a material governance event requiring its own ROADMAP milestone.
 const SURFACE_ENUM = Object.freeze(['chat', 'palette', 'widget', 'voice']);
 
+// M31: frozen two-value aggregation_key enum. Immutable once M31 ships.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+// An implementation-time guard fires if buildDomainIndex produces a key outside this set.
+const DOMAIN_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['domain', 'unknown']));
+
 // M30: frozen six-value gated_reason enum. Immutable once M30 ships.
 // An implementation-time guard fires if classifyGating returns a value outside this set.
 const GATED_REASON_ENUM = Object.freeze(new Set([
@@ -168,6 +173,9 @@ function dispatch(argv) {
       return;
     case 'diff':
       cmdDiff(args);
+      return;
+    case 'domain':
+      cmdDomain(args);
       return;
     case 'policy':
       cmdPolicy(args);
@@ -1954,6 +1962,266 @@ function formatSurfacePlan(plan) {
   return lines.join('\n');
 }
 
+// M31: tusq domain — enumerator (mirrors cmdSurface, cmdPolicy, cmdRedaction)
+function cmdDomain(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('domain');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdDomainIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M31: tusq domain index — handler
+function cmdDomainIndex(args) {
+  const { opts, positionals } = parseDomainIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('domain index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildDomainIndex(manifest, manifestPath);
+
+  const domainFilter = opts.domain || null;
+  let outputIndex;
+  if (domainFilter !== null) {
+    const matchedEntry = fullIndex.domains.find((e) => e.domain === domainFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown domain: ${domainFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { domains: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatDomainIndex(outputIndex));
+}
+
+function parseDomainIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['domain', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardAggregationKey(key) {
+  if (!DOMAIN_INDEX_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M31: buildDomainIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered domain index from the manifest's capabilities[].
+// Per-domain iteration order is manifest first-appearance order; unknown bucket is appended last.
+function buildDomainIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      domains: []
+    };
+  }
+
+  // Track domain buckets in manifest first-appearance order.
+  // 'unknown' bucket is tracked separately and always appended last.
+  const domainOrder = []; // first-appearance order of named (non-unknown) domain keys
+  const buckets = Object.create(null); // domainKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const rawDomain = capability.domain;
+    const isUnknown = rawDomain === null || rawDomain === undefined || rawDomain === '';
+    const bucketKey = isUnknown ? '__unknown__' : String(rawDomain);
+
+    if (isUnknown) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        domainOrder.push(bucketKey);
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  const allBucketKeys = [...domainOrder, ...(hasUnknownBucket ? ['__unknown__'] : [])];
+
+  const domains = allBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const domainName = isUnknownBucket ? 'unknown' : bucketKey;
+    const aggregationKey = isUnknownBucket ? _guardAggregationKey('unknown') : _guardAggregationKey('domain');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidential = caps.some((c) =>
+      c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+    const hasUnknownAuth = caps.some((c) => {
+      if (!c.auth_requirements || typeof c.auth_requirements !== 'object') return true;
+      return c.auth_requirements.auth_scheme === 'unknown';
+    });
+
+    return {
+      domain: domainName,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidential,
+      has_unknown_auth: hasUnknownAuth
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    domains
+  };
+}
+
+// M31: format domain index as human-readable text
+function formatDomainIndex(index) {
+  if (index.domains.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Domain Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a skill-pack/rollout/workflow generator.',
+    ''
+  ];
+
+  for (const entry of index.domains) {
+    lines.push(`[${entry.domain}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push(`  has_unknown_auth: ${entry.has_unknown_auth}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function cmdRedactionReview(args) {
   const { opts, positionals } = parseRedactionReviewArgs(args);
 
@@ -2562,6 +2830,7 @@ function printHelp() {
   process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
+  process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
@@ -2580,6 +2849,22 @@ function printCommandHelp(command) {
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
+    domain: 'Usage: tusq domain <subcommand>\n  Subcommands: index',
+    'domain index': [
+      'Usage: tusq domain index [--domain <name>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --domain <name>    Filter to a single domain bucket (default: all domains)',
+      '  --manifest <path>  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>       Write index to file (no stdout on success)',
+      '  --json             Emit machine-readable JSON',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown domain, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a skill-pack/rollout/workflow generator.'
+    ].join('\n'),
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',

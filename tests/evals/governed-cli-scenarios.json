@@ -492,6 +492,55 @@
         "auth_scheme_unknown",
         "auth_scheme_oauth_pending_v2"
       ]
+    },
+    {
+      "id": "domain-index-determinism",
+      "description": "M31: tusq domain index --json produces byte-identical output across three runs on the same manifest; aggregation_key enum is closed; unknown bucket appears last; manifest first-appearance ordering is preserved",
+      "scenario_type": "domain_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "delete_user",
+          "domain": "users",
+          "method": "DELETE",
+          "path": "/users/:id",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "create_invoice",
+          "domain": "billing",
+          "method": "POST",
+          "path": "/billing/invoices",
+          "side_effect_class": "write",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "no_domain_route",
+          "domain": null,
+          "method": "GET",
+          "path": "/status",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        }
+      ],
+      "expected_valid_aggregation_keys": ["domain", "unknown"],
+      "expected_domain_order": "users,billing,unknown"
     }
   ]
 }

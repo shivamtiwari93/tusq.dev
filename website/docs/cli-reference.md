@@ -312,6 +312,58 @@ tusq policy verify --strict --json
 tusq serve --policy .tusq/execution-policy.json
 ```
 
+## `tusq domain index`
+
+Emit a deterministic, per-domain capability index from manifest evidence. Groups capabilities by their `domain` field in manifest first-appearance order, with a special `unknown` bucket for capabilities whose domain is `null`, missing, or empty-string. This is a **planning aid, not a skill-pack/rollout/workflow generator**.
+
+```bash
+tusq domain index [--domain <name>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--domain <name>` | unset | Filter to a single domain bucket (use `unknown` for the zero-evidence bucket) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | unset | Write index to file (no stdout on success) |
+| `--json` | unset | Emit machine-readable JSON |
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown domain, `--out` path error, or unknown subcommand |
+
+**`aggregation_key` enum (frozen two-value):**
+
+| Value | Meaning |
+|-------|---------|
+| `"domain"` | Capabilities sharing a named manifest `domain` value |
+| `"unknown"` | Capabilities whose `domain` is `null`, missing, or empty-string |
+
+**Per-domain entry fields:** `domain`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`, `has_unknown_auth`. Top-level: `manifest_path`, `manifest_version`, `generated_at`, `domains[]`.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- Per-domain iteration order is manifest first-appearance order (never alphabetized); `unknown` bucket is always last.
+- The two-value `aggregation_key` enum is frozen; any addition is a material governance event.
+- A domain index is NOT a skill-pack, NOT a rollout plan, NOT a workflow definition, and NOT an agent persona.
+
+```bash
+# All domains (human-readable)
+tusq domain index
+
+# All domains (JSON)
+tusq domain index --json
+
+# Single domain
+tusq domain index --domain users --json
+
+# Zero-evidence bucket
+tusq domain index --domain unknown --json
+
+# Write to file
+tusq domain index --out domain-index.json
+```
+
 ## `tusq redaction review`
 
 Emit a deterministic, per-capability reviewer report aggregating M25 `redaction.pii_fields`, M26 `redaction.pii_categories`, and frozen per-category advisory text from `PII_REVIEW_ADVISORY_BY_CATEGORY`. This is a **reviewer aid, not a runtime enforcement gate**.

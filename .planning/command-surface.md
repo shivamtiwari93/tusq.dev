@@ -1079,3 +1079,85 @@ The lists are immutable once M30 ships; any addition is a material governance ev
 | M29 `auth_requirements` copy-forward verbatim | No recoercion of `unknown` → `none` |
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "generates a chat client", "renders a widget", "hosts a voice interface", "runs a command palette", "ships a runnable surface", "auto-brands the embed", "certifies accessibility", "publishes to a marketplace" |
 | Future surface-generator milestones reserved | M-Chat-1, M-Palette-1, M-Widget-1, M-Voice-1 ship under their own ROADMAP entries with fresh acceptance contracts; M30 is **not** a substitute for any of them |
+
+## M31 Product CLI Surface
+
+M31 (Static Capability Domain Index Export from Manifest Evidence — V1.12) adds the `domain` top-level noun with a single subcommand `index`. The CLI surface grows from **14 → 15** commands, with `domain` inserted alphabetically between `diff` and `policy`.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq domain` | Enumerate domain subcommands | Help text printed |
+| `tusq domain index` | Emit a per-domain capability index from manifest evidence | Index produced (or empty-capabilities manifest) |
+
+### `tusq domain index` Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--domain <name>` | unset (all domains) | Filter to a single domain bucket by manifest-declared name or the literal `unknown` |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | unset | Write index to file; no stdout on success |
+| `--json` | unset | Emit machine-readable JSON |
+
+### `aggregation_key` Enum (Frozen Two-Value)
+
+| Value | Meaning |
+|-------|---------|
+| `domain` | The bucket aggregates capabilities sharing a named manifest `domain` value |
+| `unknown` | The bucket aggregates capabilities whose `domain` field is `null`, missing, or empty-string |
+
+The two-value enum is immutable once M31 ships. Any addition is a material governance event requiring its own ROADMAP milestone.
+
+### Per-Domain Entry Shape
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `domain` | string | The manifest-declared domain value, or the literal `"unknown"` for the zero-evidence bucket |
+| `aggregation_key` | `"domain" \| "unknown"` | Closed two-value enum |
+| `capability_count` | integer | Number of capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest first-appearance order |
+| `approved_count` | integer | Capabilities where `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | Any capability has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | Any capability has `sensitivity_class ∈ {"restricted","confidential"}` |
+| `has_unknown_auth` | boolean | Any capability has `auth_requirements.auth_scheme === "unknown"` or no auth_requirements |
+
+### Iteration Order
+
+Per-domain iteration order is the manifest's **first appearance** order — deterministic, never alphabetized. The `unknown` bucket (if any capability lacks a domain) is **always appended last**, regardless of where the first domainless capability appears in the manifest.
+
+### M31 Default-Preservation Table (14 Commands Unchanged)
+
+| Command | Behavior |
+|---------|----------|
+| All 14 existing commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help) | Byte-identical stdout, stderr, and exit codes before and after M31 |
+
+### M31 Failure UX
+
+| Situation | Operator sees | Exit code |
+|-----------|---------------|-----------|
+| Index succeeded | Per-domain index on stdout (or written to `--out` path with empty stdout) | 0 |
+| Empty-capabilities (`capabilities: []`, valid scaffold state) | Single line `No capabilities in manifest — nothing to index.` on stdout in human mode; `{manifest_path, manifest_version, generated_at, domains: []}` on stdout in `--json` mode | 0 |
+| `--manifest` points to a missing file | `Manifest not found: <path>` on stderr; stdout empty | 1 |
+| Manifest is present but not valid JSON | `Invalid manifest JSON: <path>` on stderr; stdout empty | 1 |
+| Manifest is valid JSON but lacks a top-level `capabilities` array | `Invalid manifest: missing capabilities array` on stderr; stdout empty | 1 |
+| `--domain <value>` does not match any bucket | `Unknown domain: <value>` on stderr; stdout empty | 1 |
+| Unknown subcommand under `tusq domain` | `Unknown subcommand: <name>` on stderr; stdout empty | 1 |
+| Unknown flag on `tusq domain index` | `Unknown flag: <flag>` on stderr; stdout empty | 1 |
+| `--out <path>` is unwritable | `Cannot write to --out path: <path>` on stderr; stdout empty | 1 |
+| `--out <path>` resolves inside `.tusq/` | `--out path must not be inside .tusq/` on stderr; stdout empty | 1 |
+
+### M31 Local-Only Invariants
+
+| Invariant | How it shows up at index time |
+|-----------|-------------------------------|
+| Read-only manifest | `tusq.manifest.json` is never opened for writing; mtime and content byte-identical before/after any invocation |
+| No `.tusq/` write | `tusq domain index` MUST NOT create or modify any file under `.tusq/`; `--out` rejects any path resolving inside `.tusq/` |
+| No network I/O | No HTTP, DB, socket, or DNS lookup |
+| Zero new dependencies | `package.json` MUST NOT gain any new package |
+| Zero `capability_digest` flips | Hash-before vs hash-after assertion is byte-identical on every capability |
+| `tusq compile` byte-identity | Golden-file smoke assertion confirms compile output is byte-identical pre and post-M31 |
+| `tusq surface plan` byte-identity | `tusq surface plan` output byte-for-byte unchanged pre and post-M31 |
+| Deterministic output | Running twice on the same manifest produces byte-identical stdout in both human and `--json` modes; iteration order is fixed (manifest first-appearance order; `unknown` appended last); no wall-clock fields inside per-domain entries |
+| Frozen two-value `aggregation_key` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "generates skill packs", "rollout plan", "workflow definitions", "agent personas", or "domain access enforcement" |
+| Future domain-export milestones reserved | M-Skills-1, M-Rollout-1, M-Workflow-1, M-Agent-Persona-1 ship under their own ROADMAP entries with fresh acceptance contracts; M31 is **not** a substitute for any of them |

@@ -913,6 +913,68 @@ async function runSurfacePlanDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runDomainIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => ({
+    name: cap.name,
+    description: cap.description || cap.name,
+    method: cap.method || 'GET',
+    path: cap.path || '/',
+    domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+    side_effect_class: cap.side_effect_class || 'read',
+    sensitivity_class: cap.sensitivity_class || 'unknown',
+    approved: cap.approved === true,
+    auth_requirements: {
+      auth_scheme: cap.auth_scheme || 'unknown',
+      auth_scopes: [],
+      auth_roles: [],
+      evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+    }
+  }));
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq domain index --json three times and assert byte-identical output
+  const run1 = runCli(['domain', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['domain', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['domain', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: domain index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const index = JSON.parse(run1.stdout);
+  const validKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.domains) {
+    if (!validKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for domain '${entry.domain}'`);
+    }
+  }
+
+  // Assert domains appear in manifest first-appearance order (not alphabetized)
+  const domainOrder = index.domains.map((d) => d.domain).join(',');
+  if (domainOrder !== scenario.expected_domain_order) {
+    fail(`${scenario.id}: domains must appear in manifest first-appearance order '${scenario.expected_domain_order}'; got: ${domainOrder}`);
+  }
+
+  // Assert manifest is not mutated
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  if (JSON.stringify(JSON.parse(manifestAfter)) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by domain index`);
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -944,6 +1006,8 @@ async function run() {
       await runAuthRequirementsSyntheticScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'surface_plan_determinism') {
       await runSurfacePlanDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'domain_index_determinism') {
+      await runDomainIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

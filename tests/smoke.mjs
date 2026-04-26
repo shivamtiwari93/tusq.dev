@@ -2380,6 +2380,271 @@ async function run() {
 
   await fs.rm(m30TmpDir, { recursive: true, force: true });
 
+  // ── M31: Static Capability Domain Index Export ──────────────────────────────
+  const m31TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m31-smoke-'));
+
+  // M31 fixture manifest: capabilities across two named domains + one unknown bucket
+  const m31Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'create_invoice',
+        description: 'Create invoice',
+        method: 'POST',
+        path: '/billing/invoices',
+        domain: 'billing',
+        side_effect_class: 'write',
+        sensitivity_class: 'confidential',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_domain_route',
+        description: 'Route without domain',
+        method: 'GET',
+        path: '/status',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+  const m31ManifestPath = path.join(m31TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m31ManifestPath, JSON.stringify(m31Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m31TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M31(a): default tusq domain index produces exit 0 and per-domain entries in manifest first-appearance order
+  const m31DefaultResult = runCli(['domain', 'index', '--manifest', m31ManifestPath], { cwd: m31TmpDir });
+  if (!m31DefaultResult.stdout.includes('[users]') || !m31DefaultResult.stdout.includes('[billing]') || !m31DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M31(a): default index must include all three domain buckets:\n${m31DefaultResult.stdout}`);
+  }
+  if (!m31DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M31(a): default index must include planning-aid framing:\n${m31DefaultResult.stdout}`);
+  }
+  // Verify manifest first-appearance order: users before billing before unknown
+  const m31DefaultLines = m31DefaultResult.stdout.split('\n');
+  const m31UsersIdx = m31DefaultLines.findIndex((l) => l.includes('[users]'));
+  const m31BillingIdx = m31DefaultLines.findIndex((l) => l.includes('[billing]'));
+  const m31UnknownIdx = m31DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m31UsersIdx < m31BillingIdx && m31BillingIdx < m31UnknownIdx)) {
+    throw new Error(`M31(a): domain buckets must appear in manifest first-appearance order (users,billing,unknown):\n${m31DefaultResult.stdout}`);
+  }
+
+  // M31(b): --domain users emits exactly the users entry; --domain unknown emits the unknown entry
+  const m31UsersResult = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--domain', 'users'], { cwd: m31TmpDir });
+  if (!m31UsersResult.stdout.includes('[users]') || m31UsersResult.stdout.includes('[billing]') || m31UsersResult.stdout.includes('[unknown]')) {
+    throw new Error(`M31(b): --domain users must emit only users bucket:\n${m31UsersResult.stdout}`);
+  }
+  const m31UnknownResult = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--domain', 'unknown'], { cwd: m31TmpDir });
+  if (!m31UnknownResult.stdout.includes('[unknown]') || m31UnknownResult.stdout.includes('[users]') || m31UnknownResult.stdout.includes('[billing]')) {
+    throw new Error(`M31(b): --domain unknown must emit only unknown bucket:\n${m31UnknownResult.stdout}`);
+  }
+
+  // M31(c): --domain bogus exits 1 with Unknown domain: and empty stdout
+  const m31BogusResult = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--domain', 'bogus'], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31BogusResult.stderr.includes('Unknown domain: bogus') || m31BogusResult.stdout !== '') {
+    throw new Error(`M31(c): unknown domain must exit 1 with error on stderr, empty stdout:\nstdout=${m31BogusResult.stdout}\nstderr=${m31BogusResult.stderr}`);
+  }
+
+  // M31(d): missing --manifest path exits 1 with Manifest not found: and empty stdout
+  const m31MissingManifest = runCli(['domain', 'index', '--manifest', path.join(m31TmpDir, 'not-here.json')], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31MissingManifest.stderr.includes('Manifest not found:') || m31MissingManifest.stdout !== '') {
+    throw new Error(`M31(d): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m31MissingManifest.stdout}\nstderr=${m31MissingManifest.stderr}`);
+  }
+
+  // M31(e): malformed-JSON manifest exits 1 with Invalid manifest JSON: and empty stdout
+  const m31BadManifestPath = path.join(m31TmpDir, 'bad.json');
+  await fs.writeFile(m31BadManifestPath, 'not-json', 'utf8');
+  const m31BadManifest = runCli(['domain', 'index', '--manifest', m31BadManifestPath], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31BadManifest.stderr.includes('Invalid manifest JSON:') || m31BadManifest.stdout !== '') {
+    throw new Error(`M31(e): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m31BadManifest.stdout}\nstderr=${m31BadManifest.stderr}`);
+  }
+
+  // M31(f): running twice produces byte-identical stdout in both human and JSON modes
+  const m31Human1 = runCli(['domain', 'index', '--manifest', m31ManifestPath], { cwd: m31TmpDir });
+  const m31Human2 = runCli(['domain', 'index', '--manifest', m31ManifestPath], { cwd: m31TmpDir });
+  if (m31Human1.stdout !== m31Human2.stdout) {
+    throw new Error('M31(f): expected byte-identical human index output across runs');
+  }
+  const m31Json1 = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir });
+  const m31Json2 = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir });
+  if (m31Json1.stdout !== m31Json2.stdout) {
+    throw new Error('M31(f): expected byte-identical JSON index output across runs');
+  }
+
+  // M31(g): M31 does not mutate the manifest (mtime/content unchanged)
+  const m31ManifestBefore = await fs.readFile(m31ManifestPath, 'utf8');
+  runCli(['domain', 'index', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir });
+  const m31ManifestAfter = await fs.readFile(m31ManifestPath, 'utf8');
+  if (m31ManifestBefore !== m31ManifestAfter) {
+    throw new Error('M31(g): tusq domain index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M31(h): capability_digest does not flip on any capability after an index run
+  const m31DigestBefore = m31Manifest.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  runCli(['domain', 'index', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir });
+  const m31ManifestReadBack = JSON.parse(await fs.readFile(m31ManifestPath, 'utf8'));
+  const m31DigestAfter = m31ManifestReadBack.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  if (JSON.stringify(m31DigestBefore) !== JSON.stringify(m31DigestAfter)) {
+    throw new Error('M31(h): capability_digest must not flip after domain index run');
+  }
+
+  // M31(i): tusq compile golden-file output is byte-identical pre and post-M31
+  const m31CompileDir = path.join(m31TmpDir, 'compile-check');
+  await fs.mkdir(m31CompileDir, { recursive: true });
+  // Use a manifest with at least one approved capability for compile to produce output
+  const m31CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m31CompileDir, 'tusq.manifest.json'), JSON.stringify(m31CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m31CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m31CompileDir });
+  const m31CompiledToolPath = path.join(m31CompileDir, 'tusq-tools', 'list_users.json');
+  const m31CompileContentBefore = await fs.readFile(m31CompiledToolPath, 'utf8');
+  // Run domain index then re-read compile output — must be identical
+  runCli(['domain', 'index', '--manifest', path.join(m31CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m31CompileDir });
+  const m31CompileContentAfter = await fs.readFile(m31CompiledToolPath, 'utf8');
+  if (m31CompileContentBefore !== m31CompileContentAfter) {
+    throw new Error('M31(i): tusq compile output must be byte-identical before and after domain index run');
+  }
+  // domain index must not write into tusq-tools
+  const m31ToolsFiles = await fs.readdir(path.join(m31CompileDir, 'tusq-tools'));
+  if (m31ToolsFiles.some((f) => f.includes('domain'))) {
+    throw new Error(`M31(i): domain index must not write into tusq-tools: ${m31ToolsFiles.join(', ')}`);
+  }
+
+  // M31(j): tusq surface plan output is byte-identical pre and post-M31
+  const m31SurfaceBefore = runCli(['surface', 'plan', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir }).stdout;
+  runCli(['domain', 'index', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir });
+  const m31SurfaceAfter = runCli(['surface', 'plan', '--manifest', m31ManifestPath, '--json'], { cwd: m31TmpDir }).stdout;
+  if (m31SurfaceBefore !== m31SurfaceAfter) {
+    throw new Error('M31(j): tusq surface plan output must be byte-identical before and after domain index run');
+  }
+
+  // M31(l): empty-capabilities manifest emits documented human line and domains: [] in JSON
+  const m31EmptyManifestPath = path.join(m31TmpDir, 'empty.json');
+  await fs.writeFile(m31EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m31EmptyHuman = runCli(['domain', 'index', '--manifest', m31EmptyManifestPath], { cwd: m31TmpDir });
+  if (m31EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M31(l): empty-capabilities human output must be exactly the documented line:\n${m31EmptyHuman.stdout}`);
+  }
+  const m31EmptyJson = JSON.parse(runCli(['domain', 'index', '--manifest', m31EmptyManifestPath, '--json'], { cwd: m31TmpDir }).stdout);
+  if (!Array.isArray(m31EmptyJson.domains) || m31EmptyJson.domains.length !== 0) {
+    throw new Error(`M31(l): empty-capabilities JSON must have domains: [] :\n${JSON.stringify(m31EmptyJson)}`);
+  }
+
+  // M31(m): --out <path> writes to the path and emits no stdout on success
+  const m31OutPath = path.join(m31TmpDir, 'domain-index-out.json');
+  const m31OutResult = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--out', m31OutPath], { cwd: m31TmpDir });
+  if (m31OutResult.stdout !== '') {
+    throw new Error(`M31(m): --out must emit no stdout on success, got: ${m31OutResult.stdout}`);
+  }
+  const m31OutContent = JSON.parse(await fs.readFile(m31OutPath, 'utf8'));
+  if (!Array.isArray(m31OutContent.domains) || m31OutContent.domains.length !== 3) {
+    throw new Error(`M31(m): --out file must contain three domain entries: ${JSON.stringify(m31OutContent.domains)}`);
+  }
+
+  // M31(n): --out to an unwritable path exits 1 with empty stdout
+  const m31BadOut = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (m31BadOut.stdout !== '') {
+    throw new Error(`M31(n): --out unwritable must produce empty stdout, got: ${m31BadOut.stdout}`);
+  }
+
+  // M31(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m31TusqOutResult = runCli(
+    ['domain', 'index', '--manifest', m31ManifestPath, '--out', path.join(m31TmpDir, '.tusq', 'index.json')],
+    { cwd: m31TmpDir, expectedStatus: 1 }
+  );
+  if (!m31TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m31TusqOutResult.stdout !== '') {
+    throw new Error(`M31(o): --out .tusq/ must reject with correct message:\nstdout=${m31TusqOutResult.stdout}\nstderr=${m31TusqOutResult.stderr}`);
+  }
+
+  // M31(p): capability with domain: null is bucketed into unknown and unknown bucket appears last
+  const m31IndexJson = JSON.parse(m31Json1.stdout);
+  const m31LastDomain = m31IndexJson.domains[m31IndexJson.domains.length - 1];
+  if (m31LastDomain.domain !== 'unknown') {
+    throw new Error(`M31(p): unknown bucket must appear last; got: ${m31LastDomain.domain}`);
+  }
+  const m31UnknownEntry = m31IndexJson.domains.find((d) => d.domain === 'unknown');
+  if (!m31UnknownEntry || !m31UnknownEntry.capabilities.includes('no_domain_route')) {
+    throw new Error(`M31(p): no_domain_route (domain: null) must be in unknown bucket:\n${JSON.stringify(m31UnknownEntry)}`);
+  }
+
+  // M31(q): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m31ValidAggregationKeys = new Set(['domain', 'unknown']);
+  for (const entry of m31IndexJson.domains) {
+    if (!m31ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M31(q): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for domain '${entry.domain}'`);
+    }
+  }
+  // Named domains must have aggregation_key 'domain'; unknown bucket must have 'unknown'
+  const m31UsersEntry = m31IndexJson.domains.find((d) => d.domain === 'users');
+  if (m31UsersEntry.aggregation_key !== 'domain') {
+    throw new Error(`M31(q): named domain 'users' must have aggregation_key 'domain', got: ${m31UsersEntry.aggregation_key}`);
+  }
+  if (m31UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M31(q): unknown bucket must have aggregation_key 'unknown', got: ${m31UnknownEntry.aggregation_key}`);
+  }
+
+  // M31: unknown flag exits 1 with error on stderr and empty stdout
+  const m31UnknownFlag = runCli(['domain', 'index', '--manifest', m31ManifestPath, '--badFlag'], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m31UnknownFlag.stdout !== '') {
+    throw new Error(`M31: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m31UnknownFlag.stdout}\nstderr=${m31UnknownFlag.stderr}`);
+  }
+
+  // M31: Invalid manifest missing capabilities array
+  const m31NoCapsManifestPath = path.join(m31TmpDir, 'no-caps.json');
+  await fs.writeFile(m31NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m31NoCaps = runCli(['domain', 'index', '--manifest', m31NoCapsManifestPath], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m31NoCaps.stdout !== '') {
+    throw new Error(`M31: missing capabilities array must exit 1:\nstdout=${m31NoCaps.stdout}\nstderr=${m31NoCaps.stderr}`);
+  }
+
+  // M31: help text includes planning-aid framing
+  const m31HelpResult = runCli(['domain', 'index', '--help'], { cwd: m31TmpDir });
+  if (!m31HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M31: domain index help must include planning-aid framing:\n${m31HelpResult.stdout}`);
+  }
+
+  // M31: unknown subcommand exits 1 with Unknown subcommand: message
+  const m31UnknownSub = runCli(['domain', 'bogusub'], { cwd: m31TmpDir, expectedStatus: 1 });
+  if (!m31UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m31UnknownSub.stdout !== '') {
+    throw new Error(`M31: unknown subcommand must exit 1 with error on stderr, empty stdout:\nstdout=${m31UnknownSub.stdout}\nstderr=${m31UnknownSub.stderr}`);
+  }
+
+  await fs.rm(m31TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 
