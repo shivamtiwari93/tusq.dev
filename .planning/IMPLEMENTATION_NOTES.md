@@ -2,6 +2,35 @@
 
 ---
 
+## Dev Turn turn_87bd0bcb32c4f96e — M29 Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
+
+**Run:** run_3c9aac455742ac3e
+**HEAD:** 2ee9126adb95a0ee935d0df0186690aab5c59d34
+
+### Challenge To Prior Dev Turn
+
+**Prior turn:** turn_97629476209a9171 (role=dev, phase=planning)
+
+That dev turn was a loop-recovery re-verification that (a) challenged PM turn_22c095af94007ac1 (which correctly overturned the prior needs_human escalation in turn_8f7f9beb44dae855), (b) independently verified all four planning_signoff gate artifacts (PM_SIGNOFF.md 154743B, ROADMAP.md 92968B, SYSTEM_SPEC.md 269920B, command-surface.md 83060B), (c) confirmed npm test exits 0 (16 scenarios), 13-command CLI surface, zero source drift, M29 line 317 — SHIPPED V1.10, (d) updated IMPLEMENTATION_NOTES.md, and (e) set phase_transition_request='implementation'. All five decisions are upheld. The orchestrator's continued re-routing to planning despite auto_approve is logged as OBJ-001 (high severity in prior turn). No source edits are warranted.
+
+### Decisions
+
+- No new charter bound. No source changes required.
+- Two unbound candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding.
+- Shipped V1.10 boundary (M1–M29) is intact.
+- Setting phase_transition_request='implementation' per mandate and auto_approve policy.
+
+### Verification
+
+- `git rev-parse HEAD` → exit 0: 2ee9126adb95a0ee935d0df0186690aab5c59d34
+- `ls -la .planning/PM_SIGNOFF.md .planning/ROADMAP.md .planning/SYSTEM_SPEC.md .planning/command-surface.md` → exit 0: PM_SIGNOFF.md 154743B, ROADMAP.md 92968B, SYSTEM_SPEC.md 269920B, command-surface.md 83060B
+- `npm test` → exit 0: Smoke tests passed, Eval regression harness passed (16 scenarios)
+- `node bin/tusq.js help` → exit 0: 13-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help)
+- `grep -n '^### M29:' .planning/ROADMAP.md` → exit 0: line 317 reads '— SHIPPED V1.10'
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0: empty (zero source drift)
+
+---
+
 ## Dev Turn turn_97629476209a9171 — M29 Loop Recovery Re-Verification / Protocol-Compliant Gate Advance (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
