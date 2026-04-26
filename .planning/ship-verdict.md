@@ -2,6 +2,26 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_f95801133a76aecb (role=qa, run_24ccd92f593d8647, M30 surface plan implementation, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_73dc44cfb9cef2c7, role=dev, HEAD db26400) for run_24ccd92f593d8647 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn implemented M30 (Static Embeddable-Surface Plan Export) across five files.** `git diff HEAD~1 --stat -- src/ tests/ .planning/` shows changes to `src/cli.js` (M30 constants + classifyGating + buildSurfacePlan + cmdSurface/cmdSurfacePlan + dispatch/printHelp/printCommandHelp wiring), `tests/smoke.mjs` (16 M30 assertions, cases a-p plus additional guards), `tests/evals/governed-cli-scenarios.json` (surface-plan-determinism scenario, eval count 20→21), `tests/eval-regression.mjs` (runSurfacePlanDeterminismScenario handler), and `.planning/IMPLEMENTATION_NOTES.md`. No reserved state files, PM-owned artifacts, QA-owned artifacts, or launch-owned artifacts were modified. Challenge resolved: all five file categories are dev-owned and within M30 scope.
+
+**Challenge 2 — CLI surface grows from 13 to 14 commands as spec'd.** `node bin/tusq.js help` exits 0 and stdout lists `surface` at position 12 (between `redaction` and `version`). `node bin/tusq.js surface plan --help` exits 0 with planning-aid framing. Challenge resolved: CLI surface matches the ROADMAP/SYSTEM_SPEC/command-surface.md charter.
+
+**Challenge 3 — All M30 smoke assertions pass.** All 16 M30 smoke cases (a-p: default plan, --surface filter, frozen order, unknown surface, missing manifest, malformed JSON, determinism, read-only, digest non-flip, empty-capabilities, --out, --out-unwritable, closed-enum gate reasons, per-surface gate logic, .tusq/ rejection, unknown flag, missing capabilities array, help framing, brand_inputs_required, compile byte-identity) pass. npm test exits 0. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking at V1.11. No new objections raised.
+
+**Challenge 5 — OBJ-001-M30 (low, non-blocking) from dev turn.** The dev turn raised that `surface-plan-determinism` eval uses `synthetic_capabilities` rather than a real scanned fixture. This is the same pattern as M29 auth_requirements_synthetic scenarios and is acceptable for determinism testing. A future QA turn may add a scanned fixture variant for broader coverage. Non-blocking.
+
+**Challenge 6 — REQ-129 through REQ-145 added to acceptance matrix.** 17 new M30 acceptance criteria formally cover the CLI surface expansion, four-flag interface, per-surface gating logic, six-value gated_reason enum, brand_inputs_required lists, read-only invariants, determinism, and eval regression scenario.
+
+**All 145 acceptance criteria (REQ-001–REQ-145) pass. Ship verdict: SHIP.** Phase transition requested: launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_0f67c476b8fd6477 (role=qa, run_3c9aac455742ac3e, M29 R2-R5 eval regression coverage, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_4553eefe4fa30a21, role=dev, HEAD 4cb312c) for run_3c9aac455742ac3e independently rather than rubber-stamping it.
