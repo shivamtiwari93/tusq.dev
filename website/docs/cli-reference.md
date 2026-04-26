@@ -364,6 +364,50 @@ tusq domain index --domain unknown --json
 tusq domain index --out domain-index.json
 ```
 
+## `tusq effect index`
+
+Emit a deterministic, per-side-effect-class capability index from manifest evidence. Groups capabilities by their `side_effect_class` field in closed-enum order (`read → write → destructive → unknown`), with a special `unknown` bucket for capabilities whose `side_effect_class` is `null`, missing, empty-string, or any value outside the closed three-value classifier set. This is a **planning aid, not a runtime side-effect enforcer or risk-tier classifier**.
+
+```bash
+tusq effect index [--effect <read|write|destructive|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--effect <read\|write\|destructive\|unknown>` | all classes | Filter to a single side-effect class bucket |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown effect class, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `read → write → destructive → unknown` (closed-enum order — NOT manifest first-appearance order and NOT a risk-precedence statement). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- Bucket iteration order follows the closed enum (`read → write → destructive`, then `unknown` last); within each bucket, capabilities appear in manifest declared order.
+- The four-value `side_effect_class` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A side-effect index is NOT a runtime side-effect enforcer, NOT a risk classifier, NOT a confirmation-flow generator, and does NOT alter the M30 surface-plan gating rule.
+
+```bash
+# All classes (human-readable)
+tusq effect index
+
+# All classes (JSON)
+tusq effect index --json
+
+# Single class
+tusq effect index --effect destructive --json
+
+# Zero-evidence bucket
+tusq effect index --effect unknown --json
+
+# Write to file
+tusq effect index --out effect-index.json
+```
+
 ## `tusq redaction review`
 
 Emit a deterministic, per-capability reviewer report aggregating M25 `redaction.pii_fields`, M26 `redaction.pii_categories`, and frozen per-category advisory text from `PII_REVIEW_ADVISORY_BY_CATEGORY`. This is a **reviewer aid, not a runtime enforcement gate**.

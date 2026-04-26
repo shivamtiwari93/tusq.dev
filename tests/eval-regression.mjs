@@ -975,6 +975,76 @@ async function runDomainIndexDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runEffectIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => ({
+    name: cap.name,
+    description: cap.description || cap.name,
+    method: cap.method || 'GET',
+    path: cap.path || '/',
+    domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+    side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+    sensitivity_class: cap.sensitivity_class || 'unknown',
+    approved: cap.approved === true,
+    auth_requirements: {
+      auth_scheme: cap.auth_scheme || 'unknown',
+      auth_scopes: [],
+      auth_roles: [],
+      evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+    }
+  }));
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq effect index --json three times and assert byte-identical output
+  const run1 = runCli(['effect', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['effect', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['effect', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: effect index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert side_effect_class bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validSideEffectClasses = new Set(scenario.expected_valid_side_effect_classes);
+  for (const entry of index.effects) {
+    if (!validSideEffectClasses.has(entry.side_effect_class)) {
+      fail(`${scenario.id}: side_effect_class '${entry.side_effect_class}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.effects) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for effect '${entry.side_effect_class}'`);
+    }
+  }
+
+  // Assert effects appear in closed-enum order (read → write → destructive → unknown)
+  const effectOrder = index.effects.map((e) => e.side_effect_class).join(',');
+  if (effectOrder !== scenario.expected_effect_order) {
+    fail(`${scenario.id}: effects must appear in closed-enum order '${scenario.expected_effect_order}'; got: ${effectOrder}`);
+  }
+
+  // Assert manifest is not mutated
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  if (JSON.stringify(JSON.parse(manifestAfter)) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by effect index`);
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -1008,6 +1078,8 @@ async function run() {
       await runSurfacePlanDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'domain_index_determinism') {
       await runDomainIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'effect_index_determinism') {
+      await runEffectIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

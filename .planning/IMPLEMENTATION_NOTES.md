@@ -2,6 +2,103 @@
 
 ---
 
+## Dev Turn turn_18e3b3d9ce515cf1 — Implementation Phase: M32 Static Capability Side-Effect Index Export (run_ae841429202c5bb7, 2026-04-26)
+
+**Run:** run_ae841429202c5bb7
+**Phase:** implementation
+**HEAD:** f858d36 (baseline at turn start)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_b5d4f652077b62be (role=pm, phase=planning)
+
+That PM turn challenged intake charter intent_1777234191976_e06a (vision_scan, roadmap_exhausted_vision_open) correctly, bound M32 (Static Capability Side-Effect Index Export from Manifest Evidence — V1.13 PROPOSED) under the correct VISION sources (§ Code And API Surface item 4, § Capability Overexposure), froze the closed four-value `side_effect_class` bucket-key enum (`read | write | destructive | unknown`), the closed two-value `aggregation_key` enum (`class | unknown`), the closed-enum bucket iteration order (`read → write → destructive → unknown`), the per-bucket 8-field entry shape, the empty-buckets-omitted rule, the read-only invariants, and the alphabetic insertion position of `effect` (between `domain` and `policy`). PM explicitly reserved the full SYSTEM_SPEC § M32 and command-surface § M32 detail blocks for dev materialization per the M27/M28/M29/M30/M31 PM-vs-dev ownership split, ran npm test exit 0 (22 scenarios), and set phase_transition_request='implementation'. All five PM decisions upheld. Challenge resolved: the charter is valid, the scope decisions are correct, and the frozen invariants are properly specified.
+
+OBJ-001 (R6 dead-code path), OBJ-002 (surface-plan-determinism eval uses synthetic fixtures), and OBJ-003 (M31 flag-value assertion coverage gap) all carried forward as low/medium non-blocking from prior runs. OBJ-004 (MCP-descriptor candidate unbound) remains non-blocking for M32.
+
+### Implementation Work
+
+**Milestone:** M32 — Static Capability Side-Effect Index Export from Manifest Evidence (V1.13)
+
+#### src/cli.js — M32 additions
+
+- `EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM` — frozen Set with four values ('read', 'write', 'destructive', 'unknown'). Immutable once M32 ships.
+- `EFFECT_INDEX_AGGREGATION_KEY_ENUM` — frozen Set with two values ('class', 'unknown'). Immutable once M32 ships.
+- `EFFECT_INDEX_BUCKET_ORDER` — frozen array ['read', 'write', 'destructive']. Defines closed-enum iteration order (unknown appended last).
+- `cmdEffect(args)` — enumerator (mirrors cmdDomain, cmdSurface, cmdPolicy, cmdRedaction). Prints help or dispatches to `index` subcommand; unknown subcommand exits 1 with `Unknown subcommand:`.
+- `cmdEffectIndex(args)` — main handler. Validates --out before reading manifest (detection-before-output), reads and parses manifest, builds full index, applies --effect filter (exits 1 on unknown value or missing bucket), writes to --out, --json, or human formatter.
+- `parseEffectIndexArgs(args)` — four-flag parser (--effect, --manifest, --out, --json). Unknown flags exit 1 with `Unknown flag:`.
+- `_guardEffectBucketKey(key)` — synchronous throw if key outside closed four-value set.
+- `_guardEffectAggregationKey(key)` — synchronous throw if key outside closed two-value set.
+- `buildEffectIndex(manifest, manifestPath)` — collects capabilities into buckets by side_effect_class; iterates in closed-enum order (read, write, destructive) then appends unknown last; empty buckets omitted; within each bucket capabilities follow manifest declared order.
+- `formatEffectIndex(index)` — human-readable text with planning-aid callout "This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier."
+- Updated `dispatch()` — 'effect' case inserted between 'domain' and 'policy'.
+- Updated `printHelp()` — 'effect' line inserted between 'domain' and 'policy' (CLI surface 15 → 16).
+- Updated `printCommandHelp()` — 'effect' and 'effect index' entries added.
+
+#### tests/smoke.mjs — M32 smoke matrix
+
+21 assertions covering all spec-required cases:
+- (a) default output: closed-enum order (read, write, destructive, unknown), planning-aid framing
+- (b) --effect read/write/destructive/unknown each emit exactly one matching bucket
+- (c) --effect bogus exits 1 with `Unknown effect: bogus`, empty stdout
+- (d) missing manifest exits 1 with `Manifest not found:`, empty stdout
+- (e) malformed JSON exits 1 with `Invalid manifest JSON:`, empty stdout
+- (f) byte-identical stdout across two runs (human and JSON)
+- (g) manifest mtime/content unchanged after index run
+- (h) capability_digest does not flip on any capability
+- (i) tusq compile golden-file byte-identical pre/post-M32
+- (j) tusq surface plan and tusq domain index byte-identical pre/post-M32
+- (l) empty-capabilities manifest: documented human line and effects: []
+- (m) --out writes file, no stdout on success; file has 4 entries
+- (n) --out to unwritable path exits 1, empty stdout
+- (o) --out .tusq/ path rejected with correct message, empty stdout
+- (p) null side_effect_class → unknown bucket last
+- (q) aggregation_key is one of two closed values per bucket
+- (r) empty buckets omitted; read-only manifest → only one bucket
+- (s) within-bucket manifest declared order (list_users before get_status in read bucket)
+- (t) has_restricted_or_confidential_sensitivity flag asserted per bucket (write=true, read=false)
+- (u) has_unknown_auth flag asserted per bucket (read=true for get_status, write=false)
+- Plus: unknown flag exits 1, missing capabilities array exits 1, help includes planning-aid framing, unknown subcommand exits 1
+
+#### tests/evals/governed-cli-scenarios.json
+
+Added `effect-index-determinism` scenario (22 → 23 scenarios, `scenario_type: "effect_index_determinism"`):
+- 4 synthetic capabilities: list_users (read), create_invoice (write), delete_user (destructive), no_class_route (side_effect_class: null → unknown)
+- `expected_valid_side_effect_classes: ["read", "write", "destructive", "unknown"]`
+- `expected_valid_aggregation_keys: ["class", "unknown"]`
+- `expected_effect_order: "read,write,destructive,unknown"`
+
+#### tests/eval-regression.mjs
+
+Added `runEffectIndexDeterminismScenario` handler: builds synthetic manifest, runs `tusq effect index --json` three times, asserts byte-identical output, asserts both closed enums, asserts expected_effect_order, asserts manifest not mutated.
+
+Updated scenario dispatcher to route `scenario_type === 'effect_index_determinism'` to the new handler.
+
+#### Planning artifacts
+
+- `.planning/SYSTEM_SPEC.md` — Added full § M32 (purpose, command shape, frozen four-value enum, frozen two-value aggregation_key enum, per-bucket 8-field entry shape, closed-enum iteration order, empty-capabilities/stdout-discipline rules, read-only invariants, deliverables list). Added Constraint 25 (M32 effect-index planning-aid framing invariant).
+- `.planning/command-surface.md` — Added full § M32 Product CLI Surface (command table, flags table, four-value enum table, two-value enum table, per-bucket entry shape, iteration order, failure UX table, local-only invariants table).
+- `website/docs/cli-reference.md` — Added `tusq effect index` section (command shape, flags table, exit codes, invariants, examples).
+- `website/docs/manifest-format.md` — Added "Side-Effect Index" subsection (bucketing table, iteration order, what it reads/never does, examples).
+
+### Verification (HEAD f858d36 baseline → after implementation)
+
+- `npm test`: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (23 scenarios)'
+- `node bin/tusq.js help`: 16-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, **effect**, policy, redaction, surface, version, help)
+- `node bin/tusq.js effect index --help`: exit 0 with planning-aid framing callout confirmed
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json`: shows expected M32 source changes; no new dependencies
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_b5d4f652077b62be) explicitly; all five PM decisions upheld.
+- DEC-002: Implemented M32 in src/cli.js: EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM, EFFECT_INDEX_AGGREGATION_KEY_ENUM, EFFECT_INDEX_BUCKET_ORDER, cmdEffect, cmdEffectIndex, parseEffectIndexArgs, buildEffectIndex, formatEffectIndex, _guardEffectBucketKey, _guardEffectAggregationKey; updated dispatch(), printHelp(), printCommandHelp(). CLI surface: 15 → 16.
+- DEC-003: Added M32 smoke matrix (21 assertions a-u plus edge cases) to tests/smoke.mjs, effect-index-determinism eval scenario to governed-cli-scenarios.json (22→23), and runEffectIndexDeterminismScenario handler to tests/eval-regression.mjs. npm test exits 0 with 23 scenarios.
+- DEC-004: Materialized SYSTEM_SPEC.md § M32 + Constraint 25, command-surface.md § M32, website/docs/cli-reference.md, website/docs/manifest-format.md, and this IMPLEMENTATION_NOTES.md entry.
+- DEC-005: Setting phase_transition_request='qa'. Implementation exit gate (implementation_complete) requirements satisfied: IMPLEMENTATION_NOTES.md exists and updated; verification pass (npm test exit 0, 23 scenarios, zero new dependencies); all M32 source deliverables present and verified.
+
+---
+
 ## Dev Turn turn_2a28545f82ce5e1b — Implementation Phase: V1.12 No-Regression Carry-Forward (run_25308eabf162ba8b, 2026-04-26)
 
 **Run:** run_25308eabf162ba8b

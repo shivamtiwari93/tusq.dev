@@ -71,6 +71,19 @@ const SURFACE_ENUM = Object.freeze(['chat', 'palette', 'widget', 'voice']);
 // An implementation-time guard fires if buildDomainIndex produces a key outside this set.
 const DOMAIN_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['domain', 'unknown']));
 
+// M32: frozen four-value side_effect_class bucket-key enum. Immutable once M32 ships.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+// An implementation-time guard fires if buildEffectIndex produces a key outside this set.
+const EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM = Object.freeze(new Set(['read', 'write', 'destructive', 'unknown']));
+
+// M32: frozen two-value aggregation_key enum (parallel to M31's domain|unknown). Immutable once M32 ships.
+// An implementation-time guard fires if buildEffectIndex produces a key outside this set.
+const EFFECT_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
+
+// M32: closed-enum bucket iteration order (read → write → destructive). NOT risk-precedence — deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const EFFECT_INDEX_BUCKET_ORDER = Object.freeze(['read', 'write', 'destructive']);
+
 // M30: frozen six-value gated_reason enum. Immutable once M30 ships.
 // An implementation-time guard fires if classifyGating returns a value outside this set.
 const GATED_REASON_ENUM = Object.freeze(new Set([
@@ -176,6 +189,9 @@ function dispatch(argv) {
       return;
     case 'domain':
       cmdDomain(args);
+      return;
+    case 'effect':
+      cmdEffect(args);
       return;
     case 'policy':
       cmdPolicy(args);
@@ -2222,6 +2238,279 @@ function formatDomainIndex(index) {
   return lines.join('\n');
 }
 
+// M32: tusq effect — enumerator (mirrors cmdDomain, cmdSurface, cmdPolicy, cmdRedaction)
+function cmdEffect(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('effect');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdEffectIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M32: tusq effect index — handler
+function cmdEffectIndex(args) {
+  const { opts, positionals } = parseEffectIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('effect index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildEffectIndex(manifest, manifestPath);
+
+  const effectFilter = opts.effect || null;
+  let outputIndex;
+  if (effectFilter !== null) {
+    if (!EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM.has(effectFilter)) {
+      throw new CliError(`Unknown effect: ${effectFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.effects.find((e) => e.side_effect_class === effectFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown effect: ${effectFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { effects: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatEffectIndex(outputIndex));
+}
+
+function parseEffectIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['effect', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardEffectBucketKey(key) {
+  if (!EFFECT_INDEX_SIDE_EFFECT_CLASS_ENUM.has(key)) {
+    throw new Error(`Internal error: side_effect_class outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardEffectAggregationKey(key) {
+  if (!EFFECT_INDEX_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M32: buildEffectIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered effect index from the manifest's capabilities[].
+// Bucket iteration order: read → write → destructive (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+function buildEffectIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      effects: []
+    };
+  }
+
+  // Collect capabilities into buckets keyed by their side_effect_class.
+  // The three named classes follow manifest declared order within each bucket.
+  // The unknown bucket collects capabilities with null/missing/empty-string/invalid side_effect_class.
+  const validNamedClasses = new Set(['read', 'write', 'destructive']);
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const rawClass = capability.side_effect_class;
+    const isValid = validNamedClasses.has(rawClass);
+    const bucketKey = isValid ? rawClass : '__unknown__';
+
+    if (!isValid) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: read → write → destructive, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...EFFECT_INDEX_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const effects = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const sideEffectClass = isUnknownBucket ? _guardEffectBucketKey('unknown') : _guardEffectBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardEffectAggregationKey('unknown') : _guardEffectAggregationKey('class');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasRestrictedOrConfidential = caps.some((c) =>
+      c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+    const hasUnknownAuth = caps.some((c) => {
+      if (!c.auth_requirements || typeof c.auth_requirements !== 'object') return true;
+      return c.auth_requirements.auth_scheme === 'unknown';
+    });
+
+    return {
+      side_effect_class: sideEffectClass,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidential,
+      has_unknown_auth: hasUnknownAuth
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    effects
+  };
+}
+
+// M32: format effect index as human-readable text
+function formatEffectIndex(index) {
+  if (index.effects.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Side-Effect Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.',
+    ''
+  ];
+
+  for (const entry of index.effects) {
+    lines.push(`[${entry.side_effect_class}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push(`  has_unknown_auth: ${entry.has_unknown_auth}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function cmdRedactionReview(args) {
   const { opts, positionals } = parseRedactionReviewArgs(args);
 
@@ -2831,6 +3120,7 @@ function printHelp() {
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
+  process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
@@ -2864,6 +3154,24 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown domain, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a skill-pack/rollout/workflow generator.'
+    ].join('\n'),
+    effect: 'Usage: tusq effect <subcommand>\n  Subcommands: index',
+    'effect index': [
+      'Usage: tusq effect index [--effect <read|write|destructive|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --effect <read|write|destructive|unknown>  Filter to a single side-effect class bucket (default: all classes)',
+      '  --manifest <path>                          Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                               Write index to file (no stdout on success)',
+      '  --json                                     Emit machine-readable JSON',
+      '',
+      'Bucket iteration order: read → write → destructive → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown effect, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.'
     ].join('\n'),
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',

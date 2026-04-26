@@ -1165,3 +1165,99 @@ Per-domain iteration order is the manifest's **first appearance** order — dete
 | Frozen two-value `aggregation_key` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "generates skill packs", "rollout plan", "workflow definitions", "agent personas", or "domain access enforcement" |
 | Future domain-export milestones reserved | M-Skills-1, M-Rollout-1, M-Workflow-1, M-Agent-Persona-1 ship under their own ROADMAP entries with fresh acceptance contracts; M31 is **not** a substitute for any of them |
+
+## M32 Product CLI Surface
+
+M32 (Static Capability Side-Effect Index Export from Manifest Evidence — V1.13) adds the `effect` top-level noun with a single subcommand `index`. The CLI surface grows from **15 → 16** commands, with `effect` inserted alphabetically between `domain` and `policy`.
+
+| Command | Purpose | Exit 0 means |
+|---------|---------|--------------|
+| `tusq effect` | Enumerate effect subcommands | Help text printed |
+| `tusq effect index` | Emit a per-side-effect-class capability index from manifest evidence | Index produced (or empty-capabilities manifest) |
+
+### `tusq effect index` Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--effect <read\|write\|destructive\|unknown>` | unset (all classes) | Filter to a single side-effect class bucket |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | unset | Write index to file; no stdout on success |
+| `--json` | unset | Emit machine-readable JSON |
+
+### `side_effect_class` Bucket-Key Enum (Frozen Four-Value)
+
+| Value | Condition |
+|-------|-----------|
+| `read` | Capabilities with `side_effect_class === "read"` |
+| `write` | Capabilities with `side_effect_class === "write"` |
+| `destructive` | Capabilities with `side_effect_class === "destructive"` |
+| `unknown` | Capabilities whose `side_effect_class` is `null`, missing, empty-string, or any value outside the three-value classifier set |
+
+The four-value enum is immutable once M32 ships. Any addition is a material governance event requiring its own ROADMAP milestone.
+
+### `aggregation_key` Enum (Frozen Two-Value)
+
+| Value | Meaning |
+|-------|---------|
+| `class` | The bucket aggregates capabilities sharing a named `side_effect_class` value (`read`, `write`, or `destructive`) |
+| `unknown` | The bucket aggregates capabilities in the zero-evidence catchall bucket |
+
+The two-value enum is immutable once M32 ships. Any addition is a material governance event requiring its own ROADMAP milestone.
+
+### Per-Bucket Entry Shape
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `side_effect_class` | string | One of `"read"`, `"write"`, `"destructive"`, or `"unknown"` |
+| `aggregation_key` | `"class" \| "unknown"` | Closed two-value enum |
+| `capability_count` | integer | Number of capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities where `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_restricted_or_confidential_sensitivity` | boolean | Any capability has `sensitivity_class ∈ {"restricted","confidential"}` |
+| `has_unknown_auth` | boolean | Any capability has `auth_requirements.auth_scheme === "unknown"` or no auth_requirements |
+
+### Iteration Order
+
+Bucket iteration follows the **closed-enum order: `read → write → destructive`**, then `unknown` last. This is distinct from M31's first-appearance rule. Within each bucket, capability names follow **manifest declared order**. Empty buckets MUST NOT appear.
+
+### M32 Default-Preservation Table (15 Commands Unchanged)
+
+| Command | Behavior |
+|---------|----------|
+| All 15 existing commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help) | Byte-identical stdout, stderr, and exit codes before and after M32 |
+
+### M32 Failure UX
+
+| Situation | Operator sees | Exit code |
+|-----------|---------------|-----------|
+| Index succeeded | Per-bucket index on stdout (or written to `--out` path with empty stdout) | 0 |
+| Empty-capabilities (`capabilities: []`, valid scaffold state) | Single line `No capabilities in manifest — nothing to index.` on stdout in human mode; `{manifest_path, manifest_version, generated_at, effects: []}` on stdout in `--json` mode | 0 |
+| `--manifest` points to a missing file | `Manifest not found: <path>` on stderr; stdout empty | 1 |
+| Manifest is present but not valid JSON | `Invalid manifest JSON: <path>` on stderr; stdout empty | 1 |
+| Manifest is valid JSON but lacks a top-level `capabilities` array | `Invalid manifest: missing capabilities array` on stderr; stdout empty | 1 |
+| `--effect <value>` is not one of the four closed enum values | `Unknown effect: <value>` on stderr; stdout empty | 1 |
+| `--effect <value>` is a valid enum value but no capabilities exist in that bucket | `Unknown effect: <value>` on stderr; stdout empty | 1 |
+| Unknown subcommand under `tusq effect` | `Unknown subcommand: <name>` on stderr; stdout empty | 1 |
+| Unknown flag on `tusq effect index` | `Unknown flag: <flag>` on stderr; stdout empty | 1 |
+| `--out <path>` is unwritable | `Cannot write to --out path: <path>` on stderr; stdout empty | 1 |
+| `--out <path>` resolves inside `.tusq/` | `--out path must not be inside .tusq/` on stderr; stdout empty | 1 |
+
+### M32 Local-Only Invariants
+
+| Invariant | How it shows up at index time |
+|-----------|-------------------------------|
+| Read-only manifest | `tusq.manifest.json` is never opened for writing; mtime and content byte-identical before/after any invocation |
+| No `.tusq/` write | `tusq effect index` MUST NOT create or modify any file under `.tusq/`; `--out` rejects any path resolving inside `.tusq/` |
+| No network I/O | No HTTP, DB, socket, or DNS lookup |
+| Zero new dependencies | `package.json` MUST NOT gain any new package |
+| Zero `capability_digest` flips | Hash-before vs hash-after assertion is byte-identical on every capability |
+| `tusq compile` byte-identity | Golden-file smoke assertion confirms compile output is byte-identical pre and post-M32 |
+| `tusq surface plan` byte-identity | `tusq surface plan` output byte-for-byte unchanged pre and post-M32 |
+| `tusq domain index` byte-identity | `tusq domain index` output byte-for-byte unchanged pre and post-M32 |
+| Deterministic output | Running twice on the same manifest produces byte-identical stdout in both human and `--json` modes; iteration order is fixed by the closed enum (`read → write → destructive → unknown`); no wall-clock fields inside per-bucket entries |
+| Frozen four-value `side_effect_class` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Frozen two-value `aggregation_key` enum | Locked by eval scenario and synchronous throw on out-of-set return; any addition is a material governance event |
+| Closed-enum order is NOT risk-precedence | The `read → write → destructive → unknown` order is a stable-output convention; docs/README/CLI-help MUST NOT describe it as "risk-ascending," "low-to-high," "safety-ordered," or any phrase implying risk semantics |
+| Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces side-effect policy", "derives risk tier", "generates confirmation flows", "certifies destructive-action safety", or "alters the M30 gating rule" |
+| Future side-effect milestones reserved | M-Risk-1, M-Confirm-1 ship under their own ROADMAP entries with fresh acceptance contracts; M32 is **not** a substitute for any of them |

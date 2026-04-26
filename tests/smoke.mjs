@@ -2645,6 +2645,350 @@ async function run() {
 
   await fs.rm(m31TmpDir, { recursive: true, force: true });
 
+  // ── M32: Static Capability Side-Effect Index Export ──────────────────────────
+  const m32TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m32-smoke-'));
+
+  // M32 fixture manifest: capabilities across read/write/destructive + one unknown bucket
+  // Capabilities declared in this order: read, write, read, destructive, unknown-side-effect
+  // to verify within-bucket manifest declared order AND closed-enum bucket order (not first-appearance).
+  const m32Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'create_invoice',
+        description: 'Create an invoice',
+        method: 'POST',
+        path: '/billing/invoices',
+        domain: 'billing',
+        side_effect_class: 'write',
+        sensitivity_class: 'confidential',
+        approved: false,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_status',
+        description: 'Get system status',
+        method: 'GET',
+        path: '/status',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_class_route',
+        description: 'Route with no side_effect_class',
+        method: 'GET',
+        path: '/ping',
+        domain: null,
+        side_effect_class: null,
+        sensitivity_class: 'public',
+        approved: true,
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m32ManifestPath = path.join(m32TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m32ManifestPath, JSON.stringify(m32Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m32TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M32(a): default tusq effect index produces exit 0 and per-bucket entries in closed-enum order
+  // (read → write → destructive → unknown), NOT manifest first-appearance order
+  const m32DefaultResult = runCli(['effect', 'index', '--manifest', m32ManifestPath], { cwd: m32TmpDir });
+  if (!m32DefaultResult.stdout.includes('[read]') || !m32DefaultResult.stdout.includes('[write]') || !m32DefaultResult.stdout.includes('[destructive]') || !m32DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M32(a): default index must include all four buckets:\n${m32DefaultResult.stdout}`);
+  }
+  if (!m32DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M32(a): default index must include planning-aid framing:\n${m32DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: read before write before destructive before unknown
+  const m32DefaultLines = m32DefaultResult.stdout.split('\n');
+  const m32ReadIdx = m32DefaultLines.findIndex((l) => l.includes('[read]'));
+  const m32WriteIdx = m32DefaultLines.findIndex((l) => l.includes('[write]'));
+  const m32DestructiveIdx = m32DefaultLines.findIndex((l) => l.includes('[destructive]'));
+  const m32UnknownIdx = m32DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m32ReadIdx < m32WriteIdx && m32WriteIdx < m32DestructiveIdx && m32DestructiveIdx < m32UnknownIdx)) {
+    throw new Error(`M32(a): buckets must appear in closed-enum order (read,write,destructive,unknown):\n${m32DefaultResult.stdout}`);
+  }
+
+  // M32(b): --effect read / --effect write / --effect destructive / --effect unknown each emit exactly one matching entry
+  const m32ReadResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--effect', 'read'], { cwd: m32TmpDir });
+  if (!m32ReadResult.stdout.includes('[read]') || m32ReadResult.stdout.includes('[write]') || m32ReadResult.stdout.includes('[destructive]') || m32ReadResult.stdout.includes('[unknown]')) {
+    throw new Error(`M32(b): --effect read must emit only read bucket:\n${m32ReadResult.stdout}`);
+  }
+  const m32WriteResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--effect', 'write'], { cwd: m32TmpDir });
+  if (!m32WriteResult.stdout.includes('[write]') || m32WriteResult.stdout.includes('[read]') || m32WriteResult.stdout.includes('[destructive]') || m32WriteResult.stdout.includes('[unknown]')) {
+    throw new Error(`M32(b): --effect write must emit only write bucket:\n${m32WriteResult.stdout}`);
+  }
+  const m32DestructiveResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--effect', 'destructive'], { cwd: m32TmpDir });
+  if (!m32DestructiveResult.stdout.includes('[destructive]') || m32DestructiveResult.stdout.includes('[read]') || m32DestructiveResult.stdout.includes('[write]') || m32DestructiveResult.stdout.includes('[unknown]')) {
+    throw new Error(`M32(b): --effect destructive must emit only destructive bucket:\n${m32DestructiveResult.stdout}`);
+  }
+  const m32UnknownResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--effect', 'unknown'], { cwd: m32TmpDir });
+  if (!m32UnknownResult.stdout.includes('[unknown]') || m32UnknownResult.stdout.includes('[read]') || m32UnknownResult.stdout.includes('[write]') || m32UnknownResult.stdout.includes('[destructive]')) {
+    throw new Error(`M32(b): --effect unknown must emit only unknown bucket:\n${m32UnknownResult.stdout}`);
+  }
+
+  // M32(c): --effect bogus exits 1 with Unknown effect: and empty stdout
+  const m32BogusResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--effect', 'bogus'], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32BogusResult.stderr.includes('Unknown effect: bogus') || m32BogusResult.stdout !== '') {
+    throw new Error(`M32(c): unknown effect must exit 1 with error on stderr, empty stdout:\nstdout=${m32BogusResult.stdout}\nstderr=${m32BogusResult.stderr}`);
+  }
+
+  // M32(d): missing --manifest path exits 1 with Manifest not found: and empty stdout
+  const m32MissingManifest = runCli(['effect', 'index', '--manifest', path.join(m32TmpDir, 'not-here.json')], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32MissingManifest.stderr.includes('Manifest not found:') || m32MissingManifest.stdout !== '') {
+    throw new Error(`M32(d): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m32MissingManifest.stdout}\nstderr=${m32MissingManifest.stderr}`);
+  }
+
+  // M32(e): malformed-JSON manifest exits 1 with Invalid manifest JSON: and empty stdout
+  const m32BadManifestPath = path.join(m32TmpDir, 'bad.json');
+  await fs.writeFile(m32BadManifestPath, 'not-json', 'utf8');
+  const m32BadManifest = runCli(['effect', 'index', '--manifest', m32BadManifestPath], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32BadManifest.stderr.includes('Invalid manifest JSON:') || m32BadManifest.stdout !== '') {
+    throw new Error(`M32(e): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m32BadManifest.stdout}\nstderr=${m32BadManifest.stderr}`);
+  }
+
+  // M32(f): running twice produces byte-identical stdout in both human and JSON modes
+  const m32Human1 = runCli(['effect', 'index', '--manifest', m32ManifestPath], { cwd: m32TmpDir });
+  const m32Human2 = runCli(['effect', 'index', '--manifest', m32ManifestPath], { cwd: m32TmpDir });
+  if (m32Human1.stdout !== m32Human2.stdout) {
+    throw new Error('M32(f): expected byte-identical human index output across runs');
+  }
+  const m32Json1 = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  const m32Json2 = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  if (m32Json1.stdout !== m32Json2.stdout) {
+    throw new Error('M32(f): expected byte-identical JSON index output across runs');
+  }
+
+  // M32(g): M32 does not mutate the manifest (mtime/content unchanged)
+  const m32ManifestBefore = await fs.readFile(m32ManifestPath, 'utf8');
+  runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  const m32ManifestAfter = await fs.readFile(m32ManifestPath, 'utf8');
+  if (m32ManifestBefore !== m32ManifestAfter) {
+    throw new Error('M32(g): tusq effect index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M32(h): capability_digest does not flip on any capability after an index run
+  const m32DigestBefore = m32Manifest.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  const m32ManifestReadBack = JSON.parse(await fs.readFile(m32ManifestPath, 'utf8'));
+  const m32DigestAfter = m32ManifestReadBack.capabilities.map((c) => ({ name: c.name, digest: c.capability_digest || null }));
+  if (JSON.stringify(m32DigestBefore) !== JSON.stringify(m32DigestAfter)) {
+    throw new Error('M32(h): capability_digest must not flip after effect index run');
+  }
+
+  // M32(i): tusq compile golden-file output is byte-identical pre and post-M32
+  const m32CompileDir = path.join(m32TmpDir, 'compile-check');
+  await fs.mkdir(m32CompileDir, { recursive: true });
+  // Use a manifest with at least one approved capability for compile to produce output
+  const m32CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m32CompileDir, 'tusq.manifest.json'), JSON.stringify(m32CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m32CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m32CompileDir });
+  const m32CompiledToolPath = path.join(m32CompileDir, 'tusq-tools', 'list_users.json');
+  const m32CompileContentBefore = await fs.readFile(m32CompiledToolPath, 'utf8');
+  // Run effect index then re-read compile output — must be identical
+  runCli(['effect', 'index', '--manifest', path.join(m32CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m32CompileDir });
+  const m32CompileContentAfter = await fs.readFile(m32CompiledToolPath, 'utf8');
+  if (m32CompileContentBefore !== m32CompileContentAfter) {
+    throw new Error('M32(i): tusq compile output must be byte-identical before and after effect index run');
+  }
+  // effect index must not write into tusq-tools
+  const m32ToolsFiles = await fs.readdir(path.join(m32CompileDir, 'tusq-tools'));
+  if (m32ToolsFiles.some((f) => f.includes('effect'))) {
+    throw new Error(`M32(i): effect index must not write into tusq-tools: ${m32ToolsFiles.join(', ')}`);
+  }
+
+  // M32(j): tusq surface plan and tusq domain index outputs are byte-identical pre and post-M32
+  const m32SurfaceBefore = runCli(['surface', 'plan', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir }).stdout;
+  runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  const m32SurfaceAfter = runCli(['surface', 'plan', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir }).stdout;
+  if (m32SurfaceBefore !== m32SurfaceAfter) {
+    throw new Error('M32(j): tusq surface plan output must be byte-identical before and after effect index run');
+  }
+  const m32DomainBefore = runCli(['domain', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir }).stdout;
+  runCli(['effect', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir });
+  const m32DomainAfter = runCli(['domain', 'index', '--manifest', m32ManifestPath, '--json'], { cwd: m32TmpDir }).stdout;
+  if (m32DomainBefore !== m32DomainAfter) {
+    throw new Error('M32(j): tusq domain index output must be byte-identical before and after effect index run');
+  }
+
+  // M32(l): empty-capabilities manifest emits documented human line and effects: [] in JSON
+  const m32EmptyManifestPath = path.join(m32TmpDir, 'empty.json');
+  await fs.writeFile(m32EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m32EmptyHuman = runCli(['effect', 'index', '--manifest', m32EmptyManifestPath], { cwd: m32TmpDir });
+  if (m32EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M32(l): empty-capabilities human output must be exactly the documented line:\n${m32EmptyHuman.stdout}`);
+  }
+  const m32EmptyJson = JSON.parse(runCli(['effect', 'index', '--manifest', m32EmptyManifestPath, '--json'], { cwd: m32TmpDir }).stdout);
+  if (!Array.isArray(m32EmptyJson.effects) || m32EmptyJson.effects.length !== 0) {
+    throw new Error(`M32(l): empty-capabilities JSON must have effects: [] :\n${JSON.stringify(m32EmptyJson)}`);
+  }
+
+  // M32(m): --out <path> writes to the path and emits no stdout on success
+  const m32OutPath = path.join(m32TmpDir, 'effect-index-out.json');
+  const m32OutResult = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--out', m32OutPath], { cwd: m32TmpDir });
+  if (m32OutResult.stdout !== '') {
+    throw new Error(`M32(m): --out must emit no stdout on success, got: ${m32OutResult.stdout}`);
+  }
+  const m32OutContent = JSON.parse(await fs.readFile(m32OutPath, 'utf8'));
+  if (!Array.isArray(m32OutContent.effects) || m32OutContent.effects.length !== 4) {
+    throw new Error(`M32(m): --out file must contain four effect entries: ${JSON.stringify(m32OutContent.effects)}`);
+  }
+
+  // M32(n): --out to an unwritable path exits 1 with empty stdout
+  const m32BadOut = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (m32BadOut.stdout !== '') {
+    throw new Error(`M32(n): --out unwritable must produce empty stdout, got: ${m32BadOut.stdout}`);
+  }
+
+  // M32(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m32TusqOutResult = runCli(
+    ['effect', 'index', '--manifest', m32ManifestPath, '--out', path.join(m32TmpDir, '.tusq', 'index.json')],
+    { cwd: m32TmpDir, expectedStatus: 1 }
+  );
+  if (!m32TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m32TusqOutResult.stdout !== '') {
+    throw new Error(`M32(o): --out .tusq/ must reject with correct message:\nstdout=${m32TusqOutResult.stdout}\nstderr=${m32TusqOutResult.stderr}`);
+  }
+
+  // M32(p): capability with side_effect_class: null is bucketed into unknown and unknown bucket appears last
+  const m32IndexJson = JSON.parse(m32Json1.stdout);
+  const m32LastEffect = m32IndexJson.effects[m32IndexJson.effects.length - 1];
+  if (m32LastEffect.side_effect_class !== 'unknown') {
+    throw new Error(`M32(p): unknown bucket must appear last; got: ${m32LastEffect.side_effect_class}`);
+  }
+  const m32UnknownEntry = m32IndexJson.effects.find((e) => e.side_effect_class === 'unknown');
+  if (!m32UnknownEntry || !m32UnknownEntry.capabilities.includes('no_class_route')) {
+    throw new Error(`M32(p): no_class_route (side_effect_class: null) must be in unknown bucket:\n${JSON.stringify(m32UnknownEntry)}`);
+  }
+
+  // M32(q): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m32ValidAggregationKeys = new Set(['class', 'unknown']);
+  for (const entry of m32IndexJson.effects) {
+    if (!m32ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M32(q): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for effect '${entry.side_effect_class}'`);
+    }
+  }
+  // Named classes must have aggregation_key 'class'; unknown bucket must have 'unknown'
+  const m32ReadEntry = m32IndexJson.effects.find((e) => e.side_effect_class === 'read');
+  if (m32ReadEntry.aggregation_key !== 'class') {
+    throw new Error(`M32(q): named class 'read' must have aggregation_key 'class', got: ${m32ReadEntry.aggregation_key}`);
+  }
+  if (m32UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M32(q): unknown bucket must have aggregation_key 'unknown', got: ${m32UnknownEntry.aggregation_key}`);
+  }
+
+  // M32(r): empty buckets MUST NOT appear in output (manifest has only read/write/destructive/null caps — no 'financial' or other value)
+  // All four present buckets in this fixture should be: read, write, destructive, unknown (none empty)
+  const m32PresentClasses = m32IndexJson.effects.map((e) => e.side_effect_class);
+  if (m32PresentClasses.length !== 4) {
+    throw new Error(`M32(r): expected exactly 4 non-empty buckets (read,write,destructive,unknown); got: ${m32PresentClasses.join(',')}`);
+  }
+  // Verify read-only manifest has no write/destructive/unknown in output
+  const m32ReadOnlyManifestPath = path.join(m32TmpDir, 'read-only.json');
+  await fs.writeFile(m32ReadOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m32ReadOnlyJson = JSON.parse(runCli(['effect', 'index', '--manifest', m32ReadOnlyManifestPath, '--json'], { cwd: m32TmpDir }).stdout);
+  if (m32ReadOnlyJson.effects.length !== 1 || m32ReadOnlyJson.effects[0].side_effect_class !== 'read') {
+    throw new Error(`M32(r): read-only manifest must produce exactly one bucket [read]; got: ${JSON.stringify(m32ReadOnlyJson.effects.map((e) => e.side_effect_class))}`);
+  }
+
+  // M32(s): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // read bucket: list_users declared before get_status → list_users must appear first
+  const m32ReadBucket = m32IndexJson.effects.find((e) => e.side_effect_class === 'read');
+  if (!m32ReadBucket || m32ReadBucket.capabilities[0] !== 'list_users' || m32ReadBucket.capabilities[1] !== 'get_status') {
+    throw new Error(`M32(s): within read bucket, capabilities must follow manifest declared order (list_users, get_status); got: ${JSON.stringify(m32ReadBucket ? m32ReadBucket.capabilities : null)}`);
+  }
+
+  // M32(t): has_restricted_or_confidential_sensitivity flag is correct per bucket
+  // write bucket has create_invoice (sensitivity_class: confidential) → must be true
+  const m32WriteBucket = m32IndexJson.effects.find((e) => e.side_effect_class === 'write');
+  if (!m32WriteBucket || m32WriteBucket.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M32(t): write bucket must have has_restricted_or_confidential_sensitivity=true (create_invoice is confidential); got: ${JSON.stringify(m32WriteBucket)}`);
+  }
+  // read bucket has list_users (internal) and get_status (public) → must be false
+  if (m32ReadBucket.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M32(t): read bucket must have has_restricted_or_confidential_sensitivity=false; got: ${m32ReadBucket.has_restricted_or_confidential_sensitivity}`);
+  }
+
+  // M32(u): has_unknown_auth flag is correct per bucket
+  // read bucket has get_status (auth_scheme: unknown) → must be true
+  if (m32ReadBucket.has_unknown_auth !== true) {
+    throw new Error(`M32(u): read bucket must have has_unknown_auth=true (get_status has auth_scheme: unknown); got: ${m32ReadBucket.has_unknown_auth}`);
+  }
+  // write bucket has create_invoice (auth_scheme: bearer) → must be false
+  if (m32WriteBucket.has_unknown_auth !== false) {
+    throw new Error(`M32(u): write bucket must have has_unknown_auth=false (create_invoice has auth_scheme: bearer); got: ${m32WriteBucket.has_unknown_auth}`);
+  }
+
+  // M32: unknown flag exits 1 with error on stderr and empty stdout
+  const m32UnknownFlag = runCli(['effect', 'index', '--manifest', m32ManifestPath, '--badFlag'], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m32UnknownFlag.stdout !== '') {
+    throw new Error(`M32: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m32UnknownFlag.stdout}\nstderr=${m32UnknownFlag.stderr}`);
+  }
+
+  // M32: Invalid manifest missing capabilities array
+  const m32NoCapsManifestPath = path.join(m32TmpDir, 'no-caps.json');
+  await fs.writeFile(m32NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m32NoCaps = runCli(['effect', 'index', '--manifest', m32NoCapsManifestPath], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m32NoCaps.stdout !== '') {
+    throw new Error(`M32: missing capabilities array must exit 1:\nstdout=${m32NoCaps.stdout}\nstderr=${m32NoCaps.stderr}`);
+  }
+
+  // M32: help text includes planning-aid framing
+  const m32HelpResult = runCli(['effect', 'index', '--help'], { cwd: m32TmpDir });
+  if (!m32HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M32: effect index help must include planning-aid framing:\n${m32HelpResult.stdout}`);
+  }
+
+  // M32: unknown subcommand exits 1 with Unknown subcommand: message
+  const m32UnknownSub = runCli(['effect', 'bogusub'], { cwd: m32TmpDir, expectedStatus: 1 });
+  if (!m32UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m32UnknownSub.stdout !== '') {
+    throw new Error(`M32: unknown subcommand must exit 1 with error on stderr, empty stdout:\nstdout=${m32UnknownSub.stdout}\nstderr=${m32UnknownSub.stderr}`);
+  }
+
+  await fs.rm(m32TmpDir, { recursive: true, force: true });
+
   console.log('Smoke tests passed');
 }
 

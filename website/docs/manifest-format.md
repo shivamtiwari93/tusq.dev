@@ -481,6 +481,43 @@ tusq domain index --domain unknown
 tusq domain index --json
 ```
 
+## Side-Effect Index
+
+The `side_effect_class` field on each capability drives per-bucket aggregation in `tusq effect index`. The command groups capabilities by their declared `side_effect_class` value in a deterministic closed-enum order and emits a per-bucket index with name-and-counters fields only.
+
+**How bucketing works:**
+
+| `side_effect_class` field value | Bucket | `aggregation_key` |
+|---------------------------------|--------|-------------------|
+| `"read"` | `read` bucket | `"class"` |
+| `"write"` | `write` bucket | `"class"` |
+| `"destructive"` | `destructive` bucket | `"class"` |
+| `null`, missing, empty-string, or any other value | Zero-evidence `unknown` bucket | `"unknown"` |
+
+**Bucket iteration order:** `read → write → destructive → unknown` (closed-enum order). This is distinct from M31's domain-index first-appearance rule — M32 buckets on a closed enum, so the output order is globally deterministic regardless of the order capabilities appear in the manifest. The `unknown` bucket is always appended last. Empty buckets do not appear.
+
+**Within each bucket:** Capability names appear in manifest declared order (NOT alphabetized), mirroring M31.
+
+**What side-effect index reads and what it never does:**
+
+- Reads: `capability.side_effect_class`, `capability.name`, `capability.approved`, `capability.sensitivity_class`, `capability.auth_requirements.auth_scheme`.
+- Never modifies the manifest. Never flips `capability_digest`. Never writes to `.tusq/`.
+- `tusq effect index` is a planning aid only — it does NOT enforce side-effect policy at runtime, does NOT derive a composite risk tier, does NOT generate confirmation flows, does NOT certify destructive-action safety, and does NOT alter the M30 `gated_reason: destructive_side_effect` surface-eligibility rule.
+
+```bash
+# View side-effect index
+tusq effect index
+
+# Filter to a single class
+tusq effect index --effect destructive
+
+# View the zero-evidence bucket
+tusq effect index --effect unknown
+
+# Machine-readable JSON
+tusq effect index --json
+```
+
 ## Regeneration behavior
 
 When you regenerate a manifest, previously approved capabilities are preserved by method+path key when possible.
