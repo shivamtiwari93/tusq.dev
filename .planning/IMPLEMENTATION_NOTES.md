@@ -2,6 +2,49 @@
 
 ---
 
+## Dev Turn turn_f766c529523ce892 — Implementation Phase: V1.11 No-Regression Carry-Forward (run_7894753f9c47c8e3, 2026-04-26)
+
+**Run:** run_7894753f9c47c8e3
+**Phase:** implementation
+**HEAD:** 05371b747c116ed6396c8ba6fc6af8e99cefcbe6 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_b2926375e6189caf (role=pm, phase=planning)
+
+That PM turn challenged the intake charter that re-injected M30 as unshipped, correctly verified M30 is fully shipped at V1.11 in run_24ccd92f593d8647, flipped 21 M30 ROADMAP checkboxes from [ ] to [x] to reconcile documentation drift, re-affirmed PM participation in all four planning_signoff gate artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md), ran npm test exit 0 (21 scenarios), and set phase_transition_request='implementation' with the explicit note that the implementation phase will not produce source changes. Challenge resolved: all five PM decisions are upheld. The baseline facts are accurate — M30 is shipped, the 14-command CLI surface is confirmed, and zero source drift exists in src/, bin/, tests/, website/.
+
+OBJ-001 from prior PM turn (MCP-descriptor candidate in ROADMAP_NEXT_CANDIDATES.md, low, form-decision A/B/C unresolved) remains unbound and non-blocking.
+
+### Implementation Work
+
+**Milestone:** M30 already shipped at V1.11 — no new source changes required this turn.
+
+Per PM DEC-005 (turn_b2926375e6189caf): "The implementation phase will not produce source changes — it will carry forward the V1.11 shipped boundary unchanged and confirm no regression."
+
+All M30 source deliverables were implemented in turn_73dc44cfb9cef2c7 (run_24ccd92f593d8647):
+- `src/cli.js`: SURFACE_ENUM, GATED_REASON_ENUM, BRAND_INPUTS_REQUIRED, classifyGating, buildSurfacePlan, cmdSurface/cmdSurfacePlan, updated dispatch/printHelp/printCommandHelp (CLI surface 13 → 14)
+- `tests/smoke.mjs`: 16 M30 smoke assertions
+- `tests/evals/governed-cli-scenarios.json`: surface-plan-determinism scenario (20 → 21)
+- `tests/eval-regression.mjs`: runSurfacePlanDeterminismScenario handler
+
+### Verification (HEAD 05371b747c116ed6396c8ba6fc6af8e99cefcbe6)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (21 scenarios)'
+- `node bin/tusq.js help`: 14-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help)
+- `node bin/tusq.js surface plan --help`: planning-aid framing callout confirmed
+- `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json`: empty (zero source drift)
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_b2926375e6189caf) explicitly; all five PM decisions upheld; M30 confirmed shipped at V1.11; documentation drift reconciled; zero source changes required.
+- DEC-002: No new source code modifications this turn. V1.11 shipped boundary carried forward unchanged. Implementation exit gate met via verification pass only.
+- DEC-003: Independent baseline re-verification confirms npm test exit 0 (21 scenarios), 14-command CLI surface, planning-aid framing, zero source drift.
+- DEC-004: Modified exactly one dev-owned artifact: .planning/IMPLEMENTATION_NOTES.md (this turn entry prepended). Did NOT modify reserved orchestrator state files. Did NOT modify PM-owned, QA-owned, or launch-owned artifacts.
+- DEC-005: Setting phase_transition_request='qa'. Implementation exit gate requirements satisfied: IMPLEMENTATION_NOTES.md exists and updated; verification pass achieved (npm test exit 0, 21 scenarios); M30 deliverables already present and confirmed.
+
+---
+
 ## Dev Turn turn_73dc44cfb9cef2c7 — Implementation Phase: M30 Static Embeddable-Surface Plan Export (run_24ccd92f593d8647, 2026-04-26)
 
 **Run:** run_24ccd92f593d8647
