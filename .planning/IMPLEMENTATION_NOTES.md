@@ -2,6 +2,38 @@
 
 ---
 
+## Dev Turn turn_1be10c4cf3c1e0f8 — Planning Phase: M30 PM Artifacts Verified, Gate Advance (run_24ccd92f593d8647, 2026-04-26)
+
+**Run:** run_24ccd92f593d8647
+**Phase:** planning
+**HEAD:** da8a75e062e89316478db13db47be25d59453e67
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_fa7dbb75b01943f5 (role=pm, phase=planning)
+
+That PM turn correctly challenged the prior PM turn (turn_33f4e15b33cf141c), identified the gate evaluator's actual non_progress_signature requirement for PM participation in ALL FOUR planning_signoff artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md), and materialized M30 PM-level scope into both SYSTEM_SPEC.md (+178 lines: M30 § with seven subsections + constraint entries 27 and 28) and command-surface.md (+119 lines: M30 Product CLI Surface § with eleven subsections). The two earlier PM-modified artifacts (PM_SIGNOFF.md, ROADMAP.md) remained correct and untouched.
+
+Challenge resolved: all five PM decisions are correct. SYSTEM_SPEC.md line 3198 confirms `## M30: Static Embeddable-Surface Plan Export from Manifest Evidence` exists with the frozen four-value `surface` enum, six-value `gated_reason` enum, eligibility precedence tables, read-only invariants, and planning-aid framing. command-surface.md line 958 confirms `## M30 Product CLI Surface` exists with the 13→14 noun growth, flag table, enums, plan shape, and brand_inputs_required lists. The PM work is upheld without modification.
+
+### Baseline Re-Verification (HEAD da8a75e062e89316478db13db47be25d59453e67)
+
+- npm test: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (20 scenarios)'
+- git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json: empty (zero source drift)
+- PM_SIGNOFF.md: 158414B, ROADMAP.md: 110285B, SYSTEM_SPEC.md: 295713B, command-surface.md: 94405B
+- M30 confirmed in SYSTEM_SPEC.md at line 3198; confirmed in command-surface.md at line 958
+- Shipped V1.10 boundary (M1-M29) intact; M30 is V1.11 (PROPOSED) unchecked planned work
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_fa7dbb75b01943f5) explicitly; all five PM decisions upheld. M30 PM artifacts confirmed correctly placed in SYSTEM_SPEC.md and command-surface.md.
+- DEC-002: No new scope bound or modified this turn. All four planning_signoff gate artifacts exist and are correct. Dev role does not pre-implement M30 code before the implementation phase.
+- DEC-003: Baseline re-verification confirms npm test exit 0 (20 scenarios), zero source drift, all four gate artifacts present with M30 content added by PM turn.
+- DEC-004: Modified only dev-owned artifact: .planning/IMPLEMENTATION_NOTES.md (this entry prepended). Did NOT modify reserved orchestrator state files (.agentxchain/state.json, history.jsonl, decision-ledger.jsonl, lock.json) or PM-owned artifacts.
+- DEC-005: Setting phase_transition_request='implementation'. All planning_signoff gate required files exist; PM has participated in all four gate artifacts; auto_approve policy is in effect.
+
+---
+
 ## Dev Turn turn_4553eefe4fa30a21 — Implementation Phase: M29 R2-R5 Eval Coverage (run_3c9aac455742ac3e, 2026-04-26)
 
 **Run:** run_3c9aac455742ac3e
