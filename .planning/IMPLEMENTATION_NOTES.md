@@ -2,6 +2,69 @@
 
 ---
 
+## Dev Turn turn_cdcec89ff1d6683d — Static MCP Descriptor Charter Candidate Baseline Re-Verification (run_42732dba3268a739, 2026-04-26)
+
+**Run:** run_42732dba3268a739
+**HEAD:** b741bfc87036ba6ff21e888643c286ec48431d35 (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_1e0689ffd021d2d5, role=pm, phase=planning, intent_1777173722739_5899) operated on intake intent vision_scan p2 with charter "[vision] The Promise: a self-hostable runtime and MCP server."
+
+Not rubber-stamping. Explicit challenges registered:
+
+1. **PM DEC-001 is correct** — The PM correctly identified that `tusq serve` already partially satisfies the "self-hostable runtime and MCP server" vision goal (describe-only local MCP endpoint, tools/list, tools/call, dry_run_plan, OSS/CLI-first). The four unserved parts ((1) static MCP descriptor artifact, (2) auth adapters, (3) execution runtime, (4) MCP marketplace packaging) are correctly scoped as V2/V3. The PM-defensible decomposition to a static-descriptor-first increment is upheld.
+
+2. **PM DEC-002 is correct** — The 10-item acceptance contract sketch for Static MCP Server Descriptor Export in ROADMAP_NEXT_CANDIDATES.md is well-formed: frozen schema_version `tusq.mcp-descriptor.v1`, closed runtime_posture block (describe_only_supported: true, execution_supported: false, auth_adapter_generation_supported: false), closed six-value gated_tools reason-code enum, frozen registry_metadata named list, per-tool fields copy-forward from M9/M27/M28/M29, standard read-only/zero-digest-flip/byte-identical invariants. Charter sketch is a candidate only.
+
+3. **PM DEC-003 is a live scope risk** — The three command-surface forms (A: new `mcp` top-level noun; B: `tusq serve --export`; C: `tusq plan mcp` hub) remain unresolved. Form A would add a second new top-level noun alongside the still-unbound `surface` noun from the prior run, violating the surface discipline cadence. This open decision must be resolved at the planning_signoff gate before binding. PM OBJ-001 (medium) is carried forward.
+
+4. **PM DEC-004 gate discipline is correct** — The charter sketch lives only in ROADMAP_NEXT_CANDIDATES.md. None of the four PM-owned planning_signoff gate artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) bind the static-MCP-descriptor charter. V1.10 boundary remains the operative shipped target.
+
+5. **OBJ-002 noted** — Two unbound vision-derived charters now coexist in the candidate backlog (embeddable-surface from prior run + static-MCP-descriptor from this run). This compounds backlog debt but is non-blocking at V1.10.
+
+**Consequence for this dev turn:** The PM explicitly stated "The implementation phase will not execute the static-MCP-descriptor charter (it remains a candidate awaiting human binding); it will carry forward the V1.10 shipped boundary unchanged." Therefore NO new source code is required. This turn is a baseline re-verification pass only.
+
+### Scope of This Turn
+
+This run (run_42732dba3268a739) was triggered by intake intent `intent_1777173722739_5899` (vision_scan p2). The PM correctly determined that the smallest defensible increment is a charter sketch, not a runtime implementation. The PM set `phase_transition_request: 'implementation'` per `auto_approve` policy. This dev turn's responsibility is:
+
+1. Challenge the prior PM turn explicitly (done above — challenges noted, PM logic upheld)
+2. Independently verify the baseline is stable on HEAD b741bfc
+3. Confirm no source drift was introduced by the PM's planning-artifact updates
+4. Close the `implementation_complete` gate with no source changes
+
+The static-MCP-descriptor charter is NOT implemented in this turn. It is NOT present in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md — implementing without those gate-approved artifacts would bypass the planning_signoff gate for an unchartered increment.
+
+### Baseline Re-Verification (HEAD b741bfc)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | b741bfc87036ba6ff21e888643c286ec48431d35 |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` | empty — no source drift |
+
+**No source changes were made or required.** The PM's planning-artifact edits (re-affirmation paragraphs in PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md; new charter sketch section in ROADMAP_NEXT_CANDIDATES.md) did not touch src/, bin/, tests/, or website/ — confirmed by zero-diff above. Shipped V1.10 boundary (M1–M29, 13 CLI commands, 16 eval scenarios) is intact.
+
+### Shipped Boundary Confirmation
+
+- **CLI surface:** 13 top-level commands (unchanged from M29 / V1.10)
+- **Eval scenarios:** 16 (unchanged)
+- **New dependencies:** 0
+- **New source files:** 0
+- **MCP descriptor charter:** unbound candidate in ROADMAP_NEXT_CANDIDATES.md only
+
+### Open Objections Carried Forward
+
+- **OBJ-001 (medium):** Form decision (A/B/C) for the static-MCP-descriptor command is unresolved. Must be resolved by operator at planning_signoff before charter binding.
+- **OBJ-002 (low):** Two unbound vision-derived charters now coexist in the candidate backlog (embeddable-surface + static-MCP-descriptor). Non-blocking at V1.10.
+- **OBJ-003 (medium, inherited):** R6 dead code (auth_required === false → auth_scheme: 'none') — auth_required is never set by scanner; implementation correct for manually-edited manifests only. Non-blocking.
+
+---
+
 ## Dev Turn turn_363693afea46c3e7 — Embeddable-Surface Charter Candidate Baseline Re-Verification (run_2ee1a03651d5d485, 2026-04-25)
 
 **Run:** run_2ee1a03651d5d485
