@@ -2,6 +2,41 @@
 
 ---
 
+## Dev Turn turn_02b2c0e4dceeead3 — Implementation Phase: V1.13 No-Regression Carry-Forward (run_7183d8c70482329b, 2026-04-26)
+
+**Run:** run_7183d8c70482329b
+**Phase:** implementation
+**HEAD:** 5dca9a84efed2335588b60d8b2544bcd742cfaf4 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_f69f5083f63ad652 (role=pm, phase=planning)
+
+That PM turn challenged intake charter intent_1777236173495_2303 (vision_scan, category roadmap_open_work_detected) which re-injected M32 (Static Capability Side-Effect Index Export — V1.13 PROPOSED) as if unshipped. PM's independent verification on HEAD 79cf211 correctly confirmed M32 is fully shipped at V1.13 in run_ae841429202c5bb7 (all four phases completed with run_completion_request=true). PM flipped 20 M32 ROADMAP checkboxes from [ ] to [x], prepended dated re-affirmation preambles to all four PM-owned planning_signoff gate artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md), ran npm test exit 0 (23 scenarios), and declared no source changes required. All five PM decisions upheld. Challenge resolved: this is a recurring vision_scan false-positive reconciliation cycle (fourth occurrence: M28/M30/M31/M32); PM's identification and reconciliation approach is correct.
+
+OBJ-001 (R6 dead-code path, medium), OBJ-002 (surface-plan-determinism eval uses synthetic fixtures, low), OBJ-003 (M31 flag-value assertion coverage gap, low), and OBJ-004 (vision_scan stale-checkbox false-positive recurrence, low) all carried forward unchanged from prior turns.
+
+### Implementation Work
+
+**No new source code changes.** M32 (Static Capability Side-Effect Index Export) is fully implemented at V1.13. All source deliverables (src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs) are present and verified. The implementation phase carries forward the V1.13 shipped boundary unchanged.
+
+### Verification (HEAD 5dca9a84efed2335588b60d8b2544bcd742cfaf4)
+
+- `npm test`: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (23 scenarios)'
+- `node bin/tusq.js help`: 16-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, **effect**, policy, redaction, surface, version, help)
+- `node bin/tusq.js effect index --help`: exit 0 with planning-aid framing callout 'This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.' and bucket iteration order read → write → destructive → unknown
+- `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json`: empty output — zero source drift
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_f69f5083f63ad652) explicitly; all five PM decisions upheld. PM correctly identified M32 as already shipped at V1.13 in run_ae841429202c5bb7 and this is a vision_scan false-positive reconciliation cycle.
+- DEC-002: No new source code modifications made this turn. M32 is fully implemented at V1.13.
+- DEC-003: Independent baseline re-verification on HEAD 5dca9a8: npm test exits 0 with 'Smoke tests passed' and 'Eval regression harness passed (23 scenarios)'. CLI surface confirmed at 16 commands. tusq effect index --help exits 0 with planning-aid framing callout. Zero source drift.
+- DEC-004: Modified exactly one dev-owned artifact: .planning/IMPLEMENTATION_NOTES.md (this turn entry prepended). Did NOT modify reserved orchestrator state files (.agentxchain/state.json, history.jsonl, decision-ledger.jsonl, lock.json). Did NOT modify PM-owned gate artifacts, QA-owned artifacts, launch-owned artifacts, src/, bin/, tests/, website/, package.json, or package-lock.json.
+- DEC-005: Setting phase_transition_request='qa'. Implementation exit gate (implementation_complete) requirements satisfied: .planning/IMPLEMENTATION_NOTES.md exists and updated with this turn entry; verification pass (npm test exit 0, 23 scenarios, zero source drift); all M32 deliverables confirmed present on disk.
+
+---
+
 ## Dev Turn turn_18e3b3d9ce515cf1 — Implementation Phase: M32 Static Capability Side-Effect Index Export (run_ae841429202c5bb7, 2026-04-26)
 
 **Run:** run_ae841429202c5bb7
