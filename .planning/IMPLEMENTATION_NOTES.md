@@ -2,6 +2,44 @@
 
 ---
 
+## Dev Turn turn_2a28545f82ce5e1b — Implementation Phase: V1.12 No-Regression Carry-Forward (run_25308eabf162ba8b, 2026-04-26)
+
+**Run:** run_25308eabf162ba8b
+**Phase:** implementation
+**HEAD:** 67d96aeb02bd1dfb766b1bb89b0eec1209ee2245 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_cf57b41e62c05af6 (role=pm, phase=planning)
+
+That PM turn challenged intake charter intent_1777233493634_b5f9 (vision_scan, roadmap_open_work_detected) which re-injected M31 as unshipped. PM independently verified M31 is fully shipped at V1.12 in run_e40832d436a42d75 (run_completion_request=true, all four phases completed), flipped 19 M31 ROADMAP checkboxes from [ ] to [x] to reconcile documentation drift, re-affirmed PM participation in all four planning_signoff gate artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md), ran npm test exit 0 (22 scenarios), and set phase_transition_request='implementation' with the explicit note that the implementation phase will not produce source changes. Challenge resolved: all five PM decisions are upheld. The baseline facts are accurate — M31 is shipped at V1.12, the 15-command CLI surface is confirmed, and zero source drift exists in src/, bin/, tests/, website/.
+
+OBJ-001 (MCP-descriptor candidate in ROADMAP_NEXT_CANDIDATES.md, low, form-decision A/B/C unresolved) remains unbound and non-blocking.
+OBJ-002 (vision_scan re-detects shipped milestones as open work due to unchecked checkboxes; out-of-scope for PM/dev roles) carried forward.
+
+### Implementation Work
+
+**Milestone:** M31 already shipped at V1.12 — no new source changes required this turn.
+
+Per PM DEC-005 (turn_cf57b41e62c05af6): "The implementation phase will not produce source changes — it will carry forward the V1.12 shipped boundary unchanged and confirm no regression."
+
+### Verification (HEAD 67d96aeb02bd1dfb766b1bb89b0eec1209ee2245)
+
+- `npm test`: exit 0 — 'Smoke tests passed', 'Eval regression harness passed (22 scenarios)'
+- `node bin/tusq.js help`: 15-command CLI surface confirmed (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help)
+- `node bin/tusq.js domain index --help`: exit 0 with planning-aid framing callout confirmed
+- `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json`: empty (zero source drift)
+
+### Decisions
+
+- DEC-001: Challenged prior PM turn (turn_cf57b41e62c05af6) explicitly; all five PM decisions upheld; M31 is confirmed fully shipped at V1.12; implementation phase carries the boundary forward unchanged.
+- DEC-002: No new source code modifications made this turn. M31 is fully implemented — all deliverables (src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs) are present and verified.
+- DEC-003: Independent re-verification on HEAD 67d96ae: npm test exits 0 with 22 scenarios, 15-command CLI surface confirmed, tusq domain index --help exits 0 with planning-aid callout, zero source drift in all dev-owned paths.
+- DEC-004: Modified exactly one dev-owned artifact: .planning/IMPLEMENTATION_NOTES.md (this entry). Did NOT modify reserved orchestrator state files, PM-owned gate artifacts, QA-owned artifacts, launch-owned artifacts, src/, bin/, tests/, website/, package.json, or package-lock.json.
+- DEC-005: Setting phase_transition_request='qa'. Implementation exit gate (implementation_complete) requirements satisfied: .planning/IMPLEMENTATION_NOTES.md exists and updated; verification pass achieved (npm test exit 0, 22 scenarios, zero source drift).
+
+---
+
 ## Dev Turn turn_59bd0fdb1abd4a32 — Implementation Phase: M31 Static Capability Domain Index Export (run_e40832d436a42d75, 2026-04-26)
 
 **Run:** run_e40832d436a42d75
