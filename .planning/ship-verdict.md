@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_f49fd22cd74a554c (role=qa, run_2ee1a03651d5d485, V1.10 re-verification, 2026-04-25)
+
+This QA turn challenges the prior accepted dev turn (turn_363693afea46c3e7, role=dev, HEAD e5d3dd4) for run_2ee1a03651d5d485 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD --stat -- src/ bin/ tests/ website/` returns no output. Zero `src/`, `bin/`, `tests/`, or `website/` files were modified. The dev turn correctly identified that the embeddable-surface charter (intent_1777171732846_289f) is an unbound candidate in `.planning/ROADMAP_NEXT_CANDIDATES.md` only — none of the four PM-owned planning_signoff artifacts bind it, and no implementation is warranted without human operator binding. Challenge resolved: no source regression possible from this turn.
+
+**Challenge 2 — No new acceptance criteria required.** No new scope was shipped. REQ-001–REQ-124 remain the complete and accurate acceptance coverage for the V1.10 (M1–M29) shipped boundary. Challenge resolved.
+
+**Challenge 3 — Baseline re-verification on HEAD e5d3dd4.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` exits 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). `git diff HEAD --stat -- src/ bin/ tests/ website/` returns no output — zero source drift. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner. Implementation is correct for manually-edited manifests. Non-blocking. No new objections raised.
+
+**Challenge 5 — OBJ-002 (low, non-blocking) carried forward.** VISION.md lines 193–224 enumerate brand-matched chat, voice, widgets, and command palette as V1 surfaces, but none have any implementation in M1–M29. The shipped product delivers the compiler/governance half of V1 only. Non-blocking for the shipped V1.10 boundary; flagged for the embeddable-surface charter cycle.
+
+**Challenge 6 — Embeddable-surface charter scope discipline confirmed.** The charter sketch (AC-1..AC-10, Constraint 23, four-value surface enum) is materialized only in `.planning/ROADMAP_NEXT_CANDIDATES.md`. None of the four PM-owned planning_signoff artifacts contain the bound charter. The unresolved `surface` vs `plan surface` noun question (PM OBJ-001 / dev OBJ-001) remains open and must be resolved before binding. Challenge resolved: scope discipline maintained.
+
+**Challenge 7 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS). RELEASE_NOTES.md documents M1–M29 including V1.10 section. ship-verdict.md (this file) carries independent challenge for run_2ee1a03651d5d485. No artifact missing or incomplete. Challenge resolved.
+
+**Challenge 8 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD e5d3dd4, run_2ee1a03651d5d485, 2026-04-25)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/` | Empty output — zero source drift |
+
+All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking) and OBJ-002 (low, non-blocking) carried forward. Ship verdict: **SHIP**. Phase transition to launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_9c2522b83d39efec (role=qa, run_8fe3b8b418dc589c, M29 re-verification, 2026-04-25)
 
 This QA turn challenges the prior accepted dev turn (turn_0528de27fb8f6d22, role=dev, HEAD d904e1f) for run_8fe3b8b418dc589c independently rather than rubber-stamping it.
