@@ -2,6 +2,50 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_b417afbe873a5777 (role=qa, run_152b21c8bbaa78d9, M35 refinement re-verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_bdc543168423c491, role=dev, HEAD d73daeb) for run_152b21c8bbaa78d9 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn scope verified: exactly 3 dev-owned files changed.** `git diff 5d09895..HEAD --name-only` → `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `src/cli.js`. PM turn (5d09895) changed 4 PM-owned files: `.planning/PM_SIGNOFF.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved state, QA-owned, or launch-owned files modified. Challenge resolved.
+
+**Challenge 2 — npm test exits 0 with 26 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (26 scenarios)`. No regression from M35 shipping run. Zero dependency drift in `package.json`/`package-lock.json`. Challenge resolved.
+
+**Challenge 3 — AUTH_SCHEME_INDEX_BUCKET_ORDER derived from AUTH_SCHEMES.** `src/cli.js` line 109: `const AUTH_SCHEME_INDEX_BUCKET_ORDER = Object.freeze(AUTH_SCHEMES.filter((s) => s !== 'unknown'))`. Produces identical runtime array `['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']` as the prior literal — no behavioral change. Correctly references M29 `AUTH_SCHEMES` constant directly. Challenge resolved.
+
+**Challenge 4 — _guardAuthSchemeBucketAlignment IIFE present and correct.** Lines 114–125 in `src/cli.js`: IIFE fires synchronously at module load; computes `expected = new Set([...AUTH_SCHEME_INDEX_BUCKET_ORDER, 'unknown'])` and `actual = new Set(AUTH_SCHEMES)`; throws descriptive `Error` listing missing and extra elements if sets diverge. Any future M29 `AUTH_SCHEMES` extension will cause immediate startup error. Challenge resolved.
+
+**Challenge 5 — Module loads cleanly under guard.** `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0, `Module loaded OK`. Guard passes because `AUTH_SCHEME_INDEX_BUCKET_ORDER ∪ {'unknown'}` equals `AUTH_SCHEMES` exactly. Challenge resolved.
+
+**Challenge 6 — ROADMAP line 629 flipped [x]; all 20 M35 checkboxes now [x].** ROADMAP line 629 confirms `- [x]` on the AUTH_SCHEMES-reference bullet. This is the 9th recurrence of the vision_scan stale-checkbox false-positive pattern (M28→M30→M31→M32→M33→M33-again→M34-again→M34-again-again→M35-again). Challenge resolved.
+
+**Challenge 7 — auth index --help exits 0 with planning-aid framing.** Bucket order `bearer → api_key → session → basic → oauth → none → unknown` confirmed. Challenge resolved.
+
+**Challenge 8 — Case-sensitive --scheme enforcement confirmed.** `--scheme BEARER` → exit 1, stderr `Unknown auth scheme: BEARER`, empty stdout. Challenge resolved.
+
+**Challenge 9 — Zero source drift confirmed.** `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0. Challenge resolved.
+
+**Challenge 10 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline; implementation correct for manually-edited manifests. Non-blocking.
+
+**Challenge 11 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 12 — OBJ-003 (low, non-blocking) carried forward.** M31 per-domain flag value assertions not independently smoke-asserted; M32/M33/M34/M35 close their own analogs. Non-blocking.
+
+**Challenge 13 — 1 new acceptance criterion added (REQ-264).** All 264 acceptance criteria (REQ-001–REQ-264) pass. npm test exit 0 + 26 scenarios independently confirms. Challenge resolved.
+
+**Challenge 14 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD d73daeb, run_152b21c8bbaa78d9, 2026-04-26)
+
+| Command | Exit Code | Notes |
+|---------|-----------|-------|
+| `npm test` | 0 | Smoke tests passed; Eval regression harness passed (26 scenarios) |
+| `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` | 0 | Module loads cleanly; `_guardAuthSchemeBucketAlignment` guard passes |
+| `node bin/tusq.js auth index --help` | 0 | Planning-aid framing confirmed; bearer→api_key→session→basic→oauth→none→unknown order |
+| `node bin/tusq.js auth index --scheme BEARER --manifest tests/fixtures/express-sample/tusq.manifest.json` | 1 | stderr: `Unknown auth scheme: BEARER`; empty stdout (case-sensitive enforcement) |
+| `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | 0 | Zero source drift |
+
+---
+
 ## QA Challenge — turn_1192bec565305f72 (role=qa, run_0b373a30d182816a, M35 verification, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_e2b7cb50cd77d1d5, role=dev, HEAD b9de3af) for run_0b373a30d182816a independently rather than rubber-stamping it.
