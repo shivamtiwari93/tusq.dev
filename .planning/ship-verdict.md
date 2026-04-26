@@ -2,6 +2,40 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_5ae9cd7ed8e985f1 (role=qa, run_7183d8c70482329b, M32 re-verification no-source-change cycle, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_02b2c0e4dceeead3, role=dev, HEAD 0a38455) for run_7183d8c70482329b independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn made zero source changes; M32 already shipped at V1.13.** Verified: `git diff 5dca9a8..0a38455 --name-only` → only `.planning/IMPLEMENTATION_NOTES.md` appears. No changes to `src/`, `bin/`, `tests/`, `website/`, `package.json`, or `package-lock.json`. Dev turn's zero-source-drift claim is independently confirmed. Challenge resolved.
+
+**Challenge 2 — PM turn (turn_f69f5083f63ad652) correctly reconciled 20 M32 ROADMAP checkboxes as a stale-checkbox false positive.** Charter intake intent_1777236173495_2303 (vision_scan, roadmap_open_work_detected) re-injected M32 as if unshipped. PM turn disproved this by verifying M32 was shipped in run_ae841429202c5bb7 (all four phases completed with run_completion_request=true) and reconciling the 20 stale `[ ]` checkboxes to `[x]`. This is the fifth recurrence of the stale-checkbox pattern (M28/M30/M31/M32/M32-again). Challenge resolved.
+
+**Challenge 3 — CLI surface confirmed at 16 commands with correct alphabetic insertion.** `node bin/tusq.js help` exits 0; stdout lists all 16 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, effect, policy, redaction, surface, version, help) with `effect` between `domain` and `policy`. `node bin/tusq.js effect index --help` exits 0 with planning-aid framing: `This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.` Bucket iteration order `read → write → destructive → unknown` confirmed. Challenge resolved: CLI surface matches V1.13 spec.
+
+**Challenge 4 — npm test exits 0 with 23 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (23 scenarios)`. Zero source drift in `src/`, `bin/`, `tests/`, `website/`, `package.json`, `package-lock.json` (`git diff HEAD` on those paths → empty). Challenge resolved.
+
+**Challenge 5 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking.
+
+**Challenge 6 — OBJ-002 (low, non-blocking) carried forward.** surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. Non-blocking.
+
+**Challenge 7 — OBJ-003 (low, non-blocking) carried forward.** M31 flag value assertions (`has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`, `has_unknown_auth`) not independently smoke-asserted for correctness. M32 closes its own analogous flag gap at REQ-189. Non-blocking.
+
+**Challenge 8 — All 191 acceptance criteria (REQ-001–REQ-191) pass.** No new scope shipped in this run; all 191 criteria remain accurate and PASS. `npm test` exit 0 + 23 scenarios independently confirms. Challenge resolved.
+
+**Challenge 9 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 0a38455, run_7183d8c70482329b, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | exit 0, Smoke tests passed, Eval regression harness passed (23 scenarios) |
+| `node bin/tusq.js help` | exit 0, 16 commands, effect between domain and policy |
+| `node bin/tusq.js effect index --help` | exit 0, planning-aid framing callout present, bucket order read→write→destructive→unknown |
+| `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` | empty (zero source drift) |
+| `git diff 5dca9a8..0a38455 --name-only` | .planning/IMPLEMENTATION_NOTES.md only |
+
+---
+
 ## QA Challenge — turn_131a847ada2fad7c (role=qa, run_ae841429202c5bb7, M32 effect index implementation, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_18e3b3d9ce515cf1, role=dev, HEAD e9d2d10) for run_ae841429202c5bb7 independently rather than rubber-stamping it.
