@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1777189729185_7034",
+  "event_id": "evt_1777189729185_b32d",
+  "status": "completed",
+  "priority": "p1",
+  "template": "generic",
+  "charter": "[roadmap-replenishment] Derive next bounded roadmap increment from VISION.md. Unplanned scope: The Promise, Code And API Surface, Database, Warehouse, And Data Model, Frontend, Design System, And Product UX, Domain Model And Workflows, Public Docs And Market-Facing Truth, Internal Docs And Company Operating Knowledge, Data, Risk, And Sensitivity, Optional Runtime Learning, Source Inventory And Confidence, Tools, Skills, Brand-Matched Chat Interface, Brand-Matched Voice Interface, Embeddable Widgets And Command Surfaces, Marketplace Packages, Governance And Observability, Employee Copilots, Data And Analytics Artifacts, Ecosystem Bots And Integrations, Product Intelligence Artifacts, Generated Auth Adapter, Workflow And State Understanding, OSS And Cloud Boundary, The Full Transition We Automate, Must-Have In V1, High-Leverage In V2, Moat Features In V3, Who This Is For, What We Resist. Current roadmap checked through M29: Static Auth Requirements Inference from Manifest Evidence (~0.5 day) — SHIPPED V1.10. Read .planning/VISION.md and .planning/ROADMAP.md to select the next testable milestone. Produce concrete unchecked M30 items. Do not re-verify previous completed milestones.",
+  "acceptance_contract": [
+    "New unchecked milestone items added to .planning/ROADMAP.md",
+    "Milestone scope derived from VISION.md sections: The Promise, Code And API Surface, Database, Warehouse, And Data Model, Frontend, Design System, And Product UX, Domain Model And Workflows, Public Docs And Market-Facing Truth, Internal Docs And Company Operating Knowledge, Data, Risk, And Sensitivity, Optional Runtime Learning, Source Inventory And Confidence, Tools, Skills, Brand-Matched Chat Interface, Brand-Matched Voice Interface, Embeddable Widgets And Command Surfaces, Marketplace Packages, Governance And Observability, Employee Copilots, Data And Analytics Artifacts, Ecosystem Bots And Integrations, Product Intelligence Artifacts, Generated Auth Adapter, Workflow And State Understanding, OSS And Cloud Boundary, The Full Transition We Automate, Must-Have In V1, High-Leverage In V2, Moat Features In V3, Who This Is For, What We Resist",
+    "Milestone is bounded, testable, and does not duplicate existing checked milestones"
+  ],
+  "phase_scope": "planning",
+  "requires_human_start": true,
+  "target_run": "run_24ccd92f593d8647",
+  "created_at": "2026-04-26T07:48:49.185Z",
+  "updated_at": "2026-04-26T09:02:48.222Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-26T07:48:49.185Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-26T07:48:49.186Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-26T07:48:49.186Z",
+      "reason": "roadmap-replenishment auto-approval (BUG-77)",
+      "approver": "continuous_loop"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-26T07:48:49.200Z",
+      "reason": "generated 0 planning artifact(s) from template \"generic\"",
+      "artifacts": []
+    },
+    {
+      "from": "planned",
+      "to": "executing",
+      "at": "2026-04-26T07:48:49.413Z",
+      "run_id": "run_24ccd92f593d8647",
+      "turn_id": "turn_33f4e15b33cf141c",
+      "role": "pm",
+      "reason": "governed execution started"
+    },
+    {
+      "from": "executing",
+      "to": "completed",
+      "at": "2026-04-26T09:02:48.222Z",
+      "turn_id": "turn_33f4e15b33cf141c",
+      "role": "pm",
+      "run_id": "run_24ccd92f593d8647",
+      "reason": "turn accepted — acceptance contract satisfied"
+    }
+  ],
+  "preferred_role": "pm",
+  "approved_run_id": "run_3c9aac455742ac3e",
+  "approved_by": "continuous_loop",
+  "planning_artifacts": [],
+  "target_turn": "turn_33f4e15b33cf141c",
+  "started_at": "2026-04-26T07:48:49.413Z",
+  "completed_at": "2026-04-26T09:02:48.222Z",
+  "run_completed_at": "2026-04-26T09:02:48.222Z",
+  "run_final_turn": "turn_33f4e15b33cf141c",
+  "satisfying_turn": "turn_33f4e15b33cf141c"
+}

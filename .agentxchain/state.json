@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "run_id": "run_ce89ef5bd4b8cca8",
+  "run_id": "run_24ccd92f593d8647",
   "project_id": "tusq-dev",
-  "status": "completed",
-  "phase": "launch",
-  "accepted_integration_ref": "git:b225861b306e004116c92db3fb0f2bd14fffe639",
+  "status": "active",
+  "phase": "planning",
+  "accepted_integration_ref": "git:dacdfa1033c2071d6386fbd9db528115ac8fa3a2",
   "active_turns": {},
-  "turn_sequence": 10,
-  "last_completed_turn_id": "turn_29fbd9e97f2d1caf",
+  "turn_sequence": 2,
+  "last_completed_turn_id": "turn_33f4e15b33cf141c",
   "blocked_on": null,
   "blocked_reason": null,
   "escalation": null,
@@ -17,46 +17,45 @@
   "queued_run_completion": null,
   "last_gate_failure": null,
   "phase_gate_status": {
-    "planning_signoff": "passed",
-    "implementation_complete": "passed",
-    "qa_ship_verdict": "passed",
-    "launch_ready": "passed"
+    "planning_signoff": "pending",
+    "implementation_complete": "pending",
+    "qa_ship_verdict": "pending",
+    "launch_ready": "pending"
   },
   "budget_reservations": {},
   "budget_status": {
     "spent_usd": 0,
     "remaining_usd": 50
   },
-  "created_at": "2026-04-24T15:53:57.733Z",
-  "phase_entered_at": "2026-04-25T19:40:27.857Z",
+  "created_at": "2026-04-26T07:48:49.201Z",
+  "phase_entered_at": "2026-04-26T07:48:49.201Z",
   "provenance": {
-    "trigger": "intake",
+    "trigger": "manual",
     "parent_run_id": null,
-    "trigger_reason": "[idle-expansion #1] Inspect VISION.md, ROADMAP.md, SYSTEM_SPEC.md, and current project state.\nDerive the next concrete increment as a new intake intent with charter + acceptance_contract + priority.\nIf ALL vision goals are genuinely exhausted, declare vision_exhausted with per-heading classification.\n\nCONSTRAINTS:\n- Do NOT modify .planning/VISION.md (human-owned, read-only).\n- ROADMAP.md and SYSTEM_SPEC.md may be updated as supporting evidence.\n- Every proposed intent MUST cite at least one VISION.md heading from the snapshot below.\n- Output MUST be a structured idle_expansion_result (new_intake_intent or vision_exhausted).\n\nVISION headings snapshot:\n  - Vision for tusq.dev\n  - Mission\n  - The fight\n  - The promise\n  - What tusq.dev does\n  - The core insight\n  - The canonical artifact\n  - Why we move fast\n  - Why wide works for us\n  - Coherence is expensive, implementation is cheaper than before\n  - Wide OSS compounds faster than narrow OSS\n  - Breadth turns into retention\n  - The guardrails on width\n  - Design principles\n  - Velocity over surface area\n  - Reviewable over opaque\n  - Explicit side effects\n  - Self-hostable or it does not ship\n  - Plugins are how we scale\n  - Product modules\n  - The full transition we automate\n  - Capability discovery and normalization\n  - Auth and permission mapping\n  - Data and schema understanding\n  - Runtime instrumentation\n  - Safe execution wrappers\n  - Skill and agent composition\n  - AI-facing interface generation\n  - Eval and regression infrastructure\n  - Documentation and adoption surfaces\n  - Migration and rollout tooling\n  - Governance and review workflows\n  - Competitive transition intelligence\n  - Roadmap shape: V1, V2, V3\n  - Must-have in V1\n  - High-leverage in V2\n  - Moat features in V3\n  - Who this is for\n  - Why open source\n  - What we resist\n  - Vision for maturity\n  - Relationship to tusq.cloud\n  - Final statement\n\nSource manifest:\n  - .planning/VISION.md (19 headings, 19041 bytes)\n  - .planning/ROADMAP.md (4 headings, 62174 bytes)\n  - .planning/SYSTEM_SPEC.md (18 headings, 214957 bytes, warning: exceeds_64kb)",
-    "intake_intent_id": "intent_1777046032635_2eab",
+    "trigger_reason": "Roadmap replenishment: Derive next increment from: The Promise, Code And API Surface, Database, Warehouse, And Data Model, Frontend, Design System, And Product UX, Domain Model And Workflows, Public Docs And Market-Facing Truth, Internal Docs And Company Operating Knowledge, Data, Risk, And Sensitivity, Optional Runtime Learning, Source Inventory And Confidence, Tools, Skills, Brand-Matched Chat Interface, Brand-Matched Voice Interface, Embeddable Widgets And Command Surfaces, Marketplace Packages, Governance And Observability, Employee Copilots, Data And Analytics Artifacts, Ecosystem Bots And Integrations, Product Intelligence Artifacts, Generated Auth Adapter, Workflow And State Understanding, OSS And Cloud Boundary, The Full Transition We Automate, Must-Have In V1, High-Leverage In V2, Moat Features In V3, Who This Is For, What We Resist",
+    "intake_intent_id": "intent_1777189729185_7034",
     "created_by": "continuous_loop"
   },
   "inherited_context": null,
   "repo_decisions": null,
   "delegation_queue": [],
-  "next_recommended_role": null,
+  "next_recommended_role": "dev",
   "pending_delegation_review": null,
-  "non_progress_signature": null,
-  "non_progress_count": 0,
+  "non_progress_signature": "planning_signoff::::\".planning/PM_SIGNOFF.md\" requires participation from role \"pm\" in phase \"planning\", but no accepted turn from that role was found,\".planning/ROADMAP.md\" requires participation from role \"pm\" in phase \"planning\", but no accepted turn from that role was found,\".planning/SYSTEM_SPEC.md\" requires participation from role \"pm\" in phase \"planning\", but no accepted turn from that role was found,\".planning/command-surface.md\" requires participation from role \"pm\" in phase \"planning\", but no accepted turn from that role was found",
+  "non_progress_count": 1,
   "last_completed_turn": {
-    "turn_id": "turn_7774b27ecf2a7a31",
-    "role": "qa",
-    "phase": "qa",
-    "checkpoint_sha": "b225861b306e004116c92db3fb0f2bd14fffe639",
-    "checkpointed_at": "2026-04-25T19:40:28.440Z",
-    "intent_id": null
+    "turn_id": "turn_33f4e15b33cf141c",
+    "role": "pm",
+    "phase": "planning",
+    "checkpoint_sha": "dacdfa1033c2071d6386fbd9db528115ac8fa3a2",
+    "checkpointed_at": "2026-04-26T09:02:48.769Z",
+    "intent_id": "intent_1777189729185_7034"
   },
   "operator_commit_reconciliation": {
-    "reconciled_at": "2026-04-25T19:40:48.148Z",
-    "previous_baseline": "fa7853ec8d5f8c3c4bdce9d1954a64c372b33564",
-    "accepted_head": "b225861b306e004116c92db3fb0f2bd14fffe639",
+    "reconciled_at": "2026-04-26T11:54:23.997Z",
+    "previous_baseline": "307bdfdd8176d6764004ac355072673274227f84",
+    "accepted_head": "dacdfa1033c2071d6386fbd9db528115ac8fa3a2",
     "commit_count": 1,
-    "safety_mode": "manual_safe_only"
-  },
-  "completed_at": "2026-04-25T19:44:04.671Z"
+    "safety_mode": "auto_safe_only"
+  }
 }

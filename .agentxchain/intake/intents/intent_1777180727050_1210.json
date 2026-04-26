@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "intent_id": "intent_1777180727050_1210",
+  "event_id": "evt_1777180727050_2a87",
+  "status": "completed",
+  "priority": "p1",
+  "template": "generic",
+  "charter": "[roadmap] M28: Static Sensitivity Class Inference from Manifest Evidence (~0.5 day): Add `classifySensitivity(capability)` pure deterministic function in `src/cli.js` implementing the frozen six-rule first-match-wins decision table: R1 preserve→restricted, R2 admin/destructive verb or admin-namespaced route→restricted, R3 pii_categories non-empty→confidential, R4 write verb + financial-context route/param→confidential, R5 auth_required or narrow write→internal, R6 default→public",
+  "acceptance_contract": [
+    "Roadmap milestone addressed: M28: Static Sensitivity Class Inference from Manifest Evidence (~0.5 day)",
+    "Unchecked roadmap item completed: Add `classifySensitivity(capability)` pure deterministic function in `src/cli.js` implementing the frozen six-rule first-match-wins decision table: R1 preserve→restricted, R2 admin/destructive verb or admin-namespaced route→restricted, R3 pii_categories non-empty→confidential, R4 write verb + financial-context route/param→confidential, R5 auth_required or narrow write→internal, R6 default→public",
+    "Evidence source: .planning/ROADMAP.md:299"
+  ],
+  "phase_scope": null,
+  "requires_human_start": true,
+  "target_run": "run_d69cb0392607d170",
+  "created_at": "2026-04-26T05:18:47.050Z",
+  "updated_at": "2026-04-26T05:53:04.007Z",
+  "history": [
+    {
+      "from": null,
+      "to": "detected",
+      "at": "2026-04-26T05:18:47.050Z",
+      "reason": "event ingested"
+    },
+    {
+      "from": "detected",
+      "to": "triaged",
+      "at": "2026-04-26T05:18:47.051Z",
+      "reason": "triage completed"
+    },
+    {
+      "from": "triaged",
+      "to": "approved",
+      "at": "2026-04-26T05:18:47.052Z",
+      "reason": "roadmap-open-work auto-approval",
+      "approver": "continuous_loop"
+    },
+    {
+      "from": "approved",
+      "to": "planned",
+      "at": "2026-04-26T05:18:47.061Z",
+      "reason": "generated 0 planning artifact(s) from template \"generic\"",
+      "artifacts": []
+    },
+    {
+      "from": "planned",
+      "to": "executing",
+      "at": "2026-04-26T05:18:47.277Z",
+      "run_id": "run_d69cb0392607d170",
+      "turn_id": "turn_641188dc0c4b7616",
+      "role": "pm",
+      "reason": "governed execution started"
+    },
+    {
+      "from": "executing",
+      "to": "completed",
+      "at": "2026-04-26T05:53:04.007Z",
+      "turn_id": "turn_641188dc0c4b7616",
+      "role": "pm",
+      "run_id": "run_d69cb0392607d170",
+      "reason": "turn accepted — acceptance contract satisfied"
+    }
+  ],
+  "approved_run_id": "run_42732dba3268a739",
+  "approved_by": "continuous_loop",
+  "planning_artifacts": [],
+  "target_turn": "turn_641188dc0c4b7616",
+  "started_at": "2026-04-26T05:18:47.277Z",
+  "completed_at": "2026-04-26T05:53:04.007Z",
+  "run_completed_at": "2026-04-26T05:53:04.007Z",
+  "run_final_turn": "turn_641188dc0c4b7616",
+  "satisfying_turn": "turn_641188dc0c4b7616"
+}

@@ -1,26 +1,31 @@
 {
-  "session_id": "session_7fd43c6179deb6dc",
-  "run_id": "run_ce89ef5bd4b8cca8",
+  "session_id": "session_bff010386314959c",
+  "run_id": "run_24ccd92f593d8647",
   "started_at": "2026-04-17T19:54:00.074Z",
-  "last_checkpoint_at": "2026-04-25T19:44:05.142Z",
-  "checkpoint_reason": "turn_accepted",
-  "run_status": "completed",
-  "phase": "launch",
-  "last_phase": "launch",
-  "last_turn_id": "turn_29fbd9e97f2d1caf",
-  "last_completed_turn_id": "turn_29fbd9e97f2d1caf",
+  "last_checkpoint_at": "2026-04-26T11:54:23.999Z",
+  "checkpoint_reason": "operator_commit_reconciled",
+  "run_status": "active",
+  "phase": "planning",
+  "last_phase": "planning",
+  "last_turn_id": "turn_33f4e15b33cf141c",
+  "last_completed_turn_id": "turn_33f4e15b33cf141c",
   "active_turn_ids": [],
-  "last_role": "product_marketing",
+  "last_role": "pm",
   "pending_gate": null,
   "pending_run_completion": null,
   "blocked": false,
   "baseline_ref": {
-    "git_head": "b225861b306e004116c92db3fb0f2bd14fffe639",
+    "git_head": "dacdfa1033c2071d6386fbd9db528115ac8fa3a2",
     "git_branch": "main",
     "workspace_dirty": true
   },
   "agent_context": {
     "adapter": null,
     "dispatch_dir": null
+  },
+  "operator_commit_reconciliation": {
+    "previous_baseline": "307bdfdd8176d6764004ac355072673274227f84",
+    "accepted_head": "dacdfa1033c2071d6386fbd9db528115ac8fa3a2",
+    "commit_count": 1
   }
 }

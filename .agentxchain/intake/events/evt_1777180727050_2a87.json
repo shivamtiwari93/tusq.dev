@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_1777180727050_2a87",
+  "source": "vision_scan",
+  "category": "roadmap_open_work_detected",
+  "created_at": "2026-04-26T05:18:47.050Z",
+  "repo": null,
+  "ref": null,
+  "signal": {
+    "description": "M28: Static Sensitivity Class Inference from Manifest Evidence (~0.5 day): Add `classifySensitivity(capability)` pure deterministic function in `src/cli.js` implementing the frozen six-rule first-match-wins decision table: R1 preserve→restricted, R2 admin/destructive verb or admin-namespaced route→restricted, R3 pii_categories non-empty→confidential, R4 write verb + financial-context route/param→confidential, R5 auth_required or narrow write→internal, R6 default→public",
+    "roadmap_milestone": "M28: Static Sensitivity Class Inference from Manifest Evidence (~0.5 day)",
+    "roadmap_path": ".planning/ROADMAP.md",
+    "roadmap_line": 299,
+    "derived": true
+  },
+  "evidence": [
+    {
+      "type": "file",
+      "value": ".planning/ROADMAP.md:299"
+    },
+    {
+      "type": "text",
+      "value": "Unchecked roadmap work: M28: Static Sensitivity Class Inference from Manifest Evidence (~0.5 day) — Add `classifySensitivity(capability)` pure deterministic function in `src/cli.js` implementing the frozen six-rule first-match-wins decision table: R1 preserve→restricted, R2 admin/destructive verb or admin-namespaced route→restricted, R3 pii_categories non-empty→confidential, R4 write verb + financial-context route/param→confidential, R5 auth_required or narrow write→internal, R6 default→public"
+    }
+  ],
+  "dedup_key": "vision_scan:585f724b0b755a5d"
+}
