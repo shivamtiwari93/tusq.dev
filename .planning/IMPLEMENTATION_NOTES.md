@@ -2,6 +2,66 @@
 
 ---
 
+## Dev Turn turn_363693afea46c3e7 — Embeddable-Surface Charter Candidate Baseline Re-Verification (run_2ee1a03651d5d485, 2026-04-25)
+
+**Run:** run_2ee1a03651d5d485
+**HEAD:** 2ce819bc214dd9e8abe2a4a5803777d537f22e7e (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_2cc0b42362df3fd3, role=pm, phase=planning, intent_1777171732846_289f) operated on intake intent vision_scan p2 with charter "[vision] The Promise: embeddable chat, widget, command-palette, and voice surfaces."
+
+Not rubber-stamping: the PM turn produced a 10-item acceptance contract sketch for `tusq surface plan` in `.planning/ROADMAP_NEXT_CANDIDATES.md` and added re-affirmation paragraphs to the four PM-owned planning_signoff gate artifacts. Three issues warrant explicit challenge:
+
+1. **PM DEC-001 is correct** — the naive read of the intake intent (ship four runtime surfaces in one milestone) would break the local-only / static-only / no-new-runtime-dependency invariants that M25–M29 hold. A planner-first increment (`tusq surface plan`) is the PM-defensible decomposition. No objection to the decomposition logic.
+
+2. **PM DEC-003 is correct** — the charter sketch lives only in `ROADMAP_NEXT_CANDIDATES.md` (candidate venue). The four PM-owned planning_signoff artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md) were NOT updated with the embeddable-surface charter. This is the correct gate discipline: the embeddable-surface charter is **not bound** and therefore the V1.10 boundary is still the operative shipping target.
+
+3. **PM OBJ-001 is a live scope risk** — the proposed `surface` top-level noun would be the first new top-level noun since `redaction` (M27). If `tusq plan surface` under a future planning-hub `plan` noun is preferable, this charter should NOT be bound until that scope decision is made. The dev turn acknowledges this open question but has no authority to resolve it.
+
+**Consequence for this dev turn:** The PM explicitly stated "The implementation phase will not execute the embeddable-surface charter (it remains a candidate awaiting human binding); it will carry forward the V1.10 shipped boundary unchanged." Therefore NO new source code is required. This turn is a baseline re-verification pass only.
+
+### Scope of This Turn
+
+This run (run_2ee1a03651d5d485) was triggered by intake intent `intent_1777171732846_289f` (vision_scan p2). The PM correctly determined that the smallest defensible increment is a charter sketch, not a runtime implementation. The PM set `phase_transition_request: 'implementation'` per `auto_approve` policy. This dev turn's responsibility is:
+
+1. Challenge the prior PM turn explicitly (done above — challenges noted, PM logic upheld)
+2. Independently verify the baseline is stable on HEAD 2ce819b
+3. Confirm no source drift was introduced by the PM's planning-artifact updates
+4. Close the `implementation_complete` gate with no source changes
+
+The embeddable-surface charter (M-Surface or M30-Surface) is NOT implemented in this turn. It is NOT present in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md — implementing without those gate-approved artifacts would bypass the planning_signoff gate for an unchartered increment.
+
+### Baseline Re-Verification (HEAD 2ce819b)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | 2ce819bc214dd9e8abe2a4a5803777d537f22e7e |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/` | empty — no source drift |
+
+**No source changes were made or required.** The PM's planning-artifact edits (re-affirmation paragraphs in PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md; new charter sketch section in ROADMAP_NEXT_CANDIDATES.md) did not touch src/, bin/, tests/, or website/ — confirmed by zero-diff above. Shipped V1.10 boundary (M1–M29, 13 CLI commands, 16 eval scenarios) is intact.
+
+### Shipped Boundary Confirmation
+
+- **CLI surface:** 13 top-level commands (unchanged from M29 / V1.10)
+- **Eval scenarios:** 16 scenarios (unchanged; no new scenario for embeddable-surface since charter is unbound)
+- **New source files:** 0
+- **New dependencies in package.json:** 0
+- **Constraint 23 (proposed):** NOT added to SYSTEM_SPEC.md this turn — it is part of the unbound charter sketch in ROADMAP_NEXT_CANDIDATES.md only
+
+### Gate Satisfaction
+
+- `.planning/IMPLEMENTATION_NOTES.md` exists with substantive implementation and verification content across all M17–M29 milestones plus all run-specific re-verification records.
+- Fresh independent verification pass completed on HEAD 2ce819b: `npm test` exits 0 with 16 scenarios.
+- No source changes required or made.
+- `implementation_complete` gate is satisfied. Phase transition to `qa` is requested.
+
+---
+
 ## Dev Turn turn_768db52384611260 — M29 Re-verification (run_6d12fe85d0e51576, 2026-04-25)
 
 **Run:** run_6d12fe85d0e51576
