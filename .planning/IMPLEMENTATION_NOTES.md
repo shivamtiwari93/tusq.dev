@@ -2,6 +2,31 @@
 
 ---
 
+## Dev Turn turn_0e359b277c048d1f — Implementation Phase: M33 Stale-Checkbox Re-Verification (run_cd98cdad0fb83285, 2026-04-26)
+
+**Run:** run_cd98cdad0fb83285
+**Phase:** implementation
+**HEAD:** d96d5642697ad53835b34b836ff58b241b9026e4 (baseline)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_73d77d855d310a6c (role=pm, phase=planning)
+
+PM correctly challenged intake charter intent_1777238952808_4fd5 (vision_scan, category roadmap_open_work_detected), which re-injected M33 V1.14 (PROPOSED) default-behavior closed-enum-order line as if unshipped. PM independently verified on HEAD 753cf31 that M33 is fully shipped at V1.14 in the prior run chain (run_completion_request=true; 17-command CLI surface confirmed; npm test exits 0 with 24 scenarios including sensitivity-index-determinism). PM flipped all 20 M33 ROADMAP checkboxes from [ ] to [x] and prepended dated re-affirmation preambles to PM_SIGNOFF.md, SYSTEM_SPEC.md, and command-surface.md. This is the 5th recurrence of the vision_scan stale-checkbox false-positive pattern (M28→M30→M31→M32→M33). All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+No new source code modifications this turn. M33 (Static Capability Sensitivity Index Export) is fully implemented at V1.14 — all deliverables (src/cli.js, tests/smoke.mjs, tests/evals/governed-cli-scenarios.json, tests/eval-regression.mjs) are present and verified. The V1.14 shipped boundary is carried forward unchanged.
+
+### Verification
+
+- `npm test` exits 0 — "Smoke tests passed" and "Eval regression harness passed (24 scenarios)"
+- `node bin/tusq.js help` exits 0 — 17 commands confirmed with 'sensitivity' between 'redaction' and 'surface'
+- `node bin/tusq.js sensitivity index --help` exits 0 — planning-aid framing callout + closed-enum bucket iteration order public→internal→confidential→restricted→unknown
+- `git diff HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` — empty output (zero source drift)
+
+---
+
 ## Dev Turn turn_42c7748a59fa5ef3 — Implementation Phase: M33 Static Capability Sensitivity Index Export (run_4506c41d74e23e8e, 2026-04-26)
 
 **Run:** run_4506c41d74e23e8e
