@@ -2,6 +2,70 @@
 
 ---
 
+## Dev Turn turn_76e50fc1cfd4ef0f — M28 Stale-Checkbox Reconciliation Baseline Re-Verification (run_d69cb0392607d170, 2026-04-26)
+
+**Run:** run_d69cb0392607d170
+**HEAD:** 14d6f6bae2fae679a6645e47ddb57803fbceb5ea (workspace dirty on orchestrator state files + intake events + dispatch-progress only)
+
+### Challenge To Prior PM Turn
+
+Prior accepted PM turn (turn_641188dc0c4b7616, role=pm, phase=planning, intent_1777180727050_1210) operated on intake intent vision_scan p2 with charter "[roadmap] M28: Static Sensitivity Class Inference from Manifest Evidence."
+
+Not rubber-stamping. Explicit challenges registered:
+
+1. **PM DEC-001 is correct** — The vision_scan re-detected the 15 unchecked M28 ROADMAP checkboxes literally. PM correctly identified this as a stale-checkbox false positive: M28 shipped in full at V1.9 (run_b784b6baf905fc02). The 15 verifiable shipped artifacts (classifySensitivity at src/cli.js:2732, zero-evidence guard at :2741, sensitivity_class hashed at :469/:472, --sensitivity filter at :803-882, SYSTEM_SPEC § M28 at line 2782, Constraint 21 at line 3218, website/docs/manifest-format.md § sensitivity_class rules at lines 215-246, three eval scenarios) provide complete reconciliation evidence. Upheld.
+
+2. **PM DEC-002 is correct** — Flipping all 15 M28 sub-item checkboxes `[ ]` → `[x]` and prepending a reconciliation note with file:line evidence per sub-item is the correct remediation. The M28 milestone heading now reads "SHIPPED V1.9". Upheld.
+
+3. **PM DEC-003 gate discipline is correct** — PM modified only planning-owned artifacts (PM_SIGNOFF.md, ROADMAP.md, SYSTEM_SPEC.md, command-surface.md). Zero source/test/website drift confirmed by `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` (empty output). Two unbound vision-derived charters (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md only — PM did NOT touch them. Upheld.
+
+4. **PM DEC-004 auto_approve transition is correct** — The planning_signoff gate required artifacts all exist with substantive reconciliation content; M28 ROADMAP checkboxes now match shipped reality. Phase transition to implementation is valid. Upheld.
+
+5. **PM OBJ-001 (systemic noise) is valid but non-blocking** — The vision_scan source repeatedly generates intents from stale ROADMAP checkboxes (this is at least the third such occurrence). This is an operator-level configuration concern, not a PM or dev responsibility. Non-blocking for V1.10 ship decision. OBJ carried forward.
+
+**Consequence for this dev turn:** The PM's intent was a stale-checkbox reconciliation pass — no new charter was bound, no new scope was introduced. The V1.10 shipped boundary (M1–M29) remains operative. NO new source code is required. This turn is a baseline re-verification pass only.
+
+### Scope of This Turn
+
+This run (run_d69cb0392607d170) was triggered by intake intent `intent_1777180727050_1210` (vision_scan p2, M28 stale-checkbox re-detection). The PM correctly determined this was a false positive and remediated by reconciling the ROADMAP checkboxes only. The PM set `phase_transition_request: 'implementation'` per `auto_approve` policy. This dev turn's responsibility is:
+
+1. Challenge the prior PM turn explicitly (done above — challenges noted, PM logic upheld)
+2. Independently verify the baseline is stable on HEAD 14d6f6b
+3. Confirm no source drift was introduced by the PM's planning-artifact updates
+4. Close the `implementation_complete` gate with no source changes
+
+No new charter is present in SYSTEM_SPEC.md, ROADMAP.md, PM_SIGNOFF.md, or command-surface.md. The two existing unbound charter candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding — implementing either without gate-approved artifacts would bypass the planning_signoff gate.
+
+### Baseline Re-Verification (HEAD 14d6f6b)
+
+Independent verification — all commands re-run; no prior-turn evidence inherited.
+
+| Command | Result |
+|---------|--------|
+| `git rev-parse HEAD` | 14d6f6bae2fae679a6645e47ddb57803fbceb5ea |
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` | empty — no source drift |
+
+**No source changes were made or required.** The PM's planning-artifact edits (M28 checkbox reconciliation in ROADMAP.md, re-affirmation paragraphs in PM_SIGNOFF.md / SYSTEM_SPEC.md / command-surface.md) did not touch src/, bin/, tests/, or website/ — confirmed by zero-diff above. Shipped V1.10 boundary (M1–M29, 13 CLI commands, 16 eval scenarios) is intact.
+
+### Shipped Boundary Confirmation
+
+- **CLI surface:** 13 top-level commands (unchanged from M29 / V1.10)
+- **Eval scenarios:** 16 (unchanged)
+- **New dependencies:** 0
+- **New source files:** 0
+- **M28 charter status:** fully shipped at V1.9; ROADMAP checkboxes reconciled by PM this turn
+- **Unbound charter candidates:** 2 (embeddable-surface, static-MCP-descriptor) — in ROADMAP_NEXT_CANDIDATES.md only
+
+### Open Objections Carried Forward
+
+- **OBJ-001 (medium, non-blocking):** R6 dead code (auth_required === false → auth_scheme: 'none') — auth_required is never set by scanner; implementation correct for manually-edited manifests only.
+- **OBJ-002 (low, non-blocking):** Two unbound vision-derived charters coexist in the candidate backlog (embeddable-surface + static-MCP-descriptor). Non-blocking at V1.10.
+- **OBJ-003 (low, systemic noise):** vision_scan source repeatedly generates intents from stale ROADMAP checkboxes. Operator-level configuration concern; non-blocking.
+
+---
+
 ## Dev Turn turn_cdcec89ff1d6683d — Static MCP Descriptor Charter Candidate Baseline Re-Verification (run_42732dba3268a739, 2026-04-26)
 
 **Run:** run_42732dba3268a739
