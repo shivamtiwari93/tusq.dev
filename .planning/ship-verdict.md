@@ -2,6 +2,41 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_4125be3cf057395a (role=qa, run_e40832d436a42d75, M31 domain index implementation, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_59bd0fdb1abd4a32, role=dev, HEAD 33eaa87) for run_e40832d436a42d75 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn implemented M31 (Static Capability Domain Index Export) across nine files.** Verified: `src/cli.js` (DOMAIN_INDEX_AGGREGATION_KEY_ENUM frozen Set, _guardAggregationKey synchronous throw guard, cmdDomain enumerator, cmdDomainIndex main handler with detection-before-output, parseDomainIndexArgs four-flag parser, buildDomainIndex first-appearance bucketing, formatDomainIndex human output), `tests/smoke.mjs` (17 M31 assertions cases a-q), `tests/evals/governed-cli-scenarios.json` (domain-index-determinism, count 21→22), `tests/eval-regression.mjs` (runDomainIndexDeterminismScenario), `.planning/SYSTEM_SPEC.md` (§ M31 + Constraint 29), `.planning/command-surface.md` (§ M31 CLI Surface), `.planning/IMPLEMENTATION_NOTES.md`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`. No reserved state files, PM-owned gate artifacts, QA-owned artifacts, or launch-owned artifacts were modified. Challenge resolved: all nine file categories are dev-owned and within M31 scope.
+
+**Challenge 2 — CLI surface grows from 14 to 15 commands as spec'd.** `node bin/tusq.js help` exits 0 and stdout lists `domain` at position 10 (between `diff` and `policy`). `node bin/tusq.js domain index --help` exits 0 with planning-aid framing: `This is a planning aid, not a skill-pack/rollout/workflow generator.` Challenge resolved: CLI surface matches the PM charter and SYSTEM_SPEC § M31.
+
+**Challenge 3 — All 17 M31 smoke assertions pass.** Smoke cases a-q verified: default all-domain run (a), --domain filter for named and unknown buckets (b), unknown domain exit 1 (c), missing manifest exit 1 (d), malformed JSON exit 1 (e), byte-identical determinism (f), read-only manifest invariant (g), digest non-flip (h), compile byte-identity (i), surface plan byte-identity (j), empty-capabilities exit 0 (l), --out to valid path (m), --out unwritable path exit 1 (n), --out .tusq/ rejection (o), unknown bucket appended last (p), closed two-value aggregation_key enum (q). npm test exits 0 with 22 scenarios. Challenge resolved.
+
+**Challenge 4 — OBJ-002-M31 (low, non-blocking) raised.** Flag value assertions (`has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`, `has_unknown_auth`) are exercised by the smoke fixture (the fixture includes a destructive capability, a restricted capability, and an unknown-auth capability) but the smoke assertions for these three per-domain flags are not independently validated by explicit value assertions — only presence via the output shape is confirmed. The `domain-index-determinism` eval scenario covers value stability across runs but not specific counter correctness. Implementation appears correct (confirmed by reading buildDomainIndex logic at src/cli.js:2165-2185); this is a coverage gap, not a defect. Non-blocking at V1.12.
+
+**Challenge 5 — OBJ-001 (medium, non-blocking) and OBJ-001-M30 (low, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline. surface-plan-determinism eval uses synthetic_capabilities. Both non-blocking. No new blocking objections raised.
+
+**Challenge 6 — All 167 acceptance criteria (REQ-001–REQ-167) pass.** REQ-146–REQ-167 (22 new criteria) added to cover M31 CLI surface, filtering, error paths, determinism, read-only invariants, empty-capabilities, --out variants, closed enum, ordering rule, per-domain entry shape, compile/surface byte-identity, and eval regression. Challenge resolved.
+
+**Challenge 7 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-167 (all PASS). RELEASE_NOTES.md documents M1–M31 including V1.12. ship-verdict.md (this file) carries this turn's independent challenge. Challenge resolved.
+
+**Challenge 8 — Zero new dependencies.** `git diff HEAD -- package.json package-lock.json` produces empty output. Challenge resolved.
+
+**Challenge 9 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 33eaa87, run_e40832d436a42d75, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (22 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 15-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help |
+| `node bin/tusq.js domain index --help` | Exit 0 — planning-aid framing callout present |
+| `git diff HEAD -- package.json package-lock.json` | Empty output — zero new dependencies |
+
+All 167 acceptance criteria (REQ-001–REQ-167) pass. OBJ-001 (medium, non-blocking), OBJ-001-M30 (low, non-blocking), and OBJ-002-M31 (low, non-blocking) carried forward. Ship verdict: **SHIP**. Setting `phase_transition_request: 'launch'` per `auto_approve` policy.
+
+---
+
 ## QA Challenge — turn_98d87515fa014a92 (role=qa, run_7894753f9c47c8e3, M30 re-verification no-source-change cycle, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_f766c529523ce892, role=dev, HEAD e67c9d5) for run_7894753f9c47c8e3 independently rather than rubber-stamping it.
