@@ -104,8 +104,26 @@ const AUTH_SCHEME_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['scheme', 
 // M35: closed-enum bucket iteration order (bearer → api_key → session → basic → oauth → none). NOT IAM-strength-precedence —
 // deterministic stable-output convention only (mirrors M29 AUTH_SCHEMES decision table ordering, not a trust ladder).
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
-// NOTE: bucket-key enum aligns with AUTH_SCHEMES (M29, line 9) — the seven-value enum IS the AUTH_SCHEMES set.
-const AUTH_SCHEME_INDEX_BUCKET_ORDER = Object.freeze(['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']);
+// Derived from AUTH_SCHEMES (M29, line 9): filter out 'unknown' (appended last by convention); preserves AUTH_SCHEMES ordering.
+// A module-init guard below fires synchronously if AUTH_SCHEME_INDEX_BUCKET_ORDER ∪ {'unknown'} ever diverges from AUTH_SCHEMES.
+const AUTH_SCHEME_INDEX_BUCKET_ORDER = Object.freeze(AUTH_SCHEMES.filter((s) => s !== 'unknown'));
+
+// M35: module-init alignment guard — throws synchronously if AUTH_SCHEME_INDEX_BUCKET_ORDER ∪ {'unknown'} diverges from AUTH_SCHEMES.
+// Ensures any future M29 AUTH_SCHEMES extension (e.g., 'mtls', 'aws_sigv4') surfaces as an immediate startup error rather than
+// silent drift between the M29 classifier and the M35 bucket-key enum. ROADMAP milestone required for any AUTH_SCHEMES change.
+;(function _guardAuthSchemeBucketAlignment() {
+  const expected = new Set([...AUTH_SCHEME_INDEX_BUCKET_ORDER, 'unknown']);
+  const actual = new Set(AUTH_SCHEMES);
+  const missing = [...actual].filter((s) => !expected.has(s));
+  const extra = [...expected].filter((s) => !actual.has(s));
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(
+      'M35 bucket alignment broken: AUTH_SCHEME_INDEX_BUCKET_ORDER \u222a {unknown} diverges from AUTH_SCHEMES. ' +
+      'Update M35 bucket order or M29 AUTH_SCHEMES under a fresh ROADMAP milestone. ' +
+      'Missing from bucket set: [' + missing.join(', ') + ']. Extra in bucket set: [' + extra.join(', ') + '].'
+    );
+  }
+}());
 
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.

@@ -2,6 +2,44 @@
 
 ---
 
+## Dev Turn turn_bdc543168423c491 — Implementation Phase: M35 Auth Scheme Index Refinement — AUTH_SCHEMES Derivation + Mismatch Guard (run_152b21c8bbaa78d9, 2026-04-26)
+
+**Run:** run_152b21c8bbaa78d9
+**Phase:** implementation
+**HEAD:** 5d09895 (baseline before this turn — last PM turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_ec2716f4b8fe4ff4 (role=pm, phase=planning)
+
+PM correctly identified that the intake charter intent_1777244614389_af70 (vision_scan, category roadmap_open_work_detected) re-injected M35 V1.16 (PROPOSED) as if unshipped — the 9th recurrence of the vision_scan stale-checkbox false-positive pattern. PM independently verified M35 is substantively shipped at V1.16 (19 of 20 ROADMAP bullets satisfied) and identified the one genuine residual gap: `src/cli.js:108` declared `AUTH_SCHEME_INDEX_BUCKET_ORDER` as an independent literal frozen array `['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']` with only a comment alignment — no derivation from `AUTH_SCHEMES`, no synchronous mismatch guard. PM's git diff claim (4 PM-owned files changed, zero source drift in src/bin/tests/website/package.json) is consistent with the decision history. All six PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M35 refinement — closed the line-629 gap identified in the PM turn:
+
+**`src/cli.js` (lines 104–124, previously 104–108):**
+- Replaced the literal `AUTH_SCHEME_INDEX_BUCKET_ORDER` declaration with a derived form: `Object.freeze(AUTH_SCHEMES.filter((s) => s !== 'unknown'))`. This produces the identical array `['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']` because `AUTH_SCHEMES` (line 9) is `['unknown', 'bearer', 'api_key', 'session', 'basic', 'oauth', 'none']` — filtering out `'unknown'` preserves the M29-declared ordering.
+- Added `_guardAuthSchemeBucketAlignment` IIFE — fires synchronously at module load time. Computes `expected = new Set([...AUTH_SCHEME_INDEX_BUCKET_ORDER, 'unknown'])` and `actual = new Set(AUTH_SCHEMES)`, then throws a descriptive `Error` if any element is in one set but not the other. The guard means any future extension of `AUTH_SCHEMES` (e.g., `'mtls'`, `'aws_sigv4'`) will cause an immediate startup error rather than silent drift between the M29 classifier and the M35 bucket-key enum. A ROADMAP milestone is required to authorize any AUTH_SCHEMES change.
+
+**`.planning/ROADMAP.md`:**
+- Flipped line 629 from `[ ]` to `[x]` — the synchronous mismatch guard + derived-from-AUTH_SCHEMES declaration now satisfies the bullet's sub-requirement: "M35 MUST reference the M29 `AUTH_SCHEMES` constant directly (not redeclare an independent enum) so any future M29 classifier change surfaces as a synchronous mismatch rather than silent drift." All 20 M35 ROADMAP checkboxes are now `[x]`.
+
+### Verification
+
+- `npm test` exits 0: `Smoke tests passed` + `Eval regression harness passed (26 scenarios)` ✓
+- `node bin/tusq.js auth index --help` exits 0 with planning-aid framing ✓
+- `git diff --name-only HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → `src/cli.js` only (exactly one file changed) ✓
+- Module loads cleanly (`node -e "require('./src/cli.js')"` exits 0 — guard passes because AUTH_SCHEMES set still equals AUTH_SCHEME_INDEX_BUCKET_ORDER ∪ {'unknown'}) ✓
+
+### Files Modified This Turn
+
+- `src/cli.js` — replaced literal BUCKET_ORDER with AUTH_SCHEMES derivation + added _guardAuthSchemeBucketAlignment IIFE
+- `.planning/ROADMAP.md` — flipped line 629 from [ ] to [x] (20/20 M35 checkboxes now [x])
+- `.planning/IMPLEMENTATION_NOTES.md` — this entry
+
+---
+
 ## Dev Turn turn_e2b7cb50cd77d1d5 — Implementation Phase: M35 Auth Scheme Index (run_0b373a30d182816a, 2026-04-26)
 
 **Run:** run_0b373a30d182816a
