@@ -2,6 +2,40 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_9abf910a0efb4468 (role=qa, run_d69cb0392607d170, M28 stale-checkbox reconciliation re-verification, 2026-04-26)
+
+This QA turn challenges the prior accepted dev turn (turn_76e50fc1cfd4ef0f, role=dev, HEAD 31031e3) for run_d69cb0392607d170 independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn was analysis-only with no source changes.** `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` returns empty output. Zero source, test, website, or dependency files were modified. The dev turn correctly identified that the PM turn (turn_641188dc0c4b7616) was a stale-checkbox reconciliation for M28 (intent_1777180727050_1210) — M28 fully shipped at V1.9, ROADMAP checkboxes now match shipped reality. The two unbound charter candidates (embeddable-surface, static-MCP-descriptor) remain in ROADMAP_NEXT_CANDIDATES.md awaiting human binding. Challenge resolved: no source regression possible from this planning-artifact-only cycle.
+
+**Challenge 2 — No new acceptance criteria required.** No new scope was shipped. REQ-001–REQ-124 remain the complete and accurate acceptance coverage for the V1.10 (M1–M29) shipped boundary. Challenge resolved.
+
+**Challenge 3 — Baseline re-verification on HEAD 31031e3.** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`. `node bin/tusq.js help` exits 0, exactly 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` returns empty output — zero source drift. Challenge resolved.
+
+**Challenge 4 — OBJ-001 (medium, non-blocking) carried forward.** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests. Non-blocking at V1.10. No new objections raised.
+
+**Challenge 5 — OBJ-002 (low, non-blocking) carried forward.** Two unbound vision-derived charters coexist in the candidate backlog (embeddable-surface + static-MCP-descriptor). Backlog debt accumulating but non-blocking for the current V1.10 ship decision; both await human operator binding.
+
+**Challenge 6 — OBJ-003 (low, non-blocking) carried forward.** vision_scan has now produced at least three false-positive intents from stale ROADMAP checkboxes (M28 this run, M27 and unbound-candidate re-detections in prior runs). Without a source filter for milestones with verifiable shipped evidence, PM turns will continue spending cycles on reconciliation false positives. Operator-level configuration concern; non-blocking for V1.10.
+
+**Challenge 7 — M28 stale-checkbox reconciliation is correct.** PM DEC-001 decomposition: all 15 M28 sub-item checkboxes flipped from `[ ]` to `[x]` with file:line evidence (`classifySensitivity` at `src/cli.js:2732`, zero-evidence guard at `:2741`, sensitivity_class digest hash at `:469/:472`, `--sensitivity` filter at `:803-882`, eval scenarios `sensitivity-class-r1-preserve-precedence`, `sensitivity-class-r4-financial-inference`, `sensitivity-class-zero-evidence-unknown`). All evidence confirmed present in the codebase at HEAD 31031e3. Challenge resolved: PM reconciliation correct.
+
+**Challenge 8 — All three qa_ship_verdict gate artifacts are complete.** acceptance-matrix.md covers REQ-001–REQ-124 (all PASS). RELEASE_NOTES.md documents M1–M29 including V1.10 section. ship-verdict.md (this file) carries independent challenge for run_d69cb0392607d170. No artifact missing or incomplete. Challenge resolved.
+
+**Challenge 9 — Auto-approve policy applies.** This run's `approval_policy.phase_transitions.default` is `auto_approve`. Setting `phase_transition_request: "launch"` per the mandate. Challenge resolved.
+
+### Baseline Re-Verification (HEAD 31031e3, run_d69cb0392607d170, 2026-04-26)
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — "Smoke tests passed" + "Eval regression harness passed (16 scenarios)" |
+| `node bin/tusq.js help` | Exit 0 — 13-command surface: init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help |
+| `git diff HEAD --stat -- src/ bin/ tests/ website/ package.json package-lock.json` | Empty output — zero source drift |
+
+All 124 acceptance criteria (REQ-001–REQ-124) pass. OBJ-001 (medium, non-blocking), OBJ-002 (low, non-blocking), and OBJ-003 (low, non-blocking) carried forward. Ship verdict: **SHIP**. Phase transition to launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_f49fd22cd74a554c (role=qa, run_2ee1a03651d5d485, V1.10 re-verification, 2026-04-25)
 
 This QA turn challenges the prior accepted dev turn (turn_363693afea46c3e7, role=dev, HEAD e5d3dd4) for run_2ee1a03651d5d485 independently rather than rubber-stamping it.
