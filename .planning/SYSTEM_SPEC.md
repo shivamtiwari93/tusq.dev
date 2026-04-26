@@ -3195,6 +3195,180 @@ A change to any field of `auth_requirements` — including the contents of `auth
 
 The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-116+ acceptance criteria.
 
+## M30: Static Embeddable-Surface Plan Export from Manifest Evidence
+
+> **Scope binding (run_24ccd92f593d8647, turn_fa7dbb75b01943f5, PM, planning phase):** This § materializes the PM-level scope contract for M30 — V1.11 (PROPOSED) — chartered in `.planning/ROADMAP.md` § "M30: Static Embeddable-Surface Plan Export from Manifest Evidence (~0.75 day) — V1.11 (PROPOSED)" and announced in `.planning/PM_SIGNOFF.md`'s M30 charter-bound preamble. The dev role is accountable for materializing the implementation-level algorithm details (function signatures, file paths, shape verbatim JSON keys, exit-code constants, smoke fixture filenames) during the implementation phase. PM owns scope, frozen enums, read-only invariants, the planning-aid (not surface-generator) framing, and the eligibility precedence; dev owns the algorithm landing.
+
+### Purpose
+
+VISION.md (line 27, "embeddable chat, widget, command-palette, and voice surfaces" under **The Promise**; lines 193–224, "Brand-Matched Chat Interface", "Brand-Matched Voice Interface", "Embeddable Widgets And Command Surfaces") names four operator-visible runtime surfaces (chat, palette, widget, voice) that V1.10 does NOT yet provide. Shipping any one of them as runnable code is a multi-milestone effort (chat-1 generator, palette-1 generator, widget-1 generator, voice-1 generator) that crosses framework choice, brand-profile schema, accessibility certification, and runtime hosting boundaries — none of which V1.11 is prepared to commit to. M30 is the smallest first increment that addresses the vision goal **without** committing the project to runtime chat/voice/widget rendering: a static, deterministic, manifest-only planner that describes what each embeddable surface **would** look like for the current manifest under current sensitivity/auth/side-effect posture.
+
+M30 introduces a new top-level CLI noun `surface` with a single subcommand `plan` (mirroring the M27 `redaction review` precedent). The CLI surface grows from 13 commands (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) to **14** (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help). The new noun `surface` is inserted alphabetically between `serve` and `redaction` in the help enumeration so the help block remains stably ordered. M30 mutates no existing command's observable behavior.
+
+### Scope Boundary
+
+| In scope (V1.11) | Out of scope (V1.11) |
+|------------------|----------------------|
+| Pure deterministic planner over manifest record fields only | Any network or runtime call |
+| Closed four-value `surface` enum: chat, palette, widget, voice | Open-ended or free-text surface labels (e.g., email, slack-bot) |
+| Closed six-value `gated_reason` enum: unapproved, restricted_sensitivity, confidential_sensitivity, destructive_side_effect, auth_scheme_unknown, auth_scheme_oauth_pending_v2 | Open-ended gating reasons |
+| Per-surface eligibility precedence rules over `approved`/`sensitivity_class`/`auth_requirements`/side-effect class | Runtime AAA enforcement, brand certification, accessibility certification |
+| Deterministic JSON and human plan output | Generation of runnable chat / palette / widget / voice code |
+| M27 advisory copy-forward and M29 `auth_requirements` copy-forward (verbatim, no recomputation) | Recomputation of advisories or auth scheme; recoercion of `unknown` → `none` |
+| `brand_inputs_required[]` as frozen names-only list per surface | Reading any brand profile file, looking up any brand value, emitting template strings |
+| New top-level CLI noun `surface` with single subcommand `plan` | Any change to `tusq compile`, `tusq serve` MCP surface, `tusq policy verify`, `tusq redaction review`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq scan`, `tusq manifest`, `tusq init`, `tusq version`, `tusq help` observable behavior |
+| Four flags on `tusq surface plan`: `--surface`, `--manifest`, `--out`, `--json` | Any other flag; runtime adapter generation; brand-profile read; `.tusq/` write |
+| Eval regression scenario `surface-plan-determinism` (eval harness 20 → ≥21) | Network I/O at any error path; partial output before error detection |
+| Constraint 23 (proposed) reviewer-aid / planning-aid framing | Any framing implying "generates a chat client", "renders a widget", "hosts a voice interface", "runs a command palette" |
+
+### Closed `surface` Enum (Four Values)
+
+| Value | Meaning |
+|-------|---------|
+| `chat` | Plan section for an embeddable chat surface (per VISION.md "Brand-Matched Chat Interface") |
+| `palette` | Plan section for an embeddable command-palette surface |
+| `widget` | Plan section for embeddable widgets (action and insight, split by side-effect class) |
+| `voice` | Plan section for an embeddable voice surface (per VISION.md "Brand-Matched Voice Interface") |
+
+The four values are the entire legal set. No other value, nullable, or wildcard is permitted in the `surface` field of plan output. The `--surface <chat|palette|widget|voice|all>` flag accepts only these five tokens (the four enum values plus `all` which expands to all four in the frozen order); any other token exits 1 with `Unknown surface:` followed by the value, empty stdout. The four-value enum is **immutable once M30 ships**; adding a new surface (e.g., `email`, `slack-bot`) is a material governance event under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
+
+### Closed `gated_reason` Enum (Six Values)
+
+| Value | Meaning |
+|-------|---------|
+| `unapproved` | `capability.approved !== true` — capability has not passed the M13 approval gate |
+| `restricted_sensitivity` | `capability.sensitivity_class === "restricted"` — sensitivity class blocks this surface per its eligibility rule |
+| `confidential_sensitivity` | `capability.sensitivity_class === "confidential"` — sensitivity class blocks this surface per its eligibility rule |
+| `destructive_side_effect` | Capability's verb resolves to a destructive side-effect class and the target surface forbids destructive verbs (palette and voice in V1.11) |
+| `auth_scheme_unknown` | `capability.auth_requirements.auth_scheme === "unknown"` — zero-evidence auth scheme is never eligible for any embeddable surface |
+| `auth_scheme_oauth_pending_v2` | `capability.auth_requirements.auth_scheme === "oauth"` — oauth flows are deferred to a V2 runtime adapter milestone |
+
+The six values are the entire legal set. An implementation-time error (synchronous throw) MUST fire if `classifyGating(capability, surface)` ever returns a value outside this set. The six-value enum is **immutable once M30 ships**; adding a new reason is a material governance event under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry.
+
+### Per-Surface Eligibility Precedence (Frozen First-Match-Wins)
+
+For each (capability, surface) pair, the planner evaluates the following gates in order; the first gate that fails records its corresponding `gated_reason` in the surface's `gated_capabilities[]`. If all gates pass, the capability is appended to `eligible_capabilities[]`.
+
+| Order | Gate | `gated_reason` on failure |
+|-------|------|---------------------------|
+| 1 | `capability.approved === true` | `unapproved` |
+| 2 | `capability.sensitivity_class !== "restricted"` (per surface; widget exception below) | `restricted_sensitivity` |
+| 3 | `capability.sensitivity_class !== "confidential"` (per surface; widget exception below) | `confidential_sensitivity` |
+| 4 | side-effect class allowance per surface (palette and voice forbid destructive; chat and widget action_widgets allow destructive) | `destructive_side_effect` |
+| 5 | `capability.auth_requirements.auth_scheme !== "unknown"` (all surfaces) | `auth_scheme_unknown` |
+| 6 | `capability.auth_requirements.auth_scheme !== "oauth"` (all surfaces; deferred to V2) | `auth_scheme_oauth_pending_v2` |
+
+**Per-surface gate set:**
+
+- `chat`: gates 1, 2, 3, 5, 6. Destructive verbs ARE allowed (chat surface supports confirmation flows).
+- `palette`: gates 1, 2, 3, 4, 5, 6. Destructive verbs are gated (palette is the lowest-risk surface).
+- `widget`: gates 1, 5, 6. Confidential/restricted sensitivity is permitted for widgets (widgets are typically embedded inside the SaaS portal under same-session proxy semantics). Side-effect class drives the widget split: destructive/writes → `action_widgets`; read-only → `insight_widgets`.
+- `voice`: gates 1, 2, 3, 4, 5, 6. Destructive verbs are gated (voice destructive flows are reserved for a future V2 confirmation-flow milestone).
+
+**First-match-wins:** when a capability fails multiple gates, only the **first** failing gate (lowest order) is recorded in `gated_reason`. A capability with `approved=false` AND `auth_scheme="oauth"` is recorded as `unapproved`, never `auth_scheme_oauth_pending_v2`.
+
+### Plan Output Shape (JSON)
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `manifest_path` | `--manifest` or default | Resolved input path |
+| `manifest_version` | copied from manifest | Not re-stamped (M27 fallback: `null` in JSON, `unknown` in human when absent) |
+| `generated_at` | copied from manifest | Not re-stamped; keeps plan content-deterministic |
+| `surfaces[]` | enum-driven; frozen order chat → palette → widget → voice | Empty array when `capabilities: []` |
+| `surfaces[].surface` | one of `chat`/`palette`/`widget`/`voice` | Closed four-value enum |
+| `surfaces[].eligible_capabilities[]` | manifest declared order | Capability names (strings); `approved===true` and per-surface gates pass |
+| `surfaces[].gated_capabilities[]` | manifest declared order | `{name, reason}` objects; `reason` ∈ closed six-value enum |
+| `surfaces[].entry_points` | per-surface keyed object | Derived deterministically from M9 domain + verb data |
+| `surfaces[].entry_points` (chat) | `{intents: [{capability, intent_label}]}` | One per eligible capability |
+| `surfaces[].entry_points` (palette) | `{actions: [{capability, action_label}]}` | One per eligible capability |
+| `surfaces[].entry_points` (widget) | `{action_widgets: [{capability}], insight_widgets: [{capability}]}` | Split by side-effect class |
+| `surfaces[].entry_points` (voice) | `{voice_intents: [{capability, intent_label}]}` | Constrained to non-destructive read/update verbs |
+| `surfaces[].redaction_posture` | per eligible capability | Copy-forward of M27 advisory set verbatim; no recomputation, no new advisory text |
+| `surfaces[].auth_posture` | per eligible capability | Copy-forward of M29 `auth_requirements` record verbatim; no recoercion of `unknown` → `none` |
+| `surfaces[].brand_inputs_required[]` | frozen named-list per surface | Names only; no values; no template strings; no brand profile read |
+
+**Frozen `brand_inputs_required` named-lists:**
+
+| Surface | `brand_inputs_required[]` (frozen names; no values) |
+|---------|-----------------------------------------------------|
+| `chat` | `["brand.tone", "brand.color_primary", "brand.color_secondary", "brand.font_family"]` |
+| `palette` | `["brand.color_primary", "brand.font_family"]` |
+| `widget` | `["brand.color_primary", "brand.color_accent", "brand.layout_density", "brand.radius"]` |
+| `voice` | `["brand.tone", "voice.persona", "voice.greeting"]` |
+
+The brand-input lists are **immutable once M30 ships**; adding a name is a material governance event under its own ROADMAP milestone.
+
+### Read-Only Invariants
+
+| Invariant | How it shows up at plan time |
+|-----------|-------------------------------|
+| Read-only manifest | `tusq.manifest.json` mtime and content are byte-identical before/after every `tusq surface plan` invocation |
+| No `.tusq/` write | `tusq surface plan` MUST NOT create or modify any file under `.tusq/`. The `--out <path>` flag MUST reject any path resolving inside `.tusq/` with `--out path must not be inside .tusq/` on stderr and exit 1 |
+| Zero `capability_digest` flips | Running `tusq surface plan` MUST NOT cause any capability's `capability_digest` to change. Hash-before vs hash-after assertion is byte-identical |
+| `tusq compile` byte-identity | `tusq compile` output is byte-identical pre and post-M30 for every fixture (golden-file smoke assertion) |
+| `tusq serve` MCP surface byte-identity | `tools/list`, `tools/call`, `dry_run_plan` responses are byte-identical pre and post-M30 (golden-file smoke assertion). `eligible_capabilities`, `gated_capabilities`, surface plan fields MUST NOT appear in any MCP response |
+| `tusq policy verify` byte-identity | Default and `--strict` modes byte-for-byte unchanged |
+| `tusq redaction review` byte-identity | Both human and `--json` outputs byte-for-byte unchanged |
+| `tusq approve` gate logic unchanged | Approval flow does NOT consider surface eligibility |
+| Zero new dependencies | `package.json` MUST NOT gain React, Vue, Lit, Web Speech polyfill, audio runtime, markdown renderer, or any chat/widget/voice/palette UI library |
+
+### Empty-Capabilities Valid-Exit-0 Rule
+
+When the manifest's `capabilities[]` is a valid empty array, `tusq surface plan` MUST exit 0:
+
+- **Human mode:** stdout is exactly the line `No capabilities in manifest — nothing to plan.` followed by a single trailing newline. No surface section, no warnings, no advisory text.
+- **`--json` mode:** stdout is `{manifest_path, manifest_version, generated_at, surfaces: []}` with the top-level fields copied verbatim from the manifest (M27 fallback: `null` for absent fields).
+
+This is distinct from a missing/non-array `capabilities` (exit 1 with `Invalid manifest: missing capabilities array` on stderr; stdout empty).
+
+### I/O Stream Discipline
+
+Every error path writes exclusively to stderr and leaves stdout empty (`stdout === ""`). Smoke assertion captures both streams and verifies the empty-stdout invariant on every exit-1 case. The complete error message set:
+
+| Situation | Operator sees on stderr | Exit code |
+|-----------|--------------------------|-----------|
+| Plan succeeded | (per-surface plan on stdout; stderr empty) | 0 |
+| Empty-capabilities | (single human line on stdout; stderr empty) | 0 |
+| `--manifest` points to a missing file | `Manifest not found: <path>` | 1 |
+| Manifest is present but not valid JSON | `Invalid manifest JSON: <path>` | 1 |
+| Manifest is valid JSON but lacks `capabilities[]` array | `Invalid manifest: missing capabilities array` | 1 |
+| `--surface <value>` is not in the closed five-token set | `Unknown surface: <value>` | 1 |
+| Unknown subcommand under `tusq surface` | `Unknown subcommand: <name>` | 1 |
+| Unknown flag on `tusq surface plan` | `Unknown flag: <flag>` | 1 |
+| `--out <path>` is unwritable | `Cannot write to --out path: <path>` | 1 |
+| `--out <path>` resolves inside `.tusq/` | `--out path must not be inside .tusq/` | 1 |
+
+Detection-before-output means no partial JSON and no partial human section is written before an error surfaces. An operator who pipes `tusq surface plan > plan.json` gets a zero-byte file on every failure path.
+
+### Non-Runtime-Generator Boundary
+
+`tusq surface plan` is a **planning aid** that describes what an embeddable surface **would** look like for the current manifest under the current sensitivity/auth/side-effect posture. It does NOT:
+
+- generate runnable chat client code (no React component, no Vue component, no Lit component, no HTML template, no JavaScript module);
+- generate runnable command-palette code (no keybinding registration, no event handler);
+- generate runnable widget code (no embeddable iframe, no Web Component, no script tag);
+- generate runnable voice code (no Web Speech polyfill, no audio runtime, no STT/TTS adapter);
+- read or write any brand profile file (`brand_inputs_required[]` is names-only, no values, no template strings, no placeholder lookups);
+- host any runtime (no HTTP server, no WebSocket, no audio session);
+- execute any capability (no `tools/call` reachable from this command path);
+- certify brand compliance, accessibility compliance (WCAG, ARIA), or any regulatory framework.
+
+Subsequent milestones (M-Chat-1, M-Palette-1, M-Widget-1, M-Voice-1) for actual surface generators ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations.
+
+### Docs and Tests Required Before Implementation (Dev Materializes)
+
+The dev role is accountable for materializing the following before any code lands:
+
+- `src/cli.js` — add the `tusq surface` noun and `tusq surface plan` subcommand handler; implement `classifyGating(capability, surface) -> gated_reason | null`, `buildSurfacePlan(manifest, surfaceFilter, options) -> plan`; wire the subcommand into the help enumeration alphabetically between `serve` and `redaction`.
+- `SYSTEM_SPEC.md` — this M30 § (already present after this PM edit); `## Constraints` gains the M30 reviewer-aid framing constraint (Constraint 23-equivalent appended at constraints tail).
+- `README.md` — add one line under the manifest shape description noting that `tusq surface plan` is a static planning aid that consumes manifest fields without mutation; link to docs.
+- `website/docs/cli-reference.md` — add a `tusq surface plan` entry documenting the closed four-value `surface` enum, the four flags, exit codes, the empty-capabilities behavior, and the explicit "planning aid, not a surface generator" callout.
+- `website/docs/manifest-format.md` — add a "Surface Plan" subsection explaining how the manifest's `approved` / `sensitivity_class` / `auth_requirements` / side-effect class fields drive per-surface eligibility, and that the surface plan is read-only and never mutates the manifest.
+- `tests/smoke.mjs` — add the M30 smoke matrix covering: (a) default `tusq surface plan` produces exit 0 and the expected per-surface eligibility/gating split; (b) `--surface chat`/`--surface palette`/`--surface widget`/`--surface voice` each emit one surface section; (c) `--surface all` emits all four in the frozen order; (d) `--surface unknown` exits 1 with `Unknown surface:` and empty stdout; (e) missing `--manifest` path exits 1 with `Manifest not found:`; (f) malformed-JSON manifest exits 1 with `Invalid manifest JSON:` before any stdout; (g) running twice produces byte-identical stdout in both modes; (h) M30 does not mutate the manifest (mtime/content unchanged); (i) `capability_digest` does not flip on any capability after a plan run (asserted by hash compare); (j) `tusq compile` golden-file output byte-identical pre and post-M30; (k) `tusq serve tools/list` golden-file output byte-identical; (l) empty-capabilities manifest emits the documented human line and `surfaces: []` JSON; (m) `--out <path>` writes to the path and emits no stdout on success; (n) `--out` to an unwritable path exits 1; (o) every gating reason resolves to exactly one of the six closed reason codes; (p) destructive verb is gated for `palette` and `voice` but allowed for `chat` and `widget action_widgets`.
+- `tests/evals/governed-cli-scenarios.json` — add eval regression scenario `surface-plan-determinism` asserting `tusq surface plan --json` byte-identical stdout across three runs on the same manifest and that the gating-reason enum is closed (every gated capability's reason is one of the six values). Total eval scenarios become **≥21** (current 20 + 1 new).
+
+The dev role is accountable for implementing all items above. The QA role is accountable for independently re-verifying them as REQ-129+ acceptance criteria.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
@@ -3227,3 +3401,7 @@ The dev role is accountable for implementing all items above. The QA role is acc
 25. **Run-specific re-affirmation — run_2ee1a03651d5d485 / turn_2cc0b42362df3fd3** — This SYSTEM_SPEC is re-anchored unchanged in run `run_2ee1a03651d5d485` (turn `turn_2cc0b42362df3fd3`, planning phase, attempt 1) on HEAD `a46d3cb`. The M29 § (Static Auth Requirements Inference from Manifest Evidence — V1.10) and Constraint 22 (M29 auth-requirements reviewer-aid framing invariant) remain frozen as established in the parent run chain. Independent verification on HEAD a46d3cb: `npm test` exits 0 with `Eval regression harness passed (16 scenarios)`; `node bin/tusq.js help` enumerates exactly the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). **Vision-derived charter received this turn (intent_1777171732846_289f, p2, charter "[vision] The Promise: embeddable chat, widget, command-palette, and voice surfaces"):** PM has materialized a charter sketch for `tusq surface plan` (a static, deterministic, manifest-only planner for the four embeddable surfaces) in `.planning/ROADMAP_NEXT_CANDIDATES.md`. The charter sketch is **not yet** bound into this SYSTEM_SPEC — binding it requires human approval at the planning_signoff gate and would add a new § (Surface Plan Static Export) plus Constraint 23 (`tusq surface plan` reviewer-aid framing forbidding runtime-chat/widget/palette/voice generation, brand certification, and accessibility-compliance claims). This entry makes no spec mutation; it records this run's independent verification and names the candidate charter for audit continuity.
 
 26. **Run-specific re-affirmation — run_42732dba3268a739 / turn_1e0689ffd021d2d5** — This SYSTEM_SPEC is re-anchored unchanged in run `run_42732dba3268a739` (turn `turn_1e0689ffd021d2d5`, planning phase, attempt 1, runtime `local-pm`) on HEAD `1d3f074`. The M29 § (Static Auth Requirements Inference from Manifest Evidence — V1.10) and Constraint 22 (M29 auth-requirements reviewer-aid framing invariant) remain frozen as established in the parent run chain. Independent verification on HEAD 1d3f074: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (16 scenarios)`; `node bin/tusq.js help` enumerates exactly the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help). **Vision-derived charter received this turn (intent_1777173722739_5899, p2, charter "[vision] The Promise: a self-hostable runtime and MCP server"):** distinct from the prior run's embeddable-surface charter — this run targets the runtime + MCP half of **The Promise**. PM has materialized a charter sketch for **Static MCP Server Descriptor Export** (a static, deterministic, manifest-only command that captures the *describe-only* shape of `tusq serve` into a registry-compatible JSON file) in `.planning/ROADMAP_NEXT_CANDIDATES.md` § "Vision-Derived Charter Candidate: MCP Server Static Descriptor Export (V2 Self-Host First Step)". The charter sketch acknowledges that the vision goal is **partially served at V1.10**: `tusq serve` already provides a describe-only local MCP endpoint per this SYSTEM_SPEC's serve § with `tools/list` / `tools/call` / `dry_run_plan`, and the OSS is CLI-first / file-first / runs entirely locally. The unserved parts decompose into four future milestones: (1) static MCP server descriptor as a hashable/diffable/signable artifact (this charter's scope); (2) generated auth adapters (deferred to M-Runtime-Auth-1; honors VISION lines 396, 608); (3) execution runtime beyond describe-only — same-session proxy, dry-run with confirmation, direct execution of approved-read low-risk capabilities, runtime audit/trace (deferred to M-Runtime-Exec-1; honors VISION line 513); (4) MCP marketplace packaging — registry-submission metadata, icons, descriptions, example prompts, registry submission helpers (deferred to M-MCP-Marketplace-1; honors VISION lines 249, 515–517). **Open scope decision the operator must resolve at the planning_signoff gate (PM does NOT pre-commit):** noun-vs-flag form for the new command — (A) new top-level noun `mcp` with subcommand `export` (CLI surface 13 → 14, compounding top-level surface growth alongside the proposed `surface` noun), (B) flag-only extension `tusq serve --export <path>` (CLI surface stays 13; overloads `serve` verb with non-server emit mode), (C) subcommand under a future `plan` hub (`tusq plan mcp` alongside `tusq plan surface`; presupposes chartering a `plan` hub first). The charter sketch is **not yet** bound into this SYSTEM_SPEC — binding it requires human approval at the planning_signoff gate and would add a new § (MCP Server Static Descriptor Export) with the frozen `schema_version` literal `"tusq.mcp-descriptor.v1"`, the closed three-value `runtime_posture` boolean block (`describe_only_supported: true`, `execution_supported: false`, `auth_adapter_generation_supported: false`), the closed six-value `gated_tools` reason-code enum (`unapproved`, `restricted_sensitivity`, `confidential_sensitivity_pending_review`, `auth_scheme_unknown_pending_v2`, `auth_scheme_oauth_pending_v2`, `destructive_side_effect_pending_v2`), the deterministic `audit_required` derivation rule, the frozen `registry_metadata` named-list, the `derived_from` deterministic pointer with `manifest_sha256` + `capability_digest` copy-forward, the `disclaimers` frozen literal text array, the eval scenario `mcp-descriptor-determinism` (eval harness 16 → ≥17), and proposed Constraint 24 (the static MCP server descriptor is a planning-and-distribution artifact capturing the *describe-only* shape of `tusq serve`; it does NOT host execution outside `tusq serve`, does NOT generate auth adapters, does NOT generate a stand-alone runtime binary, does NOT call any MCP marketplace, does NOT publish to any registry, does NOT certify compliance with any registry's submission requirements, and does NOT enforce runtime authentication, authorization, or policy; forbidden framings: "self-hostable runtime generator," "AI runtime engine," "MCP marketplace publisher," "auth adapter generator," "MCP execution runtime," "registry-certified output"). **Frozen invariants the future binding will inherit verbatim from M27/M28/M29 reviewer-aid pattern:** read-only (manifest mtime/content unchanged; no `.tusq/` write unless `--out` given; `capability_digest` MUST NOT flip; `tusq compile` byte-for-byte unchanged; `tusq serve` MCP responses `tools/list` / `tools/call` / `dry_run_plan` byte-for-byte unchanged; all other commands byte-for-byte unchanged); deterministic byte-identical output across runs; empty-capabilities valid-exit-0 with explicit `No capabilities in manifest — nothing to export.` human line and `tools: []` / `gated_tools: []` JSON; empty-stdout-on-every-exit-1; zero new dependencies in `package.json` (no `mcp-sdk`, no `@modelcontextprotocol/*` SDK, no `passport`, no `jsonwebtoken`); zero network I/O; zero registry call; no external schema validation at emit time. This entry makes no spec mutation; it records this run's independent verification and names the candidate charter for audit continuity. Both vision-derived candidates (Static Embeddable-Surface Plan Export from `run_2ee1a03651d5d485` and Static MCP Server Descriptor Export from this run) coexist in `ROADMAP_NEXT_CANDIDATES.md` as mutually-independent operator-decision-pending items — neither presupposes the other.
+
+27. **M30 surface-plan planning-aid framing invariant (proposed Constraint 23 per ROADMAP § M30; appended at constraints tail to preserve numbering continuity with prior re-affirmation entries)** — `tusq surface plan` is a planning aid that describes what an embeddable surface **would** look like for the current manifest under the current sensitivity/auth/side-effect posture. It MUST NOT be presented as a runtime surface generator, brand certification, accessibility-compliance certification (WCAG, ARIA, ADA, EN 301 549), or runtime hosting in any docs, marketing, README, CLI help, launch artifact, or eval scenario. Forbidden framings include but are not limited to: "generates a chat client," "renders a widget," "hosts a voice interface," "runs a command palette," "ships a runnable surface," "auto-brands the embed," "certifies accessibility," "publishes to a marketplace." The closed four-value `surface` enum `{chat, palette, widget, voice}` and the closed six-value `gated_reason` enum `{unapproved, restricted_sensitivity, confidential_sensitivity, destructive_side_effect, auth_scheme_unknown, auth_scheme_oauth_pending_v2}` are derived purely from already-shipped manifest evidence (`approved`, `sensitivity_class`, `auth_requirements`, side-effect class, M9 verb/domain data) by deterministic pure functions (`classifyGating`, `buildSurfacePlan`) that perform zero network calls, import zero UI libraries (no React, no Vue, no Lit, no Web Speech polyfill, no audio runtime, no markdown renderer), read zero source files beyond what manifest generation already reads, read zero brand profile files (`brand_inputs_required[]` is names-only with no values, no template strings, no placeholder lookups), and execute zero compiled tools. The frozen six-gate first-match-wins eligibility precedence (1: `approved===true`, 2: not `restricted` sensitivity per surface, 3: not `confidential` sensitivity per surface, 4: side-effect class allowance per surface, 5: `auth_scheme !== "unknown"`, 6: `auth_scheme !== "oauth"`) and the frozen `brand_inputs_required` named-lists (chat: `["brand.tone","brand.color_primary","brand.color_secondary","brand.font_family"]`; palette: `["brand.color_primary","brand.font_family"]`; widget: `["brand.color_primary","brand.color_accent","brand.layout_density","brand.radius"]`; voice: `["brand.tone","voice.persona","voice.greeting"]`) are immutable once M30 ships; any rule, enum, or list change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. M27 advisory copy-forward and M29 `auth_requirements` copy-forward MUST be verbatim — no recomputation, no recoercion of `unknown` → `none`. Capabilities that fail the gating precedence MUST be recorded with the **first** failing gate's reason (a capability with `approved=false` AND `auth_scheme="oauth"` is `unapproved`, never `auth_scheme_oauth_pending_v2`). An implementation-time error (synchronous throw) MUST fire if `classifyGating(capability, surface)` ever returns a value outside the closed six-value set. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq surface plan`. `capability_digest` MUST NOT flip on any capability. `tusq compile` output, `tusq serve` MCP responses (`tools/list`, `tools/call`, `dry_run_plan`), `tusq policy verify` (default and `--strict`), `tusq redaction review`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq scan`, `tusq manifest`, `tusq init`, `tusq version`, and `tusq help` MUST be byte-for-byte unchanged. The plan output fields (`eligible_capabilities`, `gated_capabilities`, surface-plan structure) MUST NOT appear in any MCP response. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to plan.` (single trailing newline) or `{manifest_path, manifest_version, generated_at, surfaces: []}` in `--json`. Subsequent surface-generator milestones (M-Chat-1, M-Palette-1, M-Widget-1, M-Voice-1) ship under their own ROADMAP entries with fresh acceptance contracts; M30 is **not** a substitute for any of them. The CLI surface grows from 13 → 14 (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, surface, version, help) and the new noun `surface` is inserted alphabetically between `serve` and `redaction` in help output.
+
+28. **Run-specific binding — run_24ccd92f593d8647 / turn_fa7dbb75b01943f5 (M30 PM-level scope materialization)** — This SYSTEM_SPEC entry records that PM has materialized the M30 scope contract in the new `## M30: Static Embeddable-Surface Plan Export from Manifest Evidence` § directly above the Constraints heading on HEAD `e41237e` (run `run_24ccd92f593d8647`, turn `turn_fa7dbb75b01943f5`, planning phase, runtime `local-pm`). The previous PM turn (`turn_33f4e15b33cf141c`) bound M30 in `.planning/ROADMAP.md` and `.planning/PM_SIGNOFF.md` but explicitly deferred SYSTEM_SPEC and command-surface materialization to the dev role; the gate evaluator's `non_progress_signature` then required PM participation in **all four** planning_signoff artifacts (`PM_SIGNOFF.md`, `ROADMAP.md`, `SYSTEM_SPEC.md`, `command-surface.md`), preventing phase advance. This turn closes the gate by adding the M30 § to SYSTEM_SPEC.md and the M30 Product CLI Surface § to command-surface.md, both at PM scope-level (frozen enums, eligibility precedence, read-only invariants, planning-aid framing). The dev role retains accountability for implementing the algorithm details (`classifyGating`, `buildSurfacePlan`, command wiring, smoke fixtures, eval scenario) during the implementation phase per the M27/M28/M29 precedent. Independent verification on HEAD e41237e: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (20 scenarios)`; the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is intact (M30 is unchecked planned work, not shipped). Shipped V1.10 boundary (M1-M29) remains intact. M30 is V1.11 (PROPOSED), implementation-ready planned work.
