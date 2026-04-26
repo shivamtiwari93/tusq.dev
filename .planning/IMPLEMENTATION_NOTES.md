@@ -2,6 +2,58 @@
 
 ---
 
+## Dev Turn turn_e2b7cb50cd77d1d5 — Implementation Phase: M35 Auth Scheme Index (run_0b373a30d182816a, 2026-04-26)
+
+**Run:** run_0b373a30d182816a
+**Phase:** implementation
+**HEAD:** 455be4e (baseline before this turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_d7fc926d1c177c66 (role=pm, phase=planning)
+
+PM correctly challenged intake charter intent_1777242416896_42c9 (vision_scan, category roadmap_exhausted_vision_open) which asked to derive the next bounded roadmap increment from VISION.md. PM independently verified M34 is fully shipped at V1.15 and bound M35 = Static Capability Auth Scheme Index Export (~0.5 day) — V1.16 (PROPOSED). PM froze: seven-value auth_scheme bucket-key enum (bearer | api_key | session | basic | oauth | none | unknown) referencing M29 AUTH_SCHEMES directly, two-value aggregation_key enum (scheme | unknown), closed-enum bucket iteration order (bearer → api_key → session → basic → oauth → none → unknown), per-bucket 8-field entry shape, case-sensitive lowercase-only --scheme filter.
+
+Independent verification confirms PM turn modified exactly 4 PM-owned files: .planning/ROADMAP.md, .planning/PM_SIGNOFF.md, .planning/SYSTEM_SPEC.md, .planning/command-surface.md. Zero dev-owned src/, bin/, tests/, website/, package.json, package-lock.json touched. All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M35 fully implemented. All source deliverables materialized:
+
+**`src/cli.js`:**
+- Added `AUTH_SCHEME_INDEX_AGGREGATION_KEY_ENUM` (frozen Set: `scheme | unknown`)
+- Added `AUTH_SCHEME_INDEX_BUCKET_ORDER` (frozen array: `['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']`)
+- Added `cmdAuth(args)` — top-level noun dispatcher
+- Added `cmdAuthIndex(args)` — handler with detection-before-output --out .tusq/ rejection, --scheme case-sensitive filter
+- Added `parseAuthIndexArgs(args)` — 4-flag parser (scheme, manifest, out, json)
+- Added `_guardAuthSchemeBucketKey(key)` — synchronous throw on out-of-seven-value-set
+- Added `_guardAuthAggregationKey(key)` — synchronous throw on out-of-two-value-set
+- Added `buildAuthIndex(manifest, manifestPath)` — closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, `has_restricted_or_confidential_sensitivity` (sensitivity_class === 'restricted' || 'confidential')
+- Added `formatAuthIndex(index)` — human output with planning-aid callout
+- Updated `dispatch()` — `'auth'` inserted between `approve` and `diff`
+- Updated `printHelp()` — `auth` inserted between `approve` and `diff` (CLI surface 18 → 19)
+- Updated `printCommandHelp()` — `auth` and `auth index` entries with closed-enum bucket order and planning-aid framing
+
+**`tests/smoke.mjs`:** M35 smoke matrix (cases a-u + edge cases: unknown flag, missing caps, help, help count=19, unknown subcommand).
+
+**`tests/evals/governed-cli-scenarios.json`:** `auth-scheme-index-determinism` scenario (eval harness 25 → 26). `expected_scheme_order: "bearer,api_key,none,unknown"`.
+
+**`tests/eval-regression.mjs`:** `runAuthSchemeIndexDeterminismScenario` handler; dispatch registered under `scenario_type === 'auth_scheme_index_determinism'`.
+
+**`.planning/SYSTEM_SPEC.md`:** § M35 detail block prepended (purpose, command shape, frozen enums, per-bucket entry shape, iteration order rules, case-sensitive filter rule, empty-capabilities/stdout-discipline rules, read-only invariants, deliverables) + Constraint 28.
+
+**`.planning/command-surface.md`:** § M35 Product CLI Surface block prepended (command table, flag table, enum tables, failure UX table, local-only invariants table).
+
+**`website/docs/cli-reference.md`:** `tusq auth index` section.
+
+**`website/docs/manifest-format.md`:** Auth Scheme Index subsection.
+
+### Verification
+
+`npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (26 scenarios)". CLI surface confirmed at 19 commands with `auth` inserted alphabetically between `approve` and `diff`. `tusq auth index --help` exits 0 with planning-aid framing callout and closed-enum bucket iteration order. Zero new dependencies. Zero manifest mutation invariant confirmed.
+
+---
+
 ## Dev Turn turn_de5362f531cf37b9 — Implementation Phase: M34 Stale-Checkbox Re-Verification (run_9b4197b36f01ca42, 2026-04-26)
 
 **Run:** run_9b4197b36f01ca42

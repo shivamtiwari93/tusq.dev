@@ -1369,6 +1369,87 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
 
+## M35 Product CLI Surface
+
+M35 (Static Capability Auth Scheme Index Export from Manifest Evidence — V1.16) adds the `auth` top-level noun with a single subcommand `index`. The CLI surface grows from **18 → 19** commands, with `auth` inserted alphabetically between `approve` and `compile` (`approve` vs `auth`: `app` < `aut` because `p` < `u`; `auth` vs `compile`: `a` < `c`).
+
+### M35 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq auth` | Print enumerate-subcommands block for auth |
+| `tusq auth index` | Index capabilities by auth scheme (static, read-only, planning aid) |
+
+### M35 Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--scheme <value>` | Filter to a single auth scheme bucket; case-sensitive lowercase | All schemes |
+| `--manifest <path>` | Manifest file to read | `tusq.manifest.json` |
+| `--out <path>` | Write index to file (no stdout on success); rejected inside `.tusq/` | stdout |
+| `--json` | Emit machine-readable JSON | Human text |
+
+### M35 Frozen Seven-Value `auth_scheme` Bucket-Key Enum
+
+| Value | Bucket | Notes |
+|-------|--------|-------|
+| `bearer` | Named | JWT/Bearer-token auth |
+| `api_key` | Named | API key auth |
+| `session` | Named | Session/cookie auth |
+| `basic` | Named | HTTP Basic auth |
+| `oauth` | Named | OAuth/OIDC auth |
+| `none` | Named | No auth required |
+| `unknown` | Unknown | No static evidence or explicit unknown |
+
+Aligns 1:1 with M29 `AUTH_SCHEMES` constant. Referenced directly — no independent constant. Case-sensitive lowercase for `--scheme` filter.
+
+### M35 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `scheme` | All six named scheme buckets |
+| `unknown` | The unknown bucket |
+
+### M35 Closed-Enum Bucket Iteration Order
+
+`bearer → api_key → session → basic → oauth → none → unknown`
+
+This is a deterministic stable-output convention only — NOT an IAM-strength-precedence statement, NOT a trust-ranking, NOT a security-strength ladder.
+
+### M35 Per-Bucket 8-Field Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `auth_scheme` | string | One of the seven enum values |
+| `aggregation_key` | string | `"scheme"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Manifest declared order |
+| `approved_count` | integer | `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | Any cap with `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | Any cap with `sensitivity_class` in `{restricted, confidential}` |
+
+### M35 Failure UX
+
+| Condition | Exit | stderr | stdout |
+|-----------|------|--------|--------|
+| Missing manifest | 1 | `Manifest not found: <path>` | empty |
+| Malformed JSON | 1 | `Invalid manifest JSON: <path>` | empty |
+| Missing capabilities | 1 | `Invalid manifest: missing capabilities array` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| Unknown auth scheme filter | 1 | `Unknown auth scheme: <value>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+| Empty capabilities | 0 | — | `No capabilities in manifest — nothing to index.` |
+
+### M35 Local-Only Invariants
+
+- Zero manifest mutations; `tusq.manifest.json` mtime/content byte-identical before and after every invocation
+- Zero `capability_digest` flips
+- `tusq compile`, `tusq serve`, `tusq policy verify`, `tusq redaction review`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index` outputs byte-identical pre and post-M35
+- Zero new dependencies in `package.json`
+
 ## M34 Product CLI Surface
 
 M34 (Static Capability HTTP Method Index Export from Manifest Evidence — V1.15) adds the `method` top-level noun with a single subcommand `index`. The CLI surface grows from **17 → 18** commands, with `method` inserted alphabetically between `effect` and `policy` (`method` vs `policy`: `m` < `p`; `method` vs `effect`: `e` < `m`).

@@ -721,6 +721,66 @@
       "expected_valid_http_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "unknown"],
       "expected_valid_aggregation_keys": ["method", "unknown"],
       "expected_method_order": "GET,POST,PATCH,DELETE,unknown"
+    },
+    {
+      "id": "auth-scheme-index-determinism",
+      "description": "M35: tusq auth index --json produces byte-identical output across three runs on the same manifest; auth_scheme bucket-key enum is closed (seven values: bearer/api_key/session/basic/oauth/none/unknown); aggregation_key enum is closed (two values: scheme/unknown); bucket iteration order is the frozen closed-enum order (bearer → api_key → session → basic → oauth → none, then unknown last)",
+      "scenario_type": "auth_scheme_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "create_invoice",
+          "domain": "billing",
+          "method": "POST",
+          "path": "/billing/invoices",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "auth_scheme": "bearer"
+        },
+        {
+          "name": "get_status",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/status",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "none"
+        },
+        {
+          "name": "update_user",
+          "domain": "users",
+          "method": "PATCH",
+          "path": "/users/:id",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "auth_scheme": "api_key"
+        },
+        {
+          "name": "no_auth_route",
+          "domain": null,
+          "method": "GET",
+          "path": "/ping",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "auth_scheme": "unknown"
+        }
+      ],
+      "expected_valid_auth_schemes": ["bearer", "api_key", "session", "basic", "oauth", "none", "unknown"],
+      "expected_valid_aggregation_keys": ["scheme", "unknown"],
+      "expected_scheme_order": "bearer,api_key,none,unknown"
     }
   ]
 }

@@ -3631,6 +3631,95 @@ Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manife
 - `website/docs/cli-reference.md` — `tusq sensitivity index` documentation.
 - `website/docs/manifest-format.md` — Sensitivity Index subsection.
 
+## M35: Static Capability Auth Scheme Index Export from Manifest Evidence (V1.16 — PROPOSED)
+
+> Materialized by dev in run_0b373a30d182816a, turn_e2b7cb50cd77d1d5, implementation phase. Charter bound by PM in turn_d7fc926d1c177c66.
+
+### M35 Purpose and Boundary
+
+`tusq auth index` produces a static, deterministic, read-only auth scheme index of the manifest's capabilities bucketed by their `auth_requirements.auth_scheme` value. It is a planning aid that helps reviewers answer "which auth schemes does this manifest expose, how many capabilities use each scheme, and which buckets contain destructive or restricted/confidential capabilities?" It does NOT enforce authentication at runtime, does NOT validate OAuth/OIDC tokens, does NOT certify SOC2/ISO27001/GDPR compliance, does NOT generate auth adapters, does NOT derive IAM posture, does NOT modify M29's `auth_scheme` derivation rules (which remain the single source of truth for the underlying classifier), and does NOT alter the M30 `gated_reason: auth_scheme_unknown` or `gated_reason: auth_scheme_oauth_pending_v2` surface-eligibility rules.
+
+### M35 Command Shape
+
+```
+tusq auth index [--scheme <bearer|api_key|session|basic|oauth|none|unknown>]
+                [--manifest <path>] [--out <path>] [--json]
+```
+
+`tusq auth` (no subcommand) prints a short enumerate-subcommands block. Unknown subcommands exit 1 with `Unknown subcommand: <name>` on stderr, empty stdout. CLI surface grows from 18 → 19 commands with `auth` inserted alphabetically between `approve` and `compile` (`approve` vs `auth`: `app` < `aut` because `p` < `u`; `auth` vs `compile`: `a` < `c`).
+
+### M35 Frozen Seven-Value `auth_scheme` Bucket-Key Enum
+
+```
+bearer | api_key | session | basic | oauth | none | unknown
+```
+
+Aligns 1:1 with the existing M29 `AUTH_SCHEMES` constant in `src/cli.js` (`['unknown', 'bearer', 'api_key', 'session', 'basic', 'oauth', 'none']`). Note that `unknown` is already a member of M29 AUTH_SCHEMES — unlike M34 where `unknown` was synthesized outside the canonical five HTTP verbs. M35 MUST reference `AUTH_SCHEMES` (M29) directly rather than declaring an independent constant. M35 MUST NOT modify M29's classifier or the M29 AUTH_SCHEMES constant. The enum is immutable once M35 ships; any addition is a material governance event that requires its own ROADMAP milestone.
+
+### M35 Frozen Two-Value `aggregation_key` Enum
+
+```
+scheme | unknown
+```
+
+Parallel to M31's `domain | unknown`, M32's `class | unknown`, M33's `class | unknown`, M34's `method | unknown`. The `unknown` aggregation-key marks the zero-evidence / explicit-unknown bucket; the `scheme` aggregation-key marks every named scheme bucket (bearer/api_key/session/basic/oauth/none). The enum is immutable once M35 ships.
+
+### M35 Frozen Per-Bucket Entry Shape (name-and-counters only)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `auth_scheme` | string | One of the seven enum values (`"bearer"`, `"api_key"`, `"session"`, `"basic"`, `"oauth"`, `"none"`, `"unknown"`) |
+| `aggregation_key` | string | `"scheme"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | True iff any capability has `sensitivity_class === "restricted"` or `sensitivity_class === "confidential"` |
+
+Deliberately omitted (parallel to M31/M32/M33/M34): no `methods_represented[]`, no `domains_represented[]`, no `side_effect_classes_represented[]`, no `sensitivity_classes_represented[]`, no `iam_posture`, no `risk_tier`. Cross-axis roll-ups belong in future M-IAM-Posture-1 / M-Risk-1 milestones.
+
+Top-level fields `manifest_path`, `manifest_version`, `generated_at` are copied verbatim from the input manifest (fallback: `null` in `--json` mode and `unknown` in human mode when the manifest lacks the field).
+
+### M35 Closed-Enum Bucket Iteration Order
+
+Bucket iteration follows the **closed-enum order: `bearer → api_key → session → basic → oauth → none`**, then `unknown` last. This is distinct from M31's first-appearance rule because M35 buckets on a closed enum, not an open string. The closed-enum order mirrors the M29 AUTH_SCHEMES decision table ordering but carries no IAM-strength semantic and MUST NOT be described as "strength-ordered," "trust-ranked," "security-ascending," or any phrase implying security or trust semantics.
+
+A capability maps to the `unknown` bucket if its `auth_requirements.auth_scheme` is `"unknown"`, or if `auth_requirements` is missing/null/not-an-object, or if `auth_scheme` is null/not-a-string or any value not in the six named values. Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manifest declared order (NOT alphabetized).
+
+### M35 Case-Sensitive `--scheme` Filter Rule
+
+The `--scheme <value>` flag limits output to a single bucket. Filter matching is **case-sensitive lowercase only** — mirroring the manifest's verbatim lowercase `auth_scheme` field convention. Uppercase values like `BEARER` exit 1 with `Unknown auth scheme: <value>` (rather than being lower-cased silently) so reviewer scripts cannot accidentally drift from the canonical lowercase form.
+
+### M35 Empty-Capabilities and stdout-Discipline Rules
+
+- `capabilities: []` → exit 0; human: `No capabilities in manifest — nothing to index.\n`; JSON: `{manifest_path, manifest_version, generated_at, schemes: []}`.
+- Every error path writes exclusively to stderr; stdout MUST be empty on every exit-1 path.
+- Error messages: `Manifest not found:`, `Invalid manifest JSON:`, `Invalid manifest: missing capabilities array`, `Unknown auth scheme:`, `Unknown subcommand:`, `Unknown flag:`, `Cannot write to --out path:`, `--out path must not be inside .tusq/`.
+
+### M35 Read-Only Invariants
+
+| Invariant | Verification |
+|-----------|-------------|
+| `tusq.manifest.json` mtime/content unchanged after every invocation | Smoke assertion |
+| No write to `.tusq/`; no write to any path other than `--out <path>` when supplied | Smoke assertion |
+| `capability_digest` MUST NOT flip on any capability | Smoke assertion |
+| `tusq compile` output byte-identical pre and post-M35 | Smoke assertion |
+| `tusq surface plan` output byte-identical pre and post-M35 | Smoke assertion |
+| `tusq domain index` output byte-identical pre and post-M35 | Smoke assertion |
+| `tusq effect index` output byte-identical pre and post-M35 | Smoke assertion |
+| `tusq sensitivity index` output byte-identical pre and post-M35 | Smoke assertion |
+| `tusq method index` output byte-identical pre and post-M35 | Smoke assertion |
+
+### M35 Deliverables (dev-owned)
+
+- `src/cli.js` — `AUTH_SCHEME_INDEX_AGGREGATION_KEY_ENUM`, `AUTH_SCHEME_INDEX_BUCKET_ORDER`, `cmdAuth`, `cmdAuthIndex`, `parseAuthIndexArgs`, `buildAuthIndex`, `formatAuthIndex`, `_guardAuthSchemeBucketKey`, `_guardAuthAggregationKey`; updated `dispatch()`, `printHelp()`, `printCommandHelp()` (CLI surface 18 → 19).
+- `tests/smoke.mjs` — M35 smoke matrix (assertions a-u per ROADMAP § M35).
+- `tests/evals/governed-cli-scenarios.json` — `auth-scheme-index-determinism` scenario (eval harness 25 → 26).
+- `tests/eval-regression.mjs` — `runAuthSchemeIndexDeterminismScenario` handler.
+- `website/docs/cli-reference.md` — `tusq auth index` documentation.
+- `website/docs/manifest-format.md` — Auth Scheme Index subsection.
+
 ## M34: Static Capability HTTP Method Index Export from Manifest Evidence (V1.15 — PROPOSED)
 
 > Materialized by dev in run_bf8efb6b9c733000, turn_c530db27dd4d2941, implementation phase. Charter bound by PM in turn_8656b25a486eaa6d.
@@ -3761,5 +3850,7 @@ The `--method <value>` flag limits output to a single bucket. Filter matching is
 29. **M31 domain-index planning-aid framing invariant (Constraint 24 per ROADMAP § M31; appended at constraints tail to preserve numbering continuity with prior re-affirmation entries)** — `tusq domain index` is a planning aid that surfaces what domains the manifest exposes and the shape of each domain. It MUST NOT be presented as a skill-pack generator, rollout-plan generator, workflow-definition generator, agent-persona derivation engine, domain-ownership certifier, or domain-level access-control enforcer in any docs, marketing, README, CLI help, launch artifact, or eval scenario. Forbidden framings include but are not limited to: "generates skill packs," "produces rollout checklists," "emits workflow definitions," "derives agent personas," "certifies domain ownership," "enforces domain access control." The closed two-value `aggregation_key` enum `{domain, unknown}` is derived purely from already-shipped manifest evidence (`capability.domain` field) by a deterministic pure function (`buildDomainIndex`) that performs zero network calls, reads zero source files beyond the manifest, executes zero compiled tools, imports zero graph/schema/markdown/AI libraries, and writes nothing to `.tusq/`. The frozen manifest first-appearance ordering rule (per-domain iteration follows manifest `capabilities[]` declaration order; `unknown` bucket is always appended last regardless of where the first domainless capability appears) is immutable once M31 ships; any ordering change is a material governance event that MUST land under its own ROADMAP milestone with a fresh re-approval expectation and a RELEASE_NOTES entry. An implementation-time error (synchronous throw via `_guardAggregationKey`) MUST fire if `buildDomainIndex` ever produces an `aggregation_key` value outside the closed two-value set. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq domain index`. `capability_digest` MUST NOT flip on any capability. `tusq compile` output, `tusq serve` MCP responses (`tools/list`, `tools/call`, `dry_run_plan`), `tusq policy verify` (default and `--strict`), `tusq redaction review`, `tusq surface plan`, `tusq approve`, `tusq diff`, `tusq docs`, `tusq scan`, `tusq manifest`, `tusq init`, `tusq version`, and `tusq help` MUST be byte-for-byte unchanged. The domain index output fields (`domains[]`, per-domain counters and flags) MUST NOT appear in any MCP response. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to index.` (single trailing newline) or `{manifest_path, manifest_version, generated_at, domains: []}` in `--json`. Subsequent domain-export milestones (M-Skills-1 skill-pack export, M-Rollout-1 rollout-plan generator, M-Workflow-1 workflow plan, M-Agent-Persona-1 agent persona derivation) ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations; M31 is **not** a substitute for any of them. The CLI surface grows from 14 → 15 (init, scan, manifest, compile, serve, review, docs, approve, diff, domain, policy, redaction, surface, version, help) and the new noun `domain` is inserted alphabetically between `diff` and `policy` in help output.
 
 28. **Run-specific binding — run_24ccd92f593d8647 / turn_fa7dbb75b01943f5 (M30 PM-level scope materialization)** — This SYSTEM_SPEC entry records that PM has materialized the M30 scope contract in the new `## M30: Static Embeddable-Surface Plan Export from Manifest Evidence` § directly above the Constraints heading on HEAD `e41237e` (run `run_24ccd92f593d8647`, turn `turn_fa7dbb75b01943f5`, planning phase, runtime `local-pm`). The previous PM turn (`turn_33f4e15b33cf141c`) bound M30 in `.planning/ROADMAP.md` and `.planning/PM_SIGNOFF.md` but explicitly deferred SYSTEM_SPEC and command-surface materialization to the dev role; the gate evaluator's `non_progress_signature` then required PM participation in **all four** planning_signoff artifacts (`PM_SIGNOFF.md`, `ROADMAP.md`, `SYSTEM_SPEC.md`, `command-surface.md`), preventing phase advance. This turn closes the gate by adding the M30 § to SYSTEM_SPEC.md and the M30 Product CLI Surface § to command-surface.md, both at PM scope-level (frozen enums, eligibility precedence, read-only invariants, planning-aid framing). The dev role retains accountability for implementing the algorithm details (`classifyGating`, `buildSurfacePlan`, command wiring, smoke fixtures, eval scenario) during the implementation phase per the M27/M28/M29 precedent. Independent verification on HEAD e41237e: `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (20 scenarios)`; the 13-command CLI surface (init, scan, manifest, compile, serve, review, docs, approve, diff, policy, redaction, version, help) is intact (M30 is unchecked planned work, not shipped). Shipped V1.10 boundary (M1-M29) remains intact. M30 is V1.11 (PROPOSED), implementation-ready planned work.
+
+33. **M35 auth-scheme-index planning-aid framing invariant (Constraint 28 per ROADMAP § M35; appended at constraints tail to preserve numbering continuity)** — `tusq auth index` is a planning aid that surfaces what auth schemes the manifest exposes and the shape of each bucket. It MUST NOT be presented as a runtime authentication enforcer, runtime AAA validator, OAuth/OIDC/SAML/SOC2/ISO27001 compliance certifier, auth-adapter code generator, IAM-context derivation engine, alteration of M29's `auth_scheme` derivation rules, or alteration of the M30 `gated_reason: auth_scheme_unknown` or `gated_reason: auth_scheme_oauth_pending_v2` surface-eligibility rules in any docs, marketing, README, CLI help, launch artifact, or eval scenario. Forbidden framings include but are not limited to: "enforces authentication at runtime," "validates OAuth/OIDC tokens," "certifies SOC2 compliance," "generates auth adapters," "proves token validity," "derives IAM posture." The seven-value `auth_scheme` bucket-key enum (`bearer | api_key | session | basic | oauth | none | unknown`) aligns 1:1 with the existing M29 `AUTH_SCHEMES` constant — M35 references `AUTH_SCHEMES` directly, no independent constant is declared. The two-value `aggregation_key` enum (`scheme | unknown`) and the pure functions (`buildAuthIndex`, `_guardAuthSchemeBucketKey`, `_guardAuthAggregationKey`) perform zero network calls, read zero source files beyond the manifest, execute zero compiled tools, import zero auth/crypto/compliance/AAA/NLP libraries, and write nothing to `.tusq/`. The closed-enum bucket iteration order (`bearer → api_key → session → basic → oauth → none → unknown`) is a deterministic stable-output convention only — NOT an IAM-strength-precedence statement, NOT a trust-ranking, NOT a security-strength ladder. An implementation-time error (synchronous throw via `_guardAuthSchemeBucketKey` and `_guardAuthAggregationKey`) MUST fire if `buildAuthIndex` ever produces a value outside either closed enum. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq auth index`. `capability_digest` MUST NOT flip. `tusq compile`, `tusq serve`, `tusq policy verify`, `tusq redaction review`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, and all other commands MUST be byte-for-byte unchanged. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to index.` or `{manifest_path, manifest_version, generated_at, schemes: []}` in `--json`. Deferred successor milestones (M-IAM-Posture-1 cross-axis IAM-posture roll-up, M-Auth-Adapter-1 generated auth adapter, M-Runtime-Auth-1 runtime auth validator) ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations; M35 is NOT a substitute for any of them. The CLI surface grows from 18 → 19 and the new noun `auth` is inserted alphabetically between `approve` and `compile` in help output.
 
 32. **M34 method-index planning-aid framing invariant (Constraint 27 per ROADMAP § M34; appended at constraints tail to preserve numbering continuity)** — `tusq method index` is a planning aid that surfaces what HTTP methods the manifest exposes and the shape of each bucket. It does NOT route HTTP methods at runtime, does NOT validate REST conventions (idempotency, safety, cacheability), does NOT certify idempotency class, does NOT automatically classify destructive verbs (DELETE is a bucket label, not a destructive-side-effect attestation), does NOT modify the M32 `side_effect_class` derivation rules (which use `method` as one of several inputs), and does NOT alter the M30 `gated_reason: destructive_side_effect` surface-eligibility rule. Subsequent milestones (M-Risk-1 composite risk-tier classifier, M-Idempotency-1 idempotency-class derivation, M-RestConv-1 REST-convention conformance check) ship under their own ROADMAP entries with fresh acceptance contracts and fresh re-approval expectations. The five-value `http_method` bucket-key enum (`GET | POST | PUT | PATCH | DELETE`) plus the `unknown` zero-evidence catchall (six total) and the two-value `aggregation_key` enum (`method | unknown`) are frozen; any addition is a material governance event. The `--method` filter is case-sensitive uppercase-only; lowercase or mixed-case filter values exit 1 with `Unknown method:`. The closed-enum bucket iteration order (`GET → POST → PUT → PATCH → DELETE → unknown`) is a deterministic stable-output convention that matches the conventional REST CRUD reading order but carries no risk semantic and MUST NOT be described as "low-to-high risk," "destructive-ascending," "safety-ordered," or any phrase implying risk semantics. An implementation-time error (synchronous throw via `_guardMethodBucketKey` and `_guardMethodAggregationKey`) MUST fire if `buildMethodIndex` ever produces a value outside either closed enum. `tusq.manifest.json` mtime/content MUST be byte-identical pre and post-`tusq method index`. `capability_digest` MUST NOT flip. `tusq compile`, `tusq serve`, `tusq policy verify`, `tusq redaction review`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, and all other commands MUST be byte-for-byte unchanged. `--out` MUST reject any path resolving inside `.tusq/`. Every error path MUST write exclusively to stderr with empty stdout. The empty-capabilities case (`capabilities: []`) is exit 0 with the explicit human line `No capabilities in manifest — nothing to index.` or `{manifest_path, manifest_version, generated_at, methods: []}` in `--json`. The CLI surface grows from 17 → 18 and the new noun `method` is inserted alphabetically between `effect` and `policy` in help output.

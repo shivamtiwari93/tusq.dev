@@ -3352,6 +3352,393 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M35: Static Capability Auth Scheme Index Export ───────────────────────────
+  const m35TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m35-smoke-'));
+
+  // M35 fixture manifest: capabilities across bearer/api_key/none/unknown buckets.
+  // session/basic/oauth intentionally absent to test empty-bucket omission.
+  // Capabilities declared in this order: bearer(list_users), bearer(create_invoice),
+  // none(get_status), bearer(delete_user), api_key(update_user), none(internal_report),
+  // unknown-scheme(no_auth_route) — to verify within-bucket manifest declared order
+  // AND closed-enum bucket order (bearer → api_key → ... → none → unknown).
+  const m35Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'create_invoice',
+        description: 'Create an invoice',
+        method: 'POST',
+        path: '/billing/invoices',
+        domain: 'billing',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'confidential',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_status',
+        description: 'Get system status',
+        method: 'GET',
+        path: '/status',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'delete_user',
+        description: 'Delete a user',
+        method: 'DELETE',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'update_user',
+        description: 'Update a user',
+        method: 'PATCH',
+        path: '/users/:id',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'api_key', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'internal_report',
+        description: 'Fetch internal report',
+        method: 'GET',
+        path: '/reports/internal',
+        domain: 'reports',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_auth_route',
+        description: 'Route with unknown auth',
+        method: 'GET',
+        path: '/ping',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m35ManifestPath = path.join(m35TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m35ManifestPath, JSON.stringify(m35Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m35TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M35(a): default tusq auth index produces exit 0 and per-bucket entries in closed-enum order
+  // (bearer → api_key → none → unknown; session/basic/oauth absent because no capability uses them)
+  const m35DefaultResult = runCli(['auth', 'index', '--manifest', m35ManifestPath], { cwd: m35TmpDir });
+  if (!m35DefaultResult.stdout.includes('[bearer]') || !m35DefaultResult.stdout.includes('[api_key]') || !m35DefaultResult.stdout.includes('[none]') || !m35DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M35(a): default index must include all present buckets (bearer,api_key,none,unknown):\n${m35DefaultResult.stdout}`);
+  }
+  if (!m35DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M35(a): default index must include planning-aid framing:\n${m35DefaultResult.stdout}`);
+  }
+  // session/basic/oauth buckets must NOT appear (no capabilities use them)
+  if (m35DefaultResult.stdout.includes('[session]') || m35DefaultResult.stdout.includes('[basic]') || m35DefaultResult.stdout.includes('[oauth]')) {
+    throw new Error(`M35(a): session/basic/oauth buckets must NOT appear when no capabilities use them:\n${m35DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: bearer before api_key before none before unknown
+  const m35DefaultLines = m35DefaultResult.stdout.split('\n');
+  const m35BearerPos = m35DefaultLines.findIndex((l) => l.includes('[bearer]'));
+  const m35ApiKeyPos = m35DefaultLines.findIndex((l) => l.includes('[api_key]'));
+  const m35NonePos = m35DefaultLines.findIndex((l) => l.includes('[none]'));
+  const m35UnknownPos = m35DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m35BearerPos < m35ApiKeyPos && m35ApiKeyPos < m35NonePos && m35NonePos < m35UnknownPos)) {
+    throw new Error(`M35(a): bucket order must be bearer < api_key < none < unknown; got positions bearer=${m35BearerPos} api_key=${m35ApiKeyPos} none=${m35NonePos} unknown=${m35UnknownPos}`);
+  }
+
+  // M35(b): --json output has all 8 per-bucket fields and correct top-level shape
+  const m35Json1 = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35IndexJson = JSON.parse(m35Json1.stdout);
+  if (!Array.isArray(m35IndexJson.schemes) || m35IndexJson.schemes.length === 0) {
+    throw new Error(`M35(b): JSON output must have schemes array with at least one entry:\n${m35Json1.stdout}`);
+  }
+  const m35FirstEntry = m35IndexJson.schemes[0];
+  const m35RequiredFields = ['auth_scheme', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m35RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m35FirstEntry, field)) {
+      throw new Error(`M35(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m35FirstEntry)}`);
+    }
+  }
+
+  // M35(c): --scheme filter (case-sensitive lowercase) returns single matching bucket
+  const m35SchemeFilter = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--scheme', 'bearer', '--json'], { cwd: m35TmpDir });
+  const m35SchemeFilterJson = JSON.parse(m35SchemeFilter.stdout);
+  if (m35SchemeFilterJson.schemes.length !== 1 || m35SchemeFilterJson.schemes[0].auth_scheme !== 'bearer') {
+    throw new Error(`M35(c): --scheme bearer must return exactly one bearer bucket:\n${m35SchemeFilter.stdout}`);
+  }
+
+  // M35(d): --scheme uppercase exits 1 with "Unknown auth scheme:" on stderr and empty stdout
+  const m35UppercaseScheme = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--scheme', 'BEARER'], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35UppercaseScheme.stderr.includes('Unknown auth scheme: BEARER') || m35UppercaseScheme.stdout !== '') {
+    throw new Error(`M35(d): --scheme BEARER (uppercase) must exit 1 with Unknown auth scheme: message:\nstdout=${m35UppercaseScheme.stdout}\nstderr=${m35UppercaseScheme.stderr}`);
+  }
+
+  // M35(e): missing manifest exits 1 with error on stderr and empty stdout
+  const m35MissingManifest = runCli(['auth', 'index', '--manifest', path.join(m35TmpDir, 'nonexistent.json')], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35MissingManifest.stderr.includes('Manifest not found') || m35MissingManifest.stdout !== '') {
+    throw new Error(`M35(e): missing manifest must exit 1:\nstdout=${m35MissingManifest.stdout}\nstderr=${m35MissingManifest.stderr}`);
+  }
+
+  // M35(f): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m35BadJsonPath = path.join(m35TmpDir, 'bad.json');
+  await fs.writeFile(m35BadJsonPath, '{ not valid json', 'utf8');
+  const m35BadJson = runCli(['auth', 'index', '--manifest', m35BadJsonPath], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35BadJson.stderr.includes('Invalid manifest JSON') || m35BadJson.stdout !== '') {
+    throw new Error(`M35(f): malformed manifest must exit 1:\nstdout=${m35BadJson.stdout}\nstderr=${m35BadJson.stderr}`);
+  }
+
+  // M35(g): manifest missing capabilities array exits 1
+  const m35NoCapsManifestPath = path.join(m35TmpDir, 'no-caps.json');
+  await fs.writeFile(m35NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m35NoCaps = runCli(['auth', 'index', '--manifest', m35NoCapsManifestPath], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m35NoCaps.stdout !== '') {
+    throw new Error(`M35(g): missing capabilities array must exit 1:\nstdout=${m35NoCaps.stdout}\nstderr=${m35NoCaps.stderr}`);
+  }
+
+  // M35(h): unknown subcommand exits 1 with Unknown subcommand: message
+  const m35UnknownSub = runCli(['auth', 'bogusub'], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m35UnknownSub.stdout !== '') {
+    throw new Error(`M35(h): unknown subcommand must exit 1:\nstdout=${m35UnknownSub.stdout}\nstderr=${m35UnknownSub.stderr}`);
+  }
+
+  // M35(i): tusq compile output is byte-identical before and after auth index run
+  const m35CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m35-compile-'));
+  const m35CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m35CompileDir, 'tusq.manifest.json'), JSON.stringify(m35CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m35CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m35CompileDir });
+  const m35CompiledToolPath = path.join(m35CompileDir, 'tusq-tools', 'list_users.json');
+  const m35CompileContentBefore = await fs.readFile(m35CompiledToolPath, 'utf8');
+  runCli(['auth', 'index', '--manifest', path.join(m35CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m35CompileDir });
+  const m35CompileContentAfter = await fs.readFile(m35CompiledToolPath, 'utf8');
+  if (m35CompileContentBefore !== m35CompileContentAfter) {
+    throw new Error('M35(i): tusq compile output must be byte-identical before and after auth index run');
+  }
+
+  // M35(j): tusq surface plan, domain index, effect index, sensitivity index, method index outputs are byte-identical pre and post-M35
+  const m35SurfaceBefore = runCli(['surface', 'plan', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35SurfaceAfter = runCli(['surface', 'plan', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  if (m35SurfaceBefore !== m35SurfaceAfter) {
+    throw new Error('M35(j): tusq surface plan output must be byte-identical before and after auth index run');
+  }
+  const m35DomainBefore = runCli(['domain', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35DomainAfter = runCli(['domain', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  if (m35DomainBefore !== m35DomainAfter) {
+    throw new Error('M35(j): tusq domain index output must be byte-identical before and after auth index run');
+  }
+  const m35EffectBefore = runCli(['effect', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35EffectAfter = runCli(['effect', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  if (m35EffectBefore !== m35EffectAfter) {
+    throw new Error('M35(j): tusq effect index output must be byte-identical before and after auth index run');
+  }
+  const m35SensitivityBefore = runCli(['sensitivity', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35SensitivityAfter = runCli(['sensitivity', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  if (m35SensitivityBefore !== m35SensitivityAfter) {
+    throw new Error('M35(j): tusq sensitivity index output must be byte-identical before and after auth index run');
+  }
+  const m35MethodBefore = runCli(['method', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  runCli(['auth', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir });
+  const m35MethodAfter = runCli(['method', 'index', '--manifest', m35ManifestPath, '--json'], { cwd: m35TmpDir }).stdout;
+  if (m35MethodBefore !== m35MethodAfter) {
+    throw new Error('M35(j): tusq method index output must be byte-identical before and after auth index run');
+  }
+
+  // M35(k): empty-capabilities manifest emits documented human line and schemes: [] in JSON
+  const m35EmptyManifestPath = path.join(m35TmpDir, 'empty.json');
+  await fs.writeFile(m35EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m35EmptyHuman = runCli(['auth', 'index', '--manifest', m35EmptyManifestPath], { cwd: m35TmpDir });
+  if (m35EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M35(k): empty-capabilities human output must be exactly the documented line:\n${m35EmptyHuman.stdout}`);
+  }
+  const m35EmptyJson = JSON.parse(runCli(['auth', 'index', '--manifest', m35EmptyManifestPath, '--json'], { cwd: m35TmpDir }).stdout);
+  if (!Array.isArray(m35EmptyJson.schemes) || m35EmptyJson.schemes.length !== 0) {
+    throw new Error(`M35(k): empty-capabilities JSON must have schemes: [] :\n${JSON.stringify(m35EmptyJson)}`);
+  }
+
+  // M35(l): --out <path> writes to the path and emits no stdout on success
+  const m35OutPath = path.join(m35TmpDir, 'auth-index-out.json');
+  const m35OutResult = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--out', m35OutPath], { cwd: m35TmpDir });
+  if (m35OutResult.stdout !== '') {
+    throw new Error(`M35(l): --out must emit no stdout on success, got: ${m35OutResult.stdout}`);
+  }
+  const m35OutContent = JSON.parse(await fs.readFile(m35OutPath, 'utf8'));
+  if (!Array.isArray(m35OutContent.schemes) || m35OutContent.schemes.length < 3) {
+    throw new Error(`M35(l): --out file must contain at least three scheme entries: ${JSON.stringify(m35OutContent.schemes)}`);
+  }
+
+  // M35(m): --out to an unwritable path exits 1 with empty stdout
+  const m35BadOut = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (m35BadOut.stdout !== '') {
+    throw new Error(`M35(m): --out unwritable must produce empty stdout, got: ${m35BadOut.stdout}`);
+  }
+
+  // M35(n): --out .tusq/ path rejected with correct message and empty stdout
+  const m35TusqOutResult = runCli(
+    ['auth', 'index', '--manifest', m35ManifestPath, '--out', path.join(m35TmpDir, '.tusq', 'index.json')],
+    { cwd: m35TmpDir, expectedStatus: 1 }
+  );
+  if (!m35TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m35TusqOutResult.stdout !== '') {
+    throw new Error(`M35(n): --out .tusq/ must reject with correct message:\nstdout=${m35TusqOutResult.stdout}\nstderr=${m35TusqOutResult.stderr}`);
+  }
+
+  // M35(o): capability with auth_scheme: 'unknown' is bucketed into unknown and unknown bucket appears last
+  const m35UnknownEntry = m35IndexJson.schemes.find((e) => e.auth_scheme === 'unknown');
+  const m35LastScheme = m35IndexJson.schemes[m35IndexJson.schemes.length - 1];
+  if (m35LastScheme.auth_scheme !== 'unknown') {
+    throw new Error(`M35(o): unknown bucket must appear last; got: ${m35LastScheme.auth_scheme}`);
+  }
+  if (!m35UnknownEntry || !m35UnknownEntry.capabilities.includes('no_auth_route')) {
+    throw new Error(`M35(o): no_auth_route (auth_scheme: unknown) must be in unknown bucket:\n${JSON.stringify(m35UnknownEntry)}`);
+  }
+  // Also test that null/missing auth_requirements goes to unknown
+  const m35NullAuthPath = path.join(m35TmpDir, 'null-auth.json');
+  await fs.writeFile(m35NullAuthPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'no_req_route', description: 'No auth requirements', method: 'GET', path: '/x', domain: null, side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m35NullAuthJson = JSON.parse(runCli(['auth', 'index', '--manifest', m35NullAuthPath, '--json'], { cwd: m35TmpDir }).stdout);
+  if (m35NullAuthJson.schemes.length !== 1 || m35NullAuthJson.schemes[0].auth_scheme !== 'unknown') {
+    throw new Error(`M35(o): capability with no auth_requirements must aggregate into unknown bucket; got: ${JSON.stringify(m35NullAuthJson.schemes.map((e) => e.auth_scheme))}`);
+  }
+
+  // M35(p): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m35ValidAggregationKeys = new Set(['scheme', 'unknown']);
+  for (const entry of m35IndexJson.schemes) {
+    if (!m35ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M35(p): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for scheme '${entry.auth_scheme}'`);
+    }
+  }
+  const m35BearerEntry = m35IndexJson.schemes.find((e) => e.auth_scheme === 'bearer');
+  if (m35BearerEntry.aggregation_key !== 'scheme') {
+    throw new Error(`M35(p): named scheme 'bearer' must have aggregation_key 'scheme', got: ${m35BearerEntry.aggregation_key}`);
+  }
+  if (m35UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M35(p): unknown bucket must have aggregation_key 'unknown', got: ${m35UnknownEntry.aggregation_key}`);
+  }
+
+  // M35(q): empty buckets (e.g., manifest has only bearer capabilities) MUST NOT appear in output
+  const m35BearerOnlyManifestPath = path.join(m35TmpDir, 'bearer-only.json');
+  await fs.writeFile(m35BearerOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m35BearerOnlyJson = JSON.parse(runCli(['auth', 'index', '--manifest', m35BearerOnlyManifestPath, '--json'], { cwd: m35TmpDir }).stdout);
+  if (m35BearerOnlyJson.schemes.length !== 1 || m35BearerOnlyJson.schemes[0].auth_scheme !== 'bearer') {
+    throw new Error(`M35(q): bearer-only manifest must produce exactly one bucket [bearer]; got: ${JSON.stringify(m35BearerOnlyJson.schemes.map((e) => e.auth_scheme))}`);
+  }
+
+  // M35(r): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // bearer bucket: list_users declared before create_invoice before delete_user → must appear in that order
+  if (!m35BearerEntry || m35BearerEntry.capabilities[0] !== 'list_users' || m35BearerEntry.capabilities[1] !== 'create_invoice' || m35BearerEntry.capabilities[2] !== 'delete_user') {
+    throw new Error(`M35(r): within bearer bucket, capabilities must follow manifest declared order (list_users, create_invoice, delete_user); got: ${JSON.stringify(m35BearerEntry ? m35BearerEntry.capabilities : null)}`);
+  }
+
+  // M35(s): has_destructive_side_effect flag is correct per bucket
+  // bearer bucket has create_invoice (side_effect_class: destructive) → must be true
+  if (!m35BearerEntry || m35BearerEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M35(s): bearer bucket must have has_destructive_side_effect=true (create_invoice is destructive); got: ${JSON.stringify(m35BearerEntry)}`);
+  }
+  // api_key bucket has update_user (side_effect_class: write) → must be false
+  const m35ApiKeyEntry = m35IndexJson.schemes.find((e) => e.auth_scheme === 'api_key');
+  if (!m35ApiKeyEntry || m35ApiKeyEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M35(s): api_key bucket must have has_destructive_side_effect=false (update_user is write); got: ${JSON.stringify(m35ApiKeyEntry)}`);
+  }
+
+  // M35(t): has_restricted_or_confidential_sensitivity flag is correct per bucket
+  // bearer bucket has create_invoice (confidential) and delete_user (restricted) → must be true
+  if (!m35BearerEntry || m35BearerEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M35(t): bearer bucket must have has_restricted_or_confidential_sensitivity=true; got: ${JSON.stringify(m35BearerEntry)}`);
+  }
+  // none bucket has get_status (public) and internal_report (internal) → must be false
+  const m35NoneEntry = m35IndexJson.schemes.find((e) => e.auth_scheme === 'none');
+  if (!m35NoneEntry || m35NoneEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M35(t): none bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m35NoneEntry)}`);
+  }
+
+  // M35(u): --scheme filter for a scheme that is absent in the manifest exits 1
+  const m35AbsentScheme = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--scheme', 'session'], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35AbsentScheme.stderr.includes('Unknown auth scheme: session') || m35AbsentScheme.stdout !== '') {
+    throw new Error(`M35(u): --scheme for absent scheme must exit 1 with Unknown auth scheme: message:\nstdout=${m35AbsentScheme.stdout}\nstderr=${m35AbsentScheme.stderr}`);
+  }
+
+  // M35: unknown flag exits 1 with error on stderr and empty stdout
+  const m35UnknownFlag = runCli(['auth', 'index', '--manifest', m35ManifestPath, '--badFlag'], { cwd: m35TmpDir, expectedStatus: 1 });
+  if (!m35UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m35UnknownFlag.stdout !== '') {
+    throw new Error(`M35: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m35UnknownFlag.stdout}\nstderr=${m35UnknownFlag.stderr}`);
+  }
+
+  // M35: help text includes planning-aid framing
+  const m35HelpResult = runCli(['auth', 'index', '--help'], { cwd: m35TmpDir });
+  if (!m35HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
+  }
+
+  // M35: tusq help enumerates 19 commands including 'auth'
+  const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
+  if (!m35HelpOutput.stdout.includes('auth')) {
+    throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
+  }
+  const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m35CommandCount !== 19) {
+    throw new Error(`M35: tusq help must enumerate exactly 19 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  }
+
+  await fs.rm(m35TmpDir, { recursive: true, force: true });
+  await fs.rm(m35CompileDir, { recursive: true, force: true });
+
   // ── M34: Static Capability HTTP Method Index Export ───────────────────────────
   const m34TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m34-smoke-'));
 

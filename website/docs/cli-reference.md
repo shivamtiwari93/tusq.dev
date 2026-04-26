@@ -100,6 +100,53 @@ The generated Markdown is review/adoption documentation only. It includes manife
 
 If `--manifest` is omitted, tusq reads `tusq.manifest.json` from the current project config or working directory. If `--out` is omitted, tusq prints Markdown to stdout.
 
+## `tusq auth index`
+
+Emit a deterministic, per-auth-scheme capability index from manifest evidence. Groups capabilities by their `auth_requirements.auth_scheme` field in closed-enum order (`bearer → api_key → session → basic → oauth → none → unknown`), with a special `unknown` bucket for capabilities whose `auth_scheme` is `"unknown"`, missing, or any value outside the six named schemes. This is a **planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier**.
+
+```bash
+tusq auth index [--scheme <bearer|api_key|session|basic|oauth|none|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--scheme <bearer\|api_key\|session\|basic\|oauth\|none\|unknown>` | all schemes | Filter to a single auth scheme bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown auth scheme, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `bearer → api_key → session → basic → oauth → none → unknown` (closed-enum order — NOT manifest first-appearance order and NOT an IAM-strength-precedence statement). Empty buckets do not appear.
+
+**Case-sensitive filter:** `--scheme` values are matched verbatim. Uppercase values like `BEARER` exit 1 with `Unknown auth scheme: BEARER` — do not silently coerce case.
+
+**Per-bucket fields:** `auth_scheme`, `aggregation_key` (`"scheme"` or `"unknown"`), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- The seven-value `auth_scheme` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- An auth index is NOT a runtime authentication enforcer, NOT an OAuth/OIDC validator, NOT a compliance certifier, does NOT generate auth adapters, and does NOT modify M29's `auth_scheme` derivation rules.
+
+```bash
+# All auth schemes (human-readable)
+tusq auth index
+
+# All auth schemes (JSON)
+tusq auth index --json
+
+# Single scheme (lowercase — case-sensitive)
+tusq auth index --scheme bearer --json
+
+# Unknown/unprotected bucket
+tusq auth index --scheme unknown --json
+
+# Write to file
+tusq auth index --out auth-index.json
+```
+
 ## `tusq approve`
 
 Approve selected capabilities in `tusq.manifest.json` without hand-editing approval fields.

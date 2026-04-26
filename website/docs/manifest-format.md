@@ -601,6 +601,56 @@ tusq method index --method unknown
 tusq method index --json
 ```
 
+## Auth Scheme Index
+
+The `auth_requirements.auth_scheme` field on each capability (emitted by the M29 auth-requirements classifier with one of the seven closed-enum values) drives per-bucket aggregation in `tusq auth index`. The command groups capabilities by their `auth_scheme` value in a deterministic closed-enum order and emits a per-bucket index with name-and-counters fields only.
+
+**How bucketing works:**
+
+| `auth_requirements.auth_scheme` value | Bucket | `aggregation_key` |
+|---------------------------------------|--------|-------------------|
+| `"bearer"` | `bearer` bucket | `"scheme"` |
+| `"api_key"` | `api_key` bucket | `"scheme"` |
+| `"session"` | `session` bucket | `"scheme"` |
+| `"basic"` | `basic` bucket | `"scheme"` |
+| `"oauth"` | `oauth` bucket | `"scheme"` |
+| `"none"` | `none` bucket | `"scheme"` |
+| `"unknown"`, missing `auth_requirements`, null/missing `auth_scheme`, or any non-canonical value | `unknown` bucket | `"unknown"` |
+
+**Bucket iteration order:** `bearer → api_key → session → basic → oauth → none → unknown` (closed-enum order). The `unknown` bucket is always appended last. Empty buckets do not appear.
+
+**Important:** The iteration order mirrors the M29 AUTH_SCHEMES decision table ordering but carries **no IAM-strength semantic**. It is a stable-output convention only — docs, README, CLI help, and launch artifacts MUST NOT describe it as "strength-ordered," "trust-ranked," "security-ascending," or any phrase implying security or trust semantics.
+
+**Within each bucket:** Capability names appear in manifest declared order (NOT alphabetized), mirroring M31, M32, M33, and M34.
+
+**Case-sensitive `--scheme` filter:** The `--scheme` filter matches verbatim against the closed-enum values. Uppercase values like `BEARER` exit 1 with `Unknown auth scheme: BEARER` — do not silently coerce case. The manifest's `auth_scheme` field uses verbatim lowercase values; reviewer scripts should use lowercase filter values consistently.
+
+**Per-bucket cross-axis flags:**
+- `has_destructive_side_effect` — true if any capability in the bucket has `side_effect_class === "destructive"`. Useful for spotting whether the `none` or `unknown` auth bucket contains destructive capabilities.
+- `has_restricted_or_confidential_sensitivity` — true if any capability in the bucket has `sensitivity_class === "restricted"` or `sensitivity_class === "confidential"`. Useful for spotting the highest-attention combination (low/unknown auth + high sensitivity).
+
+**What auth scheme index reads and what it never does:**
+
+- Reads: `capability.auth_requirements.auth_scheme`, `capability.name`, `capability.approved`, `capability.side_effect_class`, `capability.sensitivity_class`.
+- Never modifies the manifest. Never flips `capability_digest`. Never writes to `.tusq/`.
+- Never modifies M29's `auth_scheme` derivation rules. Never alters the M30 surface-plan gating rules.
+- `tusq auth index` is a planning aid only — it does NOT enforce authentication at runtime, does NOT validate OAuth/OIDC tokens, does NOT certify SOC2/GDPR/HIPAA compliance, does NOT generate auth adapters, and does NOT derive IAM posture.
+
+```bash
+# View auth scheme index
+tusq auth index
+
+# Filter to a single scheme (case-sensitive lowercase)
+tusq auth index --scheme bearer
+
+# View capabilities with no auth (or unknown auth)
+tusq auth index --scheme none
+tusq auth index --scheme unknown
+
+# Machine-readable JSON
+tusq auth index --json
+```
+
 ## Regeneration behavior
 
 When you regenerate a manifest, previously approved capabilities are preserved by method+path key when possible.

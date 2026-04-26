@@ -97,6 +97,16 @@ const METHOD_INDEX_BUCKET_ORDER = Object.freeze(['GET', 'POST', 'PUT', 'PATCH', 
 // Any other value (null, empty-string, HEAD, OPTIONS, TRACE, CONNECT, non-canonical) maps to unknown.
 const METHOD_INDEX_VALID_METHODS = Object.freeze(new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']));
 
+// M35: frozen two-value aggregation_key enum (parallel to M31/M32/M33/M34). Immutable once M35 ships.
+// An implementation-time guard fires if buildAuthIndex produces a key outside this set.
+const AUTH_SCHEME_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['scheme', 'unknown']));
+
+// M35: closed-enum bucket iteration order (bearer → api_key → session → basic → oauth → none). NOT IAM-strength-precedence —
+// deterministic stable-output convention only (mirrors M29 AUTH_SCHEMES decision table ordering, not a trust ladder).
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+// NOTE: bucket-key enum aligns with AUTH_SCHEMES (M29, line 9) — the seven-value enum IS the AUTH_SCHEMES set.
+const AUTH_SCHEME_INDEX_BUCKET_ORDER = Object.freeze(['bearer', 'api_key', 'session', 'basic', 'oauth', 'none']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -205,6 +215,9 @@ function dispatch(argv) {
       return;
     case 'approve':
       cmdApprove(args);
+      return;
+    case 'auth':
+      cmdAuth(args);
       return;
     case 'diff':
       cmdDiff(args);
@@ -2539,6 +2552,284 @@ function formatEffectIndex(index) {
   return lines.join('\n');
 }
 
+// M35: tusq auth — top-level noun dispatcher
+function cmdAuth(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('auth');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdAuthIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M35: tusq auth index — handler
+function cmdAuthIndex(args) {
+  const { opts, positionals } = parseAuthIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('auth index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildAuthIndex(manifest, manifestPath);
+
+  const schemeFilter = opts.scheme || null;
+  let outputIndex;
+  if (schemeFilter !== null) {
+    // Case-sensitive: lowercase canonical auth scheme values; anything else exits 1
+    const validSchemeFilterValues = new Set([...AUTH_SCHEME_INDEX_BUCKET_ORDER, 'unknown']);
+    if (!validSchemeFilterValues.has(schemeFilter)) {
+      throw new CliError(`Unknown auth scheme: ${schemeFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.schemes.find((e) => e.auth_scheme === schemeFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown auth scheme: ${schemeFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { schemes: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(formatAuthIndex(outputIndex));
+}
+
+function parseAuthIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['scheme', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardAuthSchemeBucketKey(key) {
+  const validKeys = new Set([...AUTH_SCHEME_INDEX_BUCKET_ORDER, 'unknown']);
+  if (!validKeys.has(key)) {
+    throw new Error(`Internal error: auth_scheme outside closed seven-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardAuthAggregationKey(key) {
+  if (!AUTH_SCHEME_INDEX_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M35: buildAuthIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered auth scheme index from the manifest's capabilities[].
+// Bucket iteration order: bearer → api_key → session → basic → oauth → none (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+function buildAuthIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      schemes: []
+    };
+  }
+
+  // Named (non-unknown) auth scheme values — the six ordered bucket keys.
+  const namedSchemes = new Set(AUTH_SCHEME_INDEX_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their auth_scheme value.
+  // auth_requirements.auth_scheme: one of the six named values → named bucket.
+  // auth_requirements.auth_scheme: 'unknown', null/missing, or invalid → __unknown__ bucket.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const authReq = capability.auth_requirements;
+    const authSchemeValue = (authReq && typeof authReq === 'object' && typeof authReq.auth_scheme === 'string')
+      ? authReq.auth_scheme
+      : null;
+    const isNamedBucket = authSchemeValue !== null && namedSchemes.has(authSchemeValue);
+    const bucketKey = isNamedBucket ? authSchemeValue : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: bearer → api_key → session → basic → oauth → none, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...AUTH_SCHEME_INDEX_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const schemes = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const authScheme = isUnknownBucket ? _guardAuthSchemeBucketKey('unknown') : _guardAuthSchemeBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardAuthAggregationKey('unknown') : _guardAuthAggregationKey('scheme');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      auth_scheme: authScheme,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    schemes
+  };
+}
+
+// M35: format auth scheme index as human-readable text
+function formatAuthIndex(index) {
+  if (index.schemes.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Auth Scheme Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier.',
+    ''
+  ];
+
+  for (const entry of index.schemes) {
+    lines.push(`[${entry.auth_scheme}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -3690,6 +3981,7 @@ function printHelp() {
   process.stdout.write('  review             Print manifest summary for human review\n');
   process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
+  process.stdout.write('  auth               Index capabilities by auth scheme for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
@@ -3712,6 +4004,24 @@ function printCommandHelp(command) {
     review: 'Usage: tusq review [--format json] [--strict] [--sensitivity <class>] [--auth-scheme <scheme>] [--verbose]',
     docs: 'Usage: tusq docs [--manifest <path>] [--out <path>] [--verbose]',
     approve: 'Usage: tusq approve [capability-name] [--all] [--reviewer <id>] [--manifest <path>] [--dry-run] [--json] [--verbose]',
+    auth: 'Usage: tusq auth <subcommand>\n  Subcommands: index',
+    'auth index': [
+      'Usage: tusq auth index [--scheme <bearer|api_key|session|basic|oauth|none|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --scheme <bearer|api_key|session|basic|oauth|none|unknown>  Filter to a single auth scheme bucket (default: all schemes; case-sensitive lowercase)',
+      '  --manifest <path>                                            Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                                                 Write index to file (no stdout on success)',
+      '  --json                                                       Emit machine-readable JSON',
+      '',
+      'Bucket iteration order: bearer → api_key → session → basic → oauth → none → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown auth scheme, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier.'
+    ].join('\n'),
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
     domain: 'Usage: tusq domain <subcommand>\n  Subcommands: index',
     'domain index': [
