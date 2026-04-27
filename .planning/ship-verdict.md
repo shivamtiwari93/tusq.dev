@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_6d4662cdbbeeb118 (role=qa, run_0c5145f830f5940e, M38 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_0ec2cb6d0b868173, role=dev, HEAD 71d5474) for run_0c5145f830f5940e independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff d03c73b..HEAD --name-only` confirms exactly 10 files changed since PM turn (d03c73b): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (29 scenarios)`. Independently re-run this turn; 29 scenarios confirmed (up from 28 at M37 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0. Both `_guardExamplesCountTierBucketKey` and `_guardExamplesCountTierAggregationKey` pass synchronously at module load.
+
+**4. CLI surface 22 commands:** `node bin/tusq.js help` → 22 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, **examples**, method, pii, policy, redaction, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 22 confirmed. `examples` correctly inserted between `effect` and `method` (alphabetic order `ef` < `ex` < `me`).
+
+**5. examples index --help framing:** `node bin/tusq.js examples index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime example executor, schema validator, example generator, or eval-readiness certifier`); tier function (`none if length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if missing/non-array/null-element/non-object/array-element`); bucket order `none → low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js examples index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown examples count tier: HIGH`, empty stdout. Independently verified this turn.
+
+**7. JSON output shape:** `node bin/tusq.js examples index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (low-tier bucket with `examples_count_tier: 'low'`, `aggregation_key: 'tier'`, 8-field shape) and `warnings: []`. `manifest_path`, `manifest_version`, `generated_at` top-level fields present.
+
+**8. Tier function verification:** `classifyExamplesCountTier` at `src/cli.js:3722–3735` independently read: returns `unknown` for non-array input (line 3723–3725), returns `unknown` for null/array/non-object elements (lines 3726–3730), returns `none` for length 0 (line 3732), `low` for length 1–2 (line 3733), `medium` for length 3–5 (line 3734), `high` for length ≥ 6 (line 3735). Thresholds `0/2/5/6` are frozen.
+
+**9. M38 ROADMAP checkboxes:** `grep "\[ \]" .planning/ROADMAP.md` returns no unchecked M38 items. All 18 M38 checkboxes are `[x]`.
+
+**10. Zero package drift:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. No new dependencies introduced.
+
+**11. Acceptance criteria count:** REQ-315–REQ-339 (25 new M38 criteria) added to `.planning/acceptance-matrix.md`. Total: 339 REQs (REQ-001–REQ-339), all PASS.
+
+**12. Carried objections:** OBJ-001 (medium, non-blocking): R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — implementation correct for manually-edited manifests. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M38 close their own analogs. No new blocking objections raised for M38.
+
+**13. Ship verdict:** All M38 acceptance criteria pass. npm test exits 0 with 29 scenarios. CLI surface is 22 commands with `examples` between `effect` and `method`. No blocking objections. **Verdict: SHIP.**
+
 ## QA Challenge — turn_c47096d9b37000b3 (role=qa, run_0b366d58febc99be, M37 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_0031ce2764696475, role=dev, HEAD 9a9118b) for run_0b366d58febc99be independently rather than rubber-stamping it.

@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M38 (turn_6d4662cdbbeeb118, run_0c5145f830f5940e, 2026-04-27, HEAD 71d5474)
+
+**Milestone:** M38 — Static Capability Examples Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.19
+
+**Command added:** `tusq examples index` (CLI surface: 21 → 22 commands; `examples` inserted alphabetically between `effect` and `method`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (29 scenarios)`. `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0 (guards `_guardExamplesCountTierBucketKey` and `_guardExamplesCountTierAggregationKey` pass). `node bin/tusq.js help` → 22-command surface confirmed (`grep -c '^  [a-z]'` → 22). `node bin/tusq.js examples index --help` → planning-aid framing, tier function (`none if length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if missing/non-array/null-element/non-object/array-element`), and bucket order (`none → low → medium → high → unknown`) confirmed. `node bin/tusq.js examples index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js examples index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array and `warnings: []`. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M38 ROADMAP checkboxes `[x]`.
+
+**New acceptance criteria:** REQ-315–REQ-339 (25 criteria) — CLI surface 22, closed 5-value tier enum (none|low|medium|high|unknown), closed 2-value aggregation_key enum (tier|unknown), frozen tier-function thresholds (0/2/5/6), five frozen warning reason codes, per-bucket 8-field shape, determinism, non-persistence, empty-capabilities, --out, case-sensitive filter, unknown bucket warnings, eval 29 scenarios.
+
+**Closed enums shipped (immutable):** `examples_count_tier` (none|low|medium|high|unknown), `aggregation_key` (tier|unknown), tier thresholds (0/2/5/6), warning reason codes (examples_field_missing|examples_field_not_array|examples_array_contains_non_object_element|examples_array_contains_null_element|examples_array_contains_array_element).
+
+**Non-breaking:** every existing command's stdout, stderr, and exit code is byte-identical pre/post M38.
+
 ## QA Re-verification — M37 (turn_c47096d9b37000b3, run_0b366d58febc99be, 2026-04-27, HEAD 9a9118b)
 
 **Milestone:** M37 — Static Capability PII Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.18
