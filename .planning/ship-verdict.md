@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_57eb341ae6421d17 (role=qa, run_d309bfeea0f99431, M44 re-verification, 2026-04-27)
+
+This QA turn challenges the prior accepted QA turn (turn_c640f6d66166bb52, role=qa, HEAD f365674) for run_d309bfeea0f99431 independently rather than rubber-stamping it.
+
+**1. Prior QA turn audit:** turn_c640f6d66166bb52 (last accepted turn, role=qa) modified exactly 3 QA-owned files: `.planning/acceptance-matrix.md`, `.planning/ship-verdict.md`, `.planning/RELEASE_NOTES.md`. Zero reserved orchestrator state files modified. Zero dev-owned source files modified. All five QA decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge rationale is sound, verification methodology is correct, REQ-465–REQ-489 registrations are accurate to the M44 spec, carried objections (OBJ-001/OBJ-002/OBJ-003) are correctly scoped as non-blocking.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (35 scenarios)`. Independently re-run; 35 scenarios confirmed.
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardDescriptionWordCountTierBucketKey` and `_guardDescriptionWordCountTierAggregationKey` guards pass synchronously.
+
+**4. CLI surface 28 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 28. `description` correctly positioned between `confidence` and `diff`.
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js description index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `tiers[]` (NOT `sources[]`, NOT `types[]`) with single `medium` bucket (capability_count 3; aggregation_key `"tier"`; has_destructive_side_effect false; has_restricted_or_confidential_sensitivity false); `warnings: []`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js description index --tier MEDIUM --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown description word count tier: MEDIUM`.
+
+**7. Tier filter (re-run this turn):** `--tier medium` → exit 0, single `medium` bucket. `--tier low` → exit 1, `No capabilities found for description word count tier: low` (absent-tier exit 1 behavior consistent with REQ-467).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. M44 ROADMAP checkboxes:** All 18 M44 ROADMAP items confirmed `[x]` (no `[ ]` items in M44 block).
+
+**10. classifyDescriptionWordCountTier thresholds:** null/undefined/non-string → unknown; empty-after-trim → unknown; tokenCount ≤7 → low; 8–14 → medium; ≥15 → high. Naïve whitespace tokenization via `/\s+/u`. No markdown/HTML/punctuation stripping. Sub-schema descriptions (input_schema.description etc.) NOT consulted. Thresholds `7` and `14` are post-ship-frozen inline literals.
+
+**11. tiers[] field name distinction from M42 and M43:** M44 result array is `tiers[]` (NOT `types[]` from M42, NOT `sources[]` from M43). aggregation_key is `"tier"` for known buckets. Bucket order is `low → medium → high → unknown` (ascending tier numeric span).
+
+**12. Three frozen warning reason codes:** `description_field_missing`, `description_field_not_string`, `description_field_empty_after_trim`. `warnings[]` always present in `--json` output even when empty.
+
+**13. Non-blocking objections carried forward; no new objections:** OBJ-001 (medium): R6 `auth_required === false → auth_scheme: 'none'` remains dead code in automated pipeline. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions not independently smoke-asserted. 489 acceptance criteria (REQ-001–REQ-489) confirmed. Ship verdict: **SHIP**.
+
 ## QA Challenge — turn_c640f6d66166bb52 (role=qa, run_d309bfeea0f99431, M44 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_48fcfc7526b370ab, role=dev, HEAD 2021751) for run_d309bfeea0f99431 independently rather than rubber-stamping it.

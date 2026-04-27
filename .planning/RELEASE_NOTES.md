@@ -1,5 +1,21 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M44 (turn_57eb341ae6421d17, run_d309bfeea0f99431, 2026-04-27, HEAD f365674)
+
+**Milestone:** M44 — Static Capability Description Word Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.25
+
+**Turn context:** Formal qa-phase re-verification turn challenging the prior accepted QA turn (turn_c640f6d66166bb52). HEAD f365674 = M44 QA checkpoint. All M44 implementation (src/cli.js, tests/smoke.mjs, 35 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (35 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardDescriptionWordCountTierBucketKey` and `_guardDescriptionWordCountTierAggregationKey` pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 28. `node bin/tusq.js description index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `tiers[]` single `medium` bucket (capability_count 3, aggregation_key `"tier"`, warnings: []). `node bin/tusq.js description index --tier MEDIUM --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js description index --tier low --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-tier (per REQ-467). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift).
+
+**Acceptance criteria:** 489 total (REQ-001–REQ-489). All PASS. No new REQs added (REQ-465–REQ-489 registered by prior QA turn).
+
+**Prior QA turn challenge:** turn_c640f6d66166bb52 upheld — 3 QA-owned files correctly modified, all 5 QA decisions sound, REQ registrations accurate, carried objections correctly scoped.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Re-verification — M44 (turn_c640f6d66166bb52, run_d309bfeea0f99431, 2026-04-27, HEAD 2021751)
 
 **Milestone:** M44 — Static Capability Description Word Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.25
