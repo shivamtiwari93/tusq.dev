@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_d6b242db408a1312 (role=qa, run_3df735753a5adcb3, M43 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_3f3d861b475bc439, role=dev, HEAD 0ec18b8) for run_3df735753a5adcb3 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff 9702941..0ec18b8 --name-only` confirms exactly 10 files changed since PM turn (9702941): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (34 scenarios)`. Independently re-run this turn; 34 scenarios confirmed (up from 33 at M42 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaPrimaryParameterSourceBucketKey` and `_guardInputSchemaPrimaryParameterSourceAggregationKey` guards pass synchronously at module load.
+
+**4. CLI surface 27 commands:** `node bin/tusq.js help` → 27 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, input, method, output, path, pii, policy, redaction, **request**, response, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 27 confirmed. `request` correctly inserted between `redaction` and `response` (`red`<`req`<`res`).
+
+**5. request index --help framing:** `node bin/tusq.js request index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime request executor, request-payload validator, input-contract conformance detector, request generator, or input-contract certifier`); source rule (closed four-value property-source set path/request_body/query/header; path/request_body/query/header = single-locus; mixed = two or more distinct; none = 0 properties; unknown = malformed/cookie/file/multipart/form-data/array-of-sources); bucket iteration order `path → request_body → query → header → mixed → none → unknown` (HTTP anatomy reading order) confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js request index --source REQUEST_BODY --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown input schema primary parameter source: REQUEST_BODY`, empty stdout. Independently verified this turn.
+
+**7. Default JSON output — sources[] field name and aggregation_key:** `node bin/tusq.js request index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `sources[]` (NOT `tiers[]`, NOT `types[]`): `path` bucket (capability_count 1; capabilities: [get_users_api_v1_users_id]; aggregation_key `"source"`), `request_body` bucket (capability_count 1; capabilities: [post_users_users]; aggregation_key `"source"`), `none` bucket (capability_count 1; capabilities: [get_users_users]; aggregation_key `"source"`); `warnings: []`. Result field `sources` (plural categorical) and `aggregation_key: "source"` (NOT `"tier"`, NOT `"type"`) confirmed.
+
+**8. Source filter:** `node bin/tusq.js request index --source path --manifest ... --json` → exit 0, single `path` bucket. `node bin/tusq.js request index --source request_body --manifest ... --json` → exit 0, single `request_body` bucket. Source filter is case-sensitive lowercase-only.
+
+**9. none bucket is a valid named bucket (no warning):** `none` bucket for get_users_users (empty properties object) produces no warning entry. Only the `unknown` bucket triggers warnings. Independently confirmed from `classifyInputSchemaPrimaryParameterSource` source at `src/cli.js:5204–5247`.
+
+**10. ROADMAP M43 checkboxes:** All 18 M43 ROADMAP checkboxes `[x]` confirmed (zero `[ ]` items in M43 block).
+
+**11. classifyInputSchemaPrimaryParameterSource thresholds:** Verified at `src/cli.js:5204–5247`: null/undefined → unknown; non-object/Array → unknown; no `properties` key → unknown; properties null/undefined/non-object/Array → unknown; propKeys.length === 0 → none (no warning); any property null/undefined/non-object/Array → unknown; any property missing `source` → unknown; any property source non-string or not in {path,request_body,query,header} → unknown; seenSources.size === 1 → that source literal; seenSources.size > 1 → mixed. Cookie/file/multipart/form-data values → unknown (not in closed four-value set). Array-of-sources (source is an array) → unknown.
+
+**12. aggregation_key distinction from M35–M42:** M43 `aggregation_key` is `"source"` (NOT `"tier"`, NOT `"type"`). `INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['source', 'unknown']))` at `src/cli.js:247`. Deliberate M43 spec decision upheld by QA.
+
+**13. Package drift and dev decisions:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. All five dev decisions upheld: (1) result field `sources[]` (plural categorical, not `tiers[]`); (2) bucket order `path → request_body → query → header → mixed → none → unknown` (HTTP anatomy); (3) `none` bucket does not emit a warning; (4) `INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET` is a separate frozen four-value Set from the seven-value bucket enum; (5) `input_schema_primary_parameter_source` MUST NOT be written into `tusq.manifest.json`. No objections.
+
+Added REQ-440–REQ-464 (25 new M43 acceptance criteria). OBJ-001/OBJ-002/OBJ-003 carried forward (non-blocking). All 464 acceptance criteria (REQ-001–REQ-464) pass. **Verdict: SHIP.** Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_bb74bbc5f03f0d87 (role=qa, run_f33f485bb7998de9, M42 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_8f2c26df7726bc2e, role=dev, HEAD 5583b8d) for run_f33f485bb7998de9 independently rather than rubber-stamping it.

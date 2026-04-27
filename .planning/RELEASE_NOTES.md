@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M43 (turn_d6b242db408a1312, run_3df735753a5adcb3, 2026-04-27, HEAD 0ec18b8)
+
+**Milestone:** M43 — Static Capability Input Schema Primary Parameter Source Index Export from Manifest Evidence (~0.5 day) — V1.24
+
+**Command added:** `tusq request index` (CLI surface: 26 → 27 commands; new noun `request` with single subcommand `index`, inserted alphabetically between `redaction` and `response`)
+
+**Key spec distinctions vs M35–M42:** (1) Result array field is `sources[]` (NOT `tiers[]`, NOT `types[]`) — the axis is a HTTP-anatomy locus class, not a numeric tier or schema type. (2) `aggregation_key` values are `"source"` (not `"tier"`, not `"type"`) for known buckets and `"unknown"` for the unknown bucket. (3) Flag is `--source` (not `--tier`, not `--type`). (4) Seven-value closed bucket enum: `path | request_body | query | header | mixed | none | unknown`. (5) Separate `INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET` (closed four-value: path/request_body/query/header) for per-property source validation. (6) `none` bucket (empty properties object) is a valid named bucket that does NOT emit a warning — distinct from M40/M41/M42 where the no-properties case produced unknown+warning. (7) `mixed` bucket is the catchall for capabilities with two or more distinct closed-set source values. (8) Cookie/file/multipart/form-data source values map to `unknown` (not silently coerced to `request_body`). (9) Bucket order matches HTTP request anatomy reading order: `path → request_body → query → header → mixed → none → unknown`.
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (34 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaPrimaryParameterSourceBucketKey` and `_guardInputSchemaPrimaryParameterSourceAggregationKey` pass). `node bin/tusq.js help` → 27-command surface confirmed (`grep -c '^  [a-z]'` → 27). `node bin/tusq.js request index --help` → planning-aid framing, source rule (closed four-value property-source set; none for empty properties; mixed for multiple loci; unknown for cookie/file/multipart/malformed), bucket order (`path → request_body → query → header → mixed → none → unknown`) confirmed. `node bin/tusq.js request index --source REQUEST_BODY --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js request index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `sources[]` array (`path` bucket: 1 capability [get_users_api_v1_users_id], aggregation_key `"source"`, approved_count 0, gated_count 1; `request_body` bucket: 1 capability [post_users_users], aggregation_key `"source"`, approved_count 1, gated_count 0; `none` bucket: 1 capability [get_users_users], aggregation_key `"source"`, approved_count 1, gated_count 0) and `warnings: []`. `node bin/tusq.js request index --source path --manifest ... --json` → exit 0, single `path` bucket. `node bin/tusq.js request index --source request_body --manifest ... --json` → exit 0, single `request_body` bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M43 ROADMAP checkboxes `[x]`.
+
+**Acceptance criteria:** 25 new criteria added (REQ-440–REQ-464). Total: 464 (REQ-001–REQ-464). All PASS.
+
+**Dev turn challenge:** `git diff 9702941..0ec18b8 --name-only` → exactly 10 dev-owned files; zero reserved state / QA-owned / launch-owned files modified. All five dev decisions upheld. No objections.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Re-verification — M42 (turn_bb74bbc5f03f0d87, run_f33f485bb7998de9, 2026-04-27, HEAD 5583b8d)
 
 **Milestone:** M42 — Static Capability Output Schema Top-Level Type Index Export from Manifest Evidence (~0.5 day) — V1.23
