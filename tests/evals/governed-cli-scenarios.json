@@ -1177,6 +1177,48 @@
       "expected_valid_input_schema_primary_parameter_sources": ["path", "request_body", "query", "header", "mixed", "none", "unknown"],
       "expected_valid_aggregation_keys": ["source", "unknown"],
       "expected_source_order": "path,request_body,unknown"
+    },
+    {
+      "id": "description-word-count-tier-index-determinism",
+      "description": "M44: tusq description index --json produces byte-identical output across three runs on the same manifest; description_word_count_tier bucket-key enum is closed (four values: low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (low → medium → high, then unknown last); null/missing description → unknown (with warning); non-string description → unknown (with warning); empty-after-trim description → unknown (with warning); tier function = description.trim().split(/\\s+/u).length; low <= 7; medium 8-14; high >= 15",
+      "scenario_type": "description_word_count_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "cap_low",
+          "description": "Delete user",
+          "domain": "users",
+          "method": "DELETE",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": false,
+          "confidence": 0.9
+        },
+        {
+          "name": "cap_medium",
+          "description": "Search items by category name using query parameters",
+          "domain": "items",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.85
+        },
+        {
+          "name": "cap_no_desc",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.7
+        }
+      ],
+      "expected_valid_description_word_count_tiers": ["low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "low,medium,unknown"
     }
   ]
 }

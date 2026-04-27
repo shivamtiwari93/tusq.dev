@@ -488,6 +488,41 @@ The `tusq request index` command (M43) derives a per-source capability breakdown
 
 **Non-persistence:** `input_schema_primary_parameter_source` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq request index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Description Word Count Tier Index
+
+The `tusq description index` command (M44) derives a per-tier capability breakdown from each capability's `description` string field, as populated by the M11/M14 scan/compile pipeline. This axis is orthogonal to all prior count-tier axes (M37–M41 measure structural cardinalities of typed manifest array fields; M44 measures the unstructured natural-language whitespace-token count of a single string field — a fundamentally different axis class). Directly operationalizes VISION § Public Docs And Market-Facing Truth (lines 91-97) — description-word-count is the most fundamental structural proxy for customer-facing-claim contradiction surface.
+
+**Tier function** (thresholds `7`/`14` are immutable; tier function `description.trim().split(/\s+/u).length`):
+
+| Tier | Condition |
+|------|-----------|
+| `low` | `token_count <= 7` |
+| `medium` | `8 <= token_count <= 14` |
+| `high` | `token_count >= 15` |
+| `unknown` | `description` is null/missing/non-string/empty-after-trim |
+
+**Tokenization rules (all immutable):**
+- Tokenization: `description.trim().split(/\s+/u).length` — purely whitespace-based with the `/u` flag for Unicode whitespace
+- Markdown is NOT stripped
+- HTML tags are NOT stripped
+- Punctuation is NOT stripped
+- Numbers are NOT stripped
+- CJK / RTL / no-whitespace scripts are NOT grapheme-clustered (no per-language handling)
+- Sub-schema walking is NOT performed: `input_schema.description`, `output_schema.description`, and `examples[].description` are NOT consulted
+
+**Malformed values:** Three frozen reason codes for the `unknown` bucket:
+- `description_field_missing` — no `description` key on the capability
+- `description_field_not_string` — `description` is not a string
+- `description_field_empty_after_trim` — `description` trims to an empty string
+
+**Bucket iteration order:** `low → medium → high → unknown` (ascending tier numeric span — deterministic stable-output convention only; NOT doc-quality-ranked, NOT doc-completeness-ranked, NOT doc-richness-ranked, NOT doc-staleness-blast-radius-ranked, NOT customer-facing-truth-surface-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--tier` filter:** Only lowercase values match. `--tier LOW` exits 1 with `Unknown description word count tier: LOW`.
+
+**Non-persistence:** `description_word_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq description index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ### Path Segment Count Tier Index
 
 The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.

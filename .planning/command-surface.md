@@ -1,8 +1,71 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-### M44: Description Word Count Tier Index — Charter Sketch Reservation
+### M44: Description Word Count Tier Index — Product CLI Surface
 
-> **Charter Sketch Reservation — 2026-04-27, run_d309bfeea0f99431, turn_60fb9c5205835c3e, PM attempt 1, HEAD `ae45cfa`.** This block reserves a slot for the full M44 Product CLI Surface detail block (two-row command table for `tusq description` and `tusq description index`, four-flag table for `--tier`/`--manifest`/`--out`/`--json`, four-value bucket-key enum table, two-value aggregation_key enum table, tier-function rules table, eight-field per-bucket entry shape table, four-value bucket iteration order table, default-preservation table for the 27 unchanged commands, failure UX table, and local-only invariants table). The dev materialization turn will replace this Reservation with the full § M44 detail block under HEAD `ae45cfa`+. Frozen scope (PM-bound, dev MUST carry forward verbatim): command shape `tusq description index [--tier <low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]`; `--tier` is case-sensitive lowercase-only (`LOW` exits 1); `--manifest` defaults to `tusq.manifest.json` resolved relative to cwd; `--out` defaults to stdout, writes JSON, no stdout on success, rejected if inside `.tusq/`; `--json` emits machine-readable output including `warnings[]`; bucket-key enum `{low, medium, high, unknown}`; aggregation_key enum `{tier, unknown}`; tier function `low: tokenCount ≤ 7`, `medium: 8-14`, `high: ≥ 15`, `unknown: description missing/null/non-string/empty-after-trim`; per-bucket entry 8 fields `description_word_count_tier, aggregation_key, capability_count, capabilities[], approved_count, gated_count, has_destructive_side_effect, has_restricted_or_confidential_sensitivity`; bucket iteration order `low → medium → high → unknown` (deterministic stable-output convention only); failure UX exit-1 stderr lines `Unknown description word count tier: <value>` / `Manifest file not found: <path>` / `Failed to parse manifest JSON: <message>` / `Manifest is missing capabilities array` / `Unknown flag: <flag>` / `--tier requires a value` / `--manifest requires a value` / `--out requires a value` / `--out path must not be inside .tusq/` / `--out parent directory does not exist or is not writable`; CLI surface 27 → 28 with new noun `description` inserted alphabetically between `confidence` and `diff`; default-preservation invariants list the 27 byte-identical existing commands.
+| Command | Shape |
+|---------|-------|
+| `tusq description` | `tusq description <subcommand>` |
+| `tusq description index` | `tusq description index [--tier <low\|medium\|high\|unknown>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--tier <value>` | all tiers | Case-sensitive lowercase; `LOW` exits 1 |
+| `--manifest <path>` | `tusq.manifest.json` | Resolved relative to cwd |
+| `--out <path>` | stdout | Writes JSON; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | Includes `warnings[]` for malformed description fields |
+
+| Bucket key | Tier function condition |
+|------------|------------------------|
+| `low` | `description.trim().split(/\s+/u).length <= 7` |
+| `medium` | token count 8–14 inclusive |
+| `high` | token count >= 15 |
+| `unknown` | `description` missing / null / non-string / empty-after-trim |
+
+| `aggregation_key` value | When |
+|------------------------|------|
+| `tier` | Capability has a named tier bucket (`low`, `medium`, `high`) |
+| `unknown` | Capability has missing/null/non-string/empty-after-trim description |
+
+| Per-bucket entry field | Type | Notes |
+|------------------------|------|-------|
+| `description_word_count_tier` | string | One of the four closed-enum values |
+| `aggregation_key` | string | `tier` or `unknown` |
+| `capability_count` | integer | Count of capabilities in bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Count with `approved === true` |
+| `gated_count` | integer | Count with `approved !== true` |
+| `has_destructive_side_effect` | boolean | true if any cap has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true if any cap has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+| Bucket iteration order | Notes |
+|-----------------------|-------|
+| `low → medium → high → unknown` | Deterministic stable-output convention only — NOT doc-quality-ranked, NOT doc-richness-ranked |
+
+| Warning reason code | When emitted |
+|--------------------|-------------|
+| `description_field_missing` | capability has no `description` field |
+| `description_field_not_string` | `description` is present but not a string |
+| `description_field_empty_after_trim` | `description` is a string that is empty or whitespace-only after trim |
+
+| Failure condition | Exit | Stderr |
+|-------------------|------|--------|
+| Manifest not found | 1 | `Manifest file not found: <path>` |
+| Manifest not valid JSON | 1 | `Failed to parse manifest JSON: <message>` |
+| Manifest missing capabilities | 1 | `Manifest is missing capabilities array` |
+| Unknown `--tier` value | 1 | `Unknown description word count tier: <value>` |
+| `--tier` with no value | 1 | `--tier requires a value` |
+| `--manifest` with no value | 1 | `--manifest requires a value` |
+| `--out` with no value | 1 | `--out requires a value` |
+| Unknown flag | 1 | `Unknown flag: <flag>` |
+| `--out` path inside `.tusq/` | 1 | `--out path must not be inside .tusq/` |
+| `--out` parent dir not writable | 1 | `--out parent directory does not exist or is not writable` |
+
+| Local-only invariant | Rule |
+|----------------------|------|
+| Manifest read-only | mtime + SHA-256 + all `capability_digest` values byte-identical pre/post |
+| `tusq compile` idempotent | Byte-identical output before and after `tusq description index` |
+| Other index commands idempotent | All 13 existing index commands byte-identical before and after |
+| No new dependencies | `package.json` and `package-lock.json` unmodified |
 
 ### M43: Input Schema Primary Parameter Source Index — Product CLI Surface
 

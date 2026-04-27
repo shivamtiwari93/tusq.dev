@@ -258,6 +258,22 @@ const INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_BUCKET_ORDER = Object.freeze(['path'
 // Immutable once M43 ships. Expansion is a material governance event requiring its own ROADMAP milestone.
 const INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET = Object.freeze(new Set(['path', 'request_body', 'query', 'header']));
 
+// M44: frozen four-value description_word_count_tier bucket-key enum. Immutable once M44 ships.
+// Tier function thresholds (7/14) are immutable once M44 ships. Any addition or threshold change is a governance event.
+// low: token_count <= 7; medium: 8 <= token_count <= 14; high: token_count >= 15; unknown: null/missing/non-string/empty-after-trim.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const DESCRIPTION_WORD_COUNT_TIER_ENUM = Object.freeze(new Set(['low', 'medium', 'high', 'unknown']));
+
+// M44: frozen two-value aggregation_key enum (parallel to M31–M43). Immutable once M44 ships.
+// An implementation-time guard fires if buildDescriptionWordCountTierIndex produces a key outside this set.
+const DESCRIPTION_WORD_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M44: closed-enum bucket iteration order (low → medium → high). NOT doc-quality-ranked —
+// ascending tier numeric span only (explicitly NOT doc-quality-ranked, NOT doc-completeness-ranked,
+// NOT doc-richness-ranked, NOT doc-staleness-blast-radius-ranked, NOT customer-facing-truth-surface-ranked).
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const DESCRIPTION_WORD_COUNT_TIER_BUCKET_ORDER = Object.freeze(['low', 'medium', 'high']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -372,6 +388,9 @@ function dispatch(argv) {
       return;
     case 'confidence':
       cmdConfidence(args);
+      return;
+    case 'description':
+      cmdDescription(args);
       return;
     case 'diff':
       cmdDiff(args);
@@ -5736,6 +5755,336 @@ function formatOutputSchemaTopLevelTypeIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M44: tusq description — top-level noun dispatcher
+function cmdDescription(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('description');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdDescriptionIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M44: tusq description index — handler
+function cmdDescriptionIndex(args) {
+  const { opts, positionals } = parseDescriptionIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('description index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildDescriptionWordCountTierIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical description_word_count_tier values; anything else exits 1
+    if (!DESCRIPTION_WORD_COUNT_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown description word count tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.description_word_count_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for description word count tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed description (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed description (${w.reason})\n`);
+  }
+  process.stdout.write(formatDescriptionWordCountTierIndex(outputIndex));
+}
+
+function parseDescriptionIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardDescriptionWordCountTierBucketKey(key) {
+  if (!DESCRIPTION_WORD_COUNT_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: description_word_count_tier outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardDescriptionWordCountTierAggregationKey(key) {
+  if (!DESCRIPTION_WORD_COUNT_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M44: classifyDescriptionWordCountTier(description) → 'low' | 'medium' | 'high' | 'unknown'
+// Tier function: description.trim().split(/\s+/u).length
+// Thresholds: low <= 7; medium 8-14; high >= 15; unknown for null/missing/non-string/empty-after-trim.
+// No markdown stripping, no HTML stripping, no punctuation stripping, no number stripping.
+// Tokenization is purely whitespace-based with the /u flag for Unicode whitespace.
+// No sub-schema walking: input_schema.description / output_schema.description / examples[].description NOT consulted.
+// No per-language handling: CJK/RTL/no-whitespace scripts NOT grapheme-clustered.
+// Thresholds 7 and 14 are inline integer literals — post-ship-frozen.
+function classifyDescriptionWordCountTier(description) {
+  if (description === null || description === undefined || typeof description !== 'string') {
+    return 'unknown';
+  }
+  const trimmed = description.trim();
+  if (trimmed.length === 0) {
+    return 'unknown';
+  }
+  const tokenCount = trimmed.split(/\s+/u).length;
+  if (tokenCount <= 7) {
+    return 'low';
+  }
+  if (tokenCount <= 14) {
+    return 'medium';
+  }
+  return 'high';
+}
+
+// M44: buildDescriptionWordCountTierIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered description word count tier index from the manifest's capabilities[].
+// Bucket iteration order: low → medium → high (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// description_word_count_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildDescriptionWordCountTierIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the three ordered bucket keys.
+  const namedTiers = new Set(DESCRIPTION_WORD_COUNT_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their description_word_count_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const description = Object.prototype.hasOwnProperty.call(capability, 'description')
+      ? capability.description
+      : undefined;
+
+    // Determine warning reason if description is malformed
+    let warningReason = null;
+    if (description === undefined || description === null) {
+      warningReason = 'description_field_missing';
+    } else if (typeof description !== 'string') {
+      warningReason = 'description_field_not_string';
+    } else if (description.trim().length === 0) {
+      warningReason = 'description_field_empty_after_trim';
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const tierBucket = classifyDescriptionWordCountTier(description);
+    const isNamedBucket = namedTiers.has(tierBucket);
+    const bucketKey = isNamedBucket ? tierBucket : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: low → medium → high, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...DESCRIPTION_WORD_COUNT_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const tierKey = isUnknownBucket ? _guardDescriptionWordCountTierBucketKey('unknown') : _guardDescriptionWordCountTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardDescriptionWordCountTierAggregationKey('unknown') : _guardDescriptionWordCountTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      description_word_count_tier: tierKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M44: format description word count tier index as human-readable text
+function formatDescriptionWordCountTierIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Description Word Count Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime doc-quality enforcer, doc-contradiction detector, claim-richness certifier, or public-doc compliance auditor. Tiers are deterministic stable-output ordering only (ascending numeric span — NOT doc-quality-ranked, NOT doc-completeness-ranked, NOT doc-richness-ranked).',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.description_word_count_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push('Tier function: description.trim().split(/\\s+/u).length; low <= 7; medium 8-14; high >= 15; unknown if null/missing/non-string/empty-after-trim. No markdown stripping, no HTML stripping, no number stripping.');
+  lines.push('Bucket order: low → medium → high → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -6889,6 +7238,7 @@ function printHelp() {
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  auth               Index capabilities by auth scheme for planning review\n');
   process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
+  process.stdout.write('  description        Index capabilities by description word count tier for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
@@ -6954,6 +7304,34 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier.'
+    ].join('\n'),
+    description: 'Usage: tusq description <subcommand>\n  Subcommands: index',
+    'description index': [
+      'Usage: tusq description index [--tier <low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <low|medium|high|unknown>  Filter to a single description word count tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                 Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                      Write index to file (no stdout on success)',
+      '  --json                            Emit machine-readable JSON (includes warnings[] for malformed description fields)',
+      '',
+      'Tier function (applied to description.trim().split(/\\s+/u).length):',
+      '  low     if token_count <= 7',
+      '  medium  if 8 <= token_count <= 14',
+      '  high    if token_count >= 15',
+      '  unknown if description is null/missing/non-string/empty-after-trim',
+      '          No markdown stripping, no HTML tag stripping, no punctuation stripping, no number stripping.',
+      '          Tokenization is purely whitespace-based (the /u flag handles Unicode whitespace).',
+      '          Sub-schema walking is NOT performed (input_schema.description / output_schema.description / examples[].description NOT consulted).',
+      '          Per-language handling is NOT performed (CJK/RTL/no-whitespace scripts NOT grapheme-clustered).',
+      '',
+      'Bucket iteration order: low → medium → high → unknown (ascending tier numeric span — closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime doc-quality enforcer, doc-contradiction detector, claim-richness certifier, or public-doc compliance auditor; tiers are deterministic stable-output ordering only (NOT doc-quality-ranked, NOT doc-completeness-ranked, NOT doc-richness-ranked).'
     ].join('\n'),
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
     domain: 'Usage: tusq domain <subcommand>\n  Subcommands: index',

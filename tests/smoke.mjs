@@ -3352,6 +3352,512 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M44: Static Capability Description Word Count Tier Index Export ────────────
+  const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
+
+  // M44 fixture manifest: capabilities across low/medium/high/unknown description word count tiers.
+  // Declared order:
+  //   get_low_cap_1 (low — 4 tokens, gated — unapproved)
+  //   delete_item (low — 2 tokens, destructive+restricted+approved — cross-axis flag tests)
+  //   search_items (medium — 8 tokens, public+approved)
+  //   get_high_cap (high — 15 tokens, public+approved)
+  //   no_desc_cap (unknown, no description field → description_field_missing)
+  //   non_string_desc_cap (unknown, description = 42 → description_field_not_string)
+  //   empty_desc_cap (unknown, description = "   " → description_field_empty_after_trim)
+  const m44Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'get_low_cap_1',
+        description: 'Delete user by ID',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+      },
+      {
+        name: 'delete_item',
+        description: 'Remove item',
+        method: 'DELETE',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' } }, required: ['id'] }
+      },
+      {
+        name: 'search_items',
+        description: 'Search items by category name using query parameters',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { q: { type: 'string', source: 'query' } }, required: [] }
+      },
+      {
+        name: 'get_high_cap',
+        description: 'Retrieve the complete list of all registered users from the database with optional pagination filters',
+        method: 'GET',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+      },
+      {
+        name: 'no_desc_cap',
+        method: 'GET',
+        path: '/api/v1/nodesc',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // description field absent → description_field_missing
+      },
+      {
+        name: 'non_string_desc_cap',
+        description: 42,
+        method: 'GET',
+        path: '/api/v1/badnum',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // description = 42 (not a string) → description_field_not_string
+      },
+      {
+        name: 'empty_desc_cap',
+        description: '   ',
+        method: 'GET',
+        path: '/api/v1/empty',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // description = "   " (whitespace only → empty after trim) → description_field_empty_after_trim
+      }
+    ]
+  };
+
+  const m44ManifestPath = path.join(m44TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m44ManifestPath, JSON.stringify(m44Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m44TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M44(a): default tusq description index produces exit 0 and per-bucket entries in closed-enum order
+  const m44DefaultResult = runCli(['description', 'index', '--manifest', m44ManifestPath], { cwd: m44TmpDir });
+  if (!m44DefaultResult.stdout.includes('[low]') || !m44DefaultResult.stdout.includes('[medium]') || !m44DefaultResult.stdout.includes('[high]') || !m44DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M44(a): default index must include all present buckets:\n${m44DefaultResult.stdout}`);
+  }
+  if (!m44DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M44(a): default index must include planning-aid framing:\n${m44DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: low < medium < high < unknown
+  const m44DefaultLines = m44DefaultResult.stdout.split('\n');
+  const m44LowPos = m44DefaultLines.findIndex((l) => l === '[low]');
+  const m44MediumPos = m44DefaultLines.findIndex((l) => l === '[medium]');
+  const m44HighPos = m44DefaultLines.findIndex((l) => l === '[high]');
+  const m44UnknownPos = m44DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m44LowPos < m44MediumPos && m44MediumPos < m44HighPos && m44HighPos < m44UnknownPos)) {
+    throw new Error(`M44(a): bucket order must be low < medium < high < unknown; got positions low=${m44LowPos} medium=${m44MediumPos} high=${m44HighPos} unknown=${m44UnknownPos}`);
+  }
+
+  // M44(b): --json output has all 8 per-bucket fields, top-level shape, tiers[] field name, and warnings[] always present
+  const m44Json1 = runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  const m44IndexJson = JSON.parse(m44Json1.stdout);
+  if (!Array.isArray(m44IndexJson.tiers) || m44IndexJson.tiers.length === 0) {
+    throw new Error(`M44(b): JSON output must have tiers[] array with at least one entry:\n${m44Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m44IndexJson, 'sources')) {
+    throw new Error(`M44(b): JSON output must NOT have a sources[] field (that is M43); field name must be tiers[]:\n${m44Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m44IndexJson, 'types')) {
+    throw new Error(`M44(b): JSON output must NOT have a types[] field (that is M42); field name must be tiers[]:\n${m44Json1.stdout}`);
+  }
+  const m44FirstEntry = m44IndexJson.tiers[0];
+  const m44RequiredFields = ['description_word_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m44RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m44FirstEntry, field)) {
+      throw new Error(`M44(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m44FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m44IndexJson, 'warnings') || !Array.isArray(m44IndexJson.warnings)) {
+    throw new Error(`M44(b): JSON output must have top-level warnings[] array:\n${m44Json1.stdout}`);
+  }
+  if (m44IndexJson.warnings.length < 3) {
+    throw new Error(`M44(b): warnings[] must contain entries for all 3 malformed capabilities:\n${JSON.stringify(m44IndexJson.warnings)}`);
+  }
+
+  // M44(c): --tier low returns single matching bucket
+  const m44LowFilter = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'low', '--json'], { cwd: m44TmpDir });
+  const m44LowJson = JSON.parse(m44LowFilter.stdout);
+  if (m44LowJson.tiers.length !== 1 || m44LowJson.tiers[0].description_word_count_tier !== 'low') {
+    throw new Error(`M44(c): --tier low must return exactly one low bucket:\n${m44LowFilter.stdout}`);
+  }
+  if (!m44LowJson.tiers[0].capabilities.includes('get_low_cap_1') || !m44LowJson.tiers[0].capabilities.includes('delete_item')) {
+    throw new Error(`M44(c): low bucket must include get_low_cap_1 and delete_item:\n${JSON.stringify(m44LowJson.tiers[0].capabilities)}`);
+  }
+
+  // M44(d): --tier medium returns single matching bucket
+  const m44MediumFilter = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'medium', '--json'], { cwd: m44TmpDir });
+  const m44MediumJson = JSON.parse(m44MediumFilter.stdout);
+  if (m44MediumJson.tiers.length !== 1 || m44MediumJson.tiers[0].description_word_count_tier !== 'medium') {
+    throw new Error(`M44(d): --tier medium must return exactly one medium bucket:\n${m44MediumFilter.stdout}`);
+  }
+  if (!m44MediumJson.tiers[0].capabilities.includes('search_items')) {
+    throw new Error(`M44(d): medium bucket must include search_items:\n${JSON.stringify(m44MediumJson.tiers[0].capabilities)}`);
+  }
+
+  // M44(e): --tier high returns single matching bucket
+  const m44HighFilter = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'high', '--json'], { cwd: m44TmpDir });
+  const m44HighJson = JSON.parse(m44HighFilter.stdout);
+  if (m44HighJson.tiers.length !== 1 || m44HighJson.tiers[0].description_word_count_tier !== 'high') {
+    throw new Error(`M44(e): --tier high must return exactly one high bucket:\n${m44HighFilter.stdout}`);
+  }
+  if (!m44HighJson.tiers[0].capabilities.includes('get_high_cap')) {
+    throw new Error(`M44(e): high bucket must include get_high_cap:\n${JSON.stringify(m44HighJson.tiers[0].capabilities)}`);
+  }
+
+  // M44(f): --tier unknown returns single matching bucket
+  const m44UnknownFilter = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'unknown', '--json'], { cwd: m44TmpDir });
+  const m44UnknownJson = JSON.parse(m44UnknownFilter.stdout);
+  if (m44UnknownJson.tiers.length !== 1 || m44UnknownJson.tiers[0].description_word_count_tier !== 'unknown') {
+    throw new Error(`M44(f): --tier unknown must return exactly one unknown bucket:\n${m44UnknownFilter.stdout}`);
+  }
+
+  // M44(g): --tier LOW (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m44UppercaseTier = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'LOW'], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44UppercaseTier.stderr.includes('Unknown description word count tier: LOW') || m44UppercaseTier.stdout !== '') {
+    throw new Error(`M44(g): --tier LOW (uppercase) must exit 1 with Unknown description word count tier: message:\nstdout=${m44UppercaseTier.stdout}\nstderr=${m44UppercaseTier.stderr}`);
+  }
+
+  // M44(h): --tier xyz (unknown tier) exits 1
+  const m44BogusTier = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier', 'xyz'], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44BogusTier.stderr.includes('Unknown description word count tier: xyz') || m44BogusTier.stdout !== '') {
+    throw new Error(`M44(h): --tier xyz must exit 1 with Unknown description word count tier: message`);
+  }
+
+  // M44(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m44MissingManifest = runCli(['description', 'index', '--manifest', path.join(m44TmpDir, 'nonexistent.json')], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44MissingManifest.stderr.includes('Manifest not found') || m44MissingManifest.stdout !== '') {
+    throw new Error(`M44(i): missing manifest must exit 1:\nstdout=${m44MissingManifest.stdout}\nstderr=${m44MissingManifest.stderr}`);
+  }
+
+  // M44(j): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m44BadJsonPath = path.join(m44TmpDir, 'bad.json');
+  await fs.writeFile(m44BadJsonPath, '{ not valid json', 'utf8');
+  const m44BadJson = runCli(['description', 'index', '--manifest', m44BadJsonPath], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44BadJson.stderr.includes('Invalid manifest JSON') || m44BadJson.stdout !== '') {
+    throw new Error(`M44(j): malformed manifest must exit 1:\nstdout=${m44BadJson.stdout}\nstderr=${m44BadJson.stderr}`);
+  }
+
+  // M44(k): manifest missing capabilities array exits 1
+  const m44NoCapsManifestPath = path.join(m44TmpDir, 'no-caps.json');
+  await fs.writeFile(m44NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m44NoCaps = runCli(['description', 'index', '--manifest', m44NoCapsManifestPath], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m44NoCaps.stdout !== '') {
+    throw new Error(`M44(k): missing capabilities array must exit 1:\nstdout=${m44NoCaps.stdout}\nstderr=${m44NoCaps.stderr}`);
+  }
+
+  // M44(l): unknown flag exits 1 with error on stderr and empty stdout
+  const m44UnknownFlag = runCli(['description', 'index', '--manifest', m44ManifestPath, '--badFlag'], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m44UnknownFlag.stdout !== '') {
+    throw new Error(`M44(l): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m44UnknownFlag.stdout}\nstderr=${m44UnknownFlag.stderr}`);
+  }
+
+  // M44(m): --tier with no value exits 1
+  const m44TierNoValue = runCli(['description', 'index', '--manifest', m44ManifestPath, '--tier'], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (m44TierNoValue.stdout !== '') {
+    throw new Error(`M44(m): --tier with no value must produce empty stdout, got: ${m44TierNoValue.stdout}`);
+  }
+
+  // M44(n): --out <valid path> writes correctly and stdout is empty
+  const m44OutPath = path.join(m44TmpDir, 'description-index-out.json');
+  const m44OutResult = runCli(['description', 'index', '--manifest', m44ManifestPath, '--out', m44OutPath], { cwd: m44TmpDir });
+  if (m44OutResult.stdout !== '') {
+    throw new Error(`M44(n): --out must emit no stdout on success, got: ${m44OutResult.stdout}`);
+  }
+  const m44OutContent = JSON.parse(await fs.readFile(m44OutPath, 'utf8'));
+  if (!Array.isArray(m44OutContent.tiers) || m44OutContent.tiers.length < 2) {
+    throw new Error(`M44(n): --out file must contain at least two tier entries: ${JSON.stringify(m44OutContent.tiers)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m44OutContent, 'warnings') || !Array.isArray(m44OutContent.warnings)) {
+    throw new Error(`M44(n): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m44OutContent)}`);
+  }
+
+  // M44(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m44TusqOutResult = runCli(
+    ['description', 'index', '--manifest', m44ManifestPath, '--out', path.join(m44TmpDir, '.tusq', 'index.json')],
+    { cwd: m44TmpDir, expectedStatus: 1 }
+  );
+  if (!m44TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m44TusqOutResult.stdout !== '') {
+    throw new Error(`M44(o): --out .tusq/ must reject with correct message:\nstdout=${m44TusqOutResult.stdout}\nstderr=${m44TusqOutResult.stderr}`);
+  }
+
+  // M44(p): --json outputs valid JSON with tiers[] and warnings[] present (clean manifest)
+  const m44CleanManifestPath = path.join(m44TmpDir, 'clean.json');
+  await fs.writeFile(m44CleanManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_low', description: 'Get users', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } },
+      { name: 'cap_medium', description: 'Search users by query parameter and filter', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m44CleanJson = JSON.parse(runCli(['description', 'index', '--manifest', m44CleanManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  if (!Array.isArray(m44CleanJson.tiers) || !Array.isArray(m44CleanJson.warnings)) {
+    throw new Error(`M44(p): --json must include tiers[] and warnings[]:\n${JSON.stringify(m44CleanJson)}`);
+  }
+  if (m44CleanJson.warnings.length !== 0) {
+    throw new Error(`M44(p): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m44CleanJson.warnings)}`);
+  }
+
+  // M44(q): determinism — three consecutive runs produce byte-identical stdout
+  const m44Human1 = runCli(['description', 'index', '--manifest', m44ManifestPath], { cwd: m44TmpDir });
+  const m44Human2 = runCli(['description', 'index', '--manifest', m44ManifestPath], { cwd: m44TmpDir });
+  const m44Human3 = runCli(['description', 'index', '--manifest', m44ManifestPath], { cwd: m44TmpDir });
+  if (m44Human1.stdout !== m44Human2.stdout || m44Human2.stdout !== m44Human3.stdout) {
+    throw new Error('M44(q): expected byte-identical human index output across three runs');
+  }
+  const m44JsonQ1 = runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  const m44JsonQ2 = runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  if (m44JsonQ1.stdout !== m44JsonQ2.stdout) {
+    throw new Error('M44(q): expected byte-identical JSON index output across runs');
+  }
+
+  // M44(r): manifest mtime + content invariant pre/post index run + non-persistence + compile byte-identical
+  const m44ManifestBefore = await fs.readFile(m44ManifestPath, 'utf8');
+  runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  const m44ManifestAfter = await fs.readFile(m44ManifestPath, 'utf8');
+  if (m44ManifestBefore !== m44ManifestAfter) {
+    throw new Error('M44(r): tusq description index must not mutate the manifest (read-only invariant)');
+  }
+  const m44ManifestParsed = JSON.parse(m44ManifestAfter);
+  for (const cap of m44ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'description_word_count_tier')) {
+      throw new Error(`M44(r): description_word_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+  // compile byte-identical pre/post
+  const m44CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-compile-'));
+  const m44CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } }]
+  };
+  await fs.writeFile(path.join(m44CompileDir, 'tusq.manifest.json'), JSON.stringify(m44CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m44CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m44CompileDir });
+  const m44CompiledToolPath = path.join(m44CompileDir, 'tusq-tools', 'list_users.json');
+  const m44CompileContentBefore = await fs.readFile(m44CompiledToolPath, 'utf8');
+  runCli(['description', 'index', '--manifest', path.join(m44CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m44CompileDir });
+  const m44CompileContentAfter = await fs.readFile(m44CompiledToolPath, 'utf8');
+  if (m44CompileContentBefore !== m44CompileContentAfter) {
+    throw new Error('M44(r): tusq compile output must be byte-identical before and after description index run');
+  }
+
+  // M44(s): other index commands are byte-identical before and after description index run
+  const m44SurfaceBefore = runCli(['surface', 'plan', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir }).stdout;
+  runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  const m44SurfaceAfter = runCli(['surface', 'plan', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir }).stdout;
+  if (m44SurfaceBefore !== m44SurfaceAfter) {
+    throw new Error('M44(s): tusq surface plan output must be byte-identical before and after description index run');
+  }
+  const m44RequestBefore = runCli(['request', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir }).stdout;
+  runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir });
+  const m44RequestAfter = runCli(['request', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir }).stdout;
+  if (m44RequestBefore !== m44RequestAfter) {
+    throw new Error('M44(s): tusq request index output must be byte-identical before and after description index run');
+  }
+
+  // M44(t): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m44EmptyManifestPath = path.join(m44TmpDir, 'empty.json');
+  await fs.writeFile(m44EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m44EmptyHuman = runCli(['description', 'index', '--manifest', m44EmptyManifestPath], { cwd: m44TmpDir });
+  if (m44EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M44(t): empty-capabilities human output must be exactly the documented line:\n${m44EmptyHuman.stdout}`);
+  }
+  const m44EmptyJson = JSON.parse(runCli(['description', 'index', '--manifest', m44EmptyManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  if (!Array.isArray(m44EmptyJson.tiers) || m44EmptyJson.tiers.length !== 0) {
+    throw new Error(`M44(t): empty-capabilities JSON must have tiers: []:\n${JSON.stringify(m44EmptyJson)}`);
+  }
+  if (!Array.isArray(m44EmptyJson.warnings) || m44EmptyJson.warnings.length !== 0) {
+    throw new Error(`M44(t): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m44EmptyJson)}`);
+  }
+
+  // M44(u): malformed description capability produces warning in stderr (human) and in warnings[] (--json)
+  // Covering all three frozen reason codes:
+  // no_desc_cap → description_field_missing
+  // non_string_desc_cap → description_field_not_string
+  // empty_desc_cap → description_field_empty_after_trim
+  const m44WarnHuman = runCli(['description', 'index', '--manifest', m44ManifestPath], { cwd: m44TmpDir });
+  if (!m44WarnHuman.stderr.includes("Warning: capability 'no_desc_cap' has malformed description (description_field_missing)")) {
+    throw new Error(`M44(u): human mode must emit warning for no_desc_cap (description_field_missing) on stderr:\n${m44WarnHuman.stderr}`);
+  }
+  if (!m44WarnHuman.stderr.includes("Warning: capability 'non_string_desc_cap' has malformed description (description_field_not_string)")) {
+    throw new Error(`M44(u): human mode must emit warning for non_string_desc_cap (description_field_not_string) on stderr:\n${m44WarnHuman.stderr}`);
+  }
+  if (!m44WarnHuman.stderr.includes("Warning: capability 'empty_desc_cap' has malformed description (description_field_empty_after_trim)")) {
+    throw new Error(`M44(u): human mode must emit warning for empty_desc_cap (description_field_empty_after_trim) on stderr:\n${m44WarnHuman.stderr}`);
+  }
+  const m44WarnJsonObj = JSON.parse(runCli(['description', 'index', '--manifest', m44ManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  const m44NoDescWarn = m44WarnJsonObj.warnings.find((w) => w.capability === 'no_desc_cap');
+  if (!m44NoDescWarn || m44NoDescWarn.reason !== 'description_field_missing') {
+    throw new Error(`M44(u): warnings[] must include {capability: 'no_desc_cap', reason: 'description_field_missing'}:\n${JSON.stringify(m44WarnJsonObj.warnings)}`);
+  }
+  const m44NonStringWarn = m44WarnJsonObj.warnings.find((w) => w.capability === 'non_string_desc_cap');
+  if (!m44NonStringWarn || m44NonStringWarn.reason !== 'description_field_not_string') {
+    throw new Error(`M44(u): warnings[] must include {capability: 'non_string_desc_cap', reason: 'description_field_not_string'}:\n${JSON.stringify(m44WarnJsonObj.warnings)}`);
+  }
+  const m44EmptyWarn = m44WarnJsonObj.warnings.find((w) => w.capability === 'empty_desc_cap');
+  if (!m44EmptyWarn || m44EmptyWarn.reason !== 'description_field_empty_after_trim') {
+    throw new Error(`M44(u): warnings[] must include {capability: 'empty_desc_cap', reason: 'description_field_empty_after_trim'}:\n${JSON.stringify(m44WarnJsonObj.warnings)}`);
+  }
+
+  // M44(v): boundary values at 7/8/14/15 tokens → correct tier assignment
+  // 7 tokens → low; 8 tokens → medium; 14 tokens → medium; 15 tokens → high
+  const m44BoundaryManifestPath = path.join(m44TmpDir, 'boundary.json');
+  await fs.writeFile(m44BoundaryManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      // exactly 7 tokens → low (at the boundary)
+      { name: 'cap_7', description: 'Get the user by identifier today day', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      // exactly 8 tokens → medium (at the boundary)
+      { name: 'cap_8', description: 'Get the user by identifier today day now', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      // exactly 14 tokens → medium (at the upper boundary)
+      { name: 'cap_14', description: 'Retrieve all users from the domain filter with full pagination support sorted by creation', method: 'GET', path: '/c', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      // exactly 15 tokens → high (at the boundary)
+      { name: 'cap_15', description: 'Retrieve all users from the domain filter with full pagination support sorted by creation date', method: 'GET', path: '/d', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m44BoundaryJson = JSON.parse(runCli(['description', 'index', '--manifest', m44BoundaryManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  const m44Low7Entry = m44BoundaryJson.tiers.find((e) => e.description_word_count_tier === 'low');
+  const m44Medium8Entry = m44BoundaryJson.tiers.find((e) => e.description_word_count_tier === 'medium');
+  const m44High15Entry = m44BoundaryJson.tiers.find((e) => e.description_word_count_tier === 'high');
+  if (!m44Low7Entry || !m44Low7Entry.capabilities.includes('cap_7')) {
+    throw new Error(`M44(v): cap_7 (7 tokens) must be in low bucket; got: ${JSON.stringify(m44BoundaryJson.tiers)}`);
+  }
+  if (!m44Medium8Entry || !m44Medium8Entry.capabilities.includes('cap_8')) {
+    throw new Error(`M44(v): cap_8 (8 tokens) must be in medium bucket; got: ${JSON.stringify(m44BoundaryJson.tiers)}`);
+  }
+  if (!m44Medium8Entry || !m44Medium8Entry.capabilities.includes('cap_14')) {
+    throw new Error(`M44(v): cap_14 (14 tokens) must be in medium bucket; got: ${JSON.stringify(m44BoundaryJson.tiers)}`);
+  }
+  if (!m44High15Entry || !m44High15Entry.capabilities.includes('cap_15')) {
+    throw new Error(`M44(v): cap_15 (15 tokens) must be in high bucket; got: ${JSON.stringify(m44BoundaryJson.tiers)}`);
+  }
+
+  // M44(w): Unicode whitespace (U+2003 EM SPACE) is a valid whitespace token separator
+  // The /u flag in split(/\s+/u) handles Unicode whitespace characters including U+2003.
+  // A description with 8 EM-SPACE-separated tokens should be classified as medium.
+  const m44UnicodeManifestPath = path.join(m44TmpDir, 'unicode.json');
+  await fs.writeFile(m44UnicodeManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      // 8 tokens separated by EM SPACE (U+2003) → medium
+      { name: 'cap_unicode_medium', description: 'Get\u2003users\u2003by\u2003id\u2003filter\u2003here\u2003now\u2003more', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      // 3 tokens separated by EM SPACE → low
+      { name: 'cap_unicode_low', description: 'Get\u2003users\u2003now', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m44UnicodeJson = JSON.parse(runCli(['description', 'index', '--manifest', m44UnicodeManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  const m44UnicodeMediumEntry = m44UnicodeJson.tiers.find((e) => e.description_word_count_tier === 'medium');
+  const m44UnicodeLowEntry = m44UnicodeJson.tiers.find((e) => e.description_word_count_tier === 'low');
+  if (!m44UnicodeMediumEntry || !m44UnicodeMediumEntry.capabilities.includes('cap_unicode_medium')) {
+    throw new Error(`M44(w): cap_unicode_medium (8 EM-SPACE-separated tokens) must be in medium bucket; got: ${JSON.stringify(m44UnicodeJson.tiers)}`);
+  }
+  if (!m44UnicodeLowEntry || !m44UnicodeLowEntry.capabilities.includes('cap_unicode_low')) {
+    throw new Error(`M44(w): cap_unicode_low (3 EM-SPACE-separated tokens) must be in low bucket; got: ${JSON.stringify(m44UnicodeJson.tiers)}`);
+  }
+
+  // M44(x): markdown is NOT stripped + tusq help enumerates 28 commands + planning-aid framing + unknown subcommand exits 1
+  // Markdown characters in descriptions are treated as part of tokens (no stripping).
+  // "**Get** all active users" = 4 tokens (including "**Get**" as one token) → low
+  const m44MarkdownManifestPath = path.join(m44TmpDir, 'markdown.json');
+  await fs.writeFile(m44MarkdownManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      // Markdown tokens — "**Get**" is 1 token, "all" is 1, "active" is 1, "users" is 1 → 4 tokens → low
+      { name: 'cap_markdown', description: '**Get** all active users', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m44MarkdownJson = JSON.parse(runCli(['description', 'index', '--manifest', m44MarkdownManifestPath, '--json'], { cwd: m44TmpDir }).stdout);
+  const m44MarkdownEntry = m44MarkdownJson.tiers.find((e) => e.description_word_count_tier === 'low');
+  if (!m44MarkdownEntry || !m44MarkdownEntry.capabilities.includes('cap_markdown')) {
+    throw new Error(`M44(x): cap_markdown ("**Get** all active users" = 4 tokens) must be in low bucket (markdown not stripped); got: ${JSON.stringify(m44MarkdownJson.tiers)}`);
+  }
+  // tusq help enumerates 28 commands including 'description'
+  const m44HelpOutput = runCli(['help'], { cwd: m44TmpDir });
+  if (!m44HelpOutput.stdout.includes('description')) {
+    throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
+  }
+  const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m44CommandCount !== 28) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 28 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  }
+  // help text includes planning-aid framing
+  const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
+  if (!m44HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M44(x): description index help must include planning-aid framing:\n${m44HelpResult.stdout}`);
+  }
+  // unknown subcommand exits 1
+  const m44UnknownSubCmd = runCli(['description', 'bogusub'], { cwd: m44TmpDir, expectedStatus: 1 });
+  if (!m44UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m44UnknownSubCmd.stdout !== '') {
+    throw new Error(`M44(x): unknown subcommand must exit 1:\nstdout=${m44UnknownSubCmd.stdout}\nstderr=${m44UnknownSubCmd.stderr}`);
+  }
+  // aggregation_key closed two-value enum: every emitted bucket must have aggregation_key in {'tier', 'unknown'}
+  const m44ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m44IndexJson.tiers) {
+    if (!m44ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M44(x): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.description_word_count_tier}'`);
+    }
+  }
+  const m44LowEntry = m44IndexJson.tiers.find((e) => e.description_word_count_tier === 'low');
+  const m44UnknownTierEntry = m44IndexJson.tiers.find((e) => e.description_word_count_tier === 'unknown');
+  if (!m44LowEntry || m44LowEntry.aggregation_key !== 'tier') {
+    throw new Error(`M44(x): low tier must have aggregation_key 'tier', got: ${m44LowEntry ? m44LowEntry.aggregation_key : null}`);
+  }
+  if (!m44UnknownTierEntry || m44UnknownTierEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M44(x): unknown tier must have aggregation_key 'unknown', got: ${m44UnknownTierEntry ? m44UnknownTierEntry.aggregation_key : null}`);
+  }
+  // cross-axis flags: low bucket has delete_item (destructive + restricted) → both flags true
+  if (!m44LowEntry || m44LowEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M44(x): low bucket must have has_destructive_side_effect=true (delete_item is destructive); got: ${JSON.stringify(m44LowEntry)}`);
+  }
+  if (!m44LowEntry || m44LowEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M44(x): low bucket must have has_restricted_or_confidential_sensitivity=true (delete_item is restricted); got: ${JSON.stringify(m44LowEntry)}`);
+  }
+
+  await fs.rm(m44TmpDir, { recursive: true, force: true });
+  await fs.rm(m44CompileDir, { recursive: true, force: true });
+
   // ── M43: Static Capability Input Schema Primary Parameter Source Index Export ──
   const m43TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m43-smoke-'));
 
@@ -3851,8 +4357,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 27) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 27 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 28) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 28 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -4400,8 +4906,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 27) {
-    throw new Error(`M42: tusq help must enumerate exactly 27 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 28) {
+    throw new Error(`M42: tusq help must enumerate exactly 28 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -4946,8 +5452,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 27) {
-    throw new Error(`M41: tusq help must enumerate exactly 27 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 28) {
+    throw new Error(`M41: tusq help must enumerate exactly 28 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -5501,8 +6007,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 27) {
-    throw new Error(`M40: tusq help must enumerate exactly 27 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 28) {
+    throw new Error(`M40: tusq help must enumerate exactly 28 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -5973,8 +6479,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 27) {
-    throw new Error(`M39: tusq help must enumerate exactly 27 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 28) {
+    throw new Error(`M39: tusq help must enumerate exactly 28 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -6444,8 +6950,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 27) {
-    throw new Error(`M38: tusq help must enumerate exactly 27 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 28) {
+    throw new Error(`M38: tusq help must enumerate exactly 28 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -6927,8 +7433,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 27) {
-    throw new Error(`M37: tusq help must enumerate exactly 27 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 28) {
+    throw new Error(`M37: tusq help must enumerate exactly 28 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -7385,8 +7891,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 27) {
-    throw new Error(`M36: tusq help must enumerate exactly 27 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 28) {
+    throw new Error(`M36: tusq help must enumerate exactly 28 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -7778,8 +8284,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 27) {
-    throw new Error(`M35: tusq help must enumerate exactly 27 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 28) {
+    throw new Error(`M35: tusq help must enumerate exactly 28 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

@@ -207,6 +207,70 @@ tusq confidence index --tier unknown --json
 tusq confidence index --out confidence-index.json
 ```
 
+## `tusq description index`
+
+Emit a deterministic, per-description-word-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from their `description` field's whitespace-token count using frozen thresholds (`low` for ≤7 tokens, `medium` for 8–14 tokens, `high` for ≥15 tokens, `unknown` for null/missing/non-string/empty-after-trim), in closed-enum order (`low → medium → high → unknown`). Tokenization is purely whitespace-based using `description.trim().split(/\s+/u).length` — markdown is NOT stripped, HTML tags are NOT stripped, numbers are NOT stripped, Unicode whitespace is handled by the `/u` flag. This is a **planning aid, not a runtime doc-quality enforcer, doc-contradiction detector, claim-richness certifier, or public-doc compliance auditor**.
+
+```bash
+tusq description index [--tier <low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <low\|medium\|high\|unknown>` | all tiers | Filter to a single description word count tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON with `tiers[]` and `warnings[]` |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown description word count tier, `--out` path error, or unknown subcommand
+
+**Frozen tier function** (thresholds `7`/`14` are immutable):
+
+| Token count | Tier |
+|-------------|------|
+| `count <= 7` | `low` |
+| `8 <= count <= 14` | `medium` |
+| `count >= 15` | `high` |
+| null / undefined / missing `description` field | `unknown` (warning emitted) |
+| `description` is not a string | `unknown` (warning emitted) |
+| `description` is empty or whitespace-only after `.trim()` | `unknown` (warning emitted) |
+
+**Bucket iteration order:** `low → medium → high → unknown` (ascending tier numeric span — closed-enum order, NOT doc-quality-ranked, NOT doc-completeness-ranked, NOT doc-richness-ranked). Empty buckets do not appear.
+
+**Case-sensitive filter:** `--tier` values are matched verbatim. Uppercase values like `LOW` exit 1 with `Unknown description word count tier: LOW`.
+
+**Per-bucket fields:** `description_word_count_tier`, `aggregation_key` (`"tier"` or `"unknown"`), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Three frozen reason codes:
+- `description_field_missing` — no `description` key on the capability
+- `description_field_not_string` — `description` is not a string
+- `description_field_empty_after_trim` — `description` trims to an empty string
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `description_word_count_tier` is NOT written into the manifest — it is derived at read-time only.
+- The four-value `description_word_count_tier` enum, the two-value `aggregation_key` enum, and the tier thresholds (`7`/`14`) are frozen; any change is a material governance event.
+- Sub-schema walking is NOT performed: `input_schema.description`, `output_schema.description`, and `examples[].description` are NOT consulted.
+
+```bash
+# All tiers (human-readable)
+tusq description index
+
+# All tiers (JSON)
+tusq description index --json
+
+# Single tier bucket
+tusq description index --tier low --json
+
+# High-verbosity bucket only
+tusq description index --tier high --json
+
+# Write to file
+tusq description index --out description-tier-index.json
+```
+
 ## `tusq pii index`
 
 Emit a deterministic, per-PII-field-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from their `pii_fields[]` array length using frozen thresholds (`none` for length 0, `low` for 1–2, `medium` for 3–5, `high` for ≥6, `unknown` for null/missing/non-array/malformed), in closed-enum order (`none → low → medium → high → unknown`). This is a **planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier**.
