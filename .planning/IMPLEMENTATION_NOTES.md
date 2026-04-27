@@ -2,6 +2,24 @@
 
 ---
 
+## M42 (run_f33f485bb7998de9, turn_8f2c26df7726bc2e, dev)
+
+**Challenge to PM turn:** PM (turn_57c7b57416c90a9f) correctly bound M42: Static Capability Output Schema Top-Level Type Index Export from Manifest Evidence (~0.5 day) — V1.23 (PROPOSED) under intake charter `intent_1777302673460_98ce`. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified on HEAD 2890573 that M41 CLI surface is intact at 25 commands and module loads cleanly. All five PM decisions upheld: (1) new noun `response` with single subcommand `index` — fresh noun preserves single-subcommand-per-noun precedent, result field `types` is categorical not numeric; (2) seven-value bucket-key enum `object|array|string|number|boolean|null|unknown`; (3) `'integer'` → `unknown` — integer-subset distinction reserved for M-Output-Type-Integer-Subset-Index-1; (4) aggregation_key enum `type|unknown` — categorical, not `tier|unknown`; (5) bucket iteration order `object→array→string→number→boolean→null→unknown`. Challenge resolved: no objections.
+
+**Implementation:**
+- Added `OUTPUT_SCHEMA_TOP_LEVEL_TYPE_ENUM` (frozen Set: object/array/string/number/boolean/null/unknown), `OUTPUT_SCHEMA_TOP_LEVEL_TYPE_AGGREGATION_KEY_ENUM` (frozen Set: type/unknown), `OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER` (frozen array: object/array/string/number/boolean/null) constants in `src/cli.js` after M41 constants.
+- Added `_guardOutputSchemaTopLevelTypeBucketKey` / `_guardOutputSchemaTopLevelTypeAggregationKey` synchronous module-init guard IIFEs.
+- Added `classifyOutputSchemaTopLevelType(outputSchema)` pure function: returns `'unknown'` for null/undefined/not-plain-object output_schema, missing/null/not-string type field, or type string not in the six-primitive set (including `'integer'`); returns the literal type string for any of the six spec primitives.
+- Added `cmdResponse` dispatcher, `cmdResponseIndex` handler, `parseResponseIndexArgs` (4-flag parser: type/manifest/out/json), `buildOutputSchemaTopLevelTypeIndex` with five warning reason codes and `types[]` result field (not `tiers[]`), `formatOutputSchemaTopLevelTypeIndex` with planning-aid callout, type rule, and bucket order.
+- Wired `response` into dispatch() between `redaction` and `sensitivity`; updated `printHelp()` (26 commands); updated `printCommandHelp()` with `response` and `response index` entries including `'integer'`→unknown note, compositional-schema note, array-of-types note, and planning-aid framing.
+- Added 24-case M42 smoke matrix to `tests/smoke.mjs` covering all 6 primitive types (a-g), case-sensitivity (h-j), error conditions (k-p), --out flag (q-r), --json (s), determinism (t), read-only invariant + non-persistence (u), byte-identity of other commands (v), empty-capabilities (w), and all five frozen warning reason codes (x). Updated M35/M36/M37/M38/M39/M40/M41 help-count assertions from 25 to 26.
+- Added `output-schema-top-level-type-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json` (eval count 32→33); added `runOutputSchemaTopLevelTypeIndexDeterminismScenario` handler to `tests/eval-regression.mjs`; wired into run() dispatch after `path_segment_count_tier_index_determinism`.
+- Updated M42 ROADMAP checkboxes all [x] (18/18); updated SYSTEM_SPEC.md (M42 detail block + Constraint 35), command-surface.md (M42 CLI Surface block), website/docs/cli-reference.md (tusq response index section), website/docs/manifest-format.md (Output Schema Top-Level Type Index subsection).
+
+**Verification:** `npm test` exits 0 with 33 scenarios. `node -e 'require("./src/cli.js"); console.log("OK")'` exits 0. `node bin/tusq.js help | grep -c '^  [a-z]'` returns 26. `node bin/tusq.js response index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` exits 0 with valid JSON including `types[]` and `warnings[]` fields. Zero new dependencies. Zero package drift (`git diff --quiet HEAD -- package.json package-lock.json` exits 0).
+
+---
+
 ## M41 (run_7bad406d9ea95ce5, turn_a58d22a53169262b, dev)
 
 **Challenge to PM turn:** PM (turn_1bd2bd4cc7b1d330) correctly bound M41: Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22 (PROPOSED) under intake charter intent_1777299870574_9dfd. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified on HEAD b29bf30 that M40 CLI surface is intact at 24 commands and module loads cleanly. All five PM decisions upheld. Challenge resolved: no objections.

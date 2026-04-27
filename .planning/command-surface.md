@@ -4,6 +4,75 @@
 
 PM bound **M42: Static Capability Output Schema Top-Level Type Index Export from Manifest Evidence (~0.5 day) — V1.23 (PROPOSED)** in this turn. CLI surface growth: 25 → 26 commands. New top-level noun `response` with single subcommand `index`, inserted alphabetically between `redaction` and `sensitivity` in the post-`docs` block (`redaction` < `response` because `r`=`r`, `e`=`e`, `d` (100) < `s` (115) at position 2; `response` < `sensitivity` because `r` (114) < `s` (115) at position 0). Command shape: `tusq response index [--type <object|array|string|number|boolean|null|unknown>] [--manifest <path>] [--out <path>] [--json]`. Closed seven-value bucket-key enum (`object | array | string | number | boolean | null | unknown`); closed two-value aggregation_key enum (`type | unknown`); literal exact-string tier match against the six JSON Schema 2020-12 spec primitives; case-sensitive lowercase-only `--type` filter; result-array field name `types` (plural, categorical — NOT `tiers`); per-bucket 8-field entry shape (`output_schema_top_level_type`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); top-level `warnings[]` (only in `--json`, always present even when empty) with five frozen reason codes (`output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_type_field_missing`, `output_schema_type_field_not_string`, `output_schema_type_field_value_not_in_json_schema_primitive_set`); closed-enum bucket iteration order `object → array → string → number → boolean → null → unknown` (deterministic stable-output convention only); read-only invariants (manifest mtime + SHA-256 + every capability_digest byte-identical pre/post; `tusq compile` and the eleven existing index commands byte-identical pre/post); non-persistence rule (`output_schema_top_level_type` MUST NOT be written into `tusq.manifest.json`); orthogonal to M40 (M40 measures top-level property count on `output_schema.properties`; M42 measures top-level primitive type on `output_schema.type` — same field, different axis); `'integer'` bucketed as `unknown` (integer-subset distinction reserved for `M-Output-Type-Integer-Subset-Index-1`); compositional schemas (`oneOf`/`anyOf`/`allOf`) without top-level `type` bucketed as `unknown`; array-of-types (`type: ['object', 'null']`) bucketed as `unknown`. The full Product CLI Surface detail block (two-row command table, four-flag table, bucket-key enum table, aggregation_key enum table, tier-function rules table, per-bucket entry shape table, bucket iteration order table, default-preservation table for the 25 unchanged commands, failure UX table, local-only invariants table) will be materialized in the dev implementation turn before any source code lands; this Reservation block names the charter and freezes the surface decisions for dev to carry forward verbatim.
 
+### M42: Output Schema Top-Level Type Index — Product CLI Surface
+
+| Command | Shape |
+|---------|-------|
+| `tusq response` | `tusq response <subcommand>` |
+| `tusq response index` | `tusq response index [--type <object\|array\|string\|number\|boolean\|null\|unknown>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--type <value>` | all types | Case-sensitive lowercase; `OBJECT` exits 1 |
+| `--manifest <path>` | `tusq.manifest.json` | Resolved relative to cwd |
+| `--out <path>` | stdout | Writes JSON; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | Includes `warnings[]` for malformed output_schema fields |
+
+| Bucket key | Tier function condition |
+|------------|------------------------|
+| `object` | `output_schema.type === 'object'` |
+| `array` | `output_schema.type === 'array'` |
+| `string` | `output_schema.type === 'string'` |
+| `number` | `output_schema.type === 'number'` |
+| `boolean` | `output_schema.type === 'boolean'` |
+| `null` | `output_schema.type === 'null'` |
+| `unknown` | output_schema missing/null/not-object; type missing/null/not-string; type value not in six-primitive set (incl. `'integer'`); type is an array |
+
+| `aggregation_key` value | When |
+|------------------------|------|
+| `type` | Capability has one of the six JSON Schema spec primitives as top-level type |
+| `unknown` | Capability has malformed or missing output_schema or type field |
+
+| Per-bucket entry field | Type | Notes |
+|------------------------|------|-------|
+| `output_schema_top_level_type` | string | One of the seven closed-enum values |
+| `aggregation_key` | string | `type` or `unknown` |
+| `capability_count` | integer | Count of capabilities in bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Count with `approved === true` |
+| `gated_count` | integer | Count with `approved !== true` |
+| `has_destructive_side_effect` | boolean | true if any cap has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true if any cap has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+| Bucket iteration order | Notes |
+|-----------------------|-------|
+| `object → array → string → number → boolean → null → unknown` | Deterministic stable-output convention only — NOT data-contract-completeness-ranked |
+
+| Warning reason code | When emitted |
+|--------------------|-------------|
+| `output_schema_field_missing` | capability has no `output_schema` field |
+| `output_schema_field_not_object` | `output_schema` is present but not a plain object (null, primitive, array) |
+| `output_schema_type_field_missing` | `output_schema` is an object but has no `type` field |
+| `output_schema_type_field_not_string` | `output_schema.type` exists but is not a string (e.g. array-of-types) |
+| `output_schema_type_field_value_not_in_json_schema_primitive_set` | `output_schema.type` is a string but not one of the six spec primitives (e.g. `'integer'`) |
+
+| Failure scenario | stderr | exit |
+|-----------------|--------|------|
+| `--manifest` file not found | `Manifest file not found: <path>` | 1 |
+| Manifest not valid JSON | `Failed to parse manifest JSON: <msg>` | 1 |
+| Manifest missing capabilities | `Manifest is missing capabilities array` | 1 |
+| `--type` not in seven-value enum | `Unknown output schema top-level type: <value>` | 1 |
+| `--out` inside `.tusq/` | `--out path must not be inside .tusq/` | 1 |
+| Unknown flag | `Unknown flag: <flag>` | 1 |
+| `--type` with no value | `--type requires a value` | 1 |
+
+| Local-only invariant | Rule |
+|---------------------|------|
+| Non-persistence | `output_schema_top_level_type` MUST NOT be written into `tusq.manifest.json` |
+| Read-only | Manifest mtime + SHA-256 + every `capability_digest` byte-identical pre/post |
+| Determinism | Three consecutive runs produce byte-identical stdout |
+| No new dependency | Zero new entries in `package.json` / `package-lock.json` |
+
 ### M41: Path Segment Count Tier Index — Product CLI Surface
 
 | Command | Shape |

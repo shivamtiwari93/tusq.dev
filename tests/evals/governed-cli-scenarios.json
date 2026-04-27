@@ -1093,6 +1093,48 @@
       "expected_valid_path_segment_count_tiers": ["none", "low", "medium", "high", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "low,medium,high,unknown"
+    },
+    {
+      "id": "output-schema-top-level-type-index-determinism",
+      "description": "M42: tusq response index --json produces byte-identical output across three runs on the same manifest; output_schema_top_level_type bucket-key enum is closed (seven values: object/array/string/number/boolean/null/unknown); aggregation_key enum is closed (two values: type/unknown); bucket iteration order is the frozen closed-enum order (object → array → string → number → boolean → null, then unknown last); null/missing/non-object output_schema → unknown (with warning); non-object/null output_schema → unknown with warning; missing/non-string output_schema.type → unknown with warning; type string not in closed six-value set → unknown with warning; 'integer' → unknown (not coerced to number); array-of-types (type: ['object', 'null']) → unknown (type is array not string); compositional schemas without top-level type → unknown with output_schema_type_field_missing reason",
+      "scenario_type": "output_schema_top_level_type_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_records",
+          "domain": "records",
+          "method": "DELETE",
+          "path": "/api/v1/records",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.9,
+          "output_schema": { "type": "array", "items": { "type": "object" } }
+        },
+        {
+          "name": "get_record",
+          "domain": "records",
+          "method": "GET",
+          "path": "/api/v1/records/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.85,
+          "output_schema": { "type": "object", "properties": { "id": {}, "name": {} } }
+        },
+        {
+          "name": "no_schema_cap",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.7
+        }
+      ],
+      "expected_valid_output_schema_top_level_types": ["object", "array", "string", "number", "boolean", "null", "unknown"],
+      "expected_valid_aggregation_keys": ["type", "unknown"],
+      "expected_type_order": "object,array,unknown"
     }
   ]
 }

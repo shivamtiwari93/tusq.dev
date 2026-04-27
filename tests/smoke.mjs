@@ -3352,6 +3352,568 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M42: Static Capability Output Schema Top-Level Type Index Export ──────────
+  const m42TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m42-smoke-'));
+
+  // M42 fixture manifest: capabilities across object/array/string/number/boolean/null/unknown output schema top-level types.
+  // Declared order:
+  //   get_record (object, gated — unapproved)
+  //   list_records (array, destructive+restricted+approved) → cross-axis flag tests
+  //   get_name (string, public+approved)
+  //   get_count (number, public+approved)
+  //   get_flag (boolean, public+approved)
+  //   delete_result (null, public+approved)
+  //   no_schema_cap (unknown, no output_schema field → output_schema_field_missing)
+  //   bad_schema_str (unknown, output_schema = "string" → output_schema_field_not_object)
+  //   no_type_cap (unknown, output_schema = {} no type field → output_schema_type_field_missing)
+  //   bad_type_cap (unknown, output_schema.type = 42 → output_schema_type_field_not_string)
+  //   integer_type_cap (unknown, output_schema.type = 'integer' → output_schema_type_field_value_not_in_json_schema_primitive_set)
+  const m42Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'get_record',
+        description: 'Get a record',
+        method: 'GET',
+        path: '/api/v1/records/:id',
+        domain: 'records',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', properties: { id: {}, name: {}, status: {} } }
+      },
+      {
+        name: 'list_records',
+        description: 'List all records',
+        method: 'DELETE',
+        path: '/api/v1/records',
+        domain: 'records',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: { type: 'object' } }
+      },
+      {
+        name: 'get_name',
+        description: 'Get display name',
+        method: 'GET',
+        path: '/api/v1/name',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'string' }
+      },
+      {
+        name: 'get_count',
+        description: 'Get record count',
+        method: 'GET',
+        path: '/api/v1/count',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'number' }
+      },
+      {
+        name: 'get_flag',
+        description: 'Get feature flag status',
+        method: 'GET',
+        path: '/api/v1/flag',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'boolean' }
+      },
+      {
+        name: 'delete_result',
+        description: 'Delete and return null',
+        method: 'DELETE',
+        path: '/api/v1/items/:id',
+        domain: 'ops',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'null' }
+      },
+      {
+        name: 'no_schema_cap',
+        description: 'Capability with no output_schema field',
+        method: 'GET',
+        path: '/api/v1/noschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // output_schema field absent → output_schema_field_missing
+      },
+      {
+        name: 'bad_schema_str',
+        description: 'Capability with output_schema = string',
+        method: 'GET',
+        path: '/api/v1/badstr',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: 'string'
+        // output_schema is not a plain object → output_schema_field_not_object
+      },
+      {
+        name: 'no_type_cap',
+        description: 'Capability with output_schema missing type field',
+        method: 'GET',
+        path: '/api/v1/notype',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { properties: { id: {} } }
+        // output_schema.type missing → output_schema_type_field_missing
+      },
+      {
+        name: 'bad_type_cap',
+        description: 'Capability with output_schema.type = number (not string)',
+        method: 'GET',
+        path: '/api/v1/badtype',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 42 }
+        // output_schema.type is not a string → output_schema_type_field_not_string
+      },
+      {
+        name: 'integer_type_cap',
+        description: 'Capability with output_schema.type = integer',
+        method: 'GET',
+        path: '/api/v1/integer',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'kkk',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'integer' }
+        // output_schema.type is a string but not in the closed six-value primitive set → output_schema_type_field_value_not_in_json_schema_primitive_set
+      }
+    ]
+  };
+
+  const m42ManifestPath = path.join(m42TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m42ManifestPath, JSON.stringify(m42Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m42TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M42(a): default tusq response index produces exit 0 and per-bucket entries in closed-enum order
+  const m42DefaultResult = runCli(['response', 'index', '--manifest', m42ManifestPath], { cwd: m42TmpDir });
+  if (!m42DefaultResult.stdout.includes('[object]') || !m42DefaultResult.stdout.includes('[array]') || !m42DefaultResult.stdout.includes('[string]') || !m42DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M42(a): default index must include all present buckets:\n${m42DefaultResult.stdout}`);
+  }
+  if (!m42DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M42(a): default index must include planning-aid framing:\n${m42DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: object before array before string before number before boolean before null before unknown
+  const m42DefaultLines = m42DefaultResult.stdout.split('\n');
+  const m42ObjectPos = m42DefaultLines.findIndex((l) => l === '[object]');
+  const m42ArrayPos = m42DefaultLines.findIndex((l) => l === '[array]');
+  const m42StringPos = m42DefaultLines.findIndex((l) => l === '[string]');
+  const m42NumberPos = m42DefaultLines.findIndex((l) => l === '[number]');
+  const m42BooleanPos = m42DefaultLines.findIndex((l) => l === '[boolean]');
+  const m42NullPos = m42DefaultLines.findIndex((l) => l === '[null]');
+  const m42UnknownPos = m42DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m42ObjectPos < m42ArrayPos && m42ArrayPos < m42StringPos && m42StringPos < m42NumberPos && m42NumberPos < m42BooleanPos && m42BooleanPos < m42NullPos && m42NullPos < m42UnknownPos)) {
+    throw new Error(`M42(a): bucket order must be object < array < string < number < boolean < null < unknown; got positions object=${m42ObjectPos} array=${m42ArrayPos} string=${m42StringPos} number=${m42NumberPos} boolean=${m42BooleanPos} null=${m42NullPos} unknown=${m42UnknownPos}`);
+  }
+
+  // M42(b): --json output has all 8 per-bucket fields, top-level shape, types[] field name, and warnings[] always present
+  const m42Json1 = runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  const m42IndexJson = JSON.parse(m42Json1.stdout);
+  if (!Array.isArray(m42IndexJson.types) || m42IndexJson.types.length === 0) {
+    throw new Error(`M42(b): JSON output must have types[] array with at least one entry:\n${m42Json1.stdout}`);
+  }
+  const m42FirstEntry = m42IndexJson.types[0];
+  const m42RequiredFields = ['output_schema_top_level_type', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m42RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m42FirstEntry, field)) {
+      throw new Error(`M42(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m42FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m42IndexJson, 'warnings') || !Array.isArray(m42IndexJson.warnings)) {
+    throw new Error(`M42(b): JSON output must have top-level warnings[] array:\n${m42Json1.stdout}`);
+  }
+  if (m42IndexJson.warnings.length < 5) {
+    throw new Error(`M42(b): warnings[] must contain entries for all 5 malformed capabilities:\n${JSON.stringify(m42IndexJson.warnings)}`);
+  }
+
+  // M42(c): --type object returns single matching bucket
+  const m42ObjectFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'object', '--json'], { cwd: m42TmpDir });
+  const m42ObjectJson = JSON.parse(m42ObjectFilter.stdout);
+  if (m42ObjectJson.types.length !== 1 || m42ObjectJson.types[0].output_schema_top_level_type !== 'object') {
+    throw new Error(`M42(c): --type object must return exactly one object bucket:\n${m42ObjectFilter.stdout}`);
+  }
+  if (!m42ObjectJson.types[0].capabilities.includes('get_record')) {
+    throw new Error(`M42(c): object bucket must include get_record:\n${JSON.stringify(m42ObjectJson.types[0].capabilities)}`);
+  }
+
+  // M42(d): --type array returns single matching bucket
+  const m42ArrayFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'array', '--json'], { cwd: m42TmpDir });
+  const m42ArrayJson = JSON.parse(m42ArrayFilter.stdout);
+  if (m42ArrayJson.types.length !== 1 || m42ArrayJson.types[0].output_schema_top_level_type !== 'array') {
+    throw new Error(`M42(d): --type array must return exactly one array bucket:\n${m42ArrayFilter.stdout}`);
+  }
+  if (!m42ArrayJson.types[0].capabilities.includes('list_records')) {
+    throw new Error(`M42(d): array bucket must include list_records:\n${JSON.stringify(m42ArrayJson.types[0].capabilities)}`);
+  }
+
+  // M42(e): --type string returns single matching bucket
+  const m42StringFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'string', '--json'], { cwd: m42TmpDir });
+  const m42StringJson = JSON.parse(m42StringFilter.stdout);
+  if (m42StringJson.types.length !== 1 || m42StringJson.types[0].output_schema_top_level_type !== 'string') {
+    throw new Error(`M42(e): --type string must return exactly one string bucket:\n${m42StringFilter.stdout}`);
+  }
+
+  // M42(f): --type number returns single matching bucket
+  const m42NumberFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'number', '--json'], { cwd: m42TmpDir });
+  const m42NumberJson = JSON.parse(m42NumberFilter.stdout);
+  if (m42NumberJson.types.length !== 1 || m42NumberJson.types[0].output_schema_top_level_type !== 'number') {
+    throw new Error(`M42(f): --type number must return exactly one number bucket:\n${m42NumberFilter.stdout}`);
+  }
+
+  // M42(g): --type boolean returns single matching bucket
+  const m42BooleanFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'boolean', '--json'], { cwd: m42TmpDir });
+  const m42BooleanJson = JSON.parse(m42BooleanFilter.stdout);
+  if (m42BooleanJson.types.length !== 1 || m42BooleanJson.types[0].output_schema_top_level_type !== 'boolean') {
+    throw new Error(`M42(g): --type boolean must return exactly one boolean bucket:\n${m42BooleanFilter.stdout}`);
+  }
+
+  // M42(h): --type null returns single matching bucket (delete_result)
+  const m42NullFilter = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'null', '--json'], { cwd: m42TmpDir });
+  const m42NullJson = JSON.parse(m42NullFilter.stdout);
+  if (m42NullJson.types.length !== 1 || m42NullJson.types[0].output_schema_top_level_type !== 'null') {
+    throw new Error(`M42(h): --type null must return exactly one null bucket:\n${m42NullFilter.stdout}`);
+  }
+  if (!m42NullJson.types[0].capabilities.includes('delete_result')) {
+    throw new Error(`M42(h): null bucket must include delete_result:\n${JSON.stringify(m42NullJson.types[0].capabilities)}`);
+  }
+
+  // M42(i): --type OBJECT (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m42UppercaseType = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'OBJECT'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42UppercaseType.stderr.includes('Unknown output schema top-level type: OBJECT') || m42UppercaseType.stdout !== '') {
+    throw new Error(`M42(i): --type OBJECT (uppercase) must exit 1 with Unknown output schema top-level type: message:\nstdout=${m42UppercaseType.stdout}\nstderr=${m42UppercaseType.stderr}`);
+  }
+
+  // M42(j): --type integer (not in primitive set) exits 1
+  const m42IntegerType = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'integer'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42IntegerType.stderr.includes('Unknown output schema top-level type: integer') || m42IntegerType.stdout !== '') {
+    throw new Error(`M42(j): --type integer must exit 1 with Unknown output schema top-level type: message:\nstdout=${m42IntegerType.stdout}\nstderr=${m42IntegerType.stderr}`);
+  }
+
+  // M42(k): --type xyz (unknown type) exits 1
+  const m42BogusType = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type', 'xyz'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42BogusType.stderr.includes('Unknown output schema top-level type: xyz') || m42BogusType.stdout !== '') {
+    throw new Error(`M42(k): --type xyz must exit 1 with Unknown output schema top-level type: message`);
+  }
+
+  // M42(l): missing manifest exits 1 with error on stderr and empty stdout
+  const m42MissingManifest = runCli(['response', 'index', '--manifest', path.join(m42TmpDir, 'nonexistent.json')], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42MissingManifest.stderr.includes('Manifest not found') || m42MissingManifest.stdout !== '') {
+    throw new Error(`M42(l): missing manifest must exit 1:\nstdout=${m42MissingManifest.stdout}\nstderr=${m42MissingManifest.stderr}`);
+  }
+
+  // M42(m): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m42BadJsonPath = path.join(m42TmpDir, 'bad.json');
+  await fs.writeFile(m42BadJsonPath, '{ not valid json', 'utf8');
+  const m42BadJson = runCli(['response', 'index', '--manifest', m42BadJsonPath], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42BadJson.stderr.includes('Invalid manifest JSON') || m42BadJson.stdout !== '') {
+    throw new Error(`M42(m): malformed manifest must exit 1:\nstdout=${m42BadJson.stdout}\nstderr=${m42BadJson.stderr}`);
+  }
+
+  // M42(n): manifest missing capabilities array exits 1
+  const m42NoCapsManifestPath = path.join(m42TmpDir, 'no-caps.json');
+  await fs.writeFile(m42NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m42NoCaps = runCli(['response', 'index', '--manifest', m42NoCapsManifestPath], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m42NoCaps.stdout !== '') {
+    throw new Error(`M42(n): missing capabilities array must exit 1:\nstdout=${m42NoCaps.stdout}\nstderr=${m42NoCaps.stderr}`);
+  }
+
+  // M42(o): unknown flag exits 1 with error on stderr and empty stdout
+  const m42UnknownFlag = runCli(['response', 'index', '--manifest', m42ManifestPath, '--badFlag'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m42UnknownFlag.stdout !== '') {
+    throw new Error(`M42(o): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m42UnknownFlag.stdout}\nstderr=${m42UnknownFlag.stderr}`);
+  }
+
+  // M42(p): --type with no value exits 1
+  const m42TypeNoValue = runCli(['response', 'index', '--manifest', m42ManifestPath, '--type'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (m42TypeNoValue.stdout !== '') {
+    throw new Error(`M42(p): --type with no value must produce empty stdout, got: ${m42TypeNoValue.stdout}`);
+  }
+
+  // M42(q): --out <valid path> writes correctly and stdout is empty
+  const m42OutPath = path.join(m42TmpDir, 'response-index-out.json');
+  const m42OutResult = runCli(['response', 'index', '--manifest', m42ManifestPath, '--out', m42OutPath], { cwd: m42TmpDir });
+  if (m42OutResult.stdout !== '') {
+    throw new Error(`M42(q): --out must emit no stdout on success, got: ${m42OutResult.stdout}`);
+  }
+  const m42OutContent = JSON.parse(await fs.readFile(m42OutPath, 'utf8'));
+  if (!Array.isArray(m42OutContent.types) || m42OutContent.types.length < 2) {
+    throw new Error(`M42(q): --out file must contain at least two type entries: ${JSON.stringify(m42OutContent.types)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m42OutContent, 'warnings') || !Array.isArray(m42OutContent.warnings)) {
+    throw new Error(`M42(q): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m42OutContent)}`);
+  }
+
+  // M42(r): --out .tusq/ path rejected with correct message and empty stdout
+  const m42TusqOutResult = runCli(
+    ['response', 'index', '--manifest', m42ManifestPath, '--out', path.join(m42TmpDir, '.tusq', 'index.json')],
+    { cwd: m42TmpDir, expectedStatus: 1 }
+  );
+  if (!m42TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m42TusqOutResult.stdout !== '') {
+    throw new Error(`M42(r): --out .tusq/ must reject with correct message:\nstdout=${m42TusqOutResult.stdout}\nstderr=${m42TusqOutResult.stderr}`);
+  }
+
+  // M42(s): --json outputs valid JSON with types[] and warnings[] present
+  const m42CleanManifestPath = path.join(m42TmpDir, 'clean.json');
+  await fs.writeFile(m42CleanManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_obj', description: 'Object', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'object', properties: {} } },
+      { name: 'cap_arr', description: 'Array', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'array' } }
+    ]
+  }, null, 2), 'utf8');
+  const m42CleanJson = JSON.parse(runCli(['response', 'index', '--manifest', m42CleanManifestPath, '--json'], { cwd: m42TmpDir }).stdout);
+  if (!Array.isArray(m42CleanJson.types) || !Array.isArray(m42CleanJson.warnings)) {
+    throw new Error(`M42(s): --json must include types[] and warnings[]:\n${JSON.stringify(m42CleanJson)}`);
+  }
+  if (m42CleanJson.warnings.length !== 0) {
+    throw new Error(`M42(s): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m42CleanJson.warnings)}`);
+  }
+
+  // M42(t): determinism — three consecutive runs produce byte-identical stdout
+  const m42Human1 = runCli(['response', 'index', '--manifest', m42ManifestPath], { cwd: m42TmpDir });
+  const m42Human2 = runCli(['response', 'index', '--manifest', m42ManifestPath], { cwd: m42TmpDir });
+  const m42Human3 = runCli(['response', 'index', '--manifest', m42ManifestPath], { cwd: m42TmpDir });
+  if (m42Human1.stdout !== m42Human2.stdout || m42Human2.stdout !== m42Human3.stdout) {
+    throw new Error('M42(t): expected byte-identical human index output across three runs');
+  }
+  const m42JsonT1 = runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  const m42JsonT2 = runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  if (m42JsonT1.stdout !== m42JsonT2.stdout) {
+    throw new Error('M42(t): expected byte-identical JSON index output across runs');
+  }
+
+  // M42(u): manifest mtime + content invariant pre/post index run + non-persistence + compile byte-identical
+  const m42ManifestBefore = await fs.readFile(m42ManifestPath, 'utf8');
+  runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  const m42ManifestAfter = await fs.readFile(m42ManifestPath, 'utf8');
+  if (m42ManifestBefore !== m42ManifestAfter) {
+    throw new Error('M42(u): tusq response index must not mutate the manifest (read-only invariant)');
+  }
+  const m42ManifestParsed = JSON.parse(m42ManifestAfter);
+  for (const cap of m42ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_top_level_type')) {
+      throw new Error(`M42(u): output_schema_top_level_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+  // compile byte-identical pre/post
+  const m42CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m42-compile-'));
+  const m42CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'array' } }]
+  };
+  await fs.writeFile(path.join(m42CompileDir, 'tusq.manifest.json'), JSON.stringify(m42CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m42CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m42CompileDir });
+  const m42CompiledToolPath = path.join(m42CompileDir, 'tusq-tools', 'list_users.json');
+  const m42CompileContentBefore = await fs.readFile(m42CompiledToolPath, 'utf8');
+  runCli(['response', 'index', '--manifest', path.join(m42CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m42CompileDir });
+  const m42CompileContentAfter = await fs.readFile(m42CompiledToolPath, 'utf8');
+  if (m42CompileContentBefore !== m42CompileContentAfter) {
+    throw new Error('M42(u): tusq compile output must be byte-identical before and after response index run');
+  }
+
+  // M42(v): other index commands are byte-identical before and after response index run
+  const m42SurfaceBefore = runCli(['surface', 'plan', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout;
+  runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  const m42SurfaceAfter = runCli(['surface', 'plan', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout;
+  if (m42SurfaceBefore !== m42SurfaceAfter) {
+    throw new Error('M42(v): tusq surface plan output must be byte-identical before and after response index run');
+  }
+  const m42PathBefore = runCli(['path', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout;
+  runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir });
+  const m42PathAfter = runCli(['path', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout;
+  if (m42PathBefore !== m42PathAfter) {
+    throw new Error('M42(v): tusq path index output must be byte-identical before and after response index run');
+  }
+
+  // M42(w): empty-capabilities manifest emits documented human line and types: [] in JSON, warnings: [] in JSON
+  const m42EmptyManifestPath = path.join(m42TmpDir, 'empty.json');
+  await fs.writeFile(m42EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m42EmptyHuman = runCli(['response', 'index', '--manifest', m42EmptyManifestPath], { cwd: m42TmpDir });
+  if (m42EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M42(w): empty-capabilities human output must be exactly the documented line:\n${m42EmptyHuman.stdout}`);
+  }
+  const m42EmptyJson = JSON.parse(runCli(['response', 'index', '--manifest', m42EmptyManifestPath, '--json'], { cwd: m42TmpDir }).stdout);
+  if (!Array.isArray(m42EmptyJson.types) || m42EmptyJson.types.length !== 0) {
+    throw new Error(`M42(w): empty-capabilities JSON must have types: []:\n${JSON.stringify(m42EmptyJson)}`);
+  }
+  if (!Array.isArray(m42EmptyJson.warnings) || m42EmptyJson.warnings.length !== 0) {
+    throw new Error(`M42(w): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m42EmptyJson)}`);
+  }
+
+  // M42(x): malformed output_schema capability produces warning in stderr (human) and in warnings[] (--json)
+  // Covering all five frozen reason codes:
+  // no_schema_cap → output_schema_field_missing
+  // bad_schema_str → output_schema_field_not_object
+  // no_type_cap → output_schema_type_field_missing
+  // bad_type_cap → output_schema_type_field_not_string
+  // integer_type_cap → output_schema_type_field_value_not_in_json_schema_primitive_set
+  const m42WarnHuman = runCli(['response', 'index', '--manifest', m42ManifestPath], { cwd: m42TmpDir });
+  if (!m42WarnHuman.stderr.includes("Warning: capability 'no_schema_cap' has malformed output_schema (output_schema_field_missing)")) {
+    throw new Error(`M42(x): human mode must emit warning for no_schema_cap (output_schema_field_missing) on stderr:\n${m42WarnHuman.stderr}`);
+  }
+  if (!m42WarnHuman.stderr.includes("Warning: capability 'bad_schema_str' has malformed output_schema (output_schema_field_not_object)")) {
+    throw new Error(`M42(x): human mode must emit warning for bad_schema_str (output_schema_field_not_object) on stderr:\n${m42WarnHuman.stderr}`);
+  }
+  if (!m42WarnHuman.stderr.includes("Warning: capability 'no_type_cap' has malformed output_schema (output_schema_type_field_missing)")) {
+    throw new Error(`M42(x): human mode must emit warning for no_type_cap (output_schema_type_field_missing) on stderr:\n${m42WarnHuman.stderr}`);
+  }
+  if (!m42WarnHuman.stderr.includes("Warning: capability 'bad_type_cap' has malformed output_schema (output_schema_type_field_not_string)")) {
+    throw new Error(`M42(x): human mode must emit warning for bad_type_cap (output_schema_type_field_not_string) on stderr:\n${m42WarnHuman.stderr}`);
+  }
+  if (!m42WarnHuman.stderr.includes("Warning: capability 'integer_type_cap' has malformed output_schema (output_schema_type_field_value_not_in_json_schema_primitive_set)")) {
+    throw new Error(`M42(x): human mode must emit warning for integer_type_cap (output_schema_type_field_value_not_in_json_schema_primitive_set) on stderr:\n${m42WarnHuman.stderr}`);
+  }
+  const m42WarnJsonObj = JSON.parse(runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout);
+  const m42NoSchemaWarn = m42WarnJsonObj.warnings.find((w) => w.capability === 'no_schema_cap');
+  if (!m42NoSchemaWarn || m42NoSchemaWarn.reason !== 'output_schema_field_missing') {
+    throw new Error(`M42(x): warnings[] must include {capability: 'no_schema_cap', reason: 'output_schema_field_missing'}:\n${JSON.stringify(m42WarnJsonObj.warnings)}`);
+  }
+  const m42BadSchemaWarn = m42WarnJsonObj.warnings.find((w) => w.capability === 'bad_schema_str');
+  if (!m42BadSchemaWarn || m42BadSchemaWarn.reason !== 'output_schema_field_not_object') {
+    throw new Error(`M42(x): warnings[] must include {capability: 'bad_schema_str', reason: 'output_schema_field_not_object'}:\n${JSON.stringify(m42WarnJsonObj.warnings)}`);
+  }
+  const m42NoTypeWarn = m42WarnJsonObj.warnings.find((w) => w.capability === 'no_type_cap');
+  if (!m42NoTypeWarn || m42NoTypeWarn.reason !== 'output_schema_type_field_missing') {
+    throw new Error(`M42(x): warnings[] must include {capability: 'no_type_cap', reason: 'output_schema_type_field_missing'}:\n${JSON.stringify(m42WarnJsonObj.warnings)}`);
+  }
+  const m42BadTypeWarn = m42WarnJsonObj.warnings.find((w) => w.capability === 'bad_type_cap');
+  if (!m42BadTypeWarn || m42BadTypeWarn.reason !== 'output_schema_type_field_not_string') {
+    throw new Error(`M42(x): warnings[] must include {capability: 'bad_type_cap', reason: 'output_schema_type_field_not_string'}:\n${JSON.stringify(m42WarnJsonObj.warnings)}`);
+  }
+  const m42IntegerTypeWarn = m42WarnJsonObj.warnings.find((w) => w.capability === 'integer_type_cap');
+  if (!m42IntegerTypeWarn || m42IntegerTypeWarn.reason !== 'output_schema_type_field_value_not_in_json_schema_primitive_set') {
+    throw new Error(`M42(x): warnings[] must include {capability: 'integer_type_cap', reason: 'output_schema_type_field_value_not_in_json_schema_primitive_set'}:\n${JSON.stringify(m42WarnJsonObj.warnings)}`);
+  }
+
+  // M42: aggregation_key closed two-value enum for every emitted bucket
+  const m42ValidAggregationKeys = new Set(['type', 'unknown']);
+  for (const entry of m42IndexJson.types) {
+    if (!m42ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M42: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for type '${entry.output_schema_top_level_type}'`);
+    }
+  }
+  const m42ObjectEntry = m42IndexJson.types.find((e) => e.output_schema_top_level_type === 'object');
+  const m42UnknownEntry = m42IndexJson.types.find((e) => e.output_schema_top_level_type === 'unknown');
+  if (!m42ObjectEntry || m42ObjectEntry.aggregation_key !== 'type') {
+    throw new Error(`M42: object type must have aggregation_key 'type', got: ${m42ObjectEntry ? m42ObjectEntry.aggregation_key : null}`);
+  }
+  if (!m42UnknownEntry || m42UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M42: unknown type must have aggregation_key 'unknown', got: ${m42UnknownEntry ? m42UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M42: has_destructive_side_effect flag correct per bucket (array bucket: list_records is destructive)
+  const m42ArrayEntry = m42IndexJson.types.find((e) => e.output_schema_top_level_type === 'array');
+  if (!m42ArrayEntry || m42ArrayEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M42: array bucket must have has_destructive_side_effect=true (list_records is destructive); got: ${JSON.stringify(m42ArrayEntry)}`);
+  }
+  if (!m42ObjectEntry || m42ObjectEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M42: object bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m42ObjectEntry)}`);
+  }
+
+  // M42: has_restricted_or_confidential_sensitivity flag correct per bucket (array bucket: list_records is restricted)
+  if (!m42ArrayEntry || m42ArrayEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M42: array bucket must have has_restricted_or_confidential_sensitivity=true (list_records is restricted); got: ${JSON.stringify(m42ArrayEntry)}`);
+  }
+  if (!m42ObjectEntry || m42ObjectEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M42: object bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m42ObjectEntry)}`);
+  }
+
+  // M42: within-bucket manifest declared order
+  // object bucket: get_record declared first
+  if (!m42ObjectEntry || m42ObjectEntry.capabilities[0] !== 'get_record') {
+    throw new Error(`M42: within object bucket, capabilities must follow manifest declared order (get_record first); got: ${JSON.stringify(m42ObjectEntry ? m42ObjectEntry.capabilities : null)}`);
+  }
+
+  // M42: tusq help enumerates 26 commands including 'response'
+  const m42HelpOutput = runCli(['help'], { cwd: m42TmpDir });
+  if (!m42HelpOutput.stdout.includes('response')) {
+    throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
+  }
+  const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m42CommandCount !== 26) {
+    throw new Error(`M42: tusq help must enumerate exactly 26 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  }
+
+  // M42: help text includes planning-aid framing
+  const m42HelpResult = runCli(['response', 'index', '--help'], { cwd: m42TmpDir });
+  if (!m42HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M42: response index help must include planning-aid framing:\n${m42HelpResult.stdout}`);
+  }
+
+  // M42: unknown subcommand exits 1
+  const m42UnknownSubCmd = runCli(['response', 'bogusub'], { cwd: m42TmpDir, expectedStatus: 1 });
+  if (!m42UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m42UnknownSubCmd.stdout !== '') {
+    throw new Error(`M42: unknown subcommand must exit 1:\nstdout=${m42UnknownSubCmd.stdout}\nstderr=${m42UnknownSubCmd.stderr}`);
+  }
+
+  // M42: 'integer' bucketed as unknown (not coerced to number)
+  const m42IntegerIndexJson = JSON.parse(runCli(['response', 'index', '--manifest', m42ManifestPath, '--json'], { cwd: m42TmpDir }).stdout);
+  const m42IntegerCapUnknown = m42IntegerIndexJson.types.find((e) => e.output_schema_top_level_type === 'unknown');
+  if (!m42IntegerCapUnknown || !m42IntegerCapUnknown.capabilities.includes('integer_type_cap')) {
+    throw new Error(`M42: integer_type_cap (output_schema.type='integer') must be bucketed as unknown, NOT as number:\n${JSON.stringify(m42IntegerIndexJson.types.map((e) => ({ type: e.output_schema_top_level_type, caps: e.capabilities })))}`);
+  }
+  const m42NumberEntry = m42IntegerIndexJson.types.find((e) => e.output_schema_top_level_type === 'number');
+  if (m42NumberEntry && m42NumberEntry.capabilities.includes('integer_type_cap')) {
+    throw new Error(`M42: integer_type_cap must NOT appear in the number bucket (no integer→number coercion)`);
+  }
+
+  await fs.rm(m42TmpDir, { recursive: true, force: true });
+  await fs.rm(m42CompileDir, { recursive: true, force: true });
+
   // ── M41: Static Capability Path Segment Count Tier Index Export ───────────────
   const m41TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m41-smoke-'));
 
@@ -3862,14 +4424,14 @@ async function run() {
     throw new Error(`M41: within low bucket, capabilities must follow manifest declared order (list_users, get_user); got: ${JSON.stringify(m41LowEntry ? m41LowEntry.capabilities : null)}`);
   }
 
-  // M41: tusq help enumerates 25 commands including 'path'
+  // M41: tusq help enumerates 26 commands including 'path' (M42 ships in this run)
   const m41HelpOutput = runCli(['help'], { cwd: m41TmpDir });
   if (!m41HelpOutput.stdout.includes('path')) {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 25) {
-    throw new Error(`M41: tusq help must enumerate exactly 25 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 26) {
+    throw new Error(`M41: tusq help must enumerate exactly 26 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -4417,14 +4979,14 @@ async function run() {
     throw new Error(`M40: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m40NoneEntry ? m40NoneEntry.capabilities : null)}`);
   }
 
-  // M40: tusq help enumerates 25 commands including 'output' and 'path' (M41 ships in this run)
+  // M40: tusq help enumerates 26 commands including 'output' and 'path' (M41/M42 ship in this run)
   const m40HelpOutput = runCli(['help'], { cwd: m40TmpDir });
   if (!m40HelpOutput.stdout.includes('output')) {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 25) {
-    throw new Error(`M40: tusq help must enumerate exactly 25 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 26) {
+    throw new Error(`M40: tusq help must enumerate exactly 26 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -4889,14 +5451,14 @@ async function run() {
     throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
   }
 
-  // M39: tusq help enumerates 25 commands including 'input' (M40/M41 ship in this run)
+  // M39: tusq help enumerates 26 commands including 'input' (M40/M41/M42 ship in this run)
   const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
   if (!m39HelpOutput.stdout.includes('input')) {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 25) {
-    throw new Error(`M39: tusq help must enumerate exactly 25 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 26) {
+    throw new Error(`M39: tusq help must enumerate exactly 26 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -5360,14 +5922,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 25 commands including 'examples' (M39/M40/M41 ship in this run)
+  // M38: tusq help enumerates 26 commands including 'examples' (M39/M40/M41/M42 ship in this run)
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 25) {
-    throw new Error(`M38: tusq help must enumerate exactly 25 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 26) {
+    throw new Error(`M38: tusq help must enumerate exactly 26 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -5843,14 +6405,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 25 commands including 'pii' (M38/M39/M40/M41 ship in this run)
+  // M37: tusq help enumerates 26 commands including 'pii' (M38/M39/M40/M41/M42 ship in this run)
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 25) {
-    throw new Error(`M37: tusq help must enumerate exactly 25 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 26) {
+    throw new Error(`M37: tusq help must enumerate exactly 26 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -6301,14 +6863,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 25 commands including 'confidence' (M37/M38/M39/M40/M41 ship in this run)
+  // M36: tusq help enumerates 26 commands including 'confidence' (M37/M38/M39/M40/M41/M42 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 25) {
-    throw new Error(`M36: tusq help must enumerate exactly 25 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 26) {
+    throw new Error(`M36: tusq help must enumerate exactly 26 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -6694,14 +7256,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 25 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', and 'path' (M36/M37/M38/M39/M40/M41 ship in this run)
+  // M35: tusq help enumerates 26 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', and 'response' (M36/M37/M38/M39/M40/M41/M42 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 25) {
-    throw new Error(`M35: tusq help must enumerate exactly 25 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 26) {
+    throw new Error(`M35: tusq help must enumerate exactly 26 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

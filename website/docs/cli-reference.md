@@ -888,6 +888,54 @@ tusq redaction review --json
 tusq redaction review --capability post_auth_auth --json
 ```
 
+## `tusq response index`
+
+Index capabilities by the JSON Schema primitive type declared in their `output_schema.type` field. Groups capabilities into seven type buckets (`object`, `array`, `string`, `number`, `boolean`, `null`, `unknown`) for planning review. This is a **planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier**.
+
+```bash
+tusq response index [--type <object|array|string|number|boolean|null|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--type <value>` | all types | Filter to a single type bucket. Case-sensitive lowercase; `OBJECT` exits 1. |
+| `--manifest <path>` | `tusq.manifest.json` | Path to manifest file. |
+| `--out <path>` | stdout | Write JSON output to file. Rejected if inside `.tusq/`. |
+| `--json` | human text | Emit machine-readable JSON with `types[]` and `warnings[]`. |
+
+**Type rule:** Bucket key is the literal `output_schema.type` value if it is one of the six JSON Schema 2020-12 spec primitives (`object`, `array`, `string`, `number`, `boolean`, `null`). Bucketed as `unknown` if `output_schema` or `output_schema.type` is missing/malformed, the type string is not in the spec primitive set (e.g., `'integer'`, `'tuple'`, `'enum'`), or `output_schema.type` is an array (array-of-types). `'integer'` → `unknown` (integer-subset distinction reserved for `M-Output-Type-Integer-Subset-Index-1`). Compositional schemas (`oneOf`/`anyOf`/`allOf`) without a top-level `type` → `unknown`.
+
+**Bucket order (closed-enum):** `object → array → string → number → boolean → null → unknown` — deterministic stable-output convention only (NOT data-contract-completeness-ranked, NOT shape-complexity-ranked).
+
+**Warnings** (in `--json` mode, always present even when empty):
+
+| Reason code | When |
+|-------------|------|
+| `output_schema_field_missing` | Capability has no `output_schema` field |
+| `output_schema_field_not_object` | `output_schema` is not a plain object |
+| `output_schema_type_field_missing` | `output_schema` has no `type` field |
+| `output_schema_type_field_not_string` | `output_schema.type` is not a string |
+| `output_schema_type_field_value_not_in_json_schema_primitive_set` | `output_schema.type` is a string but not a spec primitive |
+
+**Examples:**
+
+```bash
+# All types (human-readable)
+tusq response index
+
+# All types (JSON)
+tusq response index --json
+
+# Single type bucket
+tusq response index --type object --json
+
+# Unknown bucket only
+tusq response index --type unknown --json
+
+# Write to file
+tusq response index --out response-type-index.json
+```
+
 ## `tusq version`
 
 Print the current version.

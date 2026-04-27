@@ -213,6 +213,25 @@ const PATH_SEGMENT_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tie
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const PATH_SEGMENT_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
 
+// M42: frozen seven-value output_schema_top_level_type bucket-key enum. Immutable once M42 ships.
+// The six spec primitives are the JSON Schema 2020-12 core type values (object, array, string, number, boolean, null).
+// 'integer' is intentionally NOT a separate bucket — per JSON Schema spec, 'integer' is a subset of 'number';
+// capabilities with type:'integer' are bucketed as 'unknown' with reason output_schema_type_field_value_not_in_json_schema_primitive_set.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const OUTPUT_SCHEMA_TOP_LEVEL_TYPE_ENUM = Object.freeze(new Set(['object', 'array', 'string', 'number', 'boolean', 'null', 'unknown']));
+
+// M42: frozen two-value aggregation_key enum (parallel to M31–M41). Immutable once M42 ships.
+// An implementation-time guard fires if buildOutputSchemaTopLevelTypeIndex produces a key outside this set.
+const OUTPUT_SCHEMA_TOP_LEVEL_TYPE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['type', 'unknown']));
+
+// M42: closed-enum bucket iteration order (object → array → string → number → boolean → null). NOT data-contract-completeness-ranked —
+// deterministic stable-output convention only (matches JSON Schema 2020-12 spec primitive enumeration order but carries
+// no semantic claim about contract richness, blast radius, or shape complexity).
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+// MUST NOT be described as "data-contract-completeness-ranked," "shape-complexity-ranked," "data-lineage-blast-radius-ranked,"
+// "DTO-richness-ranked," or "JSON-Schema-spec-precedence-ranked."
+const OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER = Object.freeze(['object', 'array', 'string', 'number', 'boolean', 'null']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -360,6 +379,9 @@ function dispatch(argv) {
       return;
     case 'redaction':
       cmdRedaction(args);
+      return;
+    case 'response':
+      cmdResponse(args);
       return;
     case 'sensitivity':
       cmdSensitivity(args);
@@ -4975,6 +4997,343 @@ function formatPathSegmentCountTierIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M42: tusq response — top-level noun dispatcher
+function cmdResponse(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('response');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdResponseIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M42: tusq response index — handler
+function cmdResponseIndex(args) {
+  const { opts, positionals } = parseResponseIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('response index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildOutputSchemaTopLevelTypeIndex(manifest, manifestPath);
+
+  const typeFilter = opts.type || null;
+  let outputIndex;
+  if (typeFilter !== null) {
+    // Case-sensitive: lowercase canonical output_schema_top_level_type values; anything else exits 1
+    if (!OUTPUT_SCHEMA_TOP_LEVEL_TYPE_ENUM.has(typeFilter)) {
+      throw new CliError(`Unknown output schema top-level type: ${typeFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.types.find((e) => e.output_schema_top_level_type === typeFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for output schema top-level type: ${typeFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { types: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatOutputSchemaTopLevelTypeIndex(outputIndex));
+}
+
+function parseResponseIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['type', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardOutputSchemaTopLevelTypeBucketKey(key) {
+  if (!OUTPUT_SCHEMA_TOP_LEVEL_TYPE_ENUM.has(key)) {
+    throw new Error(`Internal error: output_schema_top_level_type outside closed seven-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardOutputSchemaTopLevelTypeAggregationKey(key) {
+  if (!OUTPUT_SCHEMA_TOP_LEVEL_TYPE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M42: classifyOutputSchemaTopLevelType(output_schema) → 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null' | 'unknown'
+// Tier function is a literal exact-string match against the closed six-value JSON Schema 2020-12 spec primitive set.
+// 'integer' and any other non-spec-primitive value bucket as 'unknown'.
+// null/undefined/not-plain-object output_schema → 'unknown'
+// null/undefined/missing/not-a-string output_schema.type → 'unknown'
+// output_schema.type is an array → 'unknown' (array-of-types: type: ['object', 'null'] → unknown, typeof array !== 'string')
+// output_schema.type is a string but not in the closed six-value set → 'unknown'
+// No oneOf/anyOf/allOf walking, no items walking, no properties walking.
+function classifyOutputSchemaTopLevelType(outputSchema) {
+  if (outputSchema === null || outputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+    return 'unknown';
+  }
+  if (!Object.prototype.hasOwnProperty.call(outputSchema, 'type')) {
+    return 'unknown';
+  }
+  const typeVal = outputSchema.type;
+  if (typeVal === null || typeVal === undefined || typeof typeVal !== 'string') {
+    return 'unknown';
+  }
+  // OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER is the closed six-value JSON Schema 2020-12 spec primitive set
+  if (OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER.includes(typeVal)) {
+    return typeVal;
+  }
+  return 'unknown';
+}
+
+// M42: buildOutputSchemaTopLevelTypeIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered output schema top-level type index from the manifest's capabilities[].
+// Bucket iteration order: object → array → string → number → boolean → null (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// output_schema_top_level_type MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildOutputSchemaTopLevelTypeIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      types: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) type values — the six ordered bucket keys.
+  const namedTypes = new Set(OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their output_schema_top_level_type.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const outputSchema = Object.prototype.hasOwnProperty.call(capability, 'output_schema')
+      ? capability.output_schema
+      : undefined;
+
+    // Determine warning reason if output_schema or type is malformed
+    let warningReason = null;
+    if (outputSchema === undefined || outputSchema === null) {
+      warningReason = 'output_schema_field_missing';
+    } else if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+      warningReason = 'output_schema_field_not_object';
+    } else if (!Object.prototype.hasOwnProperty.call(outputSchema, 'type')) {
+      warningReason = 'output_schema_type_field_missing';
+    } else if (outputSchema.type === null || outputSchema.type === undefined || typeof outputSchema.type !== 'string') {
+      warningReason = 'output_schema_type_field_not_string';
+    } else if (!OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER.includes(outputSchema.type)) {
+      warningReason = 'output_schema_type_field_value_not_in_json_schema_primitive_set';
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const typeBucket = classifyOutputSchemaTopLevelType(outputSchema);
+    const isNamedBucket = namedTypes.has(typeBucket);
+    const bucketKey = isNamedBucket ? typeBucket : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: object → array → string → number → boolean → null, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const types = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const typeKey = isUnknownBucket ? _guardOutputSchemaTopLevelTypeBucketKey('unknown') : _guardOutputSchemaTopLevelTypeBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardOutputSchemaTopLevelTypeAggregationKey('unknown') : _guardOutputSchemaTopLevelTypeAggregationKey('type');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      output_schema_top_level_type: typeKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    types,
+    warnings
+  };
+}
+
+// M42: format output schema top-level type index as human-readable text
+function formatOutputSchemaTopLevelTypeIndex(index) {
+  if (index.types.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Output Schema Top-Level Type Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier. Types are deterministic stable-output ordering only (NOT data-contract-completeness-ranked, NOT shape-complexity-ranked).',
+    ''
+  ];
+
+  for (const entry of index.types) {
+    lines.push(`[${entry.output_schema_top_level_type}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Type rule: bucket key is the literal output_schema.type value if it is one of the six JSON Schema 2020-12 spec primitives (object, array, string, number, boolean, null); unknown if output_schema or output_schema.type is missing/malformed or the type string is not in the spec primitive set (e.g., 'integer', 'tuple', or compositional schemas without a top-level type).");
+  lines.push('Bucket order: object → array → string → number → boolean → null → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -6139,6 +6498,7 @@ function printHelp() {
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
+  process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  version            Print version and exit\n');
@@ -6378,6 +6738,36 @@ function printCommandHelp(command) {
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    response: 'Usage: tusq response <subcommand>\n  Subcommands: index',
+    'response index': [
+      'Usage: tusq response index [--type <object|array|string|number|boolean|null|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --type <object|array|string|number|boolean|null|unknown>  Filter to a single output schema top-level type bucket (default: all types; case-sensitive lowercase)',
+      '  --manifest <path>                                         Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                                              Write index to file (no stdout on success)',
+      '  --json                                                    Emit machine-readable JSON (includes warnings[] for malformed output_schema)',
+      '',
+      'Type rule (literal match against JSON Schema 2020-12 spec primitives):',
+      "  object   if output_schema.type === 'object'",
+      "  array    if output_schema.type === 'array'",
+      "  string   if output_schema.type === 'string'",
+      "  number   if output_schema.type === 'number'",
+      "  boolean  if output_schema.type === 'boolean'",
+      "  null     if output_schema.type === 'null'",
+      '  unknown  if output_schema or output_schema.type is missing/malformed, or the type string is not in the spec primitive set',
+      "           Note: 'integer' is bucketed as unknown (per JSON Schema spec, integer is a subset of number — not a separate primitive).",
+      '           Compositional schemas (oneOf/anyOf/allOf without top-level type) are bucketed as unknown.',
+      "           Array-of-types (type: ['object', 'null']) are bucketed as unknown (output_schema.type is an array not a string).",
+      '',
+      'Bucket iteration order: object → array → string → number → boolean → null → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown type, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier; types are deterministic stable-output ordering only (NOT data-contract-completeness-ranked).'
+    ].join('\n'),
     sensitivity: 'Usage: tusq sensitivity <subcommand>\n  Subcommands: index',
     'sensitivity index': [
       'Usage: tusq sensitivity index [--sensitivity <public|internal|confidential|restricted|unknown>] [--manifest <path>] [--out <path>] [--json]',

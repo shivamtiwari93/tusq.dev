@@ -410,6 +410,45 @@ The `tusq output index` command (M40) derives a per-tier capability breakdown fr
 
 **Non-persistence:** `output_schema_property_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq output index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Output Schema Top-Level Type Index
+
+The `tusq response index` command (M42) derives a per-type capability breakdown from each capability's `output_schema.type` field. This axis is orthogonal to the M40 Output Schema Property Count Tier (M40 asks "how many top-level properties?"; M42 asks "what JSON Schema primitive shape?"). Both read the `output_schema` field written by the M11/M14/M24 scan/compile pipeline; neither modifies it.
+
+**Type function** (literal exact-string match against the six JSON Schema 2020-12 spec primitives):
+
+| Type bucket | Condition |
+|-------------|-----------|
+| `object` | `output_schema.type === 'object'` |
+| `array` | `output_schema.type === 'array'` |
+| `string` | `output_schema.type === 'string'` |
+| `number` | `output_schema.type === 'number'` |
+| `boolean` | `output_schema.type === 'boolean'` |
+| `null` | `output_schema.type === 'null'` |
+| `unknown` | All other cases (see below) |
+
+**`unknown` bucket conditions:** `output_schema` is missing, null, or not a plain object; `output_schema.type` is missing, null, or not a string; `output_schema.type` is a string not in the spec primitive set (including `'integer'`, `'tuple'`, `'enum'`, any custom value); `output_schema.type` is an array (array-of-types like `['object', 'null']`).
+
+**`'integer'` → `unknown`:** The JSON Schema spec defines `integer` as a subset of `number`, but M42 does NOT coerce `'integer'` to `'number'`. `'integer'` is bucketed as `unknown` with reason `output_schema_type_field_value_not_in_json_schema_primitive_set`. This distinction is reserved for `M-Output-Type-Integer-Subset-Index-1`.
+
+**Compositional schemas:** Schemas using `oneOf`/`anyOf`/`allOf` without a top-level `type` field are bucketed as `unknown` (reason `output_schema_type_field_missing`). No schema walking is performed.
+
+**Array-of-types:** When `output_schema.type` is an array (valid in JSON Schema 2020-12 multi-type form), it is bucketed as `unknown` (reason `output_schema_type_field_not_string`) because the value is not a string.
+
+**Malformed values:** When a capability's `output_schema` is malformed, a `Warning: capability '<name>' has malformed output_schema (<reason>)` is emitted to stderr (human mode) or recorded in `warnings[]` (JSON mode). Five frozen reason codes:
+- `output_schema_field_missing` — no `output_schema` key on the capability
+- `output_schema_field_not_object` — `output_schema` is not a plain object
+- `output_schema_type_field_missing` — `output_schema` has no `type` field
+- `output_schema_type_field_not_string` — `output_schema.type` is not a string
+- `output_schema_type_field_value_not_in_json_schema_primitive_set` — `output_schema.type` is a string but not one of the six JSON Schema 2020-12 core primitive types
+
+**Bucket iteration order:** `object → array → string → number → boolean → null → unknown` (closed-enum deterministic stable-output convention only — NOT data-contract-completeness-ranked, NOT shape-complexity-ranked, NOT data-lineage-blast-radius-ranked, NOT DTO-richness-ranked, NOT JSON-Schema-spec-precedence-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--type` filter:** Only lowercase values match. `--type OBJECT` exits 1 with `Unknown output schema top-level type: OBJECT`.
+
+**Non-persistence:** `output_schema_top_level_type` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq response index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ### Path Segment Count Tier Index
 
 The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.
