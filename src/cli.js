@@ -153,6 +153,21 @@ const PII_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier',
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const PII_FIELD_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
 
+// M38: frozen five-value examples_count_tier bucket-key enum. Immutable once M38 ships.
+// Tier function thresholds (0/2/5/6) are immutable once M38 ships. Any addition or threshold change is a governance event.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const EXAMPLES_COUNT_TIER_ENUM = Object.freeze(new Set(['none', 'low', 'medium', 'high', 'unknown']));
+
+// M38: frozen two-value aggregation_key enum (parallel to M31–M37). Immutable once M38 ships.
+// An implementation-time guard fires if buildExamplesCountTierIndex produces a key outside this set.
+const EXAMPLES_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M38: closed-enum bucket iteration order (none → low → medium → high). NOT coverage-quality-ranked —
+// deterministic stable-output convention only. MUST NOT be described as "coverage-quality-ranked,"
+// "test-strength-ranked," or "eval-readiness-ranked."
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const EXAMPLES_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -276,6 +291,9 @@ function dispatch(argv) {
       return;
     case 'effect':
       cmdEffect(args);
+      return;
+    case 'examples':
+      cmdExamples(args);
       return;
     case 'method':
       cmdMethod(args);
@@ -3531,6 +3549,344 @@ function formatPiiFieldCountTierIndex(index) {
   return lines.join('\n');
 }
 
+// M38: tusq examples — top-level noun dispatcher
+function cmdExamples(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('examples');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdExamplesIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M38: tusq examples index — handler
+function cmdExamplesIndex(args) {
+  const { opts, positionals } = parseExamplesIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('examples index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildExamplesCountTierIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical examples_count_tier values; anything else exits 1
+    if (!EXAMPLES_COUNT_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown examples count tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.examples_count_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for examples count tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed examples (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed examples (${w.reason})\n`);
+  }
+  process.stdout.write(formatExamplesCountTierIndex(outputIndex));
+}
+
+function parseExamplesIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardExamplesCountTierBucketKey(key) {
+  if (!EXAMPLES_COUNT_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: examples_count_tier outside closed five-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardExamplesCountTierAggregationKey(key) {
+  if (!EXAMPLES_COUNT_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M38: classifyExamplesCountTier(examples) → 'none' | 'low' | 'medium' | 'high' | 'unknown'
+// Tier function thresholds (0/2/5/6) are immutable once M38 ships — any change is a governance event.
+// Valid examples: array of plain non-null non-array objects.
+// null/undefined/missing/not-an-array/non-object-element/null-element/array-element → 'unknown' (with warning).
+function classifyExamplesCountTier(examples) {
+  if (!Array.isArray(examples)) {
+    return 'unknown';
+  }
+  for (const el of examples) {
+    if (el === null || Array.isArray(el) || typeof el !== 'object') {
+      return 'unknown';
+    }
+  }
+  const len = examples.length;
+  if (len === 0) return 'none';
+  if (len <= 2) return 'low';
+  if (len <= 5) return 'medium';
+  return 'high';
+}
+
+// M38: buildExamplesCountTierIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered examples count tier index from the manifest's capabilities[].
+// Bucket iteration order: none → low → medium → high (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// examples_count_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildExamplesCountTierIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the four ordered bucket keys.
+  const namedTiers = new Set(EXAMPLES_COUNT_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their examples_count_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const examples = Object.prototype.hasOwnProperty.call(capability, 'examples')
+      ? capability.examples
+      : undefined;
+
+    // Determine warning reason if examples is malformed
+    let warningReason = null;
+    if (examples === undefined || examples === null) {
+      warningReason = examples === null ? 'examples_field_missing' : 'examples_field_missing';
+    } else if (!Array.isArray(examples)) {
+      warningReason = 'examples_field_not_array';
+    } else {
+      for (let i = 0; i < examples.length; i += 1) {
+        const el = examples[i];
+        if (el === null) {
+          warningReason = 'examples_array_contains_null_element';
+          break;
+        }
+        if (Array.isArray(el)) {
+          warningReason = 'examples_array_contains_array_element';
+          break;
+        }
+        if (typeof el !== 'object') {
+          warningReason = 'examples_array_contains_non_object_element';
+          break;
+        }
+      }
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const tier = classifyExamplesCountTier(examples);
+    const isNamedBucket = namedTiers.has(tier);
+    const bucketKey = isNamedBucket ? tier : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: none → low → medium → high, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...EXAMPLES_COUNT_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const examplesTier = isUnknownBucket ? _guardExamplesCountTierBucketKey('unknown') : _guardExamplesCountTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardExamplesCountTierAggregationKey('unknown') : _guardExamplesCountTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      examples_count_tier: examplesTier,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M38: format examples count tier index as human-readable text
+function formatExamplesCountTierIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Examples Count Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime example executor, schema validator, example generator, or eval-readiness certifier. Tiers are deterministic stable-output ordering only (NOT coverage-quality-ranked, NOT test-strength-ranked, NOT eval-readiness-ranked).',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.examples_count_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push('Tier function: none if examples.length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if missing/not-array/non-object-element/null-element/array-element.');
+  lines.push('Bucket order: none → low → medium → high → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -4687,6 +5043,7 @@ function printHelp() {
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
+  process.stdout.write('  examples           Index capabilities by examples count tier for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
@@ -4778,6 +5135,31 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown effect, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime side-effect enforcer or risk-tier classifier.'
+    ].join('\n'),
+    examples: 'Usage: tusq examples <subcommand>\n  Subcommands: index',
+    'examples index': [
+      'Usage: tusq examples index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <none|low|medium|high|unknown>  Filter to a single examples count tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                      Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                           Write index to file (no stdout on success)',
+      '  --json                                 Emit machine-readable JSON (includes warnings[] for malformed examples)',
+      '',
+      'Tier function (applied to examples[] array length):',
+      '  none    if length === 0',
+      '  low     if 1 <= length <= 2',
+      '  medium  if 3 <= length <= 5',
+      '  high    if length >= 6',
+      '  unknown if examples is null/missing/not-an-array, contains a null element, an array element, or a non-object element',
+      '',
+      'Bucket iteration order: none → low → medium → high → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime example executor, schema validator, example generator, or eval-readiness certifier; tiers are deterministic stable-output ordering only (NOT coverage-quality-ranked).'
     ].join('\n'),
     method: 'Usage: tusq method <subcommand>\n  Subcommands: index',
     'method index': [

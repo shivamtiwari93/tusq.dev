@@ -576,6 +576,62 @@ tusq effect index --effect unknown --json
 tusq effect index --out effect-index.json
 ```
 
+## `tusq examples index`
+
+Emit a deterministic, per-examples-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `examples[]` array in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `examples` field is missing, `null`, not an array, or contains a `null`, array, or non-object element. This is a **planning aid, not a runtime examples validator, documentation-completeness enforcer, or compliance certifier**.
+
+```bash
+tusq examples index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to a single examples count tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent tier, `--out` path error, or unknown subcommand
+
+**Tier function thresholds:**
+
+| `capability.examples` condition | Tier |
+|---------------------------------|------|
+| Valid array, length === 0 | `none` |
+| Valid array, 1 ≤ length ≤ 2 | `low` |
+| Valid array, 3 ≤ length ≤ 5 | `medium` |
+| Valid array, length ≥ 6 | `high` |
+| Missing / null / not-an-array / contains null/array/non-object | `unknown` |
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (closed-enum order — NOT a documentation-quality ranking). Empty buckets do not appear.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains `{ capability, reason }` objects for each capability landing in the `unknown` bucket due to malformed `examples` field data. Warning reason codes: `examples_field_missing`, `examples_field_not_array`, `examples_array_contains_null_element`, `examples_array_contains_array_element`, `examples_array_contains_non_object_element`. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `examples_count_tier` is NOT written into the manifest — it is derived at read-time only.
+- The five-value `examples_count_tier` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A examples count tier index is NOT a runtime enforcer, NOT an API docs quality gate, and does NOT re-classify or modify any capability field.
+
+```bash
+# All tiers (human-readable)
+tusq examples index
+
+# All tiers (JSON)
+tusq examples index --json
+
+# Single tier
+tusq examples index --tier high --json
+
+# Zero-evidence bucket
+tusq examples index --tier unknown --json
+
+# Write to file
+tusq examples index --out examples-index.json
+```
+
 ## `tusq method index`
 
 Emit a deterministic, per-HTTP-method capability index from manifest evidence. Groups capabilities by their verbatim `method` field value in closed-enum order (`GET → POST → PUT → PATCH → DELETE → unknown`), with a special `unknown` bucket for capabilities whose `method` is `null`, missing, empty-string, or any non-canonical value (HEAD, OPTIONS, etc.). This is a **planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier**.

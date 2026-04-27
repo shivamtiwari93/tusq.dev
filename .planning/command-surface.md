@@ -1377,6 +1377,106 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
 
+## M38 Product CLI Surface
+
+M38 (Static Capability Examples Count Tier Index Export from Manifest Evidence — V1.19) adds the `examples` top-level noun with a single subcommand `index`. The CLI surface grows from **21 → 22** commands, with `examples` inserted alphabetically between `effect` and `method` (`effect` vs `examples`: `e` = `e`, `f` (102) < `x` (120); `examples` vs `method`: `e` < `m`).
+
+### M38 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq examples` | Print enumerate-subcommands block for examples |
+| `tusq examples index` | Index capabilities by examples count tier (static, read-only, planning aid) |
+
+### M38 Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to single examples count tier bucket; **case-sensitive lowercase only**; unrecognized value exits 1 with `Unknown examples count tier: <value>`; valid-but-absent tier exits 1 with `No capabilities found for examples count tier: <tier>` |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+### M38 Frozen Five-Value `examples_count_tier` Bucket-Key Enum
+
+`none | low | medium | high | unknown`
+
+The enum is immutable once M38 ships. Any addition is a material governance event requiring its own ROADMAP milestone. `examples_count_tier` is derived entirely from `capability.examples[]` array cardinality (M11-derived) and is distinct from M37's `pii_field_count_tier` (which derives from string-shaped per-field hints).
+
+### M38 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `tier` | Named tier buckets (`none`, `low`, `medium`, `high`) |
+| `unknown` | Zero-evidence / malformed examples catchall |
+
+### M38 Frozen Tier Function Thresholds
+
+| `capability.examples` condition | `examples_count_tier` |
+|---------------------------------|-----------------------|
+| Valid array, `length === 0` | `none` |
+| Valid array, `1 ≤ length ≤ 2` | `low` |
+| Valid array, `3 ≤ length ≤ 5` | `medium` |
+| Valid array, `length ≥ 6` | `high` |
+| Field missing / `null` / not-an-array | `unknown` (warning: `examples_field_missing` or `examples_field_not_array`) |
+| Array contains `null` element | `unknown` (warning: `examples_array_contains_null_element`) |
+| Array contains array element | `unknown` (warning: `examples_array_contains_array_element`) |
+| Array contains non-object element (other) | `unknown` (warning: `examples_array_contains_non_object_element`) |
+
+Function examines each element; first non-object/null/array element short-circuits to `unknown`.
+
+### M38 Bucket Iteration Order
+
+`none → low → medium → high → unknown` (closed-enum order — NOT an examples-richness ranking)
+
+### M38 Per-Bucket 8-Field Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `examples_count_tier` | string | One of the five enum values |
+| `aggregation_key` | string | `"tier"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability in bucket has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | True iff any capability in bucket has `sensitivity_class` in `{restricted, confidential}` |
+
+### M38 Warnings Shape
+
+Warnings are emitted when `examples_count_tier === "unknown"` due to malformed `examples` field data.
+
+- **JSON mode**: `warnings[]` array of `{ capability: string, reason: string }` objects appended to the JSON output object.
+- **Human mode**: warning lines on stderr only.
+
+Frozen five-value warning reason code enum: `examples_field_missing | examples_field_not_array | examples_array_contains_null_element | examples_array_contains_array_element | examples_array_contains_non_object_element`
+
+### M38 Failure UX
+
+| Condition | Exit | stderr | stdout |
+|-----------|------|--------|--------|
+| Missing manifest | 1 | `Manifest not found: <path>` | empty |
+| Malformed JSON | 1 | `Invalid manifest JSON: <path>` | empty |
+| Missing capabilities | 1 | `Invalid manifest: missing capabilities array` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| Unknown tier filter value | 1 | `Unknown examples count tier: <value>` | empty |
+| Valid tier but no capabilities | 1 | `No capabilities found for examples count tier: <tier>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+| Empty capabilities | 0 | — | `No capabilities in manifest — nothing to index.` |
+
+### M38 Local-Only Invariants
+
+- Zero manifest mutations; `tusq.manifest.json` mtime/content byte-identical before and after every invocation
+- `examples_count_tier` MUST NOT be written into `tusq.manifest.json`
+- All prior index commands (`tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`) produce byte-identical output pre and post-M38
+- Zero new dependencies in `package.json`
+
+### M38 Planning-Aid Boundary
+
+This is a planning aid, not a runtime examples validator, documentation completeness enforcer, or compliance certifier. `examples_count_tier` is reviewer-aid metadata derived from `capability.examples[]` array cardinality and is NOT persisted into the manifest.
+
 ## M37 Product CLI Surface
 
 M37 (Static Capability PII Field Count Tier Index Export from Manifest Evidence — V1.18) adds the `pii` top-level noun with a single subcommand `index`. The CLI surface grows from **20 → 21** commands, with `pii` inserted alphabetically between `method` and `policy` (`method` vs `pii`: `m` < `p`; `pii` vs `policy`: `pi` < `po` because `i` < `o`).

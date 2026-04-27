@@ -3352,6 +3352,477 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M38: Static Capability Examples Count Tier Index Export ──────────────────
+  const m38TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m38-smoke-'));
+
+  // M38 fixture manifest: capabilities across none/low/medium/high/unknown examples tiers.
+  // Declared order: health_check(none), list_orders(none), get_profile(low,confidential),
+  // process_payment(medium,destructive), bulk_export(high,destructive,restricted),
+  // legacy_sync(unknown-missing examples field), bad_cap(unknown-null element)
+  const m38Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'health_check',
+        description: 'Health endpoint',
+        method: 'GET',
+        path: '/health',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        examples: []
+      },
+      {
+        name: 'list_orders',
+        description: 'List orders',
+        method: 'GET',
+        path: '/orders',
+        domain: 'orders',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        examples: []
+      },
+      {
+        name: 'get_profile',
+        description: 'Get user profile',
+        method: 'GET',
+        path: '/profile',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'confidential',
+        approved: false,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['email'], pii_categories: ['email'] },
+        examples: [{ input: {}, output: {} }]
+      },
+      {
+        name: 'process_payment',
+        description: 'Process a payment',
+        method: 'POST',
+        path: '/payments',
+        domain: 'billing',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        examples: [{ input: {}, output: {} }, { input: {}, output: {} }, { input: {}, output: {} }]
+      },
+      {
+        name: 'bulk_export',
+        description: 'Bulk data export',
+        method: 'POST',
+        path: '/export',
+        domain: 'data',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        examples: [{ input: {}, output: {} }, { input: {}, output: {} }, { input: {}, output: {} }, { input: {}, output: {} }, { input: {}, output: {} }, { input: {}, output: {} }]
+      },
+      {
+        name: 'legacy_sync',
+        description: 'Legacy sync route',
+        method: 'POST',
+        path: '/sync',
+        domain: 'admin',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'api_key', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // examples field is absent → unknown bucket, reason: examples_field_missing
+      },
+      {
+        name: 'bad_cap',
+        description: 'Capability with malformed examples (null element)',
+        method: 'GET',
+        path: '/bad',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        examples: [null]
+        // examples contains a null element → unknown bucket, reason: examples_array_contains_null_element
+      }
+    ]
+  };
+
+  const m38ManifestPath = path.join(m38TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m38ManifestPath, JSON.stringify(m38Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m38TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M38(a): default tusq examples index produces exit 0 and per-bucket entries in closed-enum order
+  const m38DefaultResult = runCli(['examples', 'index', '--manifest', m38ManifestPath], { cwd: m38TmpDir });
+  if (!m38DefaultResult.stdout.includes('[none]') || !m38DefaultResult.stdout.includes('[low]') || !m38DefaultResult.stdout.includes('[high]') || !m38DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M38(a): default index must include all present buckets (none,low,high,unknown):\n${m38DefaultResult.stdout}`);
+  }
+  if (!m38DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M38(a): default index must include planning-aid framing:\n${m38DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: none before low before high before unknown
+  const m38DefaultLines = m38DefaultResult.stdout.split('\n');
+  const m38NonePos = m38DefaultLines.findIndex((l) => l === '[none]');
+  const m38LowPos = m38DefaultLines.findIndex((l) => l === '[low]');
+  const m38HighPos = m38DefaultLines.findIndex((l) => l === '[high]');
+  const m38UnknownPos = m38DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m38NonePos < m38LowPos && m38LowPos < m38HighPos && m38HighPos < m38UnknownPos)) {
+    throw new Error(`M38(a): bucket order must be none < low < high < unknown; got positions none=${m38NonePos} low=${m38LowPos} high=${m38HighPos} unknown=${m38UnknownPos}`);
+  }
+
+  // M38(b): --json output has all 8 per-bucket fields, top-level shape, and warnings[] always present
+  const m38Json1 = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38IndexJson = JSON.parse(m38Json1.stdout);
+  if (!Array.isArray(m38IndexJson.tiers) || m38IndexJson.tiers.length === 0) {
+    throw new Error(`M38(b): JSON output must have tiers array with at least one entry:\n${m38Json1.stdout}`);
+  }
+  const m38FirstEntry = m38IndexJson.tiers[0];
+  const m38RequiredFields = ['examples_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m38RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m38FirstEntry, field)) {
+      throw new Error(`M38(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m38FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m38IndexJson, 'warnings') || !Array.isArray(m38IndexJson.warnings)) {
+    throw new Error(`M38(b): JSON output must have top-level warnings[] array:\n${m38Json1.stdout}`);
+  }
+  if (m38IndexJson.warnings.length < 2) {
+    throw new Error(`M38(b): warnings[] must contain entries for legacy_sync (missing) and bad_cap (null element):\n${JSON.stringify(m38IndexJson.warnings)}`);
+  }
+
+  // M38(c): --tier filter (case-sensitive lowercase) returns single matching bucket
+  const m38TierFilter = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier', 'high', '--json'], { cwd: m38TmpDir });
+  const m38TierFilterJson = JSON.parse(m38TierFilter.stdout);
+  if (m38TierFilterJson.tiers.length !== 1 || m38TierFilterJson.tiers[0].examples_count_tier !== 'high') {
+    throw new Error(`M38(c): --tier high must return exactly one high bucket:\n${m38TierFilter.stdout}`);
+  }
+
+  // M38(d): --tier low returns single matching bucket
+  const m38LowTierFilter = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier', 'low', '--json'], { cwd: m38TmpDir });
+  const m38LowTierJson = JSON.parse(m38LowTierFilter.stdout);
+  if (m38LowTierJson.tiers.length !== 1 || m38LowTierJson.tiers[0].examples_count_tier !== 'low') {
+    throw new Error(`M38(d): --tier low must return exactly one low bucket:\n${m38LowTierFilter.stdout}`);
+  }
+
+  // M38(e): --tier medium returns single matching bucket (process_payment has 3 examples)
+  const m38MediumTierFilter = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier', 'medium', '--json'], { cwd: m38TmpDir });
+  const m38MediumTierJson = JSON.parse(m38MediumTierFilter.stdout);
+  if (m38MediumTierJson.tiers.length !== 1 || m38MediumTierJson.tiers[0].examples_count_tier !== 'medium') {
+    throw new Error(`M38(e): --tier medium must return exactly one medium bucket:\n${m38MediumTierFilter.stdout}`);
+  }
+
+  // M38(f): --tier unknown with no malformed capabilities exits 1 with documented message
+  const m38NoneOnlyManifestPath = path.join(m38TmpDir, 'none-only.json');
+  await fs.writeFile(m38NoneOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, examples: [] },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, examples: [] }
+    ]
+  }, null, 2), 'utf8');
+  const m38UnknownOnCleanManifest = runCli(['examples', 'index', '--manifest', m38NoneOnlyManifestPath, '--tier', 'unknown'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38UnknownOnCleanManifest.stderr.includes('No capabilities found for examples count tier: unknown') || m38UnknownOnCleanManifest.stdout !== '') {
+    throw new Error(`M38(f): --tier unknown with no malformed caps must exit 1 with correct message:\nstdout=${m38UnknownOnCleanManifest.stdout}\nstderr=${m38UnknownOnCleanManifest.stderr}`);
+  }
+
+  // M38(g): --tier HIGH (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m38UppercaseTier = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier', 'HIGH'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38UppercaseTier.stderr.includes('Unknown examples count tier: HIGH') || m38UppercaseTier.stdout !== '') {
+    throw new Error(`M38(g): --tier HIGH (uppercase) must exit 1 with Unknown examples count tier: message:\nstdout=${m38UppercaseTier.stdout}\nstderr=${m38UppercaseTier.stderr}`);
+  }
+
+  // M38(h): --tier xyz (unknown tier) exits 1
+  const m38BogusFilter = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier', 'xyz'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38BogusFilter.stderr.includes('Unknown examples count tier: xyz') || m38BogusFilter.stdout !== '') {
+    throw new Error(`M38(h): --tier xyz must exit 1 with Unknown examples count tier: message`);
+  }
+
+  // M38(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m38MissingManifest = runCli(['examples', 'index', '--manifest', path.join(m38TmpDir, 'nonexistent.json')], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38MissingManifest.stderr.includes('Manifest not found') || m38MissingManifest.stdout !== '') {
+    throw new Error(`M38(i): missing manifest must exit 1:\nstdout=${m38MissingManifest.stdout}\nstderr=${m38MissingManifest.stderr}`);
+  }
+
+  // M38(j): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m38BadJsonPath = path.join(m38TmpDir, 'bad.json');
+  await fs.writeFile(m38BadJsonPath, '{ not valid json', 'utf8');
+  const m38BadJson = runCli(['examples', 'index', '--manifest', m38BadJsonPath], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38BadJson.stderr.includes('Invalid manifest JSON') || m38BadJson.stdout !== '') {
+    throw new Error(`M38(j): malformed manifest must exit 1:\nstdout=${m38BadJson.stdout}\nstderr=${m38BadJson.stderr}`);
+  }
+
+  // M38(k): manifest missing capabilities array exits 1
+  const m38NoCapsManifestPath = path.join(m38TmpDir, 'no-caps.json');
+  await fs.writeFile(m38NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m38NoCaps = runCli(['examples', 'index', '--manifest', m38NoCapsManifestPath], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m38NoCaps.stdout !== '') {
+    throw new Error(`M38(k): missing capabilities array must exit 1:\nstdout=${m38NoCaps.stdout}\nstderr=${m38NoCaps.stderr}`);
+  }
+
+  // M38(l): unknown flag exits 1 with error on stderr and empty stdout
+  const m38UnknownFlag = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--badFlag'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m38UnknownFlag.stdout !== '') {
+    throw new Error(`M38(l): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m38UnknownFlag.stdout}\nstderr=${m38UnknownFlag.stderr}`);
+  }
+
+  // M38(m): --tier with no value exits 1
+  const m38TierNoValue = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--tier'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (m38TierNoValue.stdout !== '') {
+    throw new Error(`M38(m): --tier with no value must produce empty stdout, got: ${m38TierNoValue.stdout}`);
+  }
+
+  // M38(n): --out <valid path> writes correctly and stdout is empty
+  const m38OutPath = path.join(m38TmpDir, 'examples-index-out.json');
+  const m38OutResult = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--out', m38OutPath], { cwd: m38TmpDir });
+  if (m38OutResult.stdout !== '') {
+    throw new Error(`M38(n): --out must emit no stdout on success, got: ${m38OutResult.stdout}`);
+  }
+  const m38OutContent = JSON.parse(await fs.readFile(m38OutPath, 'utf8'));
+  if (!Array.isArray(m38OutContent.tiers) || m38OutContent.tiers.length < 2) {
+    throw new Error(`M38(n): --out file must contain at least two tier entries: ${JSON.stringify(m38OutContent.tiers)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m38OutContent, 'warnings') || !Array.isArray(m38OutContent.warnings)) {
+    throw new Error(`M38(n): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m38OutContent)}`);
+  }
+
+  // M38(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m38TusqOutResult = runCli(
+    ['examples', 'index', '--manifest', m38ManifestPath, '--out', path.join(m38TmpDir, '.tusq', 'index.json')],
+    { cwd: m38TmpDir, expectedStatus: 1 }
+  );
+  if (!m38TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m38TusqOutResult.stdout !== '') {
+    throw new Error(`M38(o): --out .tusq/ must reject with correct message:\nstdout=${m38TusqOutResult.stdout}\nstderr=${m38TusqOutResult.stderr}`);
+  }
+
+  // M38(p): --out to an unwritable path exits 1 with empty stdout
+  const m38BadOut = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (m38BadOut.stdout !== '') {
+    throw new Error(`M38(p): --out unwritable must produce empty stdout, got: ${m38BadOut.stdout}`);
+  }
+
+  // M38(q): --json outputs valid JSON with tiers[] and warnings: []
+  const m38Json2 = runCli(['examples', 'index', '--manifest', m38NoneOnlyManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38NoneOnlyJson = JSON.parse(m38Json2.stdout);
+  if (!Array.isArray(m38NoneOnlyJson.tiers) || !Array.isArray(m38NoneOnlyJson.warnings)) {
+    throw new Error(`M38(q): --json must include tiers[] and warnings[]:\n${m38Json2.stdout}`);
+  }
+  if (m38NoneOnlyJson.warnings.length !== 0) {
+    throw new Error(`M38(q): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m38NoneOnlyJson.warnings)}`);
+  }
+
+  // M38(r): determinism — three consecutive runs produce byte-identical stdout
+  const m38Human1 = runCli(['examples', 'index', '--manifest', m38ManifestPath], { cwd: m38TmpDir });
+  const m38Human2 = runCli(['examples', 'index', '--manifest', m38ManifestPath], { cwd: m38TmpDir });
+  const m38Human3 = runCli(['examples', 'index', '--manifest', m38ManifestPath], { cwd: m38TmpDir });
+  if (m38Human1.stdout !== m38Human2.stdout || m38Human2.stdout !== m38Human3.stdout) {
+    throw new Error('M38(r): expected byte-identical human index output across three runs');
+  }
+  const m38JsonR1 = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38JsonR2 = runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  if (m38JsonR1.stdout !== m38JsonR2.stdout) {
+    throw new Error('M38(r): expected byte-identical JSON index output across runs');
+  }
+
+  // M38(s): manifest mtime + content invariant pre/post index run
+  const m38ManifestBefore = await fs.readFile(m38ManifestPath, 'utf8');
+  runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38ManifestAfter = await fs.readFile(m38ManifestPath, 'utf8');
+  if (m38ManifestBefore !== m38ManifestAfter) {
+    throw new Error('M38(s): tusq examples index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M38(t): examples_count_tier MUST NOT appear in tusq.manifest.json after run (non-persistence)
+  const m38ManifestParsed = JSON.parse(m38ManifestAfter);
+  for (const cap of m38ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'examples_count_tier')) {
+      throw new Error(`M38(t): examples_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M38(u): tusq compile output is byte-identical before and after examples index run
+  const m38CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m38-compile-'));
+  const m38CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, examples: [] }]
+  };
+  await fs.writeFile(path.join(m38CompileDir, 'tusq.manifest.json'), JSON.stringify(m38CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m38CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m38CompileDir });
+  const m38CompiledToolPath = path.join(m38CompileDir, 'tusq-tools', 'list_users.json');
+  const m38CompileContentBefore = await fs.readFile(m38CompiledToolPath, 'utf8');
+  runCli(['examples', 'index', '--manifest', path.join(m38CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m38CompileDir });
+  const m38CompileContentAfter = await fs.readFile(m38CompiledToolPath, 'utf8');
+  if (m38CompileContentBefore !== m38CompileContentAfter) {
+    throw new Error('M38(u): tusq compile output must be byte-identical before and after examples index run');
+  }
+
+  // M38(v): other index commands are byte-identical before and after examples index run
+  const m38SurfaceBefore = runCli(['surface', 'plan', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir }).stdout;
+  runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38SurfaceAfter = runCli(['surface', 'plan', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir }).stdout;
+  if (m38SurfaceBefore !== m38SurfaceAfter) {
+    throw new Error('M38(v): tusq surface plan output must be byte-identical before and after examples index run');
+  }
+  const m38ConfidenceBefore = runCli(['confidence', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir }).stdout;
+  runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir });
+  const m38ConfidenceAfter = runCli(['confidence', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir }).stdout;
+  if (m38ConfidenceBefore !== m38ConfidenceAfter) {
+    throw new Error('M38(v): tusq confidence index output must be byte-identical before and after examples index run');
+  }
+
+  // M38(w): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m38EmptyManifestPath = path.join(m38TmpDir, 'empty.json');
+  await fs.writeFile(m38EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m38EmptyHuman = runCli(['examples', 'index', '--manifest', m38EmptyManifestPath], { cwd: m38TmpDir });
+  if (m38EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M38(w): empty-capabilities human output must be exactly the documented line:\n${m38EmptyHuman.stdout}`);
+  }
+  const m38EmptyJson = JSON.parse(runCli(['examples', 'index', '--manifest', m38EmptyManifestPath, '--json'], { cwd: m38TmpDir }).stdout);
+  if (!Array.isArray(m38EmptyJson.tiers) || m38EmptyJson.tiers.length !== 0) {
+    throw new Error(`M38(w): empty-capabilities JSON must have tiers: []:\n${JSON.stringify(m38EmptyJson)}`);
+  }
+  if (!Array.isArray(m38EmptyJson.warnings) || m38EmptyJson.warnings.length !== 0) {
+    throw new Error(`M38(w): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m38EmptyJson)}`);
+  }
+
+  // M38(x): malformed-examples capability produces warning in stderr (human) and in warnings[] (--json)
+  // legacy_sync (no examples field) → reason: examples_field_missing
+  // bad_cap (null element) → reason: examples_array_contains_null_element
+  const m38WarnHuman = runCli(['examples', 'index', '--manifest', m38ManifestPath], { cwd: m38TmpDir });
+  if (!m38WarnHuman.stderr.includes("Warning: capability 'legacy_sync' has malformed examples (examples_field_missing)")) {
+    throw new Error(`M38(x): human mode must emit warning for legacy_sync (examples_field_missing) on stderr:\n${m38WarnHuman.stderr}`);
+  }
+  if (!m38WarnHuman.stderr.includes("Warning: capability 'bad_cap' has malformed examples (examples_array_contains_null_element)")) {
+    throw new Error(`M38(x): human mode must emit warning for bad_cap (examples_array_contains_null_element) on stderr:\n${m38WarnHuman.stderr}`);
+  }
+  const m38WarnJsonObj = JSON.parse(runCli(['examples', 'index', '--manifest', m38ManifestPath, '--json'], { cwd: m38TmpDir }).stdout);
+  const m38LegacySyncWarn = m38WarnJsonObj.warnings.find((w) => w.capability === 'legacy_sync');
+  if (!m38LegacySyncWarn || m38LegacySyncWarn.reason !== 'examples_field_missing') {
+    throw new Error(`M38(x): warnings[] must include {capability: 'legacy_sync', reason: 'examples_field_missing'}:\n${JSON.stringify(m38WarnJsonObj.warnings)}`);
+  }
+  const m38BadCapWarn = m38WarnJsonObj.warnings.find((w) => w.capability === 'bad_cap');
+  if (!m38BadCapWarn || m38BadCapWarn.reason !== 'examples_array_contains_null_element') {
+    throw new Error(`M38(x): warnings[] must include {capability: 'bad_cap', reason: 'examples_array_contains_null_element'}:\n${JSON.stringify(m38WarnJsonObj.warnings)}`);
+  }
+
+  // M38: aggregation_key closed two-value enum for every emitted bucket
+  const m38ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m38IndexJson.tiers) {
+    if (!m38ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M38: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.examples_count_tier}'`);
+    }
+  }
+  const m38NoneEntry = m38IndexJson.tiers.find((e) => e.examples_count_tier === 'none');
+  const m38UnknownEntry = m38IndexJson.tiers.find((e) => e.examples_count_tier === 'unknown');
+  if (!m38NoneEntry || m38NoneEntry.aggregation_key !== 'tier') {
+    throw new Error(`M38: none tier must have aggregation_key 'tier', got: ${m38NoneEntry ? m38NoneEntry.aggregation_key : null}`);
+  }
+  if (!m38UnknownEntry || m38UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M38: unknown tier must have aggregation_key 'unknown', got: ${m38UnknownEntry ? m38UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M38: boundary values — 0→none, 1→low, 2→low, 3→medium, 5→medium, 6→high
+  const m38BoundaryManifestPath = path.join(m38TmpDir, 'boundary.json');
+  await fs.writeFile(m38BoundaryManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'c0', description: '0 examples', method: 'GET', path: '/c0', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [] },
+      { name: 'c1', description: '1 example', method: 'GET', path: '/c1', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [{}] },
+      { name: 'c2', description: '2 examples', method: 'GET', path: '/c2', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [{}, {}] },
+      { name: 'c3', description: '3 examples', method: 'GET', path: '/c3', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [{}, {}, {}] },
+      { name: 'c5', description: '5 examples', method: 'GET', path: '/c5', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [{}, {}, {}, {}, {}] },
+      { name: 'c6', description: '6 examples', method: 'GET', path: '/c6', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, examples: [{}, {}, {}, {}, {}, {}] }
+    ]
+  }, null, 2), 'utf8');
+  const m38BoundaryJson = JSON.parse(runCli(['examples', 'index', '--manifest', m38BoundaryManifestPath, '--json'], { cwd: m38TmpDir }).stdout);
+  const m38BoundaryTierMap = {};
+  for (const entry of m38BoundaryJson.tiers) {
+    for (const capName of entry.capabilities) {
+      m38BoundaryTierMap[capName] = entry.examples_count_tier;
+    }
+  }
+  if (m38BoundaryTierMap['c0'] !== 'none') throw new Error(`M38: c0 (0 examples) must be 'none', got: ${m38BoundaryTierMap['c0']}`);
+  if (m38BoundaryTierMap['c1'] !== 'low') throw new Error(`M38: c1 (1 example) must be 'low', got: ${m38BoundaryTierMap['c1']}`);
+  if (m38BoundaryTierMap['c2'] !== 'low') throw new Error(`M38: c2 (2 examples) must be 'low', got: ${m38BoundaryTierMap['c2']}`);
+  if (m38BoundaryTierMap['c3'] !== 'medium') throw new Error(`M38: c3 (3 examples) must be 'medium', got: ${m38BoundaryTierMap['c3']}`);
+  if (m38BoundaryTierMap['c5'] !== 'medium') throw new Error(`M38: c5 (5 examples) must be 'medium', got: ${m38BoundaryTierMap['c5']}`);
+  if (m38BoundaryTierMap['c6'] !== 'high') throw new Error(`M38: c6 (6 examples) must be 'high', got: ${m38BoundaryTierMap['c6']}`);
+
+  // M38: has_destructive_side_effect flag correct per bucket
+  const m38HighEntry = m38IndexJson.tiers.find((e) => e.examples_count_tier === 'high');
+  if (!m38HighEntry || m38HighEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M38: high bucket must have has_destructive_side_effect=true (bulk_export is destructive); got: ${JSON.stringify(m38HighEntry)}`);
+  }
+  if (!m38NoneEntry || m38NoneEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M38: none bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m38NoneEntry)}`);
+  }
+
+  // M38: has_restricted_or_confidential_sensitivity flag correct per bucket
+  if (!m38HighEntry || m38HighEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M38: high bucket must have has_restricted_or_confidential_sensitivity=true (bulk_export is restricted); got: ${JSON.stringify(m38HighEntry)}`);
+  }
+  const m38LowEntry = m38IndexJson.tiers.find((e) => e.examples_count_tier === 'low');
+  if (!m38LowEntry || m38LowEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M38: low bucket must have has_restricted_or_confidential_sensitivity=true (get_profile is confidential); got: ${JSON.stringify(m38LowEntry)}`);
+  }
+  if (!m38NoneEntry || m38NoneEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M38: none bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m38NoneEntry)}`);
+  }
+
+  // M38: within-bucket manifest declared order
+  if (!m38NoneEntry || m38NoneEntry.capabilities[0] !== 'health_check' || m38NoneEntry.capabilities[1] !== 'list_orders') {
+    throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
+  }
+
+  // M38: tusq help enumerates 22 commands including 'examples'
+  const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
+  if (!m38HelpOutput.stdout.includes('examples')) {
+    throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
+  }
+  const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m38CommandCount !== 22) {
+    throw new Error(`M38: tusq help must enumerate exactly 22 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  }
+
+  // M38: help text includes planning-aid framing
+  const m38HelpResult = runCli(['examples', 'index', '--help'], { cwd: m38TmpDir });
+  if (!m38HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M38: examples index help must include planning-aid framing:\n${m38HelpResult.stdout}`);
+  }
+
+  // M38: unknown subcommand exits 1
+  const m38UnknownSubCmd = runCli(['examples', 'bogusub'], { cwd: m38TmpDir, expectedStatus: 1 });
+  if (!m38UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m38UnknownSubCmd.stdout !== '') {
+    throw new Error(`M38: unknown subcommand must exit 1:\nstdout=${m38UnknownSubCmd.stdout}\nstderr=${m38UnknownSubCmd.stderr}`);
+  }
+
+  // M38: empty-bucket check — none-only manifest produces exactly one bucket
+  const m38NoneOnlyResult = JSON.parse(runCli(['examples', 'index', '--manifest', m38NoneOnlyManifestPath, '--json'], { cwd: m38TmpDir }).stdout);
+  if (m38NoneOnlyResult.tiers.length !== 1 || m38NoneOnlyResult.tiers[0].examples_count_tier !== 'none') {
+    throw new Error(`M38: none-only manifest must produce exactly one bucket [none]; got: ${JSON.stringify(m38NoneOnlyResult.tiers.map((e) => e.examples_count_tier))}`);
+  }
+
+  await fs.rm(m38TmpDir, { recursive: true, force: true });
+  await fs.rm(m38CompileDir, { recursive: true, force: true });
+
   // ── M37: Static Capability PII Field Count Tier Index Export ─────────────────
   const m37TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m37-smoke-'));
 
@@ -3804,14 +4275,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 21 commands including 'pii'
+  // M37: tusq help enumerates 22 commands including 'pii'
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 21) {
-    throw new Error(`M37: tusq help must enumerate exactly 21 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 22) {
+    throw new Error(`M37: tusq help must enumerate exactly 22 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -4268,8 +4739,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 21) {
-    throw new Error(`M36: tusq help must enumerate exactly 21 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 22) {
+    throw new Error(`M36: tusq help must enumerate exactly 22 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -4661,8 +5132,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 21) {
-    throw new Error(`M35: tusq help must enumerate exactly 21 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 22) {
+    throw new Error(`M35: tusq help must enumerate exactly 22 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

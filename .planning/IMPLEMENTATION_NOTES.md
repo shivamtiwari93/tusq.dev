@@ -2,6 +2,46 @@
 
 ---
 
+## Dev Turn turn_0ec2cb6d0b868173 — Implementation Phase: M38 Examples Count Tier Index (run_0c5145f830f5940e, 2026-04-27)
+
+**Run:** run_0c5145f830f5940e
+**Phase:** implementation
+**HEAD:** d03c73b (baseline before this turn — last PM turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_5f9db83b54b7b58f (role=pm, phase=planning)
+
+PM correctly bound M38: Static Capability Examples Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.19 (PROPOSED) under intake charter `intent_1777289168638_1ed3` (vision_scan, category `roadmap_exhausted_vision_open`). PM froze: closed five-value `examples_count_tier` enum (none | low | medium | high | unknown), closed two-value `aggregation_key` enum (tier | unknown), tier-function thresholds (none if length === 0, low if 1-2, medium if 3-5, high >= 6, unknown if null/missing/not-an-array/non-object/null-element/array-element), per-bucket 8-field entry shape, top-level `warnings[]` in --json mode, five frozen reason codes, closed-enum bucket iteration order (none → low → medium → high → unknown), case-sensitive lowercase --tier filter, non-persistence rule. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M38 — Static Capability Examples Count Tier Index Export:
+
+1. **Constants** (`src/cli.js`): Added `EXAMPLES_COUNT_TIER_ENUM` (frozen Set: none/low/medium/high/unknown), `EXAMPLES_COUNT_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `EXAMPLES_COUNT_TIER_BUCKET_ORDER` (frozen array: none/low/medium/high).
+
+2. **Dispatch** (`src/cli.js` dispatch()): Inserted `case 'examples':` between 'effect' and 'method', routing to `cmdExamples()`.
+
+3. **Command implementation** (`src/cli.js`): `cmdExamples` dispatcher, `cmdExamplesIndex` handler (detection-before-output --out validation, --tier case-sensitive filter with two-level errors: unknown enum value exits 1 with 'Unknown examples count tier:', valid enum value not present in index exits 1 with 'No capabilities found for examples count tier:', manifest read/parse/validate, warnings to stderr in human mode as structured objects), `parseExamplesIndexArgs` (4-flag parser: tier, manifest, out, json), `_guardExamplesCountTierBucketKey` / `_guardExamplesCountTierAggregationKey` guards, `classifyExamplesCountTier` (pure tier function — null/missing/not-an-array/non-object/null-element/array-element → 'unknown'; length 0 → 'none'; length 1-2 → 'low'; length 3-5 → 'medium'; length >= 6 → 'high'), `buildExamplesCountTierIndex` (reads from `capability.examples`, closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, warnings[] as `{capability, reason}` objects — five frozen reason codes: examples_field_missing, examples_field_not_array, examples_array_contains_non_object_element, examples_array_contains_null_element, examples_array_contains_array_element), `formatExamplesCountTierIndex` (human output with planning-aid callout, tier function, bucket order footer).
+
+4. **Help text** (`src/cli.js` printHelp/printCommandHelp): Updated to 22 commands with 'examples' between 'effect' and 'method'; added 'examples' and 'examples index' entries to printCommandHelp() with tier function description, bucket order, and planning-aid framing.
+
+5. **Smoke tests** (`tests/smoke.mjs`): Added M38 smoke matrix (cases a-x + aggregation_key enum check, boundary values, has_destructive_side_effect, has_restricted_or_confidential_sensitivity, within-bucket order, help count=22, planning-aid framing, unknown subcommand, empty-bucket check); updated M37/M36/M35 help-count assertions from 21 to 22.
+
+6. **Eval scenario** (`tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`): Added `examples-count-tier-index-determinism` scenario (eval count 28 → 29) with `runExamplesCountTierIndexDeterminismScenario` handler verifying byte-identical output across three runs, closed five-value tier enum, closed two-value aggregation_key enum, tier order determinism, warnings[] always present, manifest non-mutation, examples_count_tier non-persistence.
+
+### Verification Evidence
+
+- `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (29 scenarios)"
+- `node -e "require('./src/cli.js')"` exits 0 (Module loaded OK — all guards pass)
+- `node bin/tusq.js help | grep -c "^  \w"` → 22 (22-command CLI surface)
+- `node bin/tusq.js examples index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with tiers[] (low bucket, 3 capabilities) and warnings: []
+- `node bin/tusq.js examples index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr "Unknown examples count tier: HIGH"
+- `git diff --name-only HEAD -- package.json package-lock.json` → empty (zero package drift)
+- All 18 M38 ROADMAP checkboxes: [x] (20/18 items — PM had 18 work items)
+
+---
+
 ## Dev Turn turn_0031ce2764696475 — Implementation Phase: M37 PII Field Count Tier Index (run_0b366d58febc99be, 2026-04-27)
 
 **Run:** run_0b366d58febc99be

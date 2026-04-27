@@ -351,6 +351,32 @@ Boundaries `0/2/5/6` are immutable once M37 ships. Any threshold change is a mat
 
 **Framing boundary:** `tusq pii index` is a planning aid only. It does NOT detect PII at runtime, does NOT prevent data leakage, does NOT enforce redaction at runtime, does NOT certify GDPR/HIPAA/PCI/PHI compliance, and does NOT alter M25's canonical PII name set or `pii_fields[]` extraction rules. The `pii_fields[]` array remains the M25-derived source-literal name hint — M37 only groups it into planning buckets by array length.
 
+## Examples Count Tier Index (V1.19)
+
+Starting with M38, `tusq examples index` emits a static, read-only capability index grouped by a derived `examples_count_tier` bucket. The tier is computed at read-time from the cardinality of the `examples[]` array already present in each capability (M11-derived); it is **never written back into `tusq.manifest.json`**.
+
+| `capability.examples` condition | Derived tier |
+|---------------------------------|--------------|
+| Valid array, length === 0 | `none` |
+| Valid array, 1 ≤ length ≤ 2 | `low` |
+| Valid array, 3 ≤ length ≤ 5 | `medium` |
+| Valid array, length ≥ 6 | `high` |
+| Missing / null / not-an-array / contains null/array/non-object element | `unknown` |
+
+**Closed five-value `examples_count_tier` enum:** `none | low | medium | high | unknown`. Any addition is a material governance event.
+
+**Closed two-value `aggregation_key` enum:** `tier` (named buckets) | `unknown` (zero-evidence catchall). Any addition is a material governance event.
+
+**Bucket iteration order:** `none → low → medium → high → unknown`. This is a stable-output convention only — NOT a documentation-quality ranking, NOT a documentation-completeness gate.
+
+**Warnings:** When a capability lands in the `unknown` bucket due to malformed `examples` field data, a warning is emitted. In `--json` mode, warnings appear as `{ capability, reason }` objects in `warnings[]`. Frozen warning reason codes: `examples_field_missing`, `examples_field_not_array`, `examples_array_contains_null_element`, `examples_array_contains_array_element`, `examples_array_contains_non_object_element`.
+
+**Case-sensitive `--tier` filter:** Lowercase canonical values only. `HIGH` exits 1 with `Unknown examples count tier: HIGH`. A valid-but-absent tier exits 1 with `No capabilities found for examples count tier: <tier>`.
+
+**Non-persistence rule (Constraint 31):** `examples_count_tier` MUST NOT appear as a key on any capability object inside `tusq.manifest.json`. It is a derived, ephemeral label that exists only in the index output. `tusq compile`, `tusq serve`, and all other commands are byte-identical before and after any `tusq examples index` invocation.
+
+**Framing boundary:** `tusq examples index` is a planning aid only. It does NOT validate API documentation completeness at runtime, does NOT enforce that all capabilities have examples, does NOT certify documentation quality, and does NOT alter M11's `examples[]` extraction rules. The `examples[]` array remains the M11-derived source — M38 only groups it into planning buckets by array length.
+
 ## Examples and constraints (V1)
 
 `examples` and `constraints` are part of the manifest in `v0.1.0` so downstream tooling can keep governance and usage context stable.

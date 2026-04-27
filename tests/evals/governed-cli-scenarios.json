@@ -885,6 +885,59 @@
       "expected_valid_pii_tiers": ["none", "low", "medium", "high", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "none,low,high,unknown"
+    },
+    {
+      "id": "examples-count-tier-index-determinism",
+      "description": "M38: tusq examples index --json produces byte-identical output across three runs on the same manifest; examples_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/not-array examples → unknown (with warning); null or array element in examples → unknown with warning",
+      "scenario_type": "examples_count_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "bulk_export",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/export",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.9,
+          "examples": [{}, {}, {}, {}, {}, {}]
+        },
+        {
+          "name": "health_check",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/health",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.95,
+          "examples": []
+        },
+        {
+          "name": "get_profile",
+          "domain": "users",
+          "method": "GET",
+          "path": "/profile",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.75,
+          "examples": [{}]
+        },
+        {
+          "name": "legacy_sync",
+          "domain": "admin",
+          "method": "POST",
+          "path": "/sync",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "confidence": 0.4
+        }
+      ],
+      "expected_valid_examples_tiers": ["none", "low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "none,low,high,unknown"
     }
   ]
 }
