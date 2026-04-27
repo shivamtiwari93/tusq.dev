@@ -379,6 +379,37 @@ Starting with M39, `tusq input index` emits a static, read-only capability index
 
 **Framing boundary:** `tusq input index` is a planning aid only. It does NOT execute capability inputs at runtime, does NOT validate `input_schema.properties[]` conformance against any per-element schema, does NOT generate new inputs or example payloads, does NOT measure runtime call frequency or call patterns, does NOT certify exposure-safety, and does NOT alter M11/M14/M24's canonical input-schema extraction rules. The `input_schema.required[]` array remains the M11/M14/M24-derived source — M39 only groups it into planning buckets by array length. Whether a capability is "safe to expose" remains the reviewer's judgment combining `sensitivity_class`, `side_effect_class`, `auth_scheme`, `confidence`, and `required_input_field_count_tier` together.
 
+### Output Schema Property Count Tier Index
+
+The `tusq output index` command (M40) derives a per-tier capability breakdown from each capability's `output_schema.properties` object, as populated by the M11/M14/M24 scan/compile pipeline from JSON Schema `responses` blocks, Fastify response schema literals, and handler-return-shape inference.
+
+**Tier function** (thresholds `0/2/5/6` are immutable):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | `Object.keys(output_schema.properties).length === 0` |
+| `low` | `1 <= length <= 2` |
+| `medium` | `3 <= length <= 5` |
+| `high` | `length >= 6` |
+| `unknown` | `output_schema` missing/not-a-plain-object, `properties` missing/not-a-plain-object, or any property descriptor value is not a plain non-null object |
+
+**`type:array` schemas:** When a capability's response shape is typed as `"array"`, the per-element schema lives under `output_schema.items`, not `output_schema.properties`. These capabilities are bucketed as `unknown` with reason `output_schema_properties_field_missing` — this is informative, not a defect. It signals that the top-level properties key is legitimately absent and the items schema is the relevant contract surface.
+
+**Malformed values:** When `output_schema` or `output_schema.properties` is malformed, a `Warning: capability '<name>' has malformed output_schema (<reason>)` is emitted to stderr (human mode) or recorded in `warnings[]` (JSON mode). Five frozen reason codes:
+- `output_schema_field_missing` — no `output_schema` key
+- `output_schema_field_not_object` — `output_schema` is not a plain object
+- `output_schema_properties_field_missing` — no `properties` key (includes `type:array`)
+- `output_schema_properties_field_not_object` — `properties` is not a plain object
+- `output_schema_properties_object_contains_non_object_property_descriptor` — `properties` has a value that is null, a primitive, an array, or a function
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (closed-enum deterministic stable-output convention only — NOT doc-drift-risk-ranked, NOT staleness-ranked, NOT contract-surface-area-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--tier` filter:** Only lowercase values match. `--tier HIGH` exits 1 with `Unknown output schema property count tier: HIGH`.
+
+**Non-persistence:** `output_schema_property_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq output index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ## Examples Count Tier Index (V1.19)
 
 Starting with M38, `tusq examples index` emits a static, read-only capability index grouped by a derived `examples_count_tier` bucket. The tier is computed at read-time from the cardinality of the `examples[]` array already present in each capability (M11-derived); it is **never written back into `tusq.manifest.json`**.

@@ -1523,6 +1523,98 @@ async function runExamplesCountTierIndexDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runOutputSchemaPropertyCountTierIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      description: cap.description || cap.name,
+      method: Object.prototype.hasOwnProperty.call(cap, 'method') ? cap.method : null,
+      path: cap.path || '/',
+      domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+      side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+      sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+      approved: cap.approved === true,
+      auth_requirements: {
+        auth_scheme: cap.auth_scheme || 'unknown',
+        auth_scopes: [],
+        auth_roles: [],
+        evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+      },
+      redaction: {
+        pii_fields: [],
+        pii_categories: []
+      }
+    };
+    // Propagate output_schema field only if present in cap (missing → undefined → unknown tier)
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema')) {
+      obj.output_schema = cap.output_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq output index --json three times and assert byte-identical output
+  const run1 = runCli(['output', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['output', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['output', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: output index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert output_schema_property_count_tier bucket-key enum is closed — every key is one of the five valid values
+  const index = JSON.parse(run1.stdout);
+  const validTiers = new Set(scenario.expected_valid_output_schema_tiers);
+  for (const entry of index.tiers) {
+    if (!validTiers.has(entry.output_schema_property_count_tier)) {
+      fail(`${scenario.id}: output_schema_property_count_tier '${entry.output_schema_property_count_tier}' is outside the closed five-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.tiers) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.output_schema_property_count_tier}'`);
+    }
+  }
+
+  // Assert tiers appear in closed-enum order (none → low → medium → high → unknown)
+  const tierOrder = index.tiers.map((e) => e.output_schema_property_count_tier).join(',');
+  if (tierOrder !== scenario.expected_tier_order) {
+    fail(`${scenario.id}: tiers must appear in closed-enum order '${scenario.expected_tier_order}'; got: ${tierOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (output_schema_property_count_tier must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by output index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_property_count_tier')) {
+      fail(`${scenario.id}: output_schema_property_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+}
+
 async function runRequiredInputFieldCountTierIndexDeterminismScenario(tmpRoot, scenario) {
   const project = path.join(tmpRoot, scenario.id);
   await fs.mkdir(project, { recursive: true });
@@ -1664,6 +1756,8 @@ async function run() {
       await runExamplesCountTierIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'required_input_field_count_tier_index_determinism') {
       await runRequiredInputFieldCountTierIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'output_schema_property_count_tier_index_determinism') {
+      await runOutputSchemaPropertyCountTierIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

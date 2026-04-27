@@ -2,6 +2,24 @@
 
 ---
 
+## M40 (run_0ce75469bde80380, turn_5dfd6a1036bcf940, dev)
+
+**Challenge to PM turn:** PM (turn_f4192b1598e8a30f) correctly bound M40: Static Capability Output Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.21 (PROPOSED) under intake charter intent_1777297500408_07f4. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified on HEAD 5a67550 that M39 CLI surface is intact at 23 commands and module loads cleanly. All five PM decisions upheld. Challenge resolved: no objections.
+
+**Implementation:**
+- Added `OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_ENUM` (frozen Set: none/low/medium/high/unknown), `OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_BUCKET_ORDER` (frozen array: none/low/medium/high) constants in `src/cli.js` after M39 constants.
+- Added `_guardOutputSchemaPropertyCountTierBucketKey` / `_guardOutputSchemaPropertyCountTierAggregationKey` guard functions.
+- Added `classifyOutputSchemaPropertyCountTier(output_schema)` pure function: unknown for null/non-object output_schema; unknown for null/non-object/missing properties; unknown for properties containing null/primitive/array/function value; none for length===0; low for 1-2; medium for 3-5; high for >=6.
+- Added `cmdOutput` dispatcher, `cmdOutputIndex` handler, `parseOutputIndexArgs` (4-flag parser: tier/manifest/out/json), `buildOutputSchemaPropertyCountTierIndex`, `formatOutputSchemaPropertyCountTierIndex`.
+- Wired `output` into dispatch() between `method` and `pii`; updated `printHelp()` (24 commands); updated `printCommandHelp()` with `output` and `output index` entries including type:array informative note.
+- Added 24-case M40 smoke matrix to `tests/smoke.mjs` covering all 5 tiers, all 5 warning reason codes, boundary values, determinism, read-only/non-persistence invariants, and updated M35/M36/M37/M38/M39 help-count assertions 23→24.
+- Added `output-schema-property-count-tier-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json` (eval count 30→31); added `runOutputSchemaPropertyCountTierIndexDeterminismScenario` handler to `tests/eval-regression.mjs`; wired into run() dispatch.
+- Updated M40 ROADMAP checkboxes all [x] (18/18); updated SYSTEM_SPEC.md, command-surface.md, website/docs/cli-reference.md, website/docs/manifest-format.md with M40 detail.
+
+**Verification:** `npm test` exits 0 with 31 scenarios. `node -e 'require("./src/cli.js"); console.log("OK")'` exits 0. `node bin/tusq.js help | grep -c '^  [a-z]'` returns 24. `node bin/tusq.js output index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` exits 0 with valid JSON (low and unknown buckets). Zero new dependencies. Zero package drift (`git diff --quiet HEAD -- package.json package-lock.json` exits 0).
+
+---
+
 ## Dev Turn turn_60ca77d51809c98f — Implementation Phase: M39 Required Input Field Count Tier Index (run_533b2f8c47cc0bf0, 2026-04-27)
 
 **Run:** run_533b2f8c47cc0bf0

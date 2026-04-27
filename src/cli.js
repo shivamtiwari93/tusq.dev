@@ -183,6 +183,21 @@ const REQUIRED_INPUT_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new S
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const REQUIRED_INPUT_FIELD_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
 
+// M40: frozen five-value output_schema_property_count_tier bucket-key enum. Immutable once M40 ships.
+// Tier function thresholds (0/2/5/6) are immutable once M40 ships. Any addition or threshold change is a governance event.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_ENUM = Object.freeze(new Set(['none', 'low', 'medium', 'high', 'unknown']));
+
+// M40: frozen two-value aggregation_key enum (parallel to M31–M39). Immutable once M40 ships.
+// An implementation-time guard fires if buildOutputSchemaPropertyCountTierIndex produces a key outside this set.
+const OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M40: closed-enum bucket iteration order (none → low → medium → high). NOT doc-drift-risk-ranked —
+// deterministic stable-output convention only. MUST NOT be described as "doc-drift-risk-ranked,"
+// "staleness-ranked," "contract-surface-area-ranked," or "drift-blast-radius-ranked."
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -315,6 +330,9 @@ function dispatch(argv) {
       return;
     case 'method':
       cmdMethod(args);
+      return;
+    case 'output':
+      cmdOutput(args);
       return;
     case 'pii':
       cmdPii(args);
@@ -4250,6 +4268,353 @@ function formatRequiredInputFieldCountTierIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M40: tusq output — top-level noun dispatcher
+function cmdOutput(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('output');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdOutputIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M40: tusq output index — handler
+function cmdOutputIndex(args) {
+  const { opts, positionals } = parseOutputIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('output index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildOutputSchemaPropertyCountTierIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical output_schema_property_count_tier values; anything else exits 1
+    if (!OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown output schema property count tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.output_schema_property_count_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for output schema property count tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatOutputSchemaPropertyCountTierIndex(outputIndex));
+}
+
+function parseOutputIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardOutputSchemaPropertyCountTierBucketKey(key) {
+  if (!OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: output_schema_property_count_tier outside closed five-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardOutputSchemaPropertyCountTierAggregationKey(key) {
+  if (!OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M40: classifyOutputSchemaPropertyCountTier(output_schema) → 'none' | 'low' | 'medium' | 'high' | 'unknown'
+// Tier function thresholds (0/2/5/6) are immutable once M40 ships — any change is a governance event.
+// Valid: output_schema is a plain non-null object; properties is a plain non-null object with all values being plain non-null objects.
+// null/undefined/missing/not-plain-object output_schema → 'unknown'
+// null/undefined/missing/not-plain-object output_schema.properties → 'unknown'
+// properties containing any non-object descriptor (null, primitive, array, function) → 'unknown'
+// length === 0 → 'none'; 1-2 → 'low'; 3-5 → 'medium'; >= 6 → 'high'
+function classifyOutputSchemaPropertyCountTier(outputSchema) {
+  if (outputSchema === null || outputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+    return 'unknown';
+  }
+  if (!Object.prototype.hasOwnProperty.call(outputSchema, 'properties')) {
+    return 'unknown';
+  }
+  const properties = outputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  // Check that all property descriptors are plain non-null objects
+  for (const val of Object.values(properties)) {
+    if (val === null || typeof val !== 'object' || Array.isArray(val) || typeof val === 'function') {
+      return 'unknown';
+    }
+  }
+  const len = Object.keys(properties).length;
+  if (len === 0) return 'none';
+  if (len <= 2) return 'low';
+  if (len <= 5) return 'medium';
+  return 'high';
+}
+
+// M40: buildOutputSchemaPropertyCountTierIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered output schema property count tier index from the manifest's capabilities[].
+// Bucket iteration order: none → low → medium → high (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// output_schema_property_count_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildOutputSchemaPropertyCountTierIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the four ordered bucket keys.
+  const namedTiers = new Set(OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their output_schema_property_count_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const outputSchema = Object.prototype.hasOwnProperty.call(capability, 'output_schema')
+      ? capability.output_schema
+      : undefined;
+
+    // Determine warning reason if output_schema or properties is malformed
+    let warningReason = null;
+    if (outputSchema === undefined || outputSchema === null) {
+      warningReason = 'output_schema_field_missing';
+    } else if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+      warningReason = 'output_schema_field_not_object';
+    } else if (!Object.prototype.hasOwnProperty.call(outputSchema, 'properties')) {
+      warningReason = 'output_schema_properties_field_missing';
+    } else if (outputSchema.properties === null || outputSchema.properties === undefined || typeof outputSchema.properties !== 'object' || Array.isArray(outputSchema.properties)) {
+      warningReason = 'output_schema_properties_field_not_object';
+    } else {
+      for (const val of Object.values(outputSchema.properties)) {
+        if (val === null || typeof val !== 'object' || Array.isArray(val)) {
+          warningReason = 'output_schema_properties_object_contains_non_object_property_descriptor';
+          break;
+        }
+      }
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const tier = classifyOutputSchemaPropertyCountTier(outputSchema);
+    const isNamedBucket = namedTiers.has(tier);
+    const bucketKey = isNamedBucket ? tier : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: none → low → medium → high, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...OUTPUT_SCHEMA_PROPERTY_COUNT_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const outputTier = isUnknownBucket ? _guardOutputSchemaPropertyCountTierBucketKey('unknown') : _guardOutputSchemaPropertyCountTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardOutputSchemaPropertyCountTierAggregationKey('unknown') : _guardOutputSchemaPropertyCountTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      output_schema_property_count_tier: outputTier,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M40: format output schema property count tier index as human-readable text
+function formatOutputSchemaPropertyCountTierIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Output Schema Property Count Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier. Tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked, NOT staleness-ranked, NOT contract-surface-area-ranked).',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.output_schema_property_count_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push('Tier function: none if Object.keys(output_schema.properties).length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if output_schema/properties missing or malformed (e.g., type:array schemas where properties legitimately does not apply).');
+  lines.push('Bucket order: none → low → medium → high → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -5409,6 +5774,7 @@ function printHelp() {
   process.stdout.write('  examples           Index capabilities by examples count tier for planning review\n');
   process.stdout.write('  input              Index capabilities by required input field count tier for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
+  process.stdout.write('  output             Index capabilities by output schema property count tier for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
@@ -5567,6 +5933,33 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown method, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.'
+    ].join('\n'),
+    output: 'Usage: tusq output <subcommand>\n  Subcommands: index',
+    'output index': [
+      'Usage: tusq output index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <none|low|medium|high|unknown>  Filter to a single output schema property count tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                      Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                           Write index to file (no stdout on success)',
+      '  --json                                 Emit machine-readable JSON (includes warnings[] for malformed output_schema)',
+      '',
+      'Tier function (applied to Object.keys(output_schema.properties).length):',
+      '  none    if length === 0',
+      '  low     if 1 <= length <= 2',
+      '  medium  if 3 <= length <= 5',
+      '  high    if length >= 6',
+      '  unknown if output_schema is null/missing/not-a-plain-object, output_schema.properties is null/missing/not-a-plain-object,',
+      '          or output_schema.properties contains any non-object property descriptor (null, primitive, array, or function)',
+      '          Note: type:array schemas (where properties legitimately does not apply) are bucketed as unknown — informative, not a defect.',
+      '',
+      'Bucket iteration order: none → low → medium → high → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier; tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked).'
     ].join('\n'),
     pii: 'Usage: tusq pii <subcommand>\n  Subcommands: index',
     'pii index': [

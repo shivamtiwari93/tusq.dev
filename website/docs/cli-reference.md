@@ -636,6 +636,41 @@ tusq input index --tier unknown --json
 tusq input index --out input-index.json
 ```
 
+### `tusq output index`
+
+Index capabilities by output schema property count tier.
+
+```
+tusq output index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--tier <value>` | Filter to a single tier bucket (case-sensitive lowercase) |
+| `--manifest <path>` | Manifest file (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (suppresses stdout) |
+| `--json` | Machine-readable JSON output |
+
+**Tier function** (applied to `Object.keys(output_schema.properties).length`):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | `length === 0` |
+| `low` | `1 <= length <= 2` |
+| `medium` | `3 <= length <= 5` |
+| `high` | `length >= 6` |
+| `unknown` | `output_schema` missing/not-an-object, `properties` missing/not-an-object, or `properties` contains a non-object descriptor |
+
+> **Note on `type:array` schemas:** Response shapes typed as `"array"` have no top-level `properties` key (per-element shape lives under `items`). These are bucketed as `unknown` with reason `output_schema_properties_field_missing` — this is informative, not a defect. It signals "no top-level property-level doc-drift anchors; the items shape is the relevant contract surface."
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown tier, `--out` path error, or unknown subcommand
+
+**Planning aid notice:** This command is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier. Tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked, NOT staleness-ranked).
+
 ## `tusq examples index`
 
 Emit a deterministic, per-examples-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `examples[]` array in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `examples` field is missing, `null`, not an array, or contains a `null`, array, or non-object element. This is a **planning aid, not a runtime examples validator, documentation-completeness enforcer, or compliance certifier**.
