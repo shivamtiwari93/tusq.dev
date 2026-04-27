@@ -1,6 +1,71 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-> **M41 Charter Sketch Reservation — 2026-04-27, run_7bad406d9ea95ce5, turn_1bd2bd4cc7b1d330, PM attempt 1, HEAD `df7fb01`.** PM-frozen scope reservation for M41 Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22 (PROPOSED). The dev materialization turn (next implementation phase) is required to add the full `### M41: Path Segment Count Tier Index — Product CLI Surface` block in this file with: a two-row command table (`tusq path` enumerator + `tusq path index [--tier <value>] [--manifest <path>] [--out <path>] [--json]`); the four-flag table (`--tier`, `--manifest`, `--out`, `--json` — meanings, defaults, and rejection rules); the closed five-value bucket-key enum table (`none | low | medium | high | unknown`); the closed two-value `aggregation_key` enum table (`tier | unknown`); the frozen tier-function thresholds table (`segment count === 0` → `none`, `1-2` → `low`, `3-4` → `medium`, `>= 5` → `high`, malformed → `unknown` per five frozen reason codes); the per-bucket entry shape table (8 frozen fields); the bucket iteration order table (`none → low → medium → high → unknown` — deterministic stable-output convention only); the default-preservation table for the 24 unchanged commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, input, method, output, pii, policy, redaction, sensitivity, surface, version, help — each MUST emit byte-identical stdout, stderr, and exit code pre and post-M41); the failure UX table (`Manifest file not found:`, `Failed to parse manifest JSON:`, `Manifest is missing capabilities array`, `Unknown path segment count tier:`, `--out path must not be inside .tusq/`, `--out parent directory does not exist or is not writable`, `Unknown flag:`, `--tier requires a value`, etc.); and the local-only invariants table (read-only manifest, no `path_segment_count_tier` persistence, no statistical aggregates, no route-registry conformance, no URL generation, no path-contradiction detection, no wildcard-or-regex-segment special-case unwrapping, no trailing-or-duplicate-slash silent normalization). CLI surface growth: 24 → 25 commands with `path` inserted alphabetically between `output` and `pii`. The `--tier` filter is case-sensitive lowercase-only.
+### M41: Path Segment Count Tier Index — Product CLI Surface
+
+| Command | Shape |
+|---------|-------|
+| `tusq path` | `tusq path <subcommand>` |
+| `tusq path index` | `tusq path index [--tier <none\|low\|medium\|high\|unknown>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--tier <value>` | all tiers | Case-sensitive lowercase; `HIGH` exits 1 |
+| `--manifest <path>` | `tusq.manifest.json` | Resolved relative to cwd |
+| `--out <path>` | stdout | Writes JSON; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | Includes `warnings[]` for malformed path fields |
+
+| Bucket key | Tier function condition |
+|------------|------------------------|
+| `none` | segment count === 0 (path is `/`) |
+| `low` | 1 ≤ count ≤ 2 |
+| `medium` | 3 ≤ count ≤ 4 |
+| `high` | count ≥ 5 |
+| `unknown` | path null/missing/not-string/empty/no-leading-`/`/empty interior segment |
+
+| `aggregation_key` value | When |
+|------------------------|------|
+| `tier` | Named bucket (none/low/medium/high) |
+| `unknown` | Unknown bucket |
+
+| Per-bucket field | Description |
+|-----------------|-------------|
+| `path_segment_count_tier` | Bucket key |
+| `aggregation_key` | `tier` or `unknown` |
+| `capability_count` | Number of capabilities in bucket |
+| `capabilities[]` | Capability names in manifest declared order |
+| `approved_count` | Count where `approved === true` |
+| `gated_count` | Count where `approved !== true` |
+| `has_destructive_side_effect` | Any capability has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | Any capability has `sensitivity_class === 'restricted'\|'confidential'` |
+
+| Bucket order | Position |
+|-------------|---------|
+| `none → low → medium → high → unknown` | Deterministic stable-output convention only (NOT sprawl-risk-ranked) |
+
+| Warning reason code | Trigger |
+|--------------------|---------|
+| `path_field_missing` | `capability.path` absent or null |
+| `path_field_not_string` | `capability.path` is not a string |
+| `path_field_empty_string` | `capability.path === ''` |
+| `path_field_does_not_start_with_forward_slash` | Path is non-empty string not starting with `/` |
+| `path_field_contains_empty_interior_segment` | Path contains `//` or trailing `/` (other than `/` itself) |
+
+| Exit code | Condition |
+|-----------|-----------|
+| 0 | Index produced (including empty-capabilities manifest) |
+| 1 | Missing/invalid manifest, unknown flag, unknown tier, `--out` path error, or unknown subcommand |
+
+| Local-only invariant | Rule |
+|---------------------|------|
+| Read-only manifest | `tusq path index` MUST NOT mutate `tusq.manifest.json` |
+| Non-persistence | `path_segment_count_tier` MUST NOT be written to manifest |
+| No statistical aggregates | No min/max/mean; no cross-axis derived roll-ups |
+| No route-registry conformance | No path validation against runtime registered routes |
+| No URL generation | No new URL examples or path payloads generated |
+| Path-parameter rule | `:id` syntax counts as one segment; not unwrapped or downscaled |
+| Trailing-slash rule | `/users/` → unknown + warning (manifest is canonical) |
+
+CLI surface growth: 24 → 25 commands. `path` inserted alphabetically between `output` and `pii`.
 
 ### M40: Output Schema Property Count Tier Index — Product CLI Surface
 

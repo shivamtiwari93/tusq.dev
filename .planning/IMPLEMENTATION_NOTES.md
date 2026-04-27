@@ -2,6 +2,24 @@
 
 ---
 
+## M41 (run_7bad406d9ea95ce5, turn_a58d22a53169262b, dev)
+
+**Challenge to PM turn:** PM (turn_1bd2bd4cc7b1d330) correctly bound M41: Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22 (PROPOSED) under intake charter intent_1777299870574_9dfd. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified on HEAD b29bf30 that M40 CLI surface is intact at 24 commands and module loads cleanly. All five PM decisions upheld. Challenge resolved: no objections.
+
+**Implementation:**
+- Added `PATH_SEGMENT_COUNT_TIER_ENUM` (frozen Set: none/low/medium/high/unknown), `PATH_SEGMENT_COUNT_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `PATH_SEGMENT_COUNT_TIER_BUCKET_ORDER` (frozen array: none/low/medium/high) constants in `src/cli.js` after M40 constants.
+- Added `_guardPathSegmentCountTierBucketKey` / `_guardPathSegmentCountTierAggregationKey` guard functions.
+- Added `classifyPathSegmentCountTier(pathStr)` pure function: unknown for null/undefined/non-string/empty-string/no-leading-slash/empty-interior-segment (from `//` or trailing `/`); none for path=`/` (0 segments); low for 1-2 segments; medium for 3-4 segments; high for >=5 segments. Path parameters (`:id`) count as one segment each.
+- Added `cmdPath` dispatcher, `cmdPathIndex` handler, `parsePathIndexArgs` (4-flag parser: tier/manifest/out/json), `buildPathSegmentCountTierIndex` with five warning reason codes, `formatPathSegmentCountTierIndex` with planning-aid callout.
+- Wired `path` into dispatch() between `output` and `pii`; updated `printHelp()` (25 commands); updated `printCommandHelp()` with `path` and `path index` entries.
+- Added 24-case M41 smoke matrix to `tests/smoke.mjs` covering all 5 tiers (a-f), case-sensitivity (g-h), error conditions (i-m), --out flag (n-p), --json (q), determinism (r), read-only invariant (s), non-persistence (t), compile byte-identity (u), other index commands byte-identity (v), empty-capabilities (w), and all five frozen warning reason codes (x). Updated M35/M36/M37/M38/M39/M40 help-count assertions from 24 to 25.
+- Added `path-segment-count-tier-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json` (eval count 31→32); added `runPathSegmentCountTierIndexDeterminismScenario` handler to `tests/eval-regression.mjs`; wired into run() dispatch.
+- Updated M41 ROADMAP checkboxes all [x] (18/18); updated SYSTEM_SPEC.md, command-surface.md, website/docs/cli-reference.md, website/docs/manifest-format.md with M41 detail.
+
+**Verification:** `npm test` exits 0 with 32 scenarios. `node -e 'require("./src/cli.js"); console.log("OK")'` exits 0. `node bin/tusq.js help | grep -c '^  [a-z]'` returns 25. `node bin/tusq.js path index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` exits 0 with valid JSON (low: 2 capabilities /users and /api/users-equivalent, medium: 1 capability /api/v1/users/:id, warnings: []). Zero new dependencies. Zero package drift (`git diff --quiet HEAD -- package.json package-lock.json` exits 0).
+
+---
+
 ## M40 (run_0ce75469bde80380, turn_5dfd6a1036bcf940, dev)
 
 **Challenge to PM turn:** PM (turn_f4192b1598e8a30f) correctly bound M40: Static Capability Output Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.21 (PROPOSED) under intake charter intent_1777297500408_07f4. git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified on HEAD 5a67550 that M39 CLI surface is intact at 23 commands and module loads cleanly. All five PM decisions upheld. Challenge resolved: no objections.

@@ -1044,6 +1044,55 @@
       "expected_valid_output_schema_tiers": ["none", "low", "medium", "high", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "none,low,high,unknown"
+    },
+    {
+      "id": "path-segment-count-tier-index-determinism",
+      "description": "M41: tusq path index --json produces byte-identical output across three runs on the same manifest; path_segment_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing path → unknown (with warning); non-string path → unknown with warning; empty-string path → unknown with warning; path without leading '/' → unknown with warning; path with empty interior segment (double slash or trailing slash other than '/') → unknown with warning; path='/' → none (0 segments); path parameters (:id, :orgId) count as one segment each — not unwrapped",
+      "scenario_type": "path_segment_count_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "deep_resource",
+          "domain": "platform",
+          "method": "DELETE",
+          "path": "/api/v1/orgs/:orgId/projects",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.9
+        },
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "confidence": 0.95
+        },
+        {
+          "name": "get_orders",
+          "domain": "orders",
+          "method": "GET",
+          "path": "/api/v1/orders",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "confidence": 0.75
+        },
+        {
+          "name": "no_path_cap",
+          "domain": "admin",
+          "method": "POST",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "confidence": 0.4
+        }
+      ],
+      "expected_valid_path_segment_count_tiers": ["none", "low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "low,medium,high,unknown"
     }
   ]
 }

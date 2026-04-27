@@ -3352,6 +3352,547 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M41: Static Capability Path Segment Count Tier Index Export ───────────────
+  const m41TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m41-smoke-'));
+
+  // M41 fixture manifest: capabilities across none/low/medium/high/unknown path segment count tiers.
+  // Declared order:
+  //   root_health (none, path='/')
+  //   list_users (low, path='/users', 1 segment, internal)
+  //   get_user (low, path='/api/users', 2 segments, public)
+  //   get_orders (medium, path='/api/v1/orders', 3 segments, internal)
+  //   deep_resource (high, path='/api/v1/orgs/:orgId/projects', 5 segments, destructive+restricted)
+  //   no_path_cap (unknown, no path field → path_field_missing)
+  //   num_path_cap (unknown, path=42 → path_field_not_string)
+  //   empty_path_cap (unknown, path='' → path_field_empty_string)
+  //   no_slash_cap (unknown, path='users' → path_field_does_not_start_with_forward_slash)
+  //   double_slash_cap (unknown, path='/api//users' → path_field_contains_empty_interior_segment)
+  const m41Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'root_health',
+        description: 'Root health endpoint',
+        method: 'GET',
+        path: '/',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'list_users',
+        description: 'List users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_user',
+        description: 'Get a user',
+        method: 'GET',
+        path: '/api/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_orders',
+        description: 'Get orders',
+        method: 'GET',
+        path: '/api/v1/orders',
+        domain: 'orders',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'deep_resource',
+        description: 'Deep nested resource',
+        method: 'DELETE',
+        path: '/api/v1/orgs/:orgId/projects',
+        domain: 'platform',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'no_path_cap',
+        description: 'Capability with no path field',
+        method: 'GET',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // path field absent → path_field_missing
+      },
+      {
+        name: 'num_path_cap',
+        description: 'Capability with path = number',
+        method: 'GET',
+        path: 42,
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // path is a number → path_field_not_string
+      },
+      {
+        name: 'empty_path_cap',
+        description: 'Capability with empty string path',
+        method: 'GET',
+        path: '',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // path is empty string → path_field_empty_string
+      },
+      {
+        name: 'no_slash_cap',
+        description: 'Capability with path missing leading slash',
+        method: 'GET',
+        path: 'users',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // path does not start with '/' → path_field_does_not_start_with_forward_slash
+      },
+      {
+        name: 'double_slash_cap',
+        description: 'Capability with double-slash path',
+        method: 'GET',
+        path: '/api//users',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // path contains empty interior segment (//) → path_field_contains_empty_interior_segment
+      }
+    ]
+  };
+
+  const m41ManifestPath = path.join(m41TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m41ManifestPath, JSON.stringify(m41Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m41TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M41(a): default tusq path index produces exit 0 and per-bucket entries in closed-enum order
+  const m41DefaultResult = runCli(['path', 'index', '--manifest', m41ManifestPath], { cwd: m41TmpDir });
+  if (!m41DefaultResult.stdout.includes('[none]') || !m41DefaultResult.stdout.includes('[low]') || !m41DefaultResult.stdout.includes('[high]') || !m41DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M41(a): default index must include all present buckets (none,low,medium,high,unknown):\n${m41DefaultResult.stdout}`);
+  }
+  if (!m41DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M41(a): default index must include planning-aid framing:\n${m41DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: none before low before medium before high before unknown
+  const m41DefaultLines = m41DefaultResult.stdout.split('\n');
+  const m41NonePos = m41DefaultLines.findIndex((l) => l === '[none]');
+  const m41LowPos = m41DefaultLines.findIndex((l) => l === '[low]');
+  const m41MediumPos = m41DefaultLines.findIndex((l) => l === '[medium]');
+  const m41HighPos = m41DefaultLines.findIndex((l) => l === '[high]');
+  const m41UnknownPos = m41DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m41NonePos < m41LowPos && m41LowPos < m41MediumPos && m41MediumPos < m41HighPos && m41HighPos < m41UnknownPos)) {
+    throw new Error(`M41(a): bucket order must be none < low < medium < high < unknown; got positions none=${m41NonePos} low=${m41LowPos} medium=${m41MediumPos} high=${m41HighPos} unknown=${m41UnknownPos}`);
+  }
+
+  // M41(b): --json output has all 8 per-bucket fields, top-level shape, and warnings[] always present
+  const m41Json1 = runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41IndexJson = JSON.parse(m41Json1.stdout);
+  if (!Array.isArray(m41IndexJson.tiers) || m41IndexJson.tiers.length === 0) {
+    throw new Error(`M41(b): JSON output must have tiers array with at least one entry:\n${m41Json1.stdout}`);
+  }
+  const m41FirstEntry = m41IndexJson.tiers[0];
+  const m41RequiredFields = ['path_segment_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m41RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m41FirstEntry, field)) {
+      throw new Error(`M41(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m41FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m41IndexJson, 'warnings') || !Array.isArray(m41IndexJson.warnings)) {
+    throw new Error(`M41(b): JSON output must have top-level warnings[] array:\n${m41Json1.stdout}`);
+  }
+  if (m41IndexJson.warnings.length < 5) {
+    throw new Error(`M41(b): warnings[] must contain entries for all 5 malformed capabilities:\n${JSON.stringify(m41IndexJson.warnings)}`);
+  }
+
+  // M41(c): --tier filter (case-sensitive lowercase) returns single matching bucket for high
+  const m41TierFilter = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'high', '--json'], { cwd: m41TmpDir });
+  const m41TierFilterJson = JSON.parse(m41TierFilter.stdout);
+  if (m41TierFilterJson.tiers.length !== 1 || m41TierFilterJson.tiers[0].path_segment_count_tier !== 'high') {
+    throw new Error(`M41(c): --tier high must return exactly one high bucket:\n${m41TierFilter.stdout}`);
+  }
+
+  // M41(d): --tier low returns single matching bucket
+  const m41LowTierFilter = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'low', '--json'], { cwd: m41TmpDir });
+  const m41LowTierJson = JSON.parse(m41LowTierFilter.stdout);
+  if (m41LowTierJson.tiers.length !== 1 || m41LowTierJson.tiers[0].path_segment_count_tier !== 'low') {
+    throw new Error(`M41(d): --tier low must return exactly one low bucket:\n${m41LowTierFilter.stdout}`);
+  }
+
+  // M41(e): --tier medium returns single matching bucket (get_orders has 3 segments)
+  const m41MediumTierFilter = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'medium', '--json'], { cwd: m41TmpDir });
+  const m41MediumTierJson = JSON.parse(m41MediumTierFilter.stdout);
+  if (m41MediumTierJson.tiers.length !== 1 || m41MediumTierJson.tiers[0].path_segment_count_tier !== 'medium') {
+    throw new Error(`M41(e): --tier medium must return exactly one medium bucket:\n${m41MediumTierFilter.stdout}`);
+  }
+
+  // M41(f): --tier none returns root_health
+  const m41NoneTierFilter = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'none', '--json'], { cwd: m41TmpDir });
+  const m41NoneTierJson = JSON.parse(m41NoneTierFilter.stdout);
+  if (m41NoneTierJson.tiers.length !== 1 || m41NoneTierJson.tiers[0].path_segment_count_tier !== 'none') {
+    throw new Error(`M41(f): --tier none must return exactly one none bucket:\n${m41NoneTierFilter.stdout}`);
+  }
+  if (!m41NoneTierJson.tiers[0].capabilities.includes('root_health')) {
+    throw new Error(`M41(f): root_health (path='/') must be in none bucket:\n${JSON.stringify(m41NoneTierJson.tiers[0].capabilities)}`);
+  }
+
+  // M41(g): --tier HIGH (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m41UppercaseTier = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'HIGH'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41UppercaseTier.stderr.includes('Unknown path segment count tier: HIGH') || m41UppercaseTier.stdout !== '') {
+    throw new Error(`M41(g): --tier HIGH (uppercase) must exit 1 with Unknown path segment count tier: message:\nstdout=${m41UppercaseTier.stdout}\nstderr=${m41UppercaseTier.stderr}`);
+  }
+
+  // M41(h): --tier xyz (unknown tier) exits 1
+  const m41BogusFilter = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier', 'xyz'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41BogusFilter.stderr.includes('Unknown path segment count tier: xyz') || m41BogusFilter.stdout !== '') {
+    throw new Error(`M41(h): --tier xyz must exit 1 with Unknown path segment count tier: message`);
+  }
+
+  // M41(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m41MissingManifest = runCli(['path', 'index', '--manifest', path.join(m41TmpDir, 'nonexistent.json')], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41MissingManifest.stderr.includes('Manifest not found') || m41MissingManifest.stdout !== '') {
+    throw new Error(`M41(i): missing manifest must exit 1:\nstdout=${m41MissingManifest.stdout}\nstderr=${m41MissingManifest.stderr}`);
+  }
+
+  // M41(j): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m41BadJsonPath = path.join(m41TmpDir, 'bad.json');
+  await fs.writeFile(m41BadJsonPath, '{ not valid json', 'utf8');
+  const m41BadJson = runCli(['path', 'index', '--manifest', m41BadJsonPath], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41BadJson.stderr.includes('Invalid manifest JSON') || m41BadJson.stdout !== '') {
+    throw new Error(`M41(j): malformed manifest must exit 1:\nstdout=${m41BadJson.stdout}\nstderr=${m41BadJson.stderr}`);
+  }
+
+  // M41(k): manifest missing capabilities array exits 1
+  const m41NoCapsManifestPath = path.join(m41TmpDir, 'no-caps.json');
+  await fs.writeFile(m41NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m41NoCaps = runCli(['path', 'index', '--manifest', m41NoCapsManifestPath], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m41NoCaps.stdout !== '') {
+    throw new Error(`M41(k): missing capabilities array must exit 1:\nstdout=${m41NoCaps.stdout}\nstderr=${m41NoCaps.stderr}`);
+  }
+
+  // M41(l): unknown flag exits 1 with error on stderr and empty stdout
+  const m41UnknownFlag = runCli(['path', 'index', '--manifest', m41ManifestPath, '--badFlag'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m41UnknownFlag.stdout !== '') {
+    throw new Error(`M41(l): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m41UnknownFlag.stdout}\nstderr=${m41UnknownFlag.stderr}`);
+  }
+
+  // M41(m): --tier with no value exits 1
+  const m41TierNoValue = runCli(['path', 'index', '--manifest', m41ManifestPath, '--tier'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (m41TierNoValue.stdout !== '') {
+    throw new Error(`M41(m): --tier with no value must produce empty stdout, got: ${m41TierNoValue.stdout}`);
+  }
+
+  // M41(n): --out <valid path> writes correctly and stdout is empty
+  const m41OutPath = path.join(m41TmpDir, 'path-index-out.json');
+  const m41OutResult = runCli(['path', 'index', '--manifest', m41ManifestPath, '--out', m41OutPath], { cwd: m41TmpDir });
+  if (m41OutResult.stdout !== '') {
+    throw new Error(`M41(n): --out must emit no stdout on success, got: ${m41OutResult.stdout}`);
+  }
+  const m41OutContent = JSON.parse(await fs.readFile(m41OutPath, 'utf8'));
+  if (!Array.isArray(m41OutContent.tiers) || m41OutContent.tiers.length < 2) {
+    throw new Error(`M41(n): --out file must contain at least two tier entries: ${JSON.stringify(m41OutContent.tiers)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m41OutContent, 'warnings') || !Array.isArray(m41OutContent.warnings)) {
+    throw new Error(`M41(n): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m41OutContent)}`);
+  }
+
+  // M41(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m41TusqOutResult = runCli(
+    ['path', 'index', '--manifest', m41ManifestPath, '--out', path.join(m41TmpDir, '.tusq', 'index.json')],
+    { cwd: m41TmpDir, expectedStatus: 1 }
+  );
+  if (!m41TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m41TusqOutResult.stdout !== '') {
+    throw new Error(`M41(o): --out .tusq/ must reject with correct message:\nstdout=${m41TusqOutResult.stdout}\nstderr=${m41TusqOutResult.stderr}`);
+  }
+
+  // M41(p): --out to an unwritable path exits 1 with empty stdout
+  const m41BadOut = runCli(['path', 'index', '--manifest', m41ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (m41BadOut.stdout !== '') {
+    throw new Error(`M41(p): --out unwritable must produce empty stdout, got: ${m41BadOut.stdout}`);
+  }
+
+  // M41(q): --json outputs valid JSON with tiers[] and warnings: [] for clean manifest
+  const m41NoneOnlyManifestPath = path.join(m41TmpDir, 'none-only.json');
+  await fs.writeFile(m41NoneOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'root_a', description: 'A', method: 'GET', path: '/', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'root_b', description: 'B', method: 'GET', path: '/', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m41Json2 = runCli(['path', 'index', '--manifest', m41NoneOnlyManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41NoneOnlyJson = JSON.parse(m41Json2.stdout);
+  if (!Array.isArray(m41NoneOnlyJson.tiers) || !Array.isArray(m41NoneOnlyJson.warnings)) {
+    throw new Error(`M41(q): --json must include tiers[] and warnings[]:\n${m41Json2.stdout}`);
+  }
+  if (m41NoneOnlyJson.warnings.length !== 0) {
+    throw new Error(`M41(q): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m41NoneOnlyJson.warnings)}`);
+  }
+
+  // M41(r): determinism — three consecutive runs produce byte-identical stdout
+  const m41Human1 = runCli(['path', 'index', '--manifest', m41ManifestPath], { cwd: m41TmpDir });
+  const m41Human2 = runCli(['path', 'index', '--manifest', m41ManifestPath], { cwd: m41TmpDir });
+  const m41Human3 = runCli(['path', 'index', '--manifest', m41ManifestPath], { cwd: m41TmpDir });
+  if (m41Human1.stdout !== m41Human2.stdout || m41Human2.stdout !== m41Human3.stdout) {
+    throw new Error('M41(r): expected byte-identical human index output across three runs');
+  }
+  const m41JsonR1 = runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41JsonR2 = runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  if (m41JsonR1.stdout !== m41JsonR2.stdout) {
+    throw new Error('M41(r): expected byte-identical JSON index output across runs');
+  }
+
+  // M41(s): manifest mtime + content invariant pre/post index run
+  const m41ManifestBefore = await fs.readFile(m41ManifestPath, 'utf8');
+  runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41ManifestAfter = await fs.readFile(m41ManifestPath, 'utf8');
+  if (m41ManifestBefore !== m41ManifestAfter) {
+    throw new Error('M41(s): tusq path index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M41(t): path_segment_count_tier MUST NOT appear in tusq.manifest.json after run (non-persistence)
+  const m41ManifestParsed = JSON.parse(m41ManifestAfter);
+  for (const cap of m41ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'path_segment_count_tier')) {
+      throw new Error(`M41(t): path_segment_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M41(u): tusq compile output is byte-identical before and after path index run
+  const m41CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m41-compile-'));
+  const m41CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m41CompileDir, 'tusq.manifest.json'), JSON.stringify(m41CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m41CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m41CompileDir });
+  const m41CompiledToolPath = path.join(m41CompileDir, 'tusq-tools', 'list_users.json');
+  const m41CompileContentBefore = await fs.readFile(m41CompiledToolPath, 'utf8');
+  runCli(['path', 'index', '--manifest', path.join(m41CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m41CompileDir });
+  const m41CompileContentAfter = await fs.readFile(m41CompiledToolPath, 'utf8');
+  if (m41CompileContentBefore !== m41CompileContentAfter) {
+    throw new Error('M41(u): tusq compile output must be byte-identical before and after path index run');
+  }
+
+  // M41(v): other index commands are byte-identical before and after path index run
+  const m41SurfaceBefore = runCli(['surface', 'plan', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir }).stdout;
+  runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41SurfaceAfter = runCli(['surface', 'plan', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir }).stdout;
+  if (m41SurfaceBefore !== m41SurfaceAfter) {
+    throw new Error('M41(v): tusq surface plan output must be byte-identical before and after path index run');
+  }
+  const m41OutputBefore = runCli(['output', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir }).stdout;
+  runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir });
+  const m41OutputAfter = runCli(['output', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir }).stdout;
+  if (m41OutputBefore !== m41OutputAfter) {
+    throw new Error('M41(v): tusq output index output must be byte-identical before and after path index run');
+  }
+
+  // M41(w): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m41EmptyManifestPath = path.join(m41TmpDir, 'empty.json');
+  await fs.writeFile(m41EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m41EmptyHuman = runCli(['path', 'index', '--manifest', m41EmptyManifestPath], { cwd: m41TmpDir });
+  if (m41EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M41(w): empty-capabilities human output must be exactly the documented line:\n${m41EmptyHuman.stdout}`);
+  }
+  const m41EmptyJson = JSON.parse(runCli(['path', 'index', '--manifest', m41EmptyManifestPath, '--json'], { cwd: m41TmpDir }).stdout);
+  if (!Array.isArray(m41EmptyJson.tiers) || m41EmptyJson.tiers.length !== 0) {
+    throw new Error(`M41(w): empty-capabilities JSON must have tiers: []:\n${JSON.stringify(m41EmptyJson)}`);
+  }
+  if (!Array.isArray(m41EmptyJson.warnings) || m41EmptyJson.warnings.length !== 0) {
+    throw new Error(`M41(w): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m41EmptyJson)}`);
+  }
+
+  // M41(x): malformed-path capability produces warning in stderr (human) and in warnings[] (--json)
+  // Covering all five frozen reason codes:
+  // no_path_cap → path_field_missing
+  // num_path_cap → path_field_not_string
+  // empty_path_cap → path_field_empty_string
+  // no_slash_cap → path_field_does_not_start_with_forward_slash
+  // double_slash_cap → path_field_contains_empty_interior_segment
+  const m41WarnHuman = runCli(['path', 'index', '--manifest', m41ManifestPath], { cwd: m41TmpDir });
+  if (!m41WarnHuman.stderr.includes("Warning: capability 'no_path_cap' has malformed path (path_field_missing)")) {
+    throw new Error(`M41(x): human mode must emit warning for no_path_cap (path_field_missing) on stderr:\n${m41WarnHuman.stderr}`);
+  }
+  if (!m41WarnHuman.stderr.includes("Warning: capability 'num_path_cap' has malformed path (path_field_not_string)")) {
+    throw new Error(`M41(x): human mode must emit warning for num_path_cap (path_field_not_string) on stderr:\n${m41WarnHuman.stderr}`);
+  }
+  if (!m41WarnHuman.stderr.includes("Warning: capability 'empty_path_cap' has malformed path (path_field_empty_string)")) {
+    throw new Error(`M41(x): human mode must emit warning for empty_path_cap (path_field_empty_string) on stderr:\n${m41WarnHuman.stderr}`);
+  }
+  if (!m41WarnHuman.stderr.includes("Warning: capability 'no_slash_cap' has malformed path (path_field_does_not_start_with_forward_slash)")) {
+    throw new Error(`M41(x): human mode must emit warning for no_slash_cap (path_field_does_not_start_with_forward_slash) on stderr:\n${m41WarnHuman.stderr}`);
+  }
+  if (!m41WarnHuman.stderr.includes("Warning: capability 'double_slash_cap' has malformed path (path_field_contains_empty_interior_segment)")) {
+    throw new Error(`M41(x): human mode must emit warning for double_slash_cap (path_field_contains_empty_interior_segment) on stderr:\n${m41WarnHuman.stderr}`);
+  }
+  const m41WarnJsonObj = JSON.parse(runCli(['path', 'index', '--manifest', m41ManifestPath, '--json'], { cwd: m41TmpDir }).stdout);
+  const m41NoPathWarn = m41WarnJsonObj.warnings.find((w) => w.capability === 'no_path_cap');
+  if (!m41NoPathWarn || m41NoPathWarn.reason !== 'path_field_missing') {
+    throw new Error(`M41(x): warnings[] must include {capability: 'no_path_cap', reason: 'path_field_missing'}:\n${JSON.stringify(m41WarnJsonObj.warnings)}`);
+  }
+  const m41NumPathWarn = m41WarnJsonObj.warnings.find((w) => w.capability === 'num_path_cap');
+  if (!m41NumPathWarn || m41NumPathWarn.reason !== 'path_field_not_string') {
+    throw new Error(`M41(x): warnings[] must include {capability: 'num_path_cap', reason: 'path_field_not_string'}:\n${JSON.stringify(m41WarnJsonObj.warnings)}`);
+  }
+  const m41EmptyPathWarn = m41WarnJsonObj.warnings.find((w) => w.capability === 'empty_path_cap');
+  if (!m41EmptyPathWarn || m41EmptyPathWarn.reason !== 'path_field_empty_string') {
+    throw new Error(`M41(x): warnings[] must include {capability: 'empty_path_cap', reason: 'path_field_empty_string'}:\n${JSON.stringify(m41WarnJsonObj.warnings)}`);
+  }
+  const m41NoSlashWarn = m41WarnJsonObj.warnings.find((w) => w.capability === 'no_slash_cap');
+  if (!m41NoSlashWarn || m41NoSlashWarn.reason !== 'path_field_does_not_start_with_forward_slash') {
+    throw new Error(`M41(x): warnings[] must include {capability: 'no_slash_cap', reason: 'path_field_does_not_start_with_forward_slash'}:\n${JSON.stringify(m41WarnJsonObj.warnings)}`);
+  }
+  const m41DoubleSlashWarn = m41WarnJsonObj.warnings.find((w) => w.capability === 'double_slash_cap');
+  if (!m41DoubleSlashWarn || m41DoubleSlashWarn.reason !== 'path_field_contains_empty_interior_segment') {
+    throw new Error(`M41(x): warnings[] must include {capability: 'double_slash_cap', reason: 'path_field_contains_empty_interior_segment'}:\n${JSON.stringify(m41WarnJsonObj.warnings)}`);
+  }
+
+  // M41: aggregation_key closed two-value enum for every emitted bucket
+  const m41ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m41IndexJson.tiers) {
+    if (!m41ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M41: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.path_segment_count_tier}'`);
+    }
+  }
+  const m41NoneEntry = m41IndexJson.tiers.find((e) => e.path_segment_count_tier === 'none');
+  const m41UnknownEntry = m41IndexJson.tiers.find((e) => e.path_segment_count_tier === 'unknown');
+  if (!m41NoneEntry || m41NoneEntry.aggregation_key !== 'tier') {
+    throw new Error(`M41: none tier must have aggregation_key 'tier', got: ${m41NoneEntry ? m41NoneEntry.aggregation_key : null}`);
+  }
+  if (!m41UnknownEntry || m41UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M41: unknown tier must have aggregation_key 'unknown', got: ${m41UnknownEntry ? m41UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M41: boundary values — '/' → none(0), 1 segment → low, 2 segments → low, 3 segments → medium, 4 segments → medium, 5 segments → high
+  const m41BoundaryManifestPath = path.join(m41TmpDir, 'boundary.json');
+  await fs.writeFile(m41BoundaryManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 's0', description: '0 segments', method: 'GET', path: '/', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 's1', description: '1 segment', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 's2', description: '2 segments', method: 'GET', path: '/a/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 's3', description: '3 segments', method: 'GET', path: '/a/b/c', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 's4', description: '4 segments', method: 'GET', path: '/a/b/c/d', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 's5', description: '5 segments', method: 'GET', path: '/a/b/c/d/e', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m41BoundaryJson = JSON.parse(runCli(['path', 'index', '--manifest', m41BoundaryManifestPath, '--json'], { cwd: m41TmpDir }).stdout);
+  const m41BoundaryTierMap = {};
+  for (const entry of m41BoundaryJson.tiers) {
+    for (const capName of entry.capabilities) {
+      m41BoundaryTierMap[capName] = entry.path_segment_count_tier;
+    }
+  }
+  if (m41BoundaryTierMap['s0'] !== 'none') throw new Error(`M41: s0 (path='/') must be 'none', got: ${m41BoundaryTierMap['s0']}`);
+  if (m41BoundaryTierMap['s1'] !== 'low') throw new Error(`M41: s1 (1 segment) must be 'low', got: ${m41BoundaryTierMap['s1']}`);
+  if (m41BoundaryTierMap['s2'] !== 'low') throw new Error(`M41: s2 (2 segments) must be 'low', got: ${m41BoundaryTierMap['s2']}`);
+  if (m41BoundaryTierMap['s3'] !== 'medium') throw new Error(`M41: s3 (3 segments) must be 'medium', got: ${m41BoundaryTierMap['s3']}`);
+  if (m41BoundaryTierMap['s4'] !== 'medium') throw new Error(`M41: s4 (4 segments) must be 'medium', got: ${m41BoundaryTierMap['s4']}`);
+  if (m41BoundaryTierMap['s5'] !== 'high') throw new Error(`M41: s5 (5 segments) must be 'high', got: ${m41BoundaryTierMap['s5']}`);
+
+  // M41: has_destructive_side_effect flag correct per bucket
+  const m41HighEntry = m41IndexJson.tiers.find((e) => e.path_segment_count_tier === 'high');
+  if (!m41HighEntry || m41HighEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M41: high bucket must have has_destructive_side_effect=true (deep_resource is destructive); got: ${JSON.stringify(m41HighEntry)}`);
+  }
+  if (!m41NoneEntry || m41NoneEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M41: none bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m41NoneEntry)}`);
+  }
+
+  // M41: has_restricted_or_confidential_sensitivity flag correct per bucket
+  if (!m41HighEntry || m41HighEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M41: high bucket must have has_restricted_or_confidential_sensitivity=true (deep_resource is restricted); got: ${JSON.stringify(m41HighEntry)}`);
+  }
+  if (!m41NoneEntry || m41NoneEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M41: none bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m41NoneEntry)}`);
+  }
+
+  // M41: within-bucket manifest declared order
+  const m41LowEntry = m41IndexJson.tiers.find((e) => e.path_segment_count_tier === 'low');
+  if (!m41LowEntry || m41LowEntry.capabilities[0] !== 'list_users' || m41LowEntry.capabilities[1] !== 'get_user') {
+    throw new Error(`M41: within low bucket, capabilities must follow manifest declared order (list_users, get_user); got: ${JSON.stringify(m41LowEntry ? m41LowEntry.capabilities : null)}`);
+  }
+
+  // M41: tusq help enumerates 25 commands including 'path'
+  const m41HelpOutput = runCli(['help'], { cwd: m41TmpDir });
+  if (!m41HelpOutput.stdout.includes('path')) {
+    throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
+  }
+  const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m41CommandCount !== 25) {
+    throw new Error(`M41: tusq help must enumerate exactly 25 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  }
+
+  // M41: help text includes planning-aid framing
+  const m41HelpResult = runCli(['path', 'index', '--help'], { cwd: m41TmpDir });
+  if (!m41HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M41: path index help must include planning-aid framing:\n${m41HelpResult.stdout}`);
+  }
+
+  // M41: unknown subcommand exits 1
+  const m41UnknownSubCmd = runCli(['path', 'bogusub'], { cwd: m41TmpDir, expectedStatus: 1 });
+  if (!m41UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m41UnknownSubCmd.stdout !== '') {
+    throw new Error(`M41: unknown subcommand must exit 1:\nstdout=${m41UnknownSubCmd.stdout}\nstderr=${m41UnknownSubCmd.stderr}`);
+  }
+
+  // M41: empty-bucket check — none-only manifest produces exactly one bucket
+  const m41NoneOnlyResult = JSON.parse(runCli(['path', 'index', '--manifest', m41NoneOnlyManifestPath, '--json'], { cwd: m41TmpDir }).stdout);
+  if (m41NoneOnlyResult.tiers.length !== 1 || m41NoneOnlyResult.tiers[0].path_segment_count_tier !== 'none') {
+    throw new Error(`M41: none-only manifest must produce exactly one bucket [none]; got: ${JSON.stringify(m41NoneOnlyResult.tiers.map((e) => e.path_segment_count_tier))}`);
+  }
+
+  await fs.rm(m41TmpDir, { recursive: true, force: true });
+  await fs.rm(m41CompileDir, { recursive: true, force: true });
+
   // ── M40: Static Capability Output Schema Property Count Tier Index Export ─────
   const m40TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m40-smoke-'));
 
@@ -3876,14 +4417,14 @@ async function run() {
     throw new Error(`M40: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m40NoneEntry ? m40NoneEntry.capabilities : null)}`);
   }
 
-  // M40: tusq help enumerates 24 commands including 'output'
+  // M40: tusq help enumerates 25 commands including 'output' and 'path' (M41 ships in this run)
   const m40HelpOutput = runCli(['help'], { cwd: m40TmpDir });
   if (!m40HelpOutput.stdout.includes('output')) {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 24) {
-    throw new Error(`M40: tusq help must enumerate exactly 24 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 25) {
+    throw new Error(`M40: tusq help must enumerate exactly 25 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -4348,14 +4889,14 @@ async function run() {
     throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
   }
 
-  // M39: tusq help enumerates 24 commands including 'input'
+  // M39: tusq help enumerates 25 commands including 'input' (M40/M41 ship in this run)
   const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
   if (!m39HelpOutput.stdout.includes('input')) {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 24) {
-    throw new Error(`M39: tusq help must enumerate exactly 24 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 25) {
+    throw new Error(`M39: tusq help must enumerate exactly 25 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -4819,14 +5360,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 24 commands including 'examples'
+  // M38: tusq help enumerates 25 commands including 'examples' (M39/M40/M41 ship in this run)
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 24) {
-    throw new Error(`M38: tusq help must enumerate exactly 24 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 25) {
+    throw new Error(`M38: tusq help must enumerate exactly 25 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -5302,14 +5843,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 24 commands including 'pii'
+  // M37: tusq help enumerates 25 commands including 'pii' (M38/M39/M40/M41 ship in this run)
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 24) {
-    throw new Error(`M37: tusq help must enumerate exactly 24 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 25) {
+    throw new Error(`M37: tusq help must enumerate exactly 25 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -5760,14 +6301,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 24 commands including 'confidence' (M37/M38/M39/M40 ship in this run)
+  // M36: tusq help enumerates 25 commands including 'confidence' (M37/M38/M39/M40/M41 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 24) {
-    throw new Error(`M36: tusq help must enumerate exactly 24 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 25) {
+    throw new Error(`M36: tusq help must enumerate exactly 25 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -6153,14 +6694,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 24 commands including 'auth', 'confidence', 'pii', 'examples', 'input', and 'output' (M36/M37/M38/M39/M40 ship in this run)
+  // M35: tusq help enumerates 25 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', and 'path' (M36/M37/M38/M39/M40/M41 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 24) {
-    throw new Error(`M35: tusq help must enumerate exactly 24 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 25) {
+    throw new Error(`M35: tusq help must enumerate exactly 25 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

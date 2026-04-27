@@ -410,6 +410,37 @@ The `tusq output index` command (M40) derives a per-tier capability breakdown fr
 
 **Non-persistence:** `output_schema_property_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq output index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Path Segment Count Tier Index
+
+The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.
+
+**Tier function** (thresholds `0/2/4/5` are immutable):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | `path.split('/').filter(Boolean).length === 0` (path is `"/"`) |
+| `low` | `1 <= count <= 2` (e.g., `/users`, `/api/users`) |
+| `medium` | `3 <= count <= 4` (e.g., `/api/v1/users`, `/api/v1/users/:id`) |
+| `high` | `count >= 5` (e.g., `/api/v1/orgs/:orgId/projects`) |
+| `unknown` | `path` missing/null/not-a-string, empty string, no leading `/`, or contains an empty interior segment after `split('/')` |
+
+**Path-parameter rule:** `:id`-style path parameters count as one segment each. No special unwrapping or downscaling is performed. `/api/v1/users/:id` has 4 segments and lands in `medium`.
+
+**Malformed values:** When a capability's `path` field is malformed, a `Warning: capability '<name>' has malformed path (<reason>)` is emitted to stderr (human mode) or recorded in `warnings[]` (JSON mode). Five frozen reason codes:
+- `path_field_missing` — no `path` key on the capability
+- `path_field_not_string` — `path` is not a string
+- `path_field_empty_string` — `path` is an empty string
+- `path_field_does_not_start_with_forward_slash` — `path` does not begin with `/`
+- `path_field_contains_empty_interior_segment` — `path` contains `//` or ends with a trailing `/` other than the root path `"/"`
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (closed-enum deterministic stable-output convention only — NOT sprawl-risk-ranked, NOT blast-radius-ranked, NOT depth-ranked, NOT operator-visibility-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--tier` filter:** Only lowercase values match. `--tier HIGH` exits 1 with `Unknown path segment count tier: HIGH`.
+
+**Non-persistence:** `path_segment_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq path index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ## Examples Count Tier Index (V1.19)
 
 Starting with M38, `tusq examples index` emits a static, read-only capability index grouped by a derived `examples_count_tier` bucket. The tier is computed at read-time from the cardinality of the `examples[]` array already present in each capability (M11-derived); it is **never written back into `tusq.manifest.json`**.

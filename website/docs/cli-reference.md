@@ -671,6 +671,41 @@ tusq output index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [-
 
 **Planning aid notice:** This command is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier. Tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked, NOT staleness-ranked).
 
+### `tusq path index`
+
+Index capabilities by URL path segment count tier.
+
+```
+tusq path index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--tier <value>` | Filter to a single tier bucket (case-sensitive lowercase) |
+| `--manifest <path>` | Manifest file (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (suppresses stdout) |
+| `--json` | Machine-readable JSON output |
+
+**Tier function** (applied to `path.split('/').filter(Boolean).length`; thresholds `0/2/4/5` are immutable):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | Segment count `=== 0` (path is `"/"`) |
+| `low` | `1 <= count <= 2` (e.g., `/users`, `/api/users`) |
+| `medium` | `3 <= count <= 4` (e.g., `/api/v1/users`, `/api/v1/users/:id`) |
+| `high` | `count >= 5` (e.g., `/api/v1/orgs/:orgId/projects`) |
+| `unknown` | `path` missing/null/not-a-string, empty string, no leading `/`, or contains empty interior segment (`//`) |
+
+> **Note on path parameters:** `:id`-style path parameters count as one segment each — they are NOT unwrapped or downscaled. `/api/v1/users/:id` has 4 segments and lands in `medium`.
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown tier, `--out` path error, or unknown subcommand
+
+**Planning aid notice:** This command is a planning aid, not a runtime URL router, path validator, route-registry validator, path-contradiction detector, URL generator, or route-registration certifier. Tiers are deterministic stable-output ordering only (NOT sprawl-risk-ranked, NOT blast-radius-ranked, NOT depth-ranked).
+
 ## `tusq examples index`
 
 Emit a deterministic, per-examples-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `examples[]` array in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `examples` field is missing, `null`, not an array, or contains a `null`, array, or non-object element. This is a **planning aid, not a runtime examples validator, documentation-completeness enforcer, or compliance certifier**.

@@ -1,6 +1,36 @@
 # System Spec — tusq.dev Docs & Website Platform
 
-> **M41 Charter Sketch Reservation — 2026-04-27, run_7bad406d9ea95ce5, turn_1bd2bd4cc7b1d330, PM attempt 1, HEAD `df7fb01`.** PM-frozen scope reservation for M41 Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22 (PROPOSED). The dev materialization turn (next implementation phase) is required to add the full `### M41` detail block in this file with: command shape `tusq path index [--tier <value>] [--manifest <path>] [--out <path>] [--json]`; closed five-value `path_segment_count_tier` bucket-key enum (`none | low | medium | high | unknown`); closed two-value `aggregation_key` enum (`tier | unknown`); frozen tier-function thresholds (`segment count === 0` → `none`, `1-2` → `low`, `3-4` → `medium`, `>= 5` → `high`, malformed `path` → `unknown` per five frozen reason codes `path_field_missing | path_field_not_string | path_field_empty_string | path_field_does_not_start_with_forward_slash | path_field_contains_empty_interior_segment`); frozen 8-field per-bucket entry shape (`path_segment_count_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); closed-enum bucket iteration order `none → low → medium → high → unknown` (deterministic stable-output convention only — explicitly NOT sprawl-risk-ranked, NOT blast-radius-ranked, NOT depth-ranked, NOT operator-visibility-ranked); within-bucket manifest-declared-order rule; empty-buckets MUST NOT appear rule; case-sensitive lowercase-only `--tier` filter rule; non-persistence rule (`path_segment_count_tier` MUST NOT be written into `tusq.manifest.json`); path-parameter-counts-as-one-segment rule (`:id` syntax is not unwrapped or downscaled); trailing-or-duplicate-slash-malform rule (manifest is canonical, non-canonical paths produce `unknown` warnings, NOT silent coercion); read-only invariants (manifest mtime + SHA-256 + per-capability `capability_digest` byte-identical pre/post; `tusq compile` byte-identical pre/post; all 11 prior index commands byte-identical pre/post); CLI surface 24 → 25 commands with `path` inserted alphabetically between `output` and `pii`; eval harness 31 → 32 scenarios via `path-segment-count-tier-index-determinism`; and the explicit Constraint 34 boundary statement (M41 is a planning aid, NOT a runtime path executor / route-registry validator / path-contradiction detector / URL generator / route-registration certifier; does NOT walk wildcard or regex segments differently from literal segments; does NOT normalize trailing or duplicate slashes; does NOT compute statistical aggregates). Deferred successor milestones: `M-Path-Wildcard-Index-1`, `M-Path-Prefix-Index-1`, `M-Path-Persistence-1`, `M-Path-Route-Registry-Validation-1`, `M-Path-Doc-Contradiction-1`. VISION sources cited: `.planning/VISION.md` lines 721–723 (`### Artifact Sprawl` — primary, fresh) and lines 40–46 (`### Code And API Surface` — re-cited for URL-hierarchy-depth-derivation framing only).
+### M41: Static Capability Path Segment Count Tier Index
+
+**Purpose:** Export a per-tier breakdown of capabilities by URL path segment count from manifest evidence. Helps operators identify which capabilities live at deeply nested URL hierarchies (highest manifest-as-anti-sprawl-contract value) and which top-level capabilities are missing the manifest's flat-list compression benefit. Directly answers: "which of my capabilities are buried five-or-more URL segments deep — and which of those deeply-buried capabilities are also destructive or restricted/confidential?" The deeply-buried-destructive case is the canonical artifact-sprawl failure mode § Artifact Sprawl warns against. Operationalizes VISION § Artifact Sprawl (lines 721–723) — fresh aggregation source, not previously used as a primary milestone axis. Secondary citation: VISION § Code And API Surface (lines 40–46) for URL-hierarchy-depth-derivation framing.
+
+**Command:** `tusq path index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]`
+
+**Tier function** (applied to `path.split('/').filter(Boolean).length`):
+- `none` if segment count === 0 (path is `/`)
+- `low` if 1 ≤ count ≤ 2 (e.g., `/users`, `/api/users`)
+- `medium` if 3 ≤ count ≤ 4 (e.g., `/api/v1/orders`, `/api/v1/users/:id`)
+- `high` if count ≥ 5 (e.g., `/api/v1/orgs/:orgId/projects`)
+- `unknown` if path is null/missing/not-a-string, empty string, does not start with `/`, or contains an empty interior segment (double slash or trailing slash other than `/`)
+
+Path parameters (`:id`, `:orgId`) count as one segment each — NOT unwrapped or downscaled. Tier-function thresholds `0/2/4/5` are immutable once M41 ships.
+
+**Bucket-key enum** (closed five-value, immutable): `none | low | medium | high | unknown`
+
+**Aggregation-key enum** (closed two-value, immutable): `tier | unknown`
+
+**Per-bucket entry shape** (frozen 8 fields):
+`path_segment_count_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`
+
+**Bucket iteration order** (closed-enum, deterministic stable-output convention only — NOT sprawl-risk-ranked, NOT blast-radius-ranked, NOT depth-ranked, NOT operator-visibility-ranked): `none → low → medium → high → unknown`. Empty buckets MUST NOT appear.
+
+**Within-bucket order:** manifest declared order (capabilities[] index ascending).
+
+**Warnings** (--json only, always present even if empty): five frozen reason codes: `path_field_missing`, `path_field_not_string`, `path_field_empty_string`, `path_field_does_not_start_with_forward_slash`, `path_field_contains_empty_interior_segment`.
+
+**Non-persistence rule:** `path_segment_count_tier` MUST NOT be written into `tusq.manifest.json`.
+
+**Constraint 34:** `tusq path index` is a planning aid that surfaces what URL-path-segment-count tiers the manifest's capabilities span and the cross-axis side-effect/sensitivity exposure of each tier. It does NOT execute capability paths at runtime, does NOT validate `path` conformance against a runtime route registry, does NOT cross-reference manifest path vs public/internal docs, does NOT generate URL examples, does NOT measure runtime path-resolution variance, does NOT certify route-registration completeness, does NOT walk wildcard or regex route segments differently from literal segments (path-parameter syntax `:id` counts as one segment, not unwrapped), does NOT normalize trailing or duplicate slashes (those produce `unknown` warnings), does NOT persist `path_segment_count_tier` into `tusq.manifest.json`, and does NOT compute statistical aggregates. Deferred successors: `M-Path-Wildcard-Index-1`, `M-Path-Prefix-Index-1`, `M-Path-Persistence-1`, `M-Path-Route-Registry-Validation-1`, `M-Path-Doc-Contradiction-1`.
 
 ### M40: Static Capability Output Schema Property Count Tier Index
 
