@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c47096d9b37000b3 (role=qa, run_0b366d58febc99be, M37 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_0031ce2764696475, role=dev, HEAD 9a9118b) for run_0b366d58febc99be independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff e8e1837..HEAD --name-only` confirms exactly 10 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero PM gate artifacts modified (PM_SIGNOFF.md unchanged). Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (28 scenarios)`. Independently re-run this turn; 28 scenarios confirmed.
+
+**3. Module guard:** `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0. Both `_guardPiiFieldCountTierBucketKey` and `_guardPiiFieldCountTierAggregationKey` pass.
+
+**4. CLI surface 21 commands:** `node bin/tusq.js help` → 21 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, method, **pii**, policy, redaction, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 21 confirmed. `pii` correctly inserted between `method` and `policy`.
+
+**5. pii index --help framing:** `node bin/tusq.js pii index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier`); tier function (`none if length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if missing/non-array/non-string-element`); bucket order `none → low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js pii index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown pii field count tier: HIGH`, empty stdout. Independently verified this turn.
+
+**7. JSON output:** `node bin/tusq.js pii index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (pii_field_count_tier: 'none', all 8 per-bucket fields) and `warnings: []`. `generated_at` copied from manifest, not re-stamped.
+
+**8. Zero source drift:** `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0 (zero uncommitted source drift in working tree).
+
+**9. All 20 M37 ROADMAP checkboxes [x]:** Confirmed at `.planning/ROADMAP.md` lines 736–774.
+
+**10. Machine evidence discrepancy (non-blocking):** Dev turn machine evidence table listed exit_code 0 for `node bin/tusq.js pii index --manifest tests/fixtures/express-sample/tusq.manifest.json --tier HIGH; echo $?`. The dev's own evidence summary correctly described exit 1. My independent verification confirms exit 1. The implementation is correct; only the machine evidence table was incorrectly transcribed in the turn-result JSON. No behavioral issue.
+
+**11. pii_field_count_tier non-persistence:** Independently verified via smoke: `pii_field_count_tier` MUST NOT be written into `tusq.manifest.json`. The command is read-only. No manifest keys modified.
+
+**12. Eval scenario count 28:** `tests/evals/governed-cli-scenarios.json` contains `pii-field-count-tier-index-determinism` as the 28th scenario. `npm test` confirms `Eval regression harness passed (28 scenarios)`.
+
+**13. Carried objections (unchanged):** OBJ-001 (medium, non-blocking): R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in automated pipeline; correct for manually-edited manifests. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32/M33/M34/M35/M36/M37 close their own analogs.
+
+**Challenge resolved:** All five dev decisions upheld. 25 new REQs added (REQ-290–REQ-314). 314 total acceptance criteria pass. Gate `qa_ship_verdict` satisfied. Phase transition to `launch` requested.
+
 ## QA Challenge — turn_9fd0a8b165ae91e5 (role=qa, run_8580d828f0e1cc1e, M36 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_c3e78ecd352330aa, role=dev, HEAD 310c55a) for run_8580d828f0e1cc1e independently rather than rubber-stamping it.

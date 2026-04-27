@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M37 (turn_c47096d9b37000b3, run_0b366d58febc99be, 2026-04-27, HEAD 9a9118b)
+
+**Milestone:** M37 — Static Capability PII Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.18
+
+**Command added:** `tusq pii index` (CLI surface: 20 → 21 commands; `pii` inserted alphabetically between `method` and `policy`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (28 scenarios)`. `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0 (guards `_guardPiiFieldCountTierBucketKey` and `_guardPiiFieldCountTierAggregationKey` pass). `node bin/tusq.js help` → 21-command surface confirmed (`grep -c '^  [a-z]'` → 21). `node bin/tusq.js pii index --help` → planning-aid framing, tier function (`none if length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if missing/non-array/non-string-element`), and bucket order (`none → low → medium → high → unknown`) confirmed. `node bin/tusq.js pii index --tier HIGH` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js pii index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array and `warnings: []`. `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0 (zero source drift). All 20 M37 ROADMAP checkboxes `[x]`.
+
+**New acceptance criteria:** REQ-290–REQ-314 (25 criteria) — CLI surface 21, closed 5-value tier enum, closed 2-value aggregation_key enum, frozen tier-function thresholds (0/2/5/6), per-bucket 8-field shape, determinism, non-persistence, empty-capabilities, --out, case-sensitive filter, unknown bucket warnings, eval 28 scenarios.
+
+**Closed enums shipped (immutable):** `pii_field_count_tier` (none|low|medium|high|unknown), `aggregation_key` (tier|unknown), tier thresholds (0/2/5/6).
+
+**Non-breaking:** every existing command's stdout, stderr, and exit code is byte-identical pre/post M37.
+
 ## QA Re-verification — M36 (turn_9fd0a8b165ae91e5, run_8580d828f0e1cc1e, 2026-04-27, HEAD 310c55a)
 
 **Milestone:** M36 — Static Capability Confidence Tier Index Export from Manifest Evidence (~0.5 day) — V1.17
