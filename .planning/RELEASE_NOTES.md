@@ -1,5 +1,17 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M36 (turn_9fd0a8b165ae91e5, run_8580d828f0e1cc1e, 2026-04-27, HEAD 310c55a)
+
+**Milestone:** M36 — Static Capability Confidence Tier Index Export from Manifest Evidence (~0.5 day) — V1.17
+
+**Command added:** `tusq confidence index` (CLI surface: 19 → 20 commands; `confidence` inserted alphabetically between `auth` and `diff`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (27 scenarios)`. `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0. `node bin/tusq.js help` → 20-command surface confirmed. `node bin/tusq.js confidence index --help` → planning-aid framing, tier function (`high >= 0.85; medium if 0.6 <= confidence < 0.85; low < 0.6; unknown if null/missing/non-numeric/out-of-[0,1]`), and bucket order (`high → medium → low → unknown`) confirmed. `node bin/tusq.js confidence index --tier HIGH` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js confidence index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array and `warnings: []`. `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0 (zero source drift). All 20 M36 ROADMAP checkboxes `[x]`.
+
+**Key contracts verified:** Four-value `confidence_tier` enum (`high | medium | low | unknown`) frozen; two-value `aggregation_key` enum (`tier | unknown`) frozen; closed-enum bucket order (`high → medium → low → unknown`) enforced; 8-field per-bucket entry shape present; empty buckets absent; `confidence_tier` NOT persisted into `tusq.manifest.json`; `tusq compile` / `tusq auth index` / all M31–M35 index outputs byte-identical pre/post-M36; 22-case smoke matrix (cases a-v) + `confidence-tier-index-determinism` eval (27th scenario) pass.
+
+**Acceptance criteria:** Added REQ-265–REQ-289 (25 new M36 criteria). Total: 289 REQs (REQ-001–REQ-289), all PASS. Ship verdict: SHIP.
+
 ## User Impact
 
 tusq v0.1.0 is the first public release of the tusq capability compiler CLI. It gives Node.js developers a repeatable pipeline to:

@@ -2,6 +2,42 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_9fd0a8b165ae91e5 (role=qa, run_8580d828f0e1cc1e, M36 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_c3e78ecd352330aa, role=dev, HEAD 310c55a) for run_8580d828f0e1cc1e independently rather than rubber-stamping it.
+
+**Challenge 1 — Dev turn scope verified: exactly 10 dev-owned files changed.** `git diff d8e960e..HEAD --name-only` → `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. PM turn (d8e960e) changed 4 PM-owned files: `.planning/ROADMAP.md`, `.planning/PM_SIGNOFF.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved state, QA-owned, or launch-owned files modified. Challenge resolved.
+
+**Challenge 2 — npm test exits 0 with 27 scenarios.** `npm test` → `Smoke tests passed` and `Eval regression harness passed (27 scenarios)`. Increment from 26 → 27 correctly reflects the new `confidence-tier-index-determinism` eval scenario. Zero dependency drift in `package.json`/`package-lock.json`. Challenge resolved.
+
+**Challenge 3 — 20-command CLI surface confirmed.** `node bin/tusq.js help` → exit 0; 20 commands listed (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, method, policy, redaction, sensitivity, surface, version, help) with `confidence` inserted alphabetically between `auth` and `diff`. Alphabetical position: `auth` (`a`) < `confidence` (`c`) < `diff` (`d`). Challenge resolved.
+
+**Challenge 4 — Confidence index --help framing and tier function.** `node bin/tusq.js confidence index --help` → exit 0; planning-aid framing `This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier.` present; tier function `high if confidence >= 0.85; medium if 0.6 <= confidence < 0.85; low if confidence < 0.6; unknown if null/missing/non-numeric/out-of-[0,1]` documented; bucket order `high → medium → low → unknown` displayed. Challenge resolved.
+
+**Challenge 5 — Case-sensitive --tier filter enforcement.** `node bin/tusq.js confidence index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown confidence tier: HIGH`, empty stdout. Case-sensitive lowercase enforcement confirmed (mirrors M35 `--scheme` precedent). Challenge resolved.
+
+**Challenge 6 — JSON output shape and warnings[] array.** `node bin/tusq.js confidence index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (medium bucket with 3 capabilities at ~0.76 confidence), `warnings: []` (no out-of-range values in fixture). Per-bucket 8-field shape (`confidence_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`) confirmed. Challenge resolved.
+
+**Challenge 7 — Human output with planning-aid note.** `node bin/tusq.js confidence index --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 0; human output includes `Note: This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier.` preamble and `[medium]` bucket section. Challenge resolved.
+
+**Challenge 8 — CONFIDENCE_TIER_ENUM, CONFIDENCE_TIER_AGGREGATION_KEY_ENUM, CONFIDENCE_TIER_BUCKET_ORDER verified.** `src/cli.js`: `CONFIDENCE_TIER_ENUM = Object.freeze(new Set(['high', 'medium', 'low', 'unknown']))` (line 131); `CONFIDENCE_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']))` (line 135); `CONFIDENCE_TIER_BUCKET_ORDER = Object.freeze(['high', 'medium', 'low'])` (line 140). Unlike M35 which derived from M29 `AUTH_SCHEMES`, M36's `confidence_tier` is a newly-defined concept (no prior constant to derive from), so a literal frozen array is the correct form — no equivalent derivation requirement applies. Challenge resolved.
+
+**Challenge 9 — classifyConfidenceTier pure function verified.** `src/cli.js` lines 3037–3044: `if (conf === null || conf === undefined || typeof conf !== 'number' || isNaN(conf) || !isFinite(conf) || conf < 0 || conf > 1) return 'unknown'; if (conf >= 0.85) return 'high'; if (conf < 0.6) return 'low'; return 'medium'`. Thresholds correctly implement `>= 0.85` → high, `< 0.6` → low (with `>= 0` and `<= 1` range guard), `medium` otherwise. Challenge resolved.
+
+**Challenge 10 — All 20 M36 ROADMAP checkboxes confirmed [x].** All M36 milestone items (20 checkboxes covering CLI surface, command implementation, enums, tier function thresholds, default behavior, per-bucket shape, read-only invariants, determinism, empty-capabilities, I/O discipline, --help framing, --out rules, help insertion, smoke matrix cases a-v, eval scenario, Constraint 29, SYSTEM_SPEC § M36, two website docs, 20-command CLI-surface invariant) confirmed `[x]`. Challenge resolved.
+
+**Challenge 11 — Zero source drift.** `git diff --quiet HEAD -- src/ bin/ tests/ website/ package.json package-lock.json` → exit 0. Zero uncommitted changes to source files, zero dependency drift. Challenge resolved.
+
+**Challenge 12 — Module loads cleanly.** `node -e "require('./src/cli.js'); console.log('Module loaded OK');"` → exit 0. `_guardAuthSchemeBucketAlignment` guard (from M35 refinement) still passes cleanly alongside new M36 constants. Challenge resolved.
+
+**OBJ-001 (medium, non-blocking) carried forward:** R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — `auth_required` is never set by the scanner; implementation is correct for manually-edited manifests.
+
+**OBJ-002 (low, non-blocking) carried forward:** surface-plan-determinism eval scenario uses `synthetic_capabilities` rather than a scanned fixture.
+
+**OBJ-003 (low, non-blocking) carried forward:** M31 per-domain flag value assertions not independently smoke-asserted; M32/M33/M34/M35/M36 close their own analogs.
+
+Added REQ-265–REQ-289 (25 new M36 criteria). All 289 acceptance criteria (REQ-001–REQ-289) pass. Ship verdict: SHIP.
+
 ## QA Challenge — turn_b417afbe873a5777 (role=qa, run_152b21c8bbaa78d9, M35 refinement re-verification, 2026-04-26)
 
 This QA turn challenges the prior accepted dev turn (turn_bdc543168423c491, role=dev, HEAD d73daeb) for run_152b21c8bbaa78d9 independently rather than rubber-stamping it.
