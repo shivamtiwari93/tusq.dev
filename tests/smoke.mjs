@@ -3352,6 +3352,478 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M39: Static Capability Required Input Field Count Tier Index Export ───────
+  const m39TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m39-smoke-'));
+
+  // M39 fixture manifest: capabilities across none/low/medium/high/unknown required input field tiers.
+  // Declared order: health_check(none, no required), list_orders(none, required=[]),
+  // get_profile(low, required=[userId], confidential), process_payment(medium, required=[amount,currency,cardToken], destructive,restricted),
+  // bulk_export(high, required=[startDate,endDate,format,destination,compress,encrypt], destructive,restricted),
+  // legacy_sync(unknown, input_schema field missing), bad_cap(unknown, required has empty string element)
+  const m39Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'health_check',
+        description: 'Health endpoint',
+        method: 'GET',
+        path: '/health',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+      },
+      {
+        name: 'list_orders',
+        description: 'List orders',
+        method: 'GET',
+        path: '/orders',
+        domain: 'orders',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+      },
+      {
+        name: 'get_profile',
+        description: 'Get user profile',
+        method: 'GET',
+        path: '/profile/:userId',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'confidential',
+        approved: false,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['email'], pii_categories: ['email'] },
+        input_schema: { type: 'object', properties: { userId: { type: 'string' } }, required: ['userId'] }
+      },
+      {
+        name: 'process_payment',
+        description: 'Process a payment',
+        method: 'POST',
+        path: '/payments',
+        domain: 'billing',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { amount: {}, currency: {}, cardToken: {} }, required: ['amount', 'currency', 'cardToken'] }
+      },
+      {
+        name: 'bulk_export',
+        description: 'Bulk data export',
+        method: 'POST',
+        path: '/export',
+        domain: 'data',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: ['startDate', 'endDate', 'format', 'destination', 'compress', 'encrypt'] }
+      },
+      {
+        name: 'legacy_sync',
+        description: 'Legacy sync route',
+        method: 'POST',
+        path: '/sync',
+        domain: 'admin',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'api_key', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // input_schema field is absent → unknown bucket, reason: input_schema_field_missing
+      },
+      {
+        name: 'bad_cap',
+        description: 'Capability with malformed required (empty string element)',
+        method: 'GET',
+        path: '/bad',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [''] }
+        // required contains empty string → unknown bucket, reason: required_array_contains_non_string_or_empty_element
+      }
+    ]
+  };
+
+  const m39ManifestPath = path.join(m39TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m39ManifestPath, JSON.stringify(m39Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m39TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M39(a): default tusq input index produces exit 0 and per-bucket entries in closed-enum order
+  const m39DefaultResult = runCli(['input', 'index', '--manifest', m39ManifestPath], { cwd: m39TmpDir });
+  if (!m39DefaultResult.stdout.includes('[none]') || !m39DefaultResult.stdout.includes('[low]') || !m39DefaultResult.stdout.includes('[high]') || !m39DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M39(a): default index must include all present buckets (none,low,high,unknown):\n${m39DefaultResult.stdout}`);
+  }
+  if (!m39DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M39(a): default index must include planning-aid framing:\n${m39DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: none before low before high before unknown
+  const m39DefaultLines = m39DefaultResult.stdout.split('\n');
+  const m39NonePos = m39DefaultLines.findIndex((l) => l === '[none]');
+  const m39LowPos = m39DefaultLines.findIndex((l) => l === '[low]');
+  const m39HighPos = m39DefaultLines.findIndex((l) => l === '[high]');
+  const m39UnknownPos = m39DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m39NonePos < m39LowPos && m39LowPos < m39HighPos && m39HighPos < m39UnknownPos)) {
+    throw new Error(`M39(a): bucket order must be none < low < high < unknown; got positions none=${m39NonePos} low=${m39LowPos} high=${m39HighPos} unknown=${m39UnknownPos}`);
+  }
+
+  // M39(b): --json output has all 8 per-bucket fields, top-level shape, and warnings[] always present
+  const m39Json1 = runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39IndexJson = JSON.parse(m39Json1.stdout);
+  if (!Array.isArray(m39IndexJson.tiers) || m39IndexJson.tiers.length === 0) {
+    throw new Error(`M39(b): JSON output must have tiers array with at least one entry:\n${m39Json1.stdout}`);
+  }
+  const m39FirstEntry = m39IndexJson.tiers[0];
+  const m39RequiredFields = ['required_input_field_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m39RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m39FirstEntry, field)) {
+      throw new Error(`M39(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m39FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m39IndexJson, 'warnings') || !Array.isArray(m39IndexJson.warnings)) {
+    throw new Error(`M39(b): JSON output must have top-level warnings[] array:\n${m39Json1.stdout}`);
+  }
+  if (m39IndexJson.warnings.length < 2) {
+    throw new Error(`M39(b): warnings[] must contain entries for legacy_sync (missing) and bad_cap (empty-string element):\n${JSON.stringify(m39IndexJson.warnings)}`);
+  }
+
+  // M39(c): --tier filter (case-sensitive lowercase) returns single matching bucket
+  const m39TierFilter = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier', 'high', '--json'], { cwd: m39TmpDir });
+  const m39TierFilterJson = JSON.parse(m39TierFilter.stdout);
+  if (m39TierFilterJson.tiers.length !== 1 || m39TierFilterJson.tiers[0].required_input_field_count_tier !== 'high') {
+    throw new Error(`M39(c): --tier high must return exactly one high bucket:\n${m39TierFilter.stdout}`);
+  }
+
+  // M39(d): --tier low returns single matching bucket
+  const m39LowTierFilter = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier', 'low', '--json'], { cwd: m39TmpDir });
+  const m39LowTierJson = JSON.parse(m39LowTierFilter.stdout);
+  if (m39LowTierJson.tiers.length !== 1 || m39LowTierJson.tiers[0].required_input_field_count_tier !== 'low') {
+    throw new Error(`M39(d): --tier low must return exactly one low bucket:\n${m39LowTierFilter.stdout}`);
+  }
+
+  // M39(e): --tier medium returns single matching bucket (process_payment has 3 required fields)
+  const m39MediumTierFilter = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier', 'medium', '--json'], { cwd: m39TmpDir });
+  const m39MediumTierJson = JSON.parse(m39MediumTierFilter.stdout);
+  if (m39MediumTierJson.tiers.length !== 1 || m39MediumTierJson.tiers[0].required_input_field_count_tier !== 'medium') {
+    throw new Error(`M39(e): --tier medium must return exactly one medium bucket:\n${m39MediumTierFilter.stdout}`);
+  }
+
+  // M39(f): --tier unknown with no malformed capabilities exits 1 with documented message
+  const m39NoneOnlyManifestPath = path.join(m39TmpDir, 'none-only.json');
+  await fs.writeFile(m39NoneOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m39UnknownOnCleanManifest = runCli(['input', 'index', '--manifest', m39NoneOnlyManifestPath, '--tier', 'unknown'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39UnknownOnCleanManifest.stderr.includes('No capabilities found for required input field count tier: unknown') || m39UnknownOnCleanManifest.stdout !== '') {
+    throw new Error(`M39(f): --tier unknown with no malformed caps must exit 1 with correct message:\nstdout=${m39UnknownOnCleanManifest.stdout}\nstderr=${m39UnknownOnCleanManifest.stderr}`);
+  }
+
+  // M39(g): --tier HIGH (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m39UppercaseTier = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier', 'HIGH'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39UppercaseTier.stderr.includes('Unknown required input field count tier: HIGH') || m39UppercaseTier.stdout !== '') {
+    throw new Error(`M39(g): --tier HIGH (uppercase) must exit 1 with Unknown required input field count tier: message:\nstdout=${m39UppercaseTier.stdout}\nstderr=${m39UppercaseTier.stderr}`);
+  }
+
+  // M39(h): --tier xyz (unknown tier) exits 1
+  const m39BogusFilter = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier', 'xyz'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39BogusFilter.stderr.includes('Unknown required input field count tier: xyz') || m39BogusFilter.stdout !== '') {
+    throw new Error(`M39(h): --tier xyz must exit 1 with Unknown required input field count tier: message`);
+  }
+
+  // M39(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m39MissingManifest = runCli(['input', 'index', '--manifest', path.join(m39TmpDir, 'nonexistent.json')], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39MissingManifest.stderr.includes('Manifest not found') || m39MissingManifest.stdout !== '') {
+    throw new Error(`M39(i): missing manifest must exit 1:\nstdout=${m39MissingManifest.stdout}\nstderr=${m39MissingManifest.stderr}`);
+  }
+
+  // M39(j): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m39BadJsonPath = path.join(m39TmpDir, 'bad.json');
+  await fs.writeFile(m39BadJsonPath, '{ not valid json', 'utf8');
+  const m39BadJson = runCli(['input', 'index', '--manifest', m39BadJsonPath], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39BadJson.stderr.includes('Invalid manifest JSON') || m39BadJson.stdout !== '') {
+    throw new Error(`M39(j): malformed manifest must exit 1:\nstdout=${m39BadJson.stdout}\nstderr=${m39BadJson.stderr}`);
+  }
+
+  // M39(k): manifest missing capabilities array exits 1
+  const m39NoCapsManifestPath = path.join(m39TmpDir, 'no-caps.json');
+  await fs.writeFile(m39NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m39NoCaps = runCli(['input', 'index', '--manifest', m39NoCapsManifestPath], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m39NoCaps.stdout !== '') {
+    throw new Error(`M39(k): missing capabilities array must exit 1:\nstdout=${m39NoCaps.stdout}\nstderr=${m39NoCaps.stderr}`);
+  }
+
+  // M39(l): unknown flag exits 1 with error on stderr and empty stdout
+  const m39UnknownFlag = runCli(['input', 'index', '--manifest', m39ManifestPath, '--badFlag'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m39UnknownFlag.stdout !== '') {
+    throw new Error(`M39(l): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m39UnknownFlag.stdout}\nstderr=${m39UnknownFlag.stderr}`);
+  }
+
+  // M39(m): --tier with no value exits 1
+  const m39TierNoValue = runCli(['input', 'index', '--manifest', m39ManifestPath, '--tier'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (m39TierNoValue.stdout !== '') {
+    throw new Error(`M39(m): --tier with no value must produce empty stdout, got: ${m39TierNoValue.stdout}`);
+  }
+
+  // M39(n): --out <valid path> writes correctly and stdout is empty
+  const m39OutPath = path.join(m39TmpDir, 'input-index-out.json');
+  const m39OutResult = runCli(['input', 'index', '--manifest', m39ManifestPath, '--out', m39OutPath], { cwd: m39TmpDir });
+  if (m39OutResult.stdout !== '') {
+    throw new Error(`M39(n): --out must emit no stdout on success, got: ${m39OutResult.stdout}`);
+  }
+  const m39OutContent = JSON.parse(await fs.readFile(m39OutPath, 'utf8'));
+  if (!Array.isArray(m39OutContent.tiers) || m39OutContent.tiers.length < 2) {
+    throw new Error(`M39(n): --out file must contain at least two tier entries: ${JSON.stringify(m39OutContent.tiers)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m39OutContent, 'warnings') || !Array.isArray(m39OutContent.warnings)) {
+    throw new Error(`M39(n): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m39OutContent)}`);
+  }
+
+  // M39(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m39TusqOutResult = runCli(
+    ['input', 'index', '--manifest', m39ManifestPath, '--out', path.join(m39TmpDir, '.tusq', 'index.json')],
+    { cwd: m39TmpDir, expectedStatus: 1 }
+  );
+  if (!m39TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m39TusqOutResult.stdout !== '') {
+    throw new Error(`M39(o): --out .tusq/ must reject with correct message:\nstdout=${m39TusqOutResult.stdout}\nstderr=${m39TusqOutResult.stderr}`);
+  }
+
+  // M39(p): --out to an unwritable path exits 1 with empty stdout
+  const m39BadOut = runCli(['input', 'index', '--manifest', m39ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (m39BadOut.stdout !== '') {
+    throw new Error(`M39(p): --out unwritable must produce empty stdout, got: ${m39BadOut.stdout}`);
+  }
+
+  // M39(q): --json outputs valid JSON with tiers[] and warnings: []
+  const m39Json2 = runCli(['input', 'index', '--manifest', m39NoneOnlyManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39NoneOnlyJson = JSON.parse(m39Json2.stdout);
+  if (!Array.isArray(m39NoneOnlyJson.tiers) || !Array.isArray(m39NoneOnlyJson.warnings)) {
+    throw new Error(`M39(q): --json must include tiers[] and warnings[]:\n${m39Json2.stdout}`);
+  }
+  if (m39NoneOnlyJson.warnings.length !== 0) {
+    throw new Error(`M39(q): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m39NoneOnlyJson.warnings)}`);
+  }
+
+  // M39(r): determinism — three consecutive runs produce byte-identical stdout
+  const m39Human1 = runCli(['input', 'index', '--manifest', m39ManifestPath], { cwd: m39TmpDir });
+  const m39Human2 = runCli(['input', 'index', '--manifest', m39ManifestPath], { cwd: m39TmpDir });
+  const m39Human3 = runCli(['input', 'index', '--manifest', m39ManifestPath], { cwd: m39TmpDir });
+  if (m39Human1.stdout !== m39Human2.stdout || m39Human2.stdout !== m39Human3.stdout) {
+    throw new Error('M39(r): expected byte-identical human index output across three runs');
+  }
+  const m39JsonR1 = runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39JsonR2 = runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  if (m39JsonR1.stdout !== m39JsonR2.stdout) {
+    throw new Error('M39(r): expected byte-identical JSON index output across runs');
+  }
+
+  // M39(s): manifest mtime + content invariant pre/post index run
+  const m39ManifestBefore = await fs.readFile(m39ManifestPath, 'utf8');
+  runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39ManifestAfter = await fs.readFile(m39ManifestPath, 'utf8');
+  if (m39ManifestBefore !== m39ManifestAfter) {
+    throw new Error('M39(s): tusq input index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M39(t): required_input_field_count_tier MUST NOT appear in tusq.manifest.json after run (non-persistence)
+  const m39ManifestParsed = JSON.parse(m39ManifestAfter);
+  for (const cap of m39ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'required_input_field_count_tier')) {
+      throw new Error(`M39(t): required_input_field_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M39(u): tusq compile output is byte-identical before and after input index run
+  const m39CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m39-compile-'));
+  const m39CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } }]
+  };
+  await fs.writeFile(path.join(m39CompileDir, 'tusq.manifest.json'), JSON.stringify(m39CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m39CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m39CompileDir });
+  const m39CompiledToolPath = path.join(m39CompileDir, 'tusq-tools', 'list_users.json');
+  const m39CompileContentBefore = await fs.readFile(m39CompiledToolPath, 'utf8');
+  runCli(['input', 'index', '--manifest', path.join(m39CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m39CompileDir });
+  const m39CompileContentAfter = await fs.readFile(m39CompiledToolPath, 'utf8');
+  if (m39CompileContentBefore !== m39CompileContentAfter) {
+    throw new Error('M39(u): tusq compile output must be byte-identical before and after input index run');
+  }
+
+  // M39(v): other index commands are byte-identical before and after input index run
+  const m39SurfaceBefore = runCli(['surface', 'plan', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir }).stdout;
+  runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39SurfaceAfter = runCli(['surface', 'plan', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir }).stdout;
+  if (m39SurfaceBefore !== m39SurfaceAfter) {
+    throw new Error('M39(v): tusq surface plan output must be byte-identical before and after input index run');
+  }
+  const m39ExamplesBefore = runCli(['examples', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir }).stdout;
+  runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir });
+  const m39ExamplesAfter = runCli(['examples', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir }).stdout;
+  if (m39ExamplesBefore !== m39ExamplesAfter) {
+    throw new Error('M39(v): tusq examples index output must be byte-identical before and after input index run');
+  }
+
+  // M39(w): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m39EmptyManifestPath = path.join(m39TmpDir, 'empty.json');
+  await fs.writeFile(m39EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m39EmptyHuman = runCli(['input', 'index', '--manifest', m39EmptyManifestPath], { cwd: m39TmpDir });
+  if (m39EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M39(w): empty-capabilities human output must be exactly the documented line:\n${m39EmptyHuman.stdout}`);
+  }
+  const m39EmptyJson = JSON.parse(runCli(['input', 'index', '--manifest', m39EmptyManifestPath, '--json'], { cwd: m39TmpDir }).stdout);
+  if (!Array.isArray(m39EmptyJson.tiers) || m39EmptyJson.tiers.length !== 0) {
+    throw new Error(`M39(w): empty-capabilities JSON must have tiers: []:\n${JSON.stringify(m39EmptyJson)}`);
+  }
+  if (!Array.isArray(m39EmptyJson.warnings) || m39EmptyJson.warnings.length !== 0) {
+    throw new Error(`M39(w): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m39EmptyJson)}`);
+  }
+
+  // M39(x): malformed-input_schema capability produces warning in stderr (human) and in warnings[] (--json)
+  // legacy_sync (no input_schema field) → reason: input_schema_field_missing
+  // bad_cap (empty string in required) → reason: required_array_contains_non_string_or_empty_element
+  const m39WarnHuman = runCli(['input', 'index', '--manifest', m39ManifestPath], { cwd: m39TmpDir });
+  if (!m39WarnHuman.stderr.includes("Warning: capability 'legacy_sync' has malformed input_schema (input_schema_field_missing)")) {
+    throw new Error(`M39(x): human mode must emit warning for legacy_sync (input_schema_field_missing) on stderr:\n${m39WarnHuman.stderr}`);
+  }
+  if (!m39WarnHuman.stderr.includes("Warning: capability 'bad_cap' has malformed input_schema (required_array_contains_non_string_or_empty_element)")) {
+    throw new Error(`M39(x): human mode must emit warning for bad_cap (required_array_contains_non_string_or_empty_element) on stderr:\n${m39WarnHuman.stderr}`);
+  }
+  const m39WarnJsonObj = JSON.parse(runCli(['input', 'index', '--manifest', m39ManifestPath, '--json'], { cwd: m39TmpDir }).stdout);
+  const m39LegacySyncWarn = m39WarnJsonObj.warnings.find((w) => w.capability === 'legacy_sync');
+  if (!m39LegacySyncWarn || m39LegacySyncWarn.reason !== 'input_schema_field_missing') {
+    throw new Error(`M39(x): warnings[] must include {capability: 'legacy_sync', reason: 'input_schema_field_missing'}:\n${JSON.stringify(m39WarnJsonObj.warnings)}`);
+  }
+  const m39BadCapWarn = m39WarnJsonObj.warnings.find((w) => w.capability === 'bad_cap');
+  if (!m39BadCapWarn || m39BadCapWarn.reason !== 'required_array_contains_non_string_or_empty_element') {
+    throw new Error(`M39(x): warnings[] must include {capability: 'bad_cap', reason: 'required_array_contains_non_string_or_empty_element'}:\n${JSON.stringify(m39WarnJsonObj.warnings)}`);
+  }
+
+  // M39: aggregation_key closed two-value enum for every emitted bucket
+  const m39ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m39IndexJson.tiers) {
+    if (!m39ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M39: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.required_input_field_count_tier}'`);
+    }
+  }
+  const m39NoneEntry = m39IndexJson.tiers.find((e) => e.required_input_field_count_tier === 'none');
+  const m39UnknownEntry = m39IndexJson.tiers.find((e) => e.required_input_field_count_tier === 'unknown');
+  if (!m39NoneEntry || m39NoneEntry.aggregation_key !== 'tier') {
+    throw new Error(`M39: none tier must have aggregation_key 'tier', got: ${m39NoneEntry ? m39NoneEntry.aggregation_key : null}`);
+  }
+  if (!m39UnknownEntry || m39UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M39: unknown tier must have aggregation_key 'unknown', got: ${m39UnknownEntry ? m39UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M39: boundary values — 0→none, 1→low, 2→low, 3→medium, 5→medium, 6→high
+  const m39BoundaryManifestPath = path.join(m39TmpDir, 'boundary.json');
+  await fs.writeFile(m39BoundaryManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'c0', description: '0 required', method: 'GET', path: '/c0', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } },
+      { name: 'c1', description: '1 required', method: 'GET', path: '/c1', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: ['a'] } },
+      { name: 'c2', description: '2 required', method: 'GET', path: '/c2', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: ['a', 'b'] } },
+      { name: 'c3', description: '3 required', method: 'GET', path: '/c3', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: ['a', 'b', 'c'] } },
+      { name: 'c5', description: '5 required', method: 'GET', path: '/c5', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: ['a', 'b', 'c', 'd', 'e'] } },
+      { name: 'c6', description: '6 required', method: 'GET', path: '/c6', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: ['a', 'b', 'c', 'd', 'e', 'f'] } }
+    ]
+  }, null, 2), 'utf8');
+  const m39BoundaryJson = JSON.parse(runCli(['input', 'index', '--manifest', m39BoundaryManifestPath, '--json'], { cwd: m39TmpDir }).stdout);
+  const m39BoundaryTierMap = {};
+  for (const entry of m39BoundaryJson.tiers) {
+    for (const capName of entry.capabilities) {
+      m39BoundaryTierMap[capName] = entry.required_input_field_count_tier;
+    }
+  }
+  if (m39BoundaryTierMap['c0'] !== 'none') throw new Error(`M39: c0 (0 required) must be 'none', got: ${m39BoundaryTierMap['c0']}`);
+  if (m39BoundaryTierMap['c1'] !== 'low') throw new Error(`M39: c1 (1 required) must be 'low', got: ${m39BoundaryTierMap['c1']}`);
+  if (m39BoundaryTierMap['c2'] !== 'low') throw new Error(`M39: c2 (2 required) must be 'low', got: ${m39BoundaryTierMap['c2']}`);
+  if (m39BoundaryTierMap['c3'] !== 'medium') throw new Error(`M39: c3 (3 required) must be 'medium', got: ${m39BoundaryTierMap['c3']}`);
+  if (m39BoundaryTierMap['c5'] !== 'medium') throw new Error(`M39: c5 (5 required) must be 'medium', got: ${m39BoundaryTierMap['c5']}`);
+  if (m39BoundaryTierMap['c6'] !== 'high') throw new Error(`M39: c6 (6 required) must be 'high', got: ${m39BoundaryTierMap['c6']}`);
+
+  // M39: has_destructive_side_effect flag correct per bucket
+  const m39HighEntry = m39IndexJson.tiers.find((e) => e.required_input_field_count_tier === 'high');
+  if (!m39HighEntry || m39HighEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M39: high bucket must have has_destructive_side_effect=true (bulk_export is destructive); got: ${JSON.stringify(m39HighEntry)}`);
+  }
+  if (!m39NoneEntry || m39NoneEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M39: none bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m39NoneEntry)}`);
+  }
+
+  // M39: has_restricted_or_confidential_sensitivity flag correct per bucket
+  if (!m39HighEntry || m39HighEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M39: high bucket must have has_restricted_or_confidential_sensitivity=true (bulk_export is restricted); got: ${JSON.stringify(m39HighEntry)}`);
+  }
+  const m39LowEntry = m39IndexJson.tiers.find((e) => e.required_input_field_count_tier === 'low');
+  if (!m39LowEntry || m39LowEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M39: low bucket must have has_restricted_or_confidential_sensitivity=true (get_profile is confidential); got: ${JSON.stringify(m39LowEntry)}`);
+  }
+  if (!m39NoneEntry || m39NoneEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M39: none bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m39NoneEntry)}`);
+  }
+
+  // M39: within-bucket manifest declared order
+  if (!m39NoneEntry || m39NoneEntry.capabilities[0] !== 'health_check' || m39NoneEntry.capabilities[1] !== 'list_orders') {
+    throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
+  }
+
+  // M39: tusq help enumerates 23 commands including 'input'
+  const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
+  if (!m39HelpOutput.stdout.includes('input')) {
+    throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
+  }
+  const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m39CommandCount !== 23) {
+    throw new Error(`M39: tusq help must enumerate exactly 23 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  }
+
+  // M39: help text includes planning-aid framing
+  const m39HelpResult = runCli(['input', 'index', '--help'], { cwd: m39TmpDir });
+  if (!m39HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M39: input index help must include planning-aid framing:\n${m39HelpResult.stdout}`);
+  }
+
+  // M39: unknown subcommand exits 1
+  const m39UnknownSubCmd = runCli(['input', 'bogusub'], { cwd: m39TmpDir, expectedStatus: 1 });
+  if (!m39UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m39UnknownSubCmd.stdout !== '') {
+    throw new Error(`M39: unknown subcommand must exit 1:\nstdout=${m39UnknownSubCmd.stdout}\nstderr=${m39UnknownSubCmd.stderr}`);
+  }
+
+  // M39: empty-bucket check — none-only manifest produces exactly one bucket
+  const m39NoneOnlyResult = JSON.parse(runCli(['input', 'index', '--manifest', m39NoneOnlyManifestPath, '--json'], { cwd: m39TmpDir }).stdout);
+  if (m39NoneOnlyResult.tiers.length !== 1 || m39NoneOnlyResult.tiers[0].required_input_field_count_tier !== 'none') {
+    throw new Error(`M39: none-only manifest must produce exactly one bucket [none]; got: ${JSON.stringify(m39NoneOnlyResult.tiers.map((e) => e.required_input_field_count_tier))}`);
+  }
+
+  await fs.rm(m39TmpDir, { recursive: true, force: true });
+  await fs.rm(m39CompileDir, { recursive: true, force: true });
+
   // ── M38: Static Capability Examples Count Tier Index Export ──────────────────
   const m38TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m38-smoke-'));
 
@@ -3792,14 +4264,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 22 commands including 'examples'
+  // M38: tusq help enumerates 23 commands including 'examples'
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 22) {
-    throw new Error(`M38: tusq help must enumerate exactly 22 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 23) {
+    throw new Error(`M38: tusq help must enumerate exactly 23 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -4275,14 +4747,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 22 commands including 'pii'
+  // M37: tusq help enumerates 23 commands including 'pii'
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 22) {
-    throw new Error(`M37: tusq help must enumerate exactly 22 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 23) {
+    throw new Error(`M37: tusq help must enumerate exactly 23 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -4733,14 +5205,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 21 commands including 'confidence' (M37 ships in this run)
+  // M36: tusq help enumerates 23 commands including 'confidence' (M37/M38/M39 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 22) {
-    throw new Error(`M36: tusq help must enumerate exactly 22 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 23) {
+    throw new Error(`M36: tusq help must enumerate exactly 23 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -5126,14 +5598,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 21 commands including 'auth', 'confidence', and 'pii' (M36/M37 ship in this run)
+  // M35: tusq help enumerates 23 commands including 'auth', 'confidence', 'pii', 'examples', and 'input' (M36/M37/M38/M39 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 22) {
-    throw new Error(`M35: tusq help must enumerate exactly 22 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 23) {
+    throw new Error(`M35: tusq help must enumerate exactly 23 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

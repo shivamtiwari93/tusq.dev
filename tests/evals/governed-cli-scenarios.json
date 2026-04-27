@@ -938,6 +938,59 @@
       "expected_valid_examples_tiers": ["none", "low", "medium", "high", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "none,low,high,unknown"
+    },
+    {
+      "id": "required-input-field-count-tier-index-determinism",
+      "description": "M39: tusq input index --json produces byte-identical output across three runs on the same manifest; required_input_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/non-object input_schema → unknown (with warning); non-array or malformed required → unknown with warning; required[] containing non-string or empty-string element → unknown with warning",
+      "scenario_type": "required_input_field_count_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "bulk_export",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/export",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.9,
+          "input_schema": { "type": "object", "properties": {}, "required": ["startDate", "endDate", "format", "destination", "compress", "encrypt"] }
+        },
+        {
+          "name": "health_check",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/health",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.95,
+          "input_schema": { "type": "object", "properties": {}, "required": [] }
+        },
+        {
+          "name": "get_profile",
+          "domain": "users",
+          "method": "GET",
+          "path": "/profile/:userId",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.75,
+          "input_schema": { "type": "object", "properties": {}, "required": ["userId"] }
+        },
+        {
+          "name": "legacy_sync",
+          "domain": "admin",
+          "method": "POST",
+          "path": "/sync",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "confidence": 0.4
+        }
+      ],
+      "expected_valid_required_input_tiers": ["none", "low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "none,low,high,unknown"
     }
   ]
 }

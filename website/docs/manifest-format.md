@@ -351,6 +351,34 @@ Boundaries `0/2/5/6` are immutable once M37 ships. Any threshold change is a mat
 
 **Framing boundary:** `tusq pii index` is a planning aid only. It does NOT detect PII at runtime, does NOT prevent data leakage, does NOT enforce redaction at runtime, does NOT certify GDPR/HIPAA/PCI/PHI compliance, and does NOT alter M25's canonical PII name set or `pii_fields[]` extraction rules. The `pii_fields[]` array remains the M25-derived source-literal name hint — M37 only groups it into planning buckets by array length.
 
+## Required Input Field Count Tier Index (V1.20)
+
+Starting with M39, `tusq input index` emits a static, read-only capability index grouped by a derived `required_input_field_count_tier` bucket. The tier is computed at read-time from the cardinality of the `input_schema.required[]` array already present in each capability (M11/M14/M24-derived); it is **never written back into `tusq.manifest.json`**.
+
+| `capability.input_schema.required` condition | Derived tier |
+|----------------------------------------------|--------------|
+| Valid array, length === 0 | `none` |
+| Valid array, 1 ≤ length ≤ 2 | `low` |
+| Valid array, 3 ≤ length ≤ 5 | `medium` |
+| Valid array, length ≥ 6 | `high` |
+| `input_schema` missing / `null` / not a plain object (includes Array) | `unknown` |
+| `required` missing / `null` / not an array | `unknown` |
+| `required[]` contains non-string, empty string, `null`, array, or object element | `unknown` |
+
+**Closed five-value `required_input_field_count_tier` enum:** `none | low | medium | high | unknown`. Any addition is a material governance event.
+
+**Closed two-value `aggregation_key` enum:** `tier` (named buckets) | `unknown` (zero-evidence / malformed catchall). Any addition is a material governance event.
+
+**Bucket iteration order:** `none → low → medium → high → unknown`. This is a stable-output convention only — NOT an exposure-risk ranking, NOT a blast-radius ranking, NOT an input-complexity ranking.
+
+**Warnings:** When a capability lands in the `unknown` bucket due to malformed `input_schema` or `required` field data, a warning is emitted. In `--json` mode, warnings appear as `{ capability, reason }` objects in `warnings[]` (always present, even `[]`). In human mode, warnings write to stderr. Five frozen warning reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `required_field_missing`, `required_field_not_array`, `required_array_contains_non_string_or_empty_element`. Malformed values are bucketed as `unknown` — they are NOT silently coerced to an empty `required: []`.
+
+**Case-sensitive `--tier` filter:** Lowercase canonical values only. `HIGH` exits 1 with `Unknown required input field count tier: HIGH`. A valid-but-absent tier exits 1 with `No capabilities found for required input field count tier: <tier>`.
+
+**Non-persistence rule (Constraint 32):** `required_input_field_count_tier` MUST NOT appear as a key on any capability object inside `tusq.manifest.json`. It is a derived, ephemeral label that exists only in the index output. `tusq compile`, `tusq serve`, and all other commands are byte-identical before and after any `tusq input index` invocation.
+
+**Framing boundary:** `tusq input index` is a planning aid only. It does NOT execute capability inputs at runtime, does NOT validate `input_schema.properties[]` conformance against any per-element schema, does NOT generate new inputs or example payloads, does NOT measure runtime call frequency or call patterns, does NOT certify exposure-safety, and does NOT alter M11/M14/M24's canonical input-schema extraction rules. The `input_schema.required[]` array remains the M11/M14/M24-derived source — M39 only groups it into planning buckets by array length. Whether a capability is "safe to expose" remains the reviewer's judgment combining `sensitivity_class`, `side_effect_class`, `auth_scheme`, `confidence`, and `required_input_field_count_tier` together.
+
 ## Examples Count Tier Index (V1.19)
 
 Starting with M38, `tusq examples index` emits a static, read-only capability index grouped by a derived `examples_count_tier` bucket. The tier is computed at read-time from the cardinality of the `examples[]` array already present in each capability (M11-derived); it is **never written back into `tusq.manifest.json`**.

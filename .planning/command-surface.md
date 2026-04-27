@@ -1379,6 +1379,107 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
 
+## M39 Product CLI Surface
+
+M39 (Static Capability Required Input Field Count Tier Index Export from Manifest Evidence — V1.20) adds the `input` top-level noun with a single subcommand `index`. The CLI surface grows from **22 → 23** commands, with `input` inserted alphabetically between `examples` and `method` (`examples` vs `input`: `e` (101) < `i` (105); `input` vs `method`: `i` (105) < `m` (109)).
+
+### M39 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq input` | Print enumerate-subcommands block for input |
+| `tusq input index` | Index capabilities by required input field count tier (static, read-only, planning aid) |
+
+### M39 Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to single required input field count tier bucket; **case-sensitive lowercase only**; unrecognized value exits 1 with `Unknown required input field count tier: <value>`; valid-but-absent tier exits 1 with `No capabilities found for required input field count tier: <tier>` |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+### M39 Frozen Five-Value `required_input_field_count_tier` Bucket-Key Enum
+
+`none | low | medium | high | unknown`
+
+The enum is immutable once M39 ships. Any addition is a material governance event. `required_input_field_count_tier` is derived from `capability.input_schema.required[]` array cardinality (M11/M14/M24-derived) and is distinct from M37's `pii_field_count_tier` (string-shaped per-field hints) and M38's `examples_count_tier` (object-shaped eval-seed entries).
+
+### M39 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `tier` | Named tier buckets (`none`, `low`, `medium`, `high`) |
+| `unknown` | Zero-evidence / malformed input_schema catchall |
+
+### M39 Frozen Tier Function Thresholds
+
+| `capability.input_schema.required` condition | `required_input_field_count_tier` |
+|----------------------------------------------|-----------------------------------|
+| Valid array, `length === 0` | `none` |
+| Valid array, `1 ≤ length ≤ 2` | `low` |
+| Valid array, `3 ≤ length ≤ 5` | `medium` |
+| Valid array, `length ≥ 6` | `high` |
+| `input_schema` missing / `null` / `undefined` | `unknown` (warning: `input_schema_field_missing`) |
+| `input_schema` not a plain non-null object (includes Array) | `unknown` (warning: `input_schema_field_not_object`) |
+| `required` field missing / `null` / `undefined` | `unknown` (warning: `required_field_missing`) |
+| `required` field not an array | `unknown` (warning: `required_field_not_array`) |
+| `required[]` contains non-string, empty string, `null`, array, or object element | `unknown` (warning: `required_array_contains_non_string_or_empty_element`) |
+
+Boundaries `0/2/5/6` are immutable once M39 ships.
+
+### M39 Bucket Iteration Order
+
+`none → low → medium → high → unknown` (closed-enum order — NOT an exposure-risk ranking, NOT a blast-radius ranking, NOT an input-complexity ranking)
+
+### M39 Per-Bucket 8-Field Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `required_input_field_count_tier` | string | One of the five enum values |
+| `aggregation_key` | string | `"tier"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability in bucket has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | True iff any capability in bucket has `sensitivity_class` in `{restricted, confidential}` |
+
+### M39 Warnings Shape
+
+Warnings are emitted when `required_input_field_count_tier === "unknown"` due to malformed `input_schema` or `required` field data.
+
+- **JSON mode**: `warnings[]` array of `{ capability: string, reason: string }` objects appended to the JSON output object (always present, even `[]`).
+- **Human mode**: warning lines on stderr only.
+
+Frozen five-value warning reason code enum: `input_schema_field_missing | input_schema_field_not_object | required_field_missing | required_field_not_array | required_array_contains_non_string_or_empty_element`
+
+### M39 Failure UX
+
+| Condition | Exit | stderr | stdout |
+|-----------|------|--------|--------|
+| Missing manifest | 1 | `Manifest file not found: <path>` | empty |
+| Malformed JSON | 1 | `Failed to parse manifest JSON: <message>` | empty |
+| Missing capabilities | 1 | `Manifest is missing capabilities array` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| Unknown tier filter value | 1 | `Unknown required input field count tier: <value>` | empty |
+| Valid tier but no capabilities | 1 | `No capabilities found for required input field count tier: <tier>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| `--out` unwritable | 1 | `--out parent directory does not exist or is not writable` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+| Empty capabilities | 0 | — | `No capabilities in manifest — nothing to index.` |
+
+### M39 Local-Only Invariants
+
+- Zero manifest mutations; `tusq.manifest.json` mtime/content byte-identical before and after every invocation
+- `required_input_field_count_tier` MUST NOT be written into `tusq.manifest.json`
+- All prior index commands (`tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`, `tusq examples index`) produce byte-identical output pre and post-M39
+- Zero new dependencies in `package.json`
+
+### M39 Planning-Aid Boundary
+
+This is a planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier. `required_input_field_count_tier` is reviewer-aid metadata derived from `capability.input_schema.required[]` array cardinality and is NOT persisted into the manifest.
+
 ## M38 Product CLI Surface
 
 M38 (Static Capability Examples Count Tier Index Export from Manifest Evidence — V1.19) adds the `examples` top-level noun with a single subcommand `index`. The CLI surface grows from **21 → 22** commands, with `examples` inserted alphabetically between `effect` and `method` (`effect` vs `examples`: `e` = `e`, `f` (102) < `x` (120); `examples` vs `method`: `e` < `m`).

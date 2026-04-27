@@ -168,6 +168,21 @@ const EXAMPLES_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const EXAMPLES_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
 
+// M39: frozen five-value required_input_field_count_tier bucket-key enum. Immutable once M39 ships.
+// Tier function thresholds (0/2/5/6) are immutable once M39 ships. Any addition or threshold change is a governance event.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const REQUIRED_INPUT_FIELD_COUNT_TIER_ENUM = Object.freeze(new Set(['none', 'low', 'medium', 'high', 'unknown']));
+
+// M39: frozen two-value aggregation_key enum (parallel to M31–M38). Immutable once M39 ships.
+// An implementation-time guard fires if buildRequiredInputFieldCountTierIndex produces a key outside this set.
+const REQUIRED_INPUT_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M39: closed-enum bucket iteration order (none → low → medium → high). NOT exposure-risk-ranked —
+// deterministic stable-output convention only. MUST NOT be described as "exposure-risk-ranked,"
+// "blast-radius-ranked," "easy-call-ranked," or "input-complexity-ranked."
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const REQUIRED_INPUT_FIELD_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -294,6 +309,9 @@ function dispatch(argv) {
       return;
     case 'examples':
       cmdExamples(args);
+      return;
+    case 'input':
+      cmdInput(args);
       return;
     case 'method':
       cmdMethod(args);
@@ -3887,6 +3905,351 @@ function formatExamplesCountTierIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M39: tusq input — top-level noun dispatcher
+function cmdInput(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('input');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdInputIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M39: tusq input index — handler
+function cmdInputIndex(args) {
+  const { opts, positionals } = parseInputIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('input index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildRequiredInputFieldCountTierIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical required_input_field_count_tier values; anything else exits 1
+    if (!REQUIRED_INPUT_FIELD_COUNT_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown required input field count tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.required_input_field_count_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for required input field count tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatRequiredInputFieldCountTierIndex(outputIndex));
+}
+
+function parseInputIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardRequiredInputFieldCountTierBucketKey(key) {
+  if (!REQUIRED_INPUT_FIELD_COUNT_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: required_input_field_count_tier outside closed five-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardRequiredInputFieldCountTierAggregationKey(key) {
+  if (!REQUIRED_INPUT_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M39: classifyRequiredInputFieldCountTier(input_schema) → 'none' | 'low' | 'medium' | 'high' | 'unknown'
+// Tier function thresholds (0/2/5/6) are immutable once M39 ships — any change is a governance event.
+// Valid: input_schema is a plain non-null object; required is a non-empty-string array.
+// null/undefined/missing/not-plain-object input_schema → 'unknown' (reason: input_schema_field_missing or input_schema_field_not_object)
+// null/undefined/missing/not-an-array required → 'unknown' (reason: required_field_missing or required_field_not_array)
+// array containing non-string or empty-string element → 'unknown' (reason: required_array_contains_non_string_or_empty_element)
+function classifyRequiredInputFieldCountTier(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  if (!Object.prototype.hasOwnProperty.call(inputSchema, 'required')) {
+    return 'unknown';
+  }
+  const required = inputSchema.required;
+  if (!Array.isArray(required)) {
+    return 'unknown';
+  }
+  for (const el of required) {
+    if (typeof el !== 'string' || el === '') {
+      return 'unknown';
+    }
+  }
+  const len = required.length;
+  if (len === 0) return 'none';
+  if (len <= 2) return 'low';
+  if (len <= 5) return 'medium';
+  return 'high';
+}
+
+// M39: buildRequiredInputFieldCountTierIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered required input field count tier index from the manifest's capabilities[].
+// Bucket iteration order: none → low → medium → high (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// required_input_field_count_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildRequiredInputFieldCountTierIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the four ordered bucket keys.
+  const namedTiers = new Set(REQUIRED_INPUT_FIELD_COUNT_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their required_input_field_count_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or required is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (!Object.prototype.hasOwnProperty.call(inputSchema, 'required')) {
+      warningReason = 'required_field_missing';
+    } else if (!Array.isArray(inputSchema.required)) {
+      warningReason = 'required_field_not_array';
+    } else {
+      for (const el of inputSchema.required) {
+        if (typeof el !== 'string' || el === '') {
+          warningReason = 'required_array_contains_non_string_or_empty_element';
+          break;
+        }
+      }
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const tier = classifyRequiredInputFieldCountTier(inputSchema);
+    const isNamedBucket = namedTiers.has(tier);
+    const bucketKey = isNamedBucket ? tier : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: none → low → medium → high, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...REQUIRED_INPUT_FIELD_COUNT_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const inputTier = isUnknownBucket ? _guardRequiredInputFieldCountTierBucketKey('unknown') : _guardRequiredInputFieldCountTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardRequiredInputFieldCountTierAggregationKey('unknown') : _guardRequiredInputFieldCountTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      required_input_field_count_tier: inputTier,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M39: format required input field count tier index as human-readable text
+function formatRequiredInputFieldCountTierIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Required Input Field Count Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier. Tiers are deterministic stable-output ordering only (NOT exposure-risk-ranked, NOT blast-radius-ranked, NOT easy-call-ranked, NOT input-complexity-ranked).',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.required_input_field_count_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push('Tier function: none if required.length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if input_schema/required missing or malformed.');
+  lines.push('Bucket order: none → low → medium → high → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -5044,6 +5407,7 @@ function printHelp() {
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  examples           Index capabilities by examples count tier for planning review\n');
+  process.stdout.write('  input              Index capabilities by required input field count tier for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
@@ -5160,6 +5524,31 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime example executor, schema validator, example generator, or eval-readiness certifier; tiers are deterministic stable-output ordering only (NOT coverage-quality-ranked).'
+    ].join('\n'),
+    input: 'Usage: tusq input <subcommand>\n  Subcommands: index',
+    'input index': [
+      'Usage: tusq input index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <none|low|medium|high|unknown>  Filter to a single required input field count tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                      Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                           Write index to file (no stdout on success)',
+      '  --json                                 Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'Tier function (applied to input_schema.required[] array length):',
+      '  none    if length === 0',
+      '  low     if 1 <= length <= 2',
+      '  medium  if 3 <= length <= 5',
+      '  high    if length >= 6',
+      '  unknown if input_schema is null/missing/not-a-plain-object, required is null/missing/not-an-array, or required contains a non-string or empty-string element',
+      '',
+      'Bucket iteration order: none → low → medium → high → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier; tiers are deterministic stable-output ordering only (NOT exposure-risk-ranked).'
     ].join('\n'),
     method: 'Usage: tusq method <subcommand>\n  Subcommands: index',
     'method index': [

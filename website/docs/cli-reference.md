@@ -576,6 +576,66 @@ tusq effect index --effect unknown --json
 tusq effect index --out effect-index.json
 ```
 
+## `tusq input index`
+
+Emit a deterministic, per-required-input-field-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `input_schema.required[]` array (M11/M14/M24-derived) in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `input_schema` field is missing, not a plain object, whose `required` field is missing or not an array, or whose `required[]` array contains any non-string or empty-string element. This is a **planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier**.
+
+```bash
+tusq input index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to a single required input field count tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent tier, `--out` path error, or unknown subcommand
+
+**Tier function thresholds:**
+
+| `capability.input_schema.required` condition | Tier |
+|----------------------------------------------|------|
+| Valid array, length === 0 | `none` |
+| Valid array, 1 ≤ length ≤ 2 | `low` |
+| Valid array, 3 ≤ length ≤ 5 | `medium` |
+| Valid array, length ≥ 6 | `high` |
+| `input_schema` missing / `null` / `undefined` | `unknown` (reason: `input_schema_field_missing`) |
+| `input_schema` not a plain non-null object (includes Array) | `unknown` (reason: `input_schema_field_not_object`) |
+| `required` missing / `null` / `undefined` | `unknown` (reason: `required_field_missing`) |
+| `required` not an array | `unknown` (reason: `required_field_not_array`) |
+| `required[]` contains non-string, empty string, `null`, array, or object element | `unknown` (reason: `required_array_contains_non_string_or_empty_element`) |
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (closed-enum order — NOT an exposure-risk ranking, NOT a blast-radius ranking). Empty buckets do not appear.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty `[]` for shape stability). Contains `{ capability, reason }` objects for each capability landing in the `unknown` bucket due to malformed `input_schema` or `required` field data. Five frozen warning reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `required_field_missing`, `required_field_not_array`, `required_array_contains_non_string_or_empty_element`. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `required_input_field_count_tier` is NOT written into the manifest — it is derived at read-time only.
+- The five-value `required_input_field_count_tier` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A required input field count tier index is NOT a runtime enforcer, NOT an input-schema validator, NOT an input generator, and does NOT certify exposure-safety.
+
+```bash
+# All tiers (human-readable)
+tusq input index
+
+# All tiers (JSON)
+tusq input index --json
+
+# Single tier
+tusq input index --tier high --json
+
+# Zero-evidence bucket
+tusq input index --tier unknown --json
+
+# Write to file
+tusq input index --out input-index.json
+```
+
 ## `tusq examples index`
 
 Emit a deterministic, per-examples-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `examples[]` array in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `examples` field is missing, `null`, not an array, or contains a `null`, array, or non-object element. This is a **planning aid, not a runtime examples validator, documentation-completeness enforcer, or compliance certifier**.

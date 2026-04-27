@@ -2,6 +2,46 @@
 
 ---
 
+## Dev Turn turn_60ca77d51809c98f — Implementation Phase: M39 Required Input Field Count Tier Index (run_533b2f8c47cc0bf0, 2026-04-27)
+
+**Run:** run_533b2f8c47cc0bf0
+**Phase:** implementation
+**HEAD:** 1ac33dc (baseline before this turn — last PM turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_2c2363ba816afba6 (role=pm, phase=planning)
+
+PM correctly bound M39: Static Capability Required Input Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.20 (PROPOSED) under intake charter. Verified M38 is fully shipped (all checkboxes [x]). PM froze: closed five-value `required_input_field_count_tier` enum (none | low | medium | high | unknown), closed two-value `aggregation_key` enum (tier | unknown), tier-function thresholds (none if required.length === 0, low if 1-2, medium if 3-5, high >= 6, unknown if input_schema null/undefined/not-object/Array, required null/undefined/missing/not-array, or required[] contains non-string/empty-string element), per-bucket 8-field entry shape, top-level `warnings[]` in --json mode with five frozen reason codes (input_schema_field_missing, input_schema_field_not_object, required_field_missing, required_field_not_array, required_array_contains_non_string_or_empty_element), closed-enum bucket iteration order (none → low → medium → high → unknown), case-sensitive lowercase --tier filter, non-persistence rule. git diff confirms PM modified only 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M39 — Static Capability Required Input Field Count Tier Index Export:
+
+1. **Constants** (`src/cli.js`): Added `REQUIRED_INPUT_FIELD_COUNT_TIER_ENUM` (frozen Set: none/low/medium/high/unknown), `REQUIRED_INPUT_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `REQUIRED_INPUT_FIELD_COUNT_TIER_BUCKET_ORDER` (frozen array: none/low/medium/high). Added IIFE guards `_guardRequiredInputFieldCountTierBucketKey` and `_guardRequiredInputFieldCountTierAggregationKey` (throw synchronously at module load on enum divergence, matching M35–M38 guard pattern).
+
+2. **Dispatch** (`src/cli.js` dispatch()): Inserted `case 'input':` between 'examples' and 'method' (alphabetical: 'e' < 'i' < 'm'), routing to `cmdInput()`.
+
+3. **Command implementation** (`src/cli.js`): `cmdInput` dispatcher, `cmdInputIndex` handler (detection-before-output --out validation, --tier case-sensitive filter, manifest read/parse/validate, warnings to stderr in human mode), `parseInputIndexArgs` (4-flag parser: tier, manifest, out, json; unknown flags → 'Unknown flag: --{key}'; missing values → 'Missing value for --{key}'), `_guardRequiredInputFieldCountTierBucketKey` / `_guardRequiredInputFieldCountTierAggregationKey` guards, `classifyRequiredInputFieldCountTier` (pure function — two-level validation: input_schema validity (null/undefined/not-plain-object/Array → unknown); required array validity (missing/not-array/contains-non-string/empty-string → unknown); length 0 → none, 1-2 → low, 3-5 → medium, ≥6 → high), `buildRequiredInputFieldCountTierIndex` (reads from `capability.input_schema.required`, closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, warnings[] as `{capability, reason}` with five frozen reason codes), `formatRequiredInputFieldCountTierIndex` (human output with planning-aid callout, tier function line, bucket order footer).
+
+4. **Help text** (`src/cli.js` printHelp/printCommandHelp): Updated to 23 commands with 'input' between 'examples' and 'method'; added 'input' and 'input index' entries to printCommandHelp() with tier function description, bucket order, and planning-aid framing.
+
+5. **Smoke tests** (`tests/smoke.mjs`): Added M39 smoke matrix (cases a-x, 24 cases), covering: default run, --tier filters (b-e), --tier unknown on clean manifest (f), --tier HIGH case-sensitivity (g), --tier xyz (h), missing manifest (i), bad JSON (j), no capabilities (k), unknown flag (l), --tier no value (m), --out valid path (n), --out .tusq/ rejection (o), --out unwritable (p), --json shape (q), determinism (r), manifest invariant (s), non-persistence (t), compile byte-identity (u), other index commands byte-identity (v), empty-capabilities (w), malformed warnings (x). Updated M35/M36/M37/M38 help-count assertions from 22 to 23.
+
+6. **Eval scenario** (`tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`): Added `required-input-field-count-tier-index-determinism` scenario (eval count 29 → 30) with `runRequiredInputFieldCountTierIndexDeterminismScenario` handler verifying byte-identical output across three runs, closed five-value tier enum, closed two-value aggregation_key enum, tier order determinism, warnings[] always present, manifest non-mutation, required_input_field_count_tier non-persistence.
+
+### Verification Evidence
+
+- `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (30 scenarios)"
+- `node -e "require('./src/cli.js')"` exits 0 (Module loaded OK — all guards pass)
+- `node bin/tusq.js help | grep -c "^  \w"` → 23 (23-command CLI surface)
+- `node bin/tusq.js input index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with tiers[] and warnings: []
+- `node bin/tusq.js input index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr "Unknown required input field count tier: HIGH"
+- `git diff --name-only HEAD -- package.json package-lock.json` → empty (zero package drift)
+- All 18 M39 ROADMAP checkboxes: [x]
+
+---
+
 ## Dev Turn turn_0ec2cb6d0b868173 — Implementation Phase: M38 Examples Count Tier Index (run_0c5145f830f5940e, 2026-04-27)
 
 **Run:** run_0c5145f830f5940e
