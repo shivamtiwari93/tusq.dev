@@ -3635,6 +3635,120 @@ Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manife
 - `website/docs/cli-reference.md` — `tusq sensitivity index` documentation.
 - `website/docs/manifest-format.md` — Sensitivity Index subsection.
 
+## M36: Static Capability Confidence Tier Index Export from Manifest Evidence (V1.17 — PROPOSED)
+
+> Materialized by dev in run_8580d828f0e1cc1e, turn_c3e78ecd352330aa, implementation phase. Charter bound by PM in turn_f657958213bbfb9d.
+
+### M36 Purpose and Boundary
+
+`tusq confidence index` produces a static, deterministic, read-only confidence tier index of the manifest's capabilities bucketed by a tier derived from their numeric `confidence` field. It is a planning aid that helps reviewers answer "how many capabilities are below the high-confidence threshold and what is their cross-axis side-effect/sensitivity exposure?" It does NOT enforce confidence at runtime, does NOT function as an evidence-quality scoring engine, does NOT trigger automated re-classification, does NOT alter the scanner's `confidence` derivation rules (which remain the single source of truth for the underlying value), does NOT persist `confidence_tier` into `tusq.manifest.json`, and does NOT perform cross-axis statistical aggregation (deferred to M-Confidence-Statistics-1).
+
+### M36 Command Shape
+
+```
+tusq confidence index [--tier <high|medium|low|unknown>]
+                      [--manifest <path>] [--out <path>] [--json]
+```
+
+`tusq confidence` (no subcommand) prints a short enumerate-subcommands block. Unknown subcommands exit 1 with `Unknown subcommand: <name>` on stderr, empty stdout. CLI surface grows from 19 → 20 commands with `confidence` inserted alphabetically between `auth` and `diff` (`auth` vs `confidence`: `a` < `c`; `confidence` vs `diff`: `c` < `d`).
+
+### M36 Frozen Tier Function
+
+| Condition | Tier |
+|-----------|------|
+| `confidence >= 0.85` | `high` |
+| `0.6 <= confidence < 0.85` | `medium` |
+| `confidence < 0.6` | `low` |
+| null / undefined / missing | `unknown` (no warning) |
+| non-numeric (typeof !== 'number') | `unknown` + warning |
+| NaN | `unknown` + warning |
+| +Infinity / -Infinity | `unknown` + warning |
+| out-of-[0,1] (e.g., -0.1, 1.5) | `unknown` + warning |
+
+Thresholds `0.85` and `0.6` are immutable once M36 ships. Any threshold change is a material governance event requiring its own ROADMAP milestone with a fresh re-approval expectation.
+
+### M36 Frozen Four-Value `confidence_tier` Bucket-Key Enum
+
+```
+high | medium | low | unknown
+```
+
+The enum is immutable once M36 ships. `confidence_tier` MUST NOT be written into `tusq.manifest.json` (non-persistence rule). Any addition to the enum is a material governance event that requires its own ROADMAP milestone.
+
+### M36 Frozen Two-Value `aggregation_key` Enum
+
+```
+tier | unknown
+```
+
+Parallel to M31's `domain | unknown`, M32's `class | unknown`, M33's `class | unknown`, M34's `method | unknown`, M35's `scheme | unknown`. The `unknown` aggregation-key marks the zero-evidence / non-numeric / null bucket; the `tier` aggregation-key marks every named tier bucket (high/medium/low). The enum is immutable once M36 ships.
+
+### M36 Frozen Per-Bucket Entry Shape (name-and-counters only)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `confidence_tier` | string | One of the four enum values (`"high"`, `"medium"`, `"low"`, `"unknown"`) |
+| `aggregation_key` | string | `"tier"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities with `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | True iff any capability has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | True iff any capability has `sensitivity_class === "restricted"` or `sensitivity_class === "confidential"` |
+
+Deliberately omitted: no `risk_tier`, no `confidence_min`/`confidence_max`/`confidence_mean` per bucket (reserved for M-Confidence-Statistics-1), no cross-axis roll-up arrays.
+
+Top-level fields `manifest_path`, `manifest_version`, `generated_at` are copied verbatim from the input manifest (fallback: `null` in `--json` mode and `unknown` in human mode when the manifest lacks the field).
+
+### M36 Top-Level `warnings[]` Array Rule
+
+`warnings[]` is a top-level field present **only in `--json` output** (and `--out` JSON file). It is always present even when empty (`[]`) for shape stability. Each entry is a string describing one capability with a non-numeric, NaN, Infinity, or out-of-[0,1] `confidence` value. Format: `"capability '<name>' has confidence <json-value> which is out-of-range or non-numeric; bucketed as 'unknown'"`. In human text output, warnings are emitted to stderr (one line per warning, prefix `Warning: `); they do not appear in the text body.
+
+### M36 Closed-Enum Bucket Iteration Order
+
+Bucket iteration follows the **closed-enum order: `high → medium → low`**, then `unknown` last. This is distinct from M31's first-appearance rule because M36 buckets on a closed derived tier, not an open string. The closed-enum order is a **deterministic stable-output convention only** and MUST NOT be described as "evidence-strength-ranked," "trust-ranked," "quality-precedence," or "highest-quality-first."
+
+A capability maps to the `unknown` bucket if its `confidence` field is null, undefined/missing, non-numeric, NaN, Infinity/-Infinity, or a number outside [0,1]. Empty buckets MUST NOT appear. Within each bucket, capabilities appear in manifest declared order (NOT alphabetized).
+
+### M36 Case-Sensitive `--tier` Filter Rule
+
+The `--tier <value>` flag limits output to a single bucket. Filter matching is **case-sensitive lowercase only** — mirroring M35's `--scheme` precedent. Uppercase values like `HIGH` exit 1 with `Unknown confidence tier: <value>` (rather than being lower-cased silently) so reviewer scripts cannot accidentally drift from the canonical lowercase form. A valid enum value that is absent in the manifest also exits 1 (e.g., `--tier low` when no capabilities fall below 0.6 exits 1 with `Unknown confidence tier: low`).
+
+### M36 Empty-Capabilities and stdout-Discipline Rules
+
+- `capabilities: []` → exit 0; human: `No capabilities in manifest — nothing to index.\n`; JSON: `{manifest_path, manifest_version, generated_at, tiers: [], warnings: []}`.
+- Every error path writes exclusively to stderr; stdout MUST be empty on every exit-1 path.
+- Error messages: `Manifest not found:`, `Invalid manifest JSON:`, `Invalid manifest: missing capabilities array`, `Unknown confidence tier:`, `Unknown subcommand:`, `Unknown flag:`, `Cannot write to --out path:`, `--out path must not be inside .tusq/`.
+
+### M36 Read-Only Invariants
+
+| Invariant | Verification |
+|-----------|-------------|
+| `tusq.manifest.json` mtime/content unchanged after every invocation | Smoke assertion |
+| `confidence_tier` MUST NOT be written into `tusq.manifest.json` | Smoke assertion |
+| No write to `.tusq/`; no write to any path other than `--out <path>` when supplied | Smoke assertion |
+| `capability_digest` MUST NOT flip on any capability | Smoke assertion |
+| `tusq compile` output byte-identical pre and post-M36 | Smoke assertion |
+| `tusq surface plan` output byte-identical pre and post-M36 | Smoke assertion |
+| `tusq domain index` output byte-identical pre and post-M36 | Smoke assertion |
+| `tusq auth index` output byte-identical pre and post-M36 | Smoke assertion |
+
+### Constraint 29
+
+M36 implementation MUST NOT frame `tusq confidence index` as a runtime confidence enforcement mechanism, an evidence-quality scoring engine, an automated capability re-classifier, an alteration of the scanner's `confidence` derivation rules, a persister of `confidence_tier` into the manifest, or a cross-axis statistical aggregator. Help text, docs, and human output MUST include the planning-aid framing callout: "This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier."
+
+### M36 Deliverables (dev-owned)
+
+- `src/cli.js` — `CONFIDENCE_TIER_ENUM`, `CONFIDENCE_TIER_AGGREGATION_KEY_ENUM`, `CONFIDENCE_TIER_BUCKET_ORDER`, `classifyConfidenceTier`, `cmdConfidence`, `cmdConfidenceIndex`, `parseConfidenceIndexArgs`, `buildConfidenceIndex`, `formatConfidenceIndex`, `_guardConfidenceTierBucketKey`, `_guardConfidenceTierAggregationKey`; updated `dispatch()`, `printHelp()`, `printCommandHelp()` (CLI surface 19 → 20).
+- `tests/smoke.mjs` — M36 smoke matrix (assertions a-v per ROADMAP § M36; updated M35 help-count check from 19 to 20).
+- `tests/evals/governed-cli-scenarios.json` — `confidence-tier-index-determinism` scenario (eval harness 26 → 27).
+- `tests/eval-regression.mjs` — `runConfidenceTierIndexDeterminismScenario` handler.
+- `.planning/IMPLEMENTATION_NOTES.md` — M36 dev turn entry.
+- `.planning/SYSTEM_SPEC.md` — this section.
+- `.planning/command-surface.md` — M36 Product CLI Surface section.
+- `website/docs/cli-reference.md` — `tusq confidence index` documentation.
+- `website/docs/manifest-format.md` — Confidence Tier Index subsection.
+
 ## M35: Static Capability Auth Scheme Index Export from Manifest Evidence (V1.16 — PROPOSED)
 
 > Materialized by dev in run_0b373a30d182816a, turn_e2b7cb50cd77d1d5, implementation phase. Charter bound by PM in turn_d7fc926d1c177c66.

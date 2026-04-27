@@ -1255,6 +1255,94 @@ async function runAuthSchemeIndexDeterminismScenario(tmpRoot, scenario) {
   }
 }
 
+async function runConfidenceTierIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      description: cap.description || cap.name,
+      method: Object.prototype.hasOwnProperty.call(cap, 'method') ? cap.method : null,
+      path: cap.path || '/',
+      domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+      side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+      sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+      approved: cap.approved === true,
+      auth_requirements: {
+        auth_scheme: cap.auth_scheme || 'unknown',
+        auth_scopes: [],
+        auth_roles: [],
+        evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+      }
+    };
+    // Include confidence field (null is explicitly valid; undefined means missing)
+    if (Object.prototype.hasOwnProperty.call(cap, 'confidence')) {
+      obj.confidence = cap.confidence;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq confidence index --json three times and assert byte-identical output
+  const run1 = runCli(['confidence', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['confidence', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['confidence', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: confidence index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert confidence_tier bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validTiers = new Set(scenario.expected_valid_confidence_tiers);
+  for (const entry of index.tiers) {
+    if (!validTiers.has(entry.confidence_tier)) {
+      fail(`${scenario.id}: confidence_tier '${entry.confidence_tier}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.tiers) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.confidence_tier}'`);
+    }
+  }
+
+  // Assert tiers appear in closed-enum order (high → medium → low → unknown)
+  const tierOrder = index.tiers.map((e) => e.confidence_tier).join(',');
+  if (tierOrder !== scenario.expected_tier_order) {
+    fail(`${scenario.id}: tiers must appear in closed-enum order '${scenario.expected_tier_order}'; got: ${tierOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (confidence_tier must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by confidence index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'confidence_tier')) {
+      fail(`${scenario.id}: confidence_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+}
+
 async function run() {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-eval-'));
   const suite = await readJson(scenarioPath);
@@ -1296,6 +1384,8 @@ async function run() {
       await runMethodIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'auth_scheme_index_determinism') {
       await runAuthSchemeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'confidence_tier_index_determinism') {
+      await runConfidenceTierIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

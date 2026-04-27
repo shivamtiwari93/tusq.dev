@@ -2,6 +2,42 @@
 
 ---
 
+## Dev Turn turn_c3e78ecd352330aa — Implementation Phase: M36 Confidence Tier Index (run_8580d828f0e1cc1e, 2026-04-26)
+
+**Run:** run_8580d828f0e1cc1e
+**Phase:** implementation
+**HEAD:** d8e960e (baseline before this turn — last PM turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_f657958213bbfb9d (role=pm, phase=planning)
+
+PM correctly bound M36: Static Capability Confidence Tier Index Export from Manifest Evidence (~0.5 day) — V1.17 (PROPOSED) under intake charter intent_1777245829806_cf3c (vision_scan, category roadmap_exhausted_vision_open). PM froze: closed four-value `confidence_tier` enum (high | medium | low | unknown), closed two-value `aggregation_key` enum (tier | unknown), tier-function thresholds (high if confidence >= 0.85, low if confidence < 0.6, medium if 0.6 <= confidence < 0.85, unknown if null/missing/non-numeric/NaN/Infinity/out-of-[0,1]), per-bucket 8-field entry shape, top-level `warnings[]` array in --json mode, closed-enum bucket iteration order (high → medium → low → unknown), case-sensitive lowercase --tier filter, non-persistence rule (confidence_tier MUST NOT be written into tusq.manifest.json). PM's git diff claim (4 PM-owned files changed, zero source drift in src/bin/tests/website/package.json) is confirmed by decision history. All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M36 — Static Capability Confidence Tier Index Export:
+
+1. **Constants** (`src/cli.js` lines after `_guardAuthSchemeBucketAlignment`): Added `CONFIDENCE_TIER_ENUM` (frozen Set: high/medium/low/unknown), `CONFIDENCE_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `CONFIDENCE_TIER_BUCKET_ORDER` (frozen array: high/medium/low).
+
+2. **Dispatch** (`src/cli.js` dispatch()): Inserted `case 'confidence':` between 'auth' and 'diff', routing to `cmdConfidence()`.
+
+3. **Command implementation** (`src/cli.js`): `cmdConfidence` dispatcher, `cmdConfidenceIndex` handler (detection-before-output --out validation, --tier case-sensitive filter, manifest read/parse/validate, warnings to stderr in human mode), `parseConfidenceIndexArgs` (4-flag parser: tier, manifest, out, json), `_guardConfidenceTierBucketKey` / `_guardConfidenceTierAggregationKey` guards, `classifyConfidenceTier` (pure tier function — null/undefined/non-numeric/NaN/Infinity/out-of-[0,1] → 'unknown'), `buildConfidenceIndex` (closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, warnings[] always in returned object for JSON inclusion), `formatConfidenceIndex` (human output with planning-aid callout).
+
+4. **Help text** (`src/cli.js` printHelp/printCommandHelp): Updated to 20 commands with 'confidence' between 'auth' and 'diff'; added 'confidence' and 'confidence index' entries to printCommandHelp() with tier function description, bucket order, and planning-aid framing.
+
+5. **Smoke tests** (`tests/smoke.mjs`): Added M36 smoke matrix (cases a-v + determinism/manifest-invariant/confidence_tier-non-persistence/unknown-flag/help/help-count=20/unknown-subcommand edge cases); updated M35 help-count check from 19 to 20.
+
+6. **Eval scenario** (`tests/evals/governed-cli-scenarios.json`): Added `confidence-tier-index-determinism` scenario (eval count 26 → 27).
+
+7. **Eval handler** (`tests/eval-regression.mjs`): Added `runConfidenceTierIndexDeterminismScenario` handler verifying byte-identical output across three runs, closed four-value tier enum, closed two-value aggregation_key enum, tier order (high,medium,low,unknown), warnings[] always present, manifest non-mutation, confidence_tier non-persistence.
+
+### Verification
+
+`npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (27 scenarios)". Zero new dependencies. Zero package drift. CLI surface confirmed at 20 commands.
+
+---
+
 ## Dev Turn turn_bdc543168423c491 — Implementation Phase: M35 Auth Scheme Index Refinement — AUTH_SCHEMES Derivation + Mismatch Guard (run_152b21c8bbaa78d9, 2026-04-26)
 
 **Run:** run_152b21c8bbaa78d9

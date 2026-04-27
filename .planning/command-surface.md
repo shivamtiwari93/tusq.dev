@@ -1373,6 +1373,101 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
 
+## M36 Product CLI Surface
+
+M36 (Static Capability Confidence Tier Index Export from Manifest Evidence — V1.17) adds the `confidence` top-level noun with a single subcommand `index`. The CLI surface grows from **19 → 20** commands, with `confidence` inserted alphabetically between `auth` and `diff` (`auth` vs `confidence`: `a` < `c`; `confidence` vs `diff`: `c` < `d`).
+
+### M36 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq confidence` | Print enumerate-subcommands block for confidence |
+| `tusq confidence index` | Index capabilities by confidence tier (static, read-only, planning aid) |
+
+### M36 Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--tier <value>` | Filter to a single confidence tier bucket; case-sensitive lowercase | All tiers |
+| `--manifest <path>` | Manifest file to read | `tusq.manifest.json` |
+| `--out <path>` | Write index to file (no stdout on success); rejected inside `.tusq/` | stdout |
+| `--json` | Emit machine-readable JSON | Human text |
+
+### M36 Frozen Tier Function Thresholds
+
+| Condition | `confidence_tier` |
+|-----------|------------------|
+| `confidence >= 0.85` | `high` |
+| `0.6 <= confidence < 0.85` | `medium` |
+| `confidence < 0.6` | `low` |
+| null / undefined / missing | `unknown` (no warning) |
+| non-numeric / NaN / Infinity / out-of-[0,1] | `unknown` (warning emitted) |
+
+Thresholds `0.85` and `0.6` are frozen. Any change is a material governance event.
+
+### M36 Frozen Four-Value `confidence_tier` Bucket-Key Enum
+
+| Value | Bucket | Notes |
+|-------|--------|-------|
+| `high` | Named | confidence >= 0.85 |
+| `medium` | Named | 0.6 <= confidence < 0.85 |
+| `low` | Named | confidence < 0.6 |
+| `unknown` | Unknown | null/undefined/missing/non-numeric/out-of-[0,1] |
+
+`confidence_tier` is M36-derived from the numeric `confidence` field — it is NOT referenced from a pre-existing constant. Case-sensitive lowercase for `--tier` filter.
+
+### M36 Frozen Two-Value `aggregation_key` Enum
+
+| Value | Applied to |
+|-------|-----------|
+| `tier` | All three named tier buckets (high, medium, low) |
+| `unknown` | The unknown bucket |
+
+### M36 Closed-Enum Bucket Iteration Order
+
+`high → medium → low → unknown`
+
+This is a deterministic stable-output convention only — NOT a quality-precedence statement, NOT an evidence-strength ranking, NOT a trust-ranking.
+
+### M36 Per-Bucket 8-Field Entry Shape
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `confidence_tier` | string | One of the four enum values |
+| `aggregation_key` | string | `"tier"` or `"unknown"` |
+| `capability_count` | integer | Capabilities in this bucket |
+| `capabilities[]` | string[] | Manifest declared order |
+| `approved_count` | integer | `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | Any cap with `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | Any cap with `sensitivity_class` in `{restricted, confidential}` |
+
+### M36 Top-Level `warnings[]` Array Rule
+
+`warnings[]` is present in `--json` output always (even when empty). Each entry is a string describing a non-null/undefined but non-numeric, NaN, Infinity, or out-of-[0,1] confidence value encountered. In human mode, warnings are emitted to stderr (not stdout). `confidence_tier` is NEVER written into `tusq.manifest.json`.
+
+### M36 Failure UX
+
+| Condition | Exit | stderr | stdout |
+|-----------|------|--------|--------|
+| Missing manifest | 1 | `Manifest not found: <path>` | empty |
+| Malformed JSON | 1 | `Invalid manifest JSON: <path>` | empty |
+| Missing capabilities | 1 | `Invalid manifest: missing capabilities array` | empty |
+| Unknown flag | 1 | `Unknown flag: --<name>` | empty |
+| Unknown confidence tier filter | 1 | `Unknown confidence tier: <value>` | empty |
+| Unknown subcommand | 1 | `Unknown subcommand: <name>` | empty |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` | empty |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` | empty |
+| Empty capabilities | 0 | — | `No capabilities in manifest — nothing to index.` |
+
+### M36 Local-Only Invariants
+
+- Zero manifest mutations; `tusq.manifest.json` mtime/content byte-identical before and after every invocation
+- Zero `capability_digest` flips
+- `confidence_tier` MUST NOT be written into `tusq.manifest.json` (post-run manifest JSON contains no `confidence_tier` key on any capability)
+- `tusq compile`, `tusq serve`, `tusq policy verify`, `tusq redaction review`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index` outputs byte-identical pre and post-M36
+- Zero new dependencies in `package.json`
+
 ## M35 Product CLI Surface
 
 M35 (Static Capability Auth Scheme Index Export from Manifest Evidence — V1.16) adds the `auth` top-level noun with a single subcommand `index`. The CLI surface grows from **18 → 19** commands, with `auth` inserted alphabetically between `approve` and `compile` (`approve` vs `auth`: `app` < `aut` because `p` < `u`; `auth` vs `compile`: `a` < `c`).

@@ -781,6 +781,56 @@
       "expected_valid_auth_schemes": ["bearer", "api_key", "session", "basic", "oauth", "none", "unknown"],
       "expected_valid_aggregation_keys": ["scheme", "unknown"],
       "expected_scheme_order": "bearer,api_key,none,unknown"
+    },
+    {
+      "id": "confidence-tier-index-determinism",
+      "description": "M36: tusq confidence index --json produces byte-identical output across three runs on the same manifest; confidence_tier bucket-key enum is closed (four values: high/medium/low/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (high → medium → low, then unknown last); null/missing confidence → unknown (no warning); out-of-range confidence → unknown with warning entry in warnings[]",
+      "scenario_type": "confidence_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "deploy_service",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/deploy",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.92
+        },
+        {
+          "name": "list_users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "confidence": 0.76
+        },
+        {
+          "name": "scan_audit",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/audit",
+          "side_effect_class": "read",
+          "sensitivity_class": "restricted",
+          "approved": false,
+          "confidence": 0.45
+        },
+        {
+          "name": "legacy_import",
+          "domain": "admin",
+          "method": "POST",
+          "path": "/import",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "confidence": null
+        }
+      ],
+      "expected_valid_confidence_tiers": ["high", "medium", "low", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "high,medium,low,unknown"
     }
   ]
 }

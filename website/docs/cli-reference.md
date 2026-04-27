@@ -147,6 +147,66 @@ tusq auth index --scheme unknown --json
 tusq auth index --out auth-index.json
 ```
 
+## `tusq confidence index`
+
+Emit a deterministic, per-confidence-tier capability index from manifest evidence. Groups capabilities by a tier derived from their numeric `confidence` field using frozen thresholds (`high` ≥ 0.85, `medium` in [0.6, 0.85), `low` < 0.6, `unknown` for null/undefined/missing/non-numeric/out-of-[0,1]), in closed-enum order (`high → medium → low → unknown`). This is a **planning aid, not a runtime confidence gate, evidence-quality scoring engine, or automated re-classifier**.
+
+```bash
+tusq confidence index [--tier <high|medium|low|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <high\|medium\|low\|unknown>` | all tiers | Filter to a single confidence tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown confidence tier, `--out` path error, or unknown subcommand
+
+**Frozen tier thresholds:**
+
+| `confidence` value | Tier |
+|-------------------|------|
+| `>= 0.85` | `high` |
+| `>= 0.6` and `< 0.85` | `medium` |
+| `< 0.6` | `low` |
+| null / undefined / missing | `unknown` (no warning) |
+| non-numeric / NaN / Infinity / out-of-[0,1] | `unknown` (warning emitted) |
+
+**Bucket iteration order:** `high → medium → low → unknown` (closed-enum order — NOT a quality-precedence statement and NOT an evidence-strength ranking). Empty buckets do not appear.
+
+**Case-sensitive filter:** `--tier` values are matched verbatim. Uppercase values like `HIGH` exit 1 with `Unknown confidence tier: HIGH` — do not silently coerce case.
+
+**Per-bucket fields:** `confidence_tier`, `aggregation_key` (`"tier"` or `"unknown"`), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains one string per capability whose `confidence` is non-null/undefined but non-numeric, NaN, Infinity, or outside [0, 1]. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `confidence_tier` is NOT written into the manifest — it is derived at read-time only.
+- The four-value `confidence_tier` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A confidence index is NOT a runtime enforcer, NOT a quality gate, and does NOT re-classify or modify any capability field.
+
+```bash
+# All tiers (human-readable)
+tusq confidence index
+
+# All tiers (JSON)
+tusq confidence index --json
+
+# Single tier (lowercase — case-sensitive)
+tusq confidence index --tier high --json
+
+# Unknown/unclassifiable bucket
+tusq confidence index --tier unknown --json
+
+# Write to file
+tusq confidence index --out confidence-index.json
+```
+
 ## `tusq approve`
 
 Approve selected capabilities in `tusq.manifest.json` without hand-editing approval fields.

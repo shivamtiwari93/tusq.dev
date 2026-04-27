@@ -298,6 +298,30 @@ Starting with M29, `tusq manifest` automatically computes a structured `auth_req
 
 **`tusq review` filter:** Use `--auth-scheme <scheme>` to display only capabilities matching a given scheme. Mutually compatible with `--sensitivity` (AND-style intersection). An unknown scheme value exits 1 with `Unknown auth scheme: <value>` on stderr.
 
+## Confidence Tier Index (V1.17)
+
+Starting with M36, `tusq confidence index` emits a static, read-only capability index grouped by a derived `confidence_tier` bucket. The tier is computed at read-time from the numeric `confidence` field already present in each capability; it is **never written back into `tusq.manifest.json`**.
+
+**Frozen tier thresholds (Constraint 29):**
+
+| `confidence` value | Derived tier |
+|-------------------|-------------|
+| `>= 0.85` | `high` |
+| `>= 0.6` and `< 0.85` | `medium` |
+| `< 0.6` | `low` |
+| null / undefined / missing | `unknown` (no warning) |
+| non-numeric / NaN / Infinity / out-of-[0,1] | `unknown` (warning emitted) |
+
+**Closed four-value `confidence_tier` enum:** `high | medium | low | unknown`. Any addition is a material governance event.
+
+**Closed two-value `aggregation_key` enum:** `tier` (for named buckets) and `unknown` (for the unknown bucket). Any addition is a material governance event.
+
+**Bucket iteration order:** `high → medium → low → unknown`. This is a deterministic stable-output convention — NOT a quality-precedence statement, NOT an evidence-strength ranking.
+
+**Non-persistence rule (Constraint 29):** `confidence_tier` MUST NOT appear as a key on any capability object inside `tusq.manifest.json`. It is a derived, ephemeral label that exists only in the index output. `tusq compile`, `tusq serve`, and all other commands are byte-identical before and after any `tusq confidence index` invocation.
+
+**Framing boundary:** `tusq confidence index` is a planning aid only. It does NOT gate capability compilation, does NOT authenticate requests, does NOT re-classify the `confidence` field, and does NOT certify evidence quality. The `confidence` field itself remains a heuristic score set by `tusq manifest` — M36 only groups it into planning buckets.
+
 ## Examples and constraints (V1)
 
 `examples` and `constraints` are part of the manifest in `v0.1.0` so downstream tooling can keep governance and usage context stable.

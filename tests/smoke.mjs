@@ -3352,6 +3352,447 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M36: Static Capability Confidence Tier Index Export ───────────────────────
+  const m36TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m36-smoke-'));
+
+  // M36 fixture manifest: capabilities across high/medium/low/unknown tiers.
+  // 'unknown' tier: capability with null confidence and capability with out-of-range confidence.
+  // Capabilities declared in this order: high(report_health), medium(list_users), medium(get_profile),
+  // low(scan_audit), high(deploy_service), unknown-null(legacy_import), unknown-out-of-range(bad_route)
+  // to verify within-tier manifest declared order AND closed-enum tier order
+  // (high → medium → low → unknown, NOT manifest first-appearance).
+  const m36Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'report_health',
+        description: 'Health check',
+        method: 'GET',
+        path: '/health',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        confidence: 0.92,
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'list_users',
+        description: 'List all users',
+        method: 'GET',
+        path: '/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        confidence: 0.76,
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_profile',
+        description: 'Get user profile',
+        method: 'GET',
+        path: '/profile',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'confidential',
+        confidence: 0.65,
+        approved: false,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'scan_audit',
+        description: 'Audit log scan',
+        method: 'GET',
+        path: '/audit',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'restricted',
+        confidence: 0.45,
+        approved: false,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'deploy_service',
+        description: 'Deploy a service',
+        method: 'POST',
+        path: '/deploy',
+        domain: 'ops',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        confidence: 0.88,
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'legacy_import',
+        description: 'Legacy import route',
+        method: 'POST',
+        path: '/import',
+        domain: 'admin',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        confidence: null,
+        approved: false,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'api_key', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'bad_route',
+        description: 'Route with out-of-range confidence',
+        method: 'GET',
+        path: '/bad',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        confidence: 1.5,
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m36ManifestPath = path.join(m36TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m36ManifestPath, JSON.stringify(m36Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m36TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M36(a): default tusq confidence index produces exit 0 and per-bucket entries in closed-enum order
+  // (high → medium → low → unknown; tier order: report_health+deploy_service, list_users+get_profile, scan_audit, legacy_import+bad_route)
+  const m36DefaultResult = runCli(['confidence', 'index', '--manifest', m36ManifestPath], { cwd: m36TmpDir });
+  if (!m36DefaultResult.stdout.includes('[high]') || !m36DefaultResult.stdout.includes('[medium]') || !m36DefaultResult.stdout.includes('[low]') || !m36DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M36(a): default index must include all present buckets (high,medium,low,unknown):\n${m36DefaultResult.stdout}`);
+  }
+  if (!m36DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M36(a): default index must include planning-aid framing:\n${m36DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: high before medium before low before unknown
+  const m36DefaultLines = m36DefaultResult.stdout.split('\n');
+  const m36HighPos = m36DefaultLines.findIndex((l) => l.includes('[high]'));
+  const m36MediumPos = m36DefaultLines.findIndex((l) => l.includes('[medium]'));
+  const m36LowPos = m36DefaultLines.findIndex((l) => l.includes('[low]'));
+  const m36UnknownPos = m36DefaultLines.findIndex((l) => l.includes('[unknown]'));
+  if (!(m36HighPos < m36MediumPos && m36MediumPos < m36LowPos && m36LowPos < m36UnknownPos)) {
+    throw new Error(`M36(a): bucket order must be high < medium < low < unknown; got positions high=${m36HighPos} medium=${m36MediumPos} low=${m36LowPos} unknown=${m36UnknownPos}`);
+  }
+
+  // M36(b): --json output has all 8 per-bucket fields, top-level shape, and warnings[] always present
+  const m36Json1 = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  const m36IndexJson = JSON.parse(m36Json1.stdout);
+  if (!Array.isArray(m36IndexJson.tiers) || m36IndexJson.tiers.length === 0) {
+    throw new Error(`M36(b): JSON output must have tiers array with at least one entry:\n${m36Json1.stdout}`);
+  }
+  const m36FirstEntry = m36IndexJson.tiers[0];
+  const m36RequiredFields = ['confidence_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m36RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m36FirstEntry, field)) {
+      throw new Error(`M36(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m36FirstEntry)}`);
+    }
+  }
+  // warnings[] must be present in --json output (always, even when empty)
+  if (!Object.prototype.hasOwnProperty.call(m36IndexJson, 'warnings') || !Array.isArray(m36IndexJson.warnings)) {
+    throw new Error(`M36(b): JSON output must have top-level warnings[] array:\n${m36Json1.stdout}`);
+  }
+  // bad_route (confidence: 1.5) should produce at least one warning
+  if (m36IndexJson.warnings.length === 0) {
+    throw new Error(`M36(b): warnings[] must contain entry for bad_route (confidence: 1.5):\n${JSON.stringify(m36IndexJson.warnings)}`);
+  }
+
+  // M36(c): --tier filter (case-sensitive lowercase) returns single matching bucket
+  const m36TierFilter = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--tier', 'high', '--json'], { cwd: m36TmpDir });
+  const m36TierFilterJson = JSON.parse(m36TierFilter.stdout);
+  if (m36TierFilterJson.tiers.length !== 1 || m36TierFilterJson.tiers[0].confidence_tier !== 'high') {
+    throw new Error(`M36(c): --tier high must return exactly one high bucket:\n${m36TierFilter.stdout}`);
+  }
+
+  // M36(d): --tier uppercase exits 1 with "Unknown confidence tier:" on stderr and empty stdout
+  const m36UppercaseTier = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--tier', 'HIGH'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36UppercaseTier.stderr.includes('Unknown confidence tier: HIGH') || m36UppercaseTier.stdout !== '') {
+    throw new Error(`M36(d): --tier HIGH (uppercase) must exit 1 with Unknown confidence tier: message:\nstdout=${m36UppercaseTier.stdout}\nstderr=${m36UppercaseTier.stderr}`);
+  }
+
+  // M36(e): missing manifest exits 1 with error on stderr and empty stdout
+  const m36MissingManifest = runCli(['confidence', 'index', '--manifest', path.join(m36TmpDir, 'nonexistent.json')], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36MissingManifest.stderr.includes('Manifest not found') || m36MissingManifest.stdout !== '') {
+    throw new Error(`M36(e): missing manifest must exit 1:\nstdout=${m36MissingManifest.stdout}\nstderr=${m36MissingManifest.stderr}`);
+  }
+
+  // M36(f): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m36BadJsonPath = path.join(m36TmpDir, 'bad.json');
+  await fs.writeFile(m36BadJsonPath, '{ not valid json', 'utf8');
+  const m36BadJson = runCli(['confidence', 'index', '--manifest', m36BadJsonPath], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36BadJson.stderr.includes('Invalid manifest JSON') || m36BadJson.stdout !== '') {
+    throw new Error(`M36(f): malformed manifest must exit 1:\nstdout=${m36BadJson.stdout}\nstderr=${m36BadJson.stderr}`);
+  }
+
+  // M36(g): manifest missing capabilities array exits 1
+  const m36NoCapsManifestPath = path.join(m36TmpDir, 'no-caps.json');
+  await fs.writeFile(m36NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m36NoCaps = runCli(['confidence', 'index', '--manifest', m36NoCapsManifestPath], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m36NoCaps.stdout !== '') {
+    throw new Error(`M36(g): missing capabilities array must exit 1:\nstdout=${m36NoCaps.stdout}\nstderr=${m36NoCaps.stderr}`);
+  }
+
+  // M36(h): unknown subcommand exits 1 with Unknown subcommand: message
+  const m36UnknownSub = runCli(['confidence', 'bogusub'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36UnknownSub.stderr.includes('Unknown subcommand: bogusub') || m36UnknownSub.stdout !== '') {
+    throw new Error(`M36(h): unknown subcommand must exit 1:\nstdout=${m36UnknownSub.stdout}\nstderr=${m36UnknownSub.stderr}`);
+  }
+
+  // M36(i): tusq compile output is byte-identical before and after confidence index run
+  const m36CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m36-compile-'));
+  const m36CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m36CompileDir, 'tusq.manifest.json'), JSON.stringify(m36CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m36CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m36CompileDir });
+  const m36CompiledToolPath = path.join(m36CompileDir, 'tusq-tools', 'list_users.json');
+  const m36CompileContentBefore = await fs.readFile(m36CompiledToolPath, 'utf8');
+  runCli(['confidence', 'index', '--manifest', path.join(m36CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m36CompileDir });
+  const m36CompileContentAfter = await fs.readFile(m36CompiledToolPath, 'utf8');
+  if (m36CompileContentBefore !== m36CompileContentAfter) {
+    throw new Error('M36(i): tusq compile output must be byte-identical before and after confidence index run');
+  }
+
+  // M36(j): tusq surface plan, domain index, effect index, sensitivity index, method index, auth index outputs are byte-identical pre and post-M36
+  const m36SurfaceBefore = runCli(['surface', 'plan', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  const m36SurfaceAfter = runCli(['surface', 'plan', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  if (m36SurfaceBefore !== m36SurfaceAfter) {
+    throw new Error('M36(j): tusq surface plan output must be byte-identical before and after confidence index run');
+  }
+  const m36DomainBefore = runCli(['domain', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  const m36DomainAfter = runCli(['domain', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  if (m36DomainBefore !== m36DomainAfter) {
+    throw new Error('M36(j): tusq domain index output must be byte-identical before and after confidence index run');
+  }
+  const m36AuthBefore = runCli(['auth', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  const m36AuthAfter = runCli(['auth', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir }).stdout;
+  if (m36AuthBefore !== m36AuthAfter) {
+    throw new Error('M36(j): tusq auth index output must be byte-identical before and after confidence index run');
+  }
+
+  // M36(k): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m36EmptyManifestPath = path.join(m36TmpDir, 'empty.json');
+  await fs.writeFile(m36EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m36EmptyHuman = runCli(['confidence', 'index', '--manifest', m36EmptyManifestPath], { cwd: m36TmpDir });
+  if (m36EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M36(k): empty-capabilities human output must be exactly the documented line:\n${m36EmptyHuman.stdout}`);
+  }
+  const m36EmptyJson = JSON.parse(runCli(['confidence', 'index', '--manifest', m36EmptyManifestPath, '--json'], { cwd: m36TmpDir }).stdout);
+  if (!Array.isArray(m36EmptyJson.tiers) || m36EmptyJson.tiers.length !== 0) {
+    throw new Error(`M36(k): empty-capabilities JSON must have tiers: [] :\n${JSON.stringify(m36EmptyJson)}`);
+  }
+  if (!Array.isArray(m36EmptyJson.warnings) || m36EmptyJson.warnings.length !== 0) {
+    throw new Error(`M36(k): empty-capabilities JSON must have warnings: [] :\n${JSON.stringify(m36EmptyJson)}`);
+  }
+
+  // M36(l): --out <path> writes to the path and emits no stdout on success
+  const m36OutPath = path.join(m36TmpDir, 'confidence-index-out.json');
+  const m36OutResult = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--out', m36OutPath], { cwd: m36TmpDir });
+  if (m36OutResult.stdout !== '') {
+    throw new Error(`M36(l): --out must emit no stdout on success, got: ${m36OutResult.stdout}`);
+  }
+  const m36OutContent = JSON.parse(await fs.readFile(m36OutPath, 'utf8'));
+  if (!Array.isArray(m36OutContent.tiers) || m36OutContent.tiers.length < 3) {
+    throw new Error(`M36(l): --out file must contain at least three tier entries: ${JSON.stringify(m36OutContent.tiers)}`);
+  }
+  // --out JSON must also include warnings[]
+  if (!Object.prototype.hasOwnProperty.call(m36OutContent, 'warnings') || !Array.isArray(m36OutContent.warnings)) {
+    throw new Error(`M36(l): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m36OutContent)}`);
+  }
+
+  // M36(m): --out to an unwritable path exits 1 with empty stdout
+  const m36BadOut = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (m36BadOut.stdout !== '') {
+    throw new Error(`M36(m): --out unwritable must produce empty stdout, got: ${m36BadOut.stdout}`);
+  }
+
+  // M36(n): --out .tusq/ path rejected with correct message and empty stdout
+  const m36TusqOutResult = runCli(
+    ['confidence', 'index', '--manifest', m36ManifestPath, '--out', path.join(m36TmpDir, '.tusq', 'index.json')],
+    { cwd: m36TmpDir, expectedStatus: 1 }
+  );
+  if (!m36TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m36TusqOutResult.stdout !== '') {
+    throw new Error(`M36(n): --out .tusq/ must reject with correct message:\nstdout=${m36TusqOutResult.stdout}\nstderr=${m36TusqOutResult.stderr}`);
+  }
+
+  // M36(o): null/missing confidence → unknown bucket; unknown bucket appears last
+  const m36UnknownEntry = m36IndexJson.tiers.find((e) => e.confidence_tier === 'unknown');
+  const m36LastTier = m36IndexJson.tiers[m36IndexJson.tiers.length - 1];
+  if (m36LastTier.confidence_tier !== 'unknown') {
+    throw new Error(`M36(o): unknown bucket must appear last; got: ${m36LastTier.confidence_tier}`);
+  }
+  if (!m36UnknownEntry || !m36UnknownEntry.capabilities.includes('legacy_import')) {
+    throw new Error(`M36(o): legacy_import (confidence: null) must be in unknown bucket:\n${JSON.stringify(m36UnknownEntry)}`);
+  }
+  if (!m36UnknownEntry.capabilities.includes('bad_route')) {
+    throw new Error(`M36(o): bad_route (confidence: 1.5) must be in unknown bucket:\n${JSON.stringify(m36UnknownEntry)}`);
+  }
+  // Also test that missing confidence field goes to unknown (no confidence field at all)
+  const m36NullConfPath = path.join(m36TmpDir, 'null-conf.json');
+  await fs.writeFile(m36NullConfPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'no_conf_route', description: 'No confidence field', method: 'GET', path: '/x', domain: null, side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m36NullConfJson = JSON.parse(runCli(['confidence', 'index', '--manifest', m36NullConfPath, '--json'], { cwd: m36TmpDir }).stdout);
+  if (m36NullConfJson.tiers.length !== 1 || m36NullConfJson.tiers[0].confidence_tier !== 'unknown') {
+    throw new Error(`M36(o): capability with missing confidence must aggregate into unknown bucket; got: ${JSON.stringify(m36NullConfJson.tiers.map((e) => e.confidence_tier))}`);
+  }
+
+  // M36(p): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m36ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m36IndexJson.tiers) {
+    if (!m36ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M36(p): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.confidence_tier}'`);
+    }
+  }
+  const m36HighEntry = m36IndexJson.tiers.find((e) => e.confidence_tier === 'high');
+  if (m36HighEntry.aggregation_key !== 'tier') {
+    throw new Error(`M36(p): named tier 'high' must have aggregation_key 'tier', got: ${m36HighEntry.aggregation_key}`);
+  }
+  if (m36UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M36(p): unknown tier must have aggregation_key 'unknown', got: ${m36UnknownEntry.aggregation_key}`);
+  }
+
+  // M36(q): empty buckets (e.g., manifest has only high-tier capabilities) MUST NOT appear in output
+  const m36HighOnlyManifestPath = path.join(m36TmpDir, 'high-only.json');
+  await fs.writeFile(m36HighOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-26T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', confidence: 0.95, side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m36HighOnlyJson = JSON.parse(runCli(['confidence', 'index', '--manifest', m36HighOnlyManifestPath, '--json'], { cwd: m36TmpDir }).stdout);
+  if (m36HighOnlyJson.tiers.length !== 1 || m36HighOnlyJson.tiers[0].confidence_tier !== 'high') {
+    throw new Error(`M36(q): high-only manifest must produce exactly one bucket [high]; got: ${JSON.stringify(m36HighOnlyJson.tiers.map((e) => e.confidence_tier))}`);
+  }
+
+  // M36(r): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // high bucket: report_health declared before deploy_service → must appear in that order
+  if (!m36HighEntry || m36HighEntry.capabilities[0] !== 'report_health' || m36HighEntry.capabilities[1] !== 'deploy_service') {
+    throw new Error(`M36(r): within high bucket, capabilities must follow manifest declared order (report_health, deploy_service); got: ${JSON.stringify(m36HighEntry ? m36HighEntry.capabilities : null)}`);
+  }
+
+  // M36(s): has_destructive_side_effect flag is correct per bucket
+  // high bucket has deploy_service (side_effect_class: destructive) → must be true
+  if (!m36HighEntry || m36HighEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M36(s): high bucket must have has_destructive_side_effect=true (deploy_service is destructive); got: ${JSON.stringify(m36HighEntry)}`);
+  }
+  // low bucket has scan_audit (side_effect_class: read) → must be false
+  const m36LowEntry = m36IndexJson.tiers.find((e) => e.confidence_tier === 'low');
+  if (!m36LowEntry || m36LowEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M36(s): low bucket must have has_destructive_side_effect=false (scan_audit is read); got: ${JSON.stringify(m36LowEntry)}`);
+  }
+
+  // M36(t): has_restricted_or_confidential_sensitivity flag is correct per bucket
+  // high bucket has deploy_service (restricted) → must be true
+  if (!m36HighEntry || m36HighEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M36(t): high bucket must have has_restricted_or_confidential_sensitivity=true (deploy_service is restricted); got: ${JSON.stringify(m36HighEntry)}`);
+  }
+  // medium bucket has get_profile (confidential) → must be true
+  const m36MediumEntry = m36IndexJson.tiers.find((e) => e.confidence_tier === 'medium');
+  if (!m36MediumEntry || m36MediumEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M36(t): medium bucket must have has_restricted_or_confidential_sensitivity=true (get_profile is confidential); got: ${JSON.stringify(m36MediumEntry)}`);
+  }
+
+  // M36(u): --tier filter for a tier that is absent in the manifest exits 1
+  // Create a manifest with only high-tier capabilities (so 'low' bucket is absent)
+  const m36AbsentTier = runCli(['confidence', 'index', '--manifest', m36HighOnlyManifestPath, '--tier', 'low'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36AbsentTier.stderr.includes('Unknown confidence tier: low') || m36AbsentTier.stdout !== '') {
+    throw new Error(`M36(u): --tier for absent tier must exit 1 with Unknown confidence tier: message:\nstdout=${m36AbsentTier.stdout}\nstderr=${m36AbsentTier.stderr}`);
+  }
+
+  // M36(v): out-of-range confidence value (e.g., 1.5) generates warning in --json warnings[] and does not appear in named buckets
+  // bad_route has confidence: 1.5 → bucketed as unknown (already verified in M36(o)); warnings[] must reference it
+  const m36WarningText = m36IndexJson.warnings.find((w) => w.includes('bad_route'));
+  if (!m36WarningText) {
+    throw new Error(`M36(v): warnings[] must include entry for bad_route (confidence: 1.5):\n${JSON.stringify(m36IndexJson.warnings)}`);
+  }
+  // null confidence (legacy_import) must NOT generate a warning (null/missing is normal, not warning-worthy)
+  const m36NullWarning = m36IndexJson.warnings.find((w) => w.includes('legacy_import'));
+  if (m36NullWarning) {
+    throw new Error(`M36(v): null confidence must NOT generate a warning (null is normal/missing); got: ${m36NullWarning}`);
+  }
+
+  // M36: determinism — running twice produces byte-identical stdout in both human and JSON modes
+  const m36Human1 = runCli(['confidence', 'index', '--manifest', m36ManifestPath], { cwd: m36TmpDir });
+  const m36Human2 = runCli(['confidence', 'index', '--manifest', m36ManifestPath], { cwd: m36TmpDir });
+  if (m36Human1.stdout !== m36Human2.stdout) {
+    throw new Error('M36: expected byte-identical human index output across runs');
+  }
+  const m36Json2 = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  if (m36Json1.stdout !== m36Json2.stdout) {
+    throw new Error('M36: expected byte-identical JSON index output across runs');
+  }
+
+  // M36: manifest must not be mutated by confidence index run
+  const m36ManifestBefore = await fs.readFile(m36ManifestPath, 'utf8');
+  runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--json'], { cwd: m36TmpDir });
+  const m36ManifestAfter = await fs.readFile(m36ManifestPath, 'utf8');
+  if (m36ManifestBefore !== m36ManifestAfter) {
+    throw new Error('M36: tusq confidence index must not mutate the manifest (read-only invariant)');
+  }
+  // confidence_tier must NOT appear in the manifest (non-persistence rule)
+  const m36ManifestParsed = JSON.parse(m36ManifestAfter);
+  for (const cap of m36ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'confidence_tier')) {
+      throw new Error(`M36: confidence_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M36: unknown flag exits 1 with error on stderr and empty stdout
+  const m36UnknownFlag = runCli(['confidence', 'index', '--manifest', m36ManifestPath, '--badFlag'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m36UnknownFlag.stdout !== '') {
+    throw new Error(`M36: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m36UnknownFlag.stdout}\nstderr=${m36UnknownFlag.stderr}`);
+  }
+
+  // M36: help text includes planning-aid framing
+  const m36HelpResult = runCli(['confidence', 'index', '--help'], { cwd: m36TmpDir });
+  if (!m36HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
+  }
+
+  // M36: tusq help enumerates 20 commands including 'confidence'
+  const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
+  if (!m36HelpOutput.stdout.includes('confidence')) {
+    throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
+  }
+  const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m36CommandCount !== 20) {
+    throw new Error(`M36: tusq help must enumerate exactly 20 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  }
+
+  // M36: unknown subcommand exits 1
+  const m36UnknownSubCmd = runCli(['confidence', 'bogusub'], { cwd: m36TmpDir, expectedStatus: 1 });
+  if (!m36UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m36UnknownSubCmd.stdout !== '') {
+    throw new Error(`M36: unknown subcommand must exit 1:\nstdout=${m36UnknownSubCmd.stdout}\nstderr=${m36UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m36TmpDir, { recursive: true, force: true });
+  await fs.rm(m36CompileDir, { recursive: true, force: true });
+
   // ── M35: Static Capability Auth Scheme Index Export ───────────────────────────
   const m35TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m35-smoke-'));
 
@@ -3726,14 +4167,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 19 commands including 'auth'
+  // M35: tusq help enumerates 20 commands including 'auth' and 'confidence' (M36 ships in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 19) {
-    throw new Error(`M35: tusq help must enumerate exactly 19 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 20) {
+    throw new Error(`M35: tusq help must enumerate exactly 20 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

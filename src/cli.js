@@ -125,6 +125,20 @@ const AUTH_SCHEME_INDEX_BUCKET_ORDER = Object.freeze(AUTH_SCHEMES.filter((s) => 
   }
 }());
 
+// M36: frozen four-value confidence_tier bucket-key enum. Immutable once M36 ships.
+// Tier function thresholds (0.85 for high, 0.6 for medium/low boundary) are immutable once M36 ships.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const CONFIDENCE_TIER_ENUM = Object.freeze(new Set(['high', 'medium', 'low', 'unknown']));
+
+// M36: frozen two-value aggregation_key enum (parallel to M31–M35). Immutable once M36 ships.
+// An implementation-time guard fires if buildConfidenceIndex produces a key outside this set.
+const CONFIDENCE_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M36: closed-enum bucket iteration order (high → medium → low). NOT evidence-strength-ranked nor trust-ranked —
+// deterministic stable-output convention only. MUST NOT be described as "evidence-strength-ranked," "trust-ranked,"
+// or "highest-quality-first." The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const CONFIDENCE_TIER_BUCKET_ORDER = Object.freeze(['high', 'medium', 'low']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -236,6 +250,9 @@ function dispatch(argv) {
       return;
     case 'auth':
       cmdAuth(args);
+      return;
+    case 'confidence':
+      cmdConfidence(args);
       return;
     case 'diff':
       cmdDiff(args);
@@ -2848,6 +2865,317 @@ function formatAuthIndex(index) {
   return lines.join('\n');
 }
 
+// M36: tusq confidence — top-level noun dispatcher
+function cmdConfidence(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('confidence');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdConfidenceIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M36: tusq confidence index — handler
+function cmdConfidenceIndex(args) {
+  const { opts, positionals } = parseConfidenceIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('confidence index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildConfidenceIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical confidence tier values; anything else exits 1
+    if (!CONFIDENCE_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown confidence tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.confidence_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown confidence tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: ${w}\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: ${w}\n`);
+  }
+  process.stdout.write(formatConfidenceIndex(outputIndex));
+}
+
+function parseConfidenceIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardConfidenceTierBucketKey(key) {
+  if (!CONFIDENCE_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: confidence_tier outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardConfidenceTierAggregationKey(key) {
+  if (!CONFIDENCE_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M36: classifyConfidenceTier(conf) → 'high' | 'medium' | 'low' | 'unknown'
+// Tier function thresholds (0.85/0.6) are immutable once M36 ships — any change is a governance event.
+// null/undefined/missing → unknown (no warning); non-numeric/NaN/Infinity/out-of-[0,1] → unknown + warning.
+function classifyConfidenceTier(conf) {
+  if (conf === null || conf === undefined || typeof conf !== 'number' || isNaN(conf) || !isFinite(conf) || conf < 0 || conf > 1) {
+    return 'unknown';
+  }
+  if (conf >= 0.85) return 'high';
+  if (conf < 0.6) return 'low';
+  return 'medium';
+}
+
+// M36: buildConfidenceIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered confidence tier index from the manifest's capabilities[].
+// Bucket iteration order: high → medium → low (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// confidence_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildConfidenceIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the three ordered bucket keys.
+  const namedTiers = new Set(CONFIDENCE_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their confidence_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const conf = Object.prototype.hasOwnProperty.call(capability, 'confidence') ? capability.confidence : undefined;
+    const isNullOrMissing = conf === null || conf === undefined;
+
+    // Detect warning-worthy values: non-null/undefined but non-numeric, NaN, Infinity, or out-of-[0,1]
+    if (!isNullOrMissing) {
+      const isNonNumericType = typeof conf !== 'number';
+      const isNaNValue = typeof conf === 'number' && isNaN(conf);
+      const isInfinity = typeof conf === 'number' && !isFinite(conf);
+      const isOutOfRange = typeof conf === 'number' && isFinite(conf) && !isNaN(conf) && (conf < 0 || conf > 1);
+      if (isNonNumericType || isNaNValue || isInfinity || isOutOfRange) {
+        warnings.push(
+          `capability '${capability.name}' has confidence ${JSON.stringify(conf)} which is out-of-range or non-numeric; bucketed as 'unknown'`
+        );
+      }
+    }
+
+    const tier = classifyConfidenceTier(conf);
+    const isNamedBucket = namedTiers.has(tier);
+    const bucketKey = isNamedBucket ? tier : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: high → medium → low, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...CONFIDENCE_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const confidenceTier = isUnknownBucket ? _guardConfidenceTierBucketKey('unknown') : _guardConfidenceTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardConfidenceTierAggregationKey('unknown') : _guardConfidenceTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      confidence_tier: confidenceTier,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M36: format confidence tier index as human-readable text
+function formatConfidenceIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Confidence Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier.',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.confidence_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -4000,6 +4328,7 @@ function printHelp() {
   process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  auth               Index capabilities by auth scheme for planning review\n');
+  process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
@@ -4039,6 +4368,25 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown auth scheme, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier.'
+    ].join('\n'),
+    confidence: 'Usage: tusq confidence <subcommand>\n  Subcommands: index',
+    'confidence index': [
+      'Usage: tusq confidence index [--tier <high|medium|low|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <high|medium|low|unknown>  Filter to a single confidence tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                 Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                      Write index to file (no stdout on success)',
+      '  --json                            Emit machine-readable JSON (includes warnings[] for out-of-range confidence values)',
+      '',
+      'Tier function: high if confidence >= 0.85; medium if 0.6 <= confidence < 0.85; low if confidence < 0.6; unknown if null/missing/non-numeric/out-of-[0,1]',
+      'Bucket iteration order: high → medium → low → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime confidence enforcement engine, evidence-quality scoring engine, or automated re-classifier.'
     ].join('\n'),
     diff: 'Usage: tusq diff [--from <path>] [--to <path>] [--json] [--review-queue] [--fail-on-unapproved-changes] [--verbose]',
     domain: 'Usage: tusq domain <subcommand>\n  Subcommands: index',
