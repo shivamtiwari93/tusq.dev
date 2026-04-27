@@ -232,6 +232,32 @@ const OUTPUT_SCHEMA_TOP_LEVEL_TYPE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(
 // "DTO-richness-ranked," or "JSON-Schema-spec-precedence-ranked."
 const OUTPUT_SCHEMA_TOP_LEVEL_TYPE_BUCKET_ORDER = Object.freeze(['object', 'array', 'string', 'number', 'boolean', 'null']);
 
+// M43: frozen seven-value input_schema_primary_parameter_source bucket-key enum. Immutable once M43 ships.
+// The four closed-value property-source values are: path, request_body, query, header.
+// 'mixed' = two or more distinct closed-set values appear across a capability's properties.
+// 'none' = input_schema.properties has 0 own enumerable string keys.
+// 'unknown' = input_schema null/undefined/not-plain-object, properties null/undefined/missing/not-plain-object,
+//             or any property's source is missing/non-string/outside the closed four-value set.
+// cookie/file/multipart/form-data/array-of-sources → unknown (outside closed four-value set).
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_ENUM = Object.freeze(new Set(['path', 'request_body', 'query', 'header', 'mixed', 'none', 'unknown']));
+
+// M43: frozen two-value aggregation_key enum (parallel to M31–M42). Immutable once M43 ships.
+// An implementation-time guard fires if buildInputSchemaPrimaryParameterSourceIndex produces a key outside this set.
+const INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['source', 'unknown']));
+
+// M43: closed-enum bucket iteration order (path → request_body → query → header → mixed → none). NOT security-blast-radius-ranked —
+// matches HTTP request anatomy reading order but carries no semantic claim about security blast radius, workflow criticality,
+// permission sensitivity, or HTTP-spec precedence. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+// MUST NOT be described as "security-blast-radius-ranked," "workflow-criticality-ranked," "permission-sensitivity-ranked,"
+// or "HTTP-spec-precedence-ranked."
+const INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_BUCKET_ORDER = Object.freeze(['path', 'request_body', 'query', 'header', 'mixed', 'none']);
+
+// M43: closed four-value property-source value set. Every input_schema.properties[*].source must be a string in this set.
+// Values outside this set (cookie, file, multipart, form-data, array-of-sources, etc.) → unknown with warning.
+// Immutable once M43 ships. Expansion is a material governance event requiring its own ROADMAP milestone.
+const INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET = Object.freeze(new Set(['path', 'request_body', 'query', 'header']));
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -379,6 +405,9 @@ function dispatch(argv) {
       return;
     case 'redaction':
       cmdRedaction(args);
+      return;
+    case 'request':
+      cmdRequest(args);
       return;
     case 'response':
       cmdResponse(args);
@@ -4997,6 +5026,379 @@ function formatPathSegmentCountTierIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M43: tusq request — top-level noun dispatcher
+function cmdRequest(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('request');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdRequestIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M43: tusq request index — handler
+function cmdRequestIndex(args) {
+  const { opts, positionals } = parseRequestIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('request index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaPrimaryParameterSourceIndex(manifest, manifestPath);
+
+  const sourceFilter = opts.source || null;
+  let outputIndex;
+  if (sourceFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_primary_parameter_source values; anything else exits 1
+    if (!INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_ENUM.has(sourceFilter)) {
+      throw new CliError(`Unknown input schema primary parameter source: ${sourceFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.sources.find((e) => e.input_schema_primary_parameter_source === sourceFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema primary parameter source: ${sourceFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { sources: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaPrimaryParameterSourceIndex(outputIndex));
+}
+
+function parseRequestIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['source', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaPrimaryParameterSourceBucketKey(key) {
+  if (!INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_primary_parameter_source outside closed seven-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaPrimaryParameterSourceAggregationKey(key) {
+  if (!INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M43: classifyInputSchemaPrimaryParameterSource(inputSchema) → 'path' | 'request_body' | 'query' | 'header' | 'mixed' | 'none' | 'unknown'
+// Tier function uses the closed four-value property-source set (path, request_body, query, header).
+// unknown if input_schema null/undefined/not-a-plain-object/array.
+// unknown if input_schema.properties null/undefined/missing/not-a-plain-object/array.
+// unknown if any property's source is missing/non-string/outside the closed four-value set.
+// none if input_schema.properties has 0 own enumerable string keys.
+// primary locus value if all properties share a single source value in the closed set.
+// mixed if two or more distinct closed-set values appear.
+// optional-vs-required collapse rule: every property's source consulted regardless of input_schema.required[] membership.
+function classifyInputSchemaPrimaryParameterSource(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  if (!Object.prototype.hasOwnProperty.call(inputSchema, 'properties')) {
+    return 'unknown';
+  }
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const propKeys = Object.keys(properties);
+  if (propKeys.length === 0) {
+    return 'none';
+  }
+  const seenSources = new Set();
+  for (const key of propKeys) {
+    const prop = properties[key];
+    if (prop === null || prop === undefined || typeof prop !== 'object' || Array.isArray(prop)) {
+      return 'unknown';
+    }
+    if (!Object.prototype.hasOwnProperty.call(prop, 'source')) {
+      return 'unknown';
+    }
+    const sourceVal = prop.source;
+    if (typeof sourceVal !== 'string' || !INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET.has(sourceVal)) {
+      return 'unknown';
+    }
+    seenSources.add(sourceVal);
+  }
+  if (seenSources.size === 1) {
+    return [...seenSources][0];
+  }
+  return 'mixed';
+}
+
+// M43: buildInputSchemaPrimaryParameterSourceIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema primary parameter source index from the manifest's capabilities[].
+// Bucket iteration order: path → request_body → query → header → mixed → none (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_primary_parameter_source MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaPrimaryParameterSourceIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      sources: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) source values — the six ordered bucket keys.
+  const namedSources = new Set(INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_primary_parameter_source.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or properties is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (!Object.prototype.hasOwnProperty.call(inputSchema, 'properties')) {
+      warningReason = 'input_schema_properties_field_missing';
+    } else if (inputSchema.properties === null || inputSchema.properties === undefined || typeof inputSchema.properties !== 'object' || Array.isArray(inputSchema.properties)) {
+      warningReason = 'input_schema_properties_field_not_object';
+    } else {
+      // Check each property's source field
+      const propKeys = Object.keys(inputSchema.properties);
+      for (const key of propKeys) {
+        const prop = inputSchema.properties[key];
+        if (prop === null || prop === undefined || typeof prop !== 'object' || Array.isArray(prop)) {
+          warningReason = 'input_schema_property_source_field_missing_or_invalid';
+          break;
+        }
+        if (!Object.prototype.hasOwnProperty.call(prop, 'source')) {
+          warningReason = 'input_schema_property_source_field_missing_or_invalid';
+          break;
+        }
+        const sourceVal = prop.source;
+        if (typeof sourceVal !== 'string' || !INPUT_SCHEMA_PROPERTY_SOURCE_VALUE_SET.has(sourceVal)) {
+          warningReason = 'input_schema_property_source_field_missing_or_invalid';
+          break;
+        }
+      }
+    }
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const sourceBucket = classifyInputSchemaPrimaryParameterSource(inputSchema);
+    const isNamedBucket = namedSources.has(sourceBucket);
+    const bucketKey = isNamedBucket ? sourceBucket : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: path → request_body → query → header → mixed → none, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_PRIMARY_PARAMETER_SOURCE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const sources = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const sourceKey = isUnknownBucket ? _guardInputSchemaPrimaryParameterSourceBucketKey('unknown') : _guardInputSchemaPrimaryParameterSourceBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardInputSchemaPrimaryParameterSourceAggregationKey('unknown') : _guardInputSchemaPrimaryParameterSourceAggregationKey('source');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_primary_parameter_source: sourceKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    sources,
+    warnings
+  };
+}
+
+// M43: format input schema primary parameter source index as human-readable text
+function formatInputSchemaPrimaryParameterSourceIndex(index) {
+  if (index.sources.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema Primary Parameter Source Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime request executor, request-payload validator, input-contract conformance detector, request generator, or input-contract certifier. Sources are deterministic stable-output ordering only (NOT security-blast-radius-ranked, NOT workflow-criticality-ranked).',
+    ''
+  ];
+
+  for (const entry of index.sources) {
+    lines.push(`[${entry.input_schema_primary_parameter_source}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Source rule: bucket key is the primary input_schema.properties[*].source value if all properties share a single value from {path, request_body, query, header}; mixed if two or more distinct closed-set values appear; none if input_schema.properties has 0 keys; unknown if input_schema or properties is missing/malformed or any property source is outside the closed set (cookie, file, multipart, form-data, array-of-sources, etc.).");
+  lines.push('Bucket order: path → request_body → query → header → mixed → none → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M42: tusq response — top-level noun dispatcher
 function cmdResponse(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -6498,6 +6900,7 @@ function printHelp() {
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
+  process.stdout.write('  request            Index capabilities by input schema primary parameter source for planning review\n');
   process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
@@ -6738,6 +7141,34 @@ function printCommandHelp(command) {
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    request: 'Usage: tusq request <subcommand>\n  Subcommands: index',
+    'request index': [
+      'Usage: tusq request index [--source <path|request_body|query|header|mixed|none|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --source <path|request_body|query|header|mixed|none|unknown>  Filter to a single input source bucket (default: all sources; case-sensitive lowercase)',
+      '  --manifest <path>                                              Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                                                   Write index to file (no stdout on success)',
+      '  --json                                                         Emit machine-readable JSON (includes warnings[] for malformed input_schema fields)',
+      '',
+      'Source rule (applied to input_schema.properties[*].source):',
+      '  path          all properties have source === "path"',
+      '  request_body  all properties have source === "request_body"',
+      '  query         all properties have source === "query"',
+      '  header        all properties have source === "header"',
+      '  mixed         two or more distinct closed-set source values appear',
+      '  none          input_schema.properties has 0 own enumerable string keys',
+      '  unknown       input_schema or properties missing/malformed, or any property source outside {path, request_body, query, header}',
+      '                (cookie, file, multipart, form-data, array-of-sources → unknown)',
+      '',
+      'Bucket iteration order: path → request_body → query → header → mixed → none → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown source, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime request executor, request-payload validator, input-contract conformance detector, request generator, or input-contract certifier.'
+    ].join('\n'),
     response: 'Usage: tusq response <subcommand>\n  Subcommands: index',
     'response index': [
       'Usage: tusq response index [--type <object|array|string|number|boolean|null|unknown>] [--manifest <path>] [--out <path>] [--json]',

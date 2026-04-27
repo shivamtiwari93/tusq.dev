@@ -1798,6 +1798,98 @@ async function runRequiredInputFieldCountTierIndexDeterminismScenario(tmpRoot, s
   }
 }
 
+async function runInputSchemaPrimaryParameterSourceIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      description: cap.description || cap.name,
+      method: Object.prototype.hasOwnProperty.call(cap, 'method') ? cap.method : null,
+      path: cap.path || '/',
+      domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+      side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+      sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+      approved: cap.approved === true,
+      auth_requirements: {
+        auth_scheme: cap.auth_scheme || 'unknown',
+        auth_scopes: [],
+        auth_roles: [],
+        evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+      },
+      redaction: {
+        pii_fields: [],
+        pii_categories: []
+      }
+    };
+    // Propagate input_schema field only if present in cap (missing → undefined → unknown source)
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq request index --json three times and assert byte-identical output
+  const run1 = runCli(['request', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['request', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['request', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: request index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_primary_parameter_source bucket-key enum is closed — every key is one of the seven valid values
+  const index = JSON.parse(run1.stdout);
+  const validSources = new Set(scenario.expected_valid_input_schema_primary_parameter_sources);
+  for (const entry of index.sources) {
+    if (!validSources.has(entry.input_schema_primary_parameter_source)) {
+      fail(`${scenario.id}: input_schema_primary_parameter_source '${entry.input_schema_primary_parameter_source}' is outside the closed seven-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the two valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.sources) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for source '${entry.input_schema_primary_parameter_source}'`);
+    }
+  }
+
+  // Assert sources appear in closed-enum order (path → request_body → query → header → mixed → none → unknown)
+  const sourceOrder = index.sources.map((e) => e.input_schema_primary_parameter_source).join(',');
+  if (sourceOrder !== scenario.expected_source_order) {
+    fail(`${scenario.id}: sources must appear in closed-enum order '${scenario.expected_source_order}'; got: ${sourceOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_primary_parameter_source must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by request index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_primary_parameter_source')) {
+      fail(`${scenario.id}: input_schema_primary_parameter_source must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+}
+
 async function runOutputSchemaTopLevelTypeIndexDeterminismScenario(tmpRoot, scenario) {
   const project = path.join(tmpRoot, scenario.id);
   await fs.mkdir(project, { recursive: true });
@@ -1945,6 +2037,8 @@ async function run() {
       await runPathSegmentCountTierIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'output_schema_top_level_type_index_determinism') {
       await runOutputSchemaTopLevelTypeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_primary_parameter_source_index_determinism') {
+      await runInputSchemaPrimaryParameterSourceIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }

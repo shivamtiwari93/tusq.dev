@@ -3352,6 +3352,522 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M43: Static Capability Input Schema Primary Parameter Source Index Export ──
+  const m43TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m43-smoke-'));
+
+  // M43 fixture manifest: capabilities across path/request_body/query/header/mixed/none/unknown source buckets.
+  // Declared order:
+  //   get_by_id (path — single property source=path, gated — unapproved)
+  //   create_item (request_body — single property source=request_body, destructive+restricted+approved)
+  //   search_items (query — single property source=query, public+approved)
+  //   get_header_cap (header — single property source=header, public+approved)
+  //   mixed_cap (mixed — properties have both path and request_body sources, public+approved)
+  //   no_props_cap (none — input_schema.properties = {}, public+approved)
+  //   no_schema_cap (unknown, no input_schema field → input_schema_field_missing)
+  //   bad_schema_str (unknown, input_schema = "string" → input_schema_field_not_object)
+  //   no_props_field_cap (unknown, input_schema = {} no properties field → input_schema_properties_field_missing)
+  //   bad_props_cap (unknown, input_schema.properties = 42 → input_schema_properties_field_not_object)
+  //   cookie_source_cap (unknown, property.source = 'cookie' → input_schema_property_source_field_missing_or_invalid)
+  const m43Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'get_by_id',
+        description: 'Get item by ID',
+        method: 'GET',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' } }, required: ['id'] }
+      },
+      {
+        name: 'create_item',
+        description: 'Create an item',
+        method: 'POST',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { body: { type: 'object', source: 'request_body' } }, required: [] }
+      },
+      {
+        name: 'search_items',
+        description: 'Search items by query',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { q: { type: 'string', source: 'query' } }, required: [] }
+      },
+      {
+        name: 'get_header_cap',
+        description: 'Capability with header-sourced input',
+        method: 'GET',
+        path: '/api/v1/header',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { x_api_version: { type: 'string', source: 'header' } }, required: [] }
+      },
+      {
+        name: 'mixed_cap',
+        description: 'Capability with mixed input sources',
+        method: 'PUT',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' }, body: { type: 'object', source: 'request_body' } }, required: ['id'] }
+      },
+      {
+        name: 'no_props_cap',
+        description: 'Capability with empty properties',
+        method: 'GET',
+        path: '/api/v1/status',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+      },
+      {
+        name: 'no_schema_cap',
+        description: 'Capability with no input_schema field',
+        method: 'GET',
+        path: '/api/v1/noschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // input_schema field absent → input_schema_field_missing
+      },
+      {
+        name: 'bad_schema_str',
+        description: 'Capability with input_schema = string',
+        method: 'GET',
+        path: '/api/v1/badstr',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: 'string'
+        // input_schema is not a plain object → input_schema_field_not_object
+      },
+      {
+        name: 'no_props_field_cap',
+        description: 'Capability with input_schema missing properties field',
+        method: 'GET',
+        path: '/api/v1/noprops',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object' }
+        // input_schema.properties missing → input_schema_properties_field_missing
+      },
+      {
+        name: 'bad_props_cap',
+        description: 'Capability with input_schema.properties = 42',
+        method: 'GET',
+        path: '/api/v1/badprops',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: 42 }
+        // input_schema.properties is not a plain object → input_schema_properties_field_not_object
+      },
+      {
+        name: 'cookie_source_cap',
+        description: 'Capability with cookie source (outside closed four-value set)',
+        method: 'GET',
+        path: '/api/v1/cookie',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'kkk',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { session: { type: 'string', source: 'cookie' } }, required: [] }
+        // property source = 'cookie' → outside closed four-value set → input_schema_property_source_field_missing_or_invalid
+      }
+    ]
+  };
+
+  const m43ManifestPath = path.join(m43TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m43ManifestPath, JSON.stringify(m43Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m43TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M43(a): default tusq request index produces exit 0 and per-bucket entries in closed-enum order
+  const m43DefaultResult = runCli(['request', 'index', '--manifest', m43ManifestPath], { cwd: m43TmpDir });
+  if (!m43DefaultResult.stdout.includes('[path]') || !m43DefaultResult.stdout.includes('[request_body]') || !m43DefaultResult.stdout.includes('[none]') || !m43DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M43(a): default index must include all present buckets:\n${m43DefaultResult.stdout}`);
+  }
+  if (!m43DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M43(a): default index must include planning-aid framing:\n${m43DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: path < request_body < query < header < mixed < none < unknown
+  const m43DefaultLines = m43DefaultResult.stdout.split('\n');
+  const m43PathPos = m43DefaultLines.findIndex((l) => l === '[path]');
+  const m43RequestBodyPos = m43DefaultLines.findIndex((l) => l === '[request_body]');
+  const m43QueryPos = m43DefaultLines.findIndex((l) => l === '[query]');
+  const m43HeaderPos = m43DefaultLines.findIndex((l) => l === '[header]');
+  const m43MixedPos = m43DefaultLines.findIndex((l) => l === '[mixed]');
+  const m43NonePos = m43DefaultLines.findIndex((l) => l === '[none]');
+  const m43UnknownPos = m43DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m43PathPos < m43RequestBodyPos && m43RequestBodyPos < m43QueryPos && m43QueryPos < m43HeaderPos && m43HeaderPos < m43MixedPos && m43MixedPos < m43NonePos && m43NonePos < m43UnknownPos)) {
+    throw new Error(`M43(a): bucket order must be path < request_body < query < header < mixed < none < unknown; got positions path=${m43PathPos} request_body=${m43RequestBodyPos} query=${m43QueryPos} header=${m43HeaderPos} mixed=${m43MixedPos} none=${m43NonePos} unknown=${m43UnknownPos}`);
+  }
+
+  // M43(b): --json output has all 8 per-bucket fields, top-level shape, sources[] field name, and warnings[] always present
+  const m43Json1 = runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  const m43IndexJson = JSON.parse(m43Json1.stdout);
+  if (!Array.isArray(m43IndexJson.sources) || m43IndexJson.sources.length === 0) {
+    throw new Error(`M43(b): JSON output must have sources[] array with at least one entry:\n${m43Json1.stdout}`);
+  }
+  const m43FirstEntry = m43IndexJson.sources[0];
+  const m43RequiredFields = ['input_schema_primary_parameter_source', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m43RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m43FirstEntry, field)) {
+      throw new Error(`M43(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m43FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m43IndexJson, 'warnings') || !Array.isArray(m43IndexJson.warnings)) {
+    throw new Error(`M43(b): JSON output must have top-level warnings[] array:\n${m43Json1.stdout}`);
+  }
+  if (m43IndexJson.warnings.length < 5) {
+    throw new Error(`M43(b): warnings[] must contain entries for all 5 malformed capabilities:\n${JSON.stringify(m43IndexJson.warnings)}`);
+  }
+
+  // M43(c): --source path returns single matching bucket
+  const m43PathFilter = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'path', '--json'], { cwd: m43TmpDir });
+  const m43PathJson = JSON.parse(m43PathFilter.stdout);
+  if (m43PathJson.sources.length !== 1 || m43PathJson.sources[0].input_schema_primary_parameter_source !== 'path') {
+    throw new Error(`M43(c): --source path must return exactly one path bucket:\n${m43PathFilter.stdout}`);
+  }
+  if (!m43PathJson.sources[0].capabilities.includes('get_by_id')) {
+    throw new Error(`M43(c): path bucket must include get_by_id:\n${JSON.stringify(m43PathJson.sources[0].capabilities)}`);
+  }
+
+  // M43(d): --source request_body returns single matching bucket
+  const m43RbFilter = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'request_body', '--json'], { cwd: m43TmpDir });
+  const m43RbJson = JSON.parse(m43RbFilter.stdout);
+  if (m43RbJson.sources.length !== 1 || m43RbJson.sources[0].input_schema_primary_parameter_source !== 'request_body') {
+    throw new Error(`M43(d): --source request_body must return exactly one request_body bucket:\n${m43RbFilter.stdout}`);
+  }
+  if (!m43RbJson.sources[0].capabilities.includes('create_item')) {
+    throw new Error(`M43(d): request_body bucket must include create_item:\n${JSON.stringify(m43RbJson.sources[0].capabilities)}`);
+  }
+
+  // M43(e): --source query returns single matching bucket
+  const m43QueryFilter = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'query', '--json'], { cwd: m43TmpDir });
+  const m43QueryJson = JSON.parse(m43QueryFilter.stdout);
+  if (m43QueryJson.sources.length !== 1 || m43QueryJson.sources[0].input_schema_primary_parameter_source !== 'query') {
+    throw new Error(`M43(e): --source query must return exactly one query bucket:\n${m43QueryFilter.stdout}`);
+  }
+
+  // M43(f): --source header returns single matching bucket
+  const m43HeaderFilter = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'header', '--json'], { cwd: m43TmpDir });
+  const m43HeaderJson = JSON.parse(m43HeaderFilter.stdout);
+  if (m43HeaderJson.sources.length !== 1 || m43HeaderJson.sources[0].input_schema_primary_parameter_source !== 'header') {
+    throw new Error(`M43(f): --source header must return exactly one header bucket:\n${m43HeaderFilter.stdout}`);
+  }
+
+  // M43(g): --source PATH (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m43UppercaseSource = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'PATH'], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43UppercaseSource.stderr.includes('Unknown input schema primary parameter source: PATH') || m43UppercaseSource.stdout !== '') {
+    throw new Error(`M43(g): --source PATH (uppercase) must exit 1 with Unknown input schema primary parameter source: message:\nstdout=${m43UppercaseSource.stdout}\nstderr=${m43UppercaseSource.stderr}`);
+  }
+
+  // M43(h): --source xyz (unknown source) exits 1
+  const m43BogusSource = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source', 'xyz'], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43BogusSource.stderr.includes('Unknown input schema primary parameter source: xyz') || m43BogusSource.stdout !== '') {
+    throw new Error(`M43(h): --source xyz must exit 1 with Unknown input schema primary parameter source: message`);
+  }
+
+  // M43(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m43MissingManifest = runCli(['request', 'index', '--manifest', path.join(m43TmpDir, 'nonexistent.json')], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43MissingManifest.stderr.includes('Manifest not found') || m43MissingManifest.stdout !== '') {
+    throw new Error(`M43(i): missing manifest must exit 1:\nstdout=${m43MissingManifest.stdout}\nstderr=${m43MissingManifest.stderr}`);
+  }
+
+  // M43(j): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m43BadJsonPath = path.join(m43TmpDir, 'bad.json');
+  await fs.writeFile(m43BadJsonPath, '{ not valid json', 'utf8');
+  const m43BadJson = runCli(['request', 'index', '--manifest', m43BadJsonPath], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43BadJson.stderr.includes('Invalid manifest JSON') || m43BadJson.stdout !== '') {
+    throw new Error(`M43(j): malformed manifest must exit 1:\nstdout=${m43BadJson.stdout}\nstderr=${m43BadJson.stderr}`);
+  }
+
+  // M43(k): manifest missing capabilities array exits 1
+  const m43NoCapsManifestPath = path.join(m43TmpDir, 'no-caps.json');
+  await fs.writeFile(m43NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m43NoCaps = runCli(['request', 'index', '--manifest', m43NoCapsManifestPath], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m43NoCaps.stdout !== '') {
+    throw new Error(`M43(k): missing capabilities array must exit 1:\nstdout=${m43NoCaps.stdout}\nstderr=${m43NoCaps.stderr}`);
+  }
+
+  // M43(l): unknown flag exits 1 with error on stderr and empty stdout
+  const m43UnknownFlag = runCli(['request', 'index', '--manifest', m43ManifestPath, '--badFlag'], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m43UnknownFlag.stdout !== '') {
+    throw new Error(`M43(l): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m43UnknownFlag.stdout}\nstderr=${m43UnknownFlag.stderr}`);
+  }
+
+  // M43(m): --source with no value exits 1
+  const m43SourceNoValue = runCli(['request', 'index', '--manifest', m43ManifestPath, '--source'], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (m43SourceNoValue.stdout !== '') {
+    throw new Error(`M43(m): --source with no value must produce empty stdout, got: ${m43SourceNoValue.stdout}`);
+  }
+
+  // M43(n): --out <valid path> writes correctly and stdout is empty
+  const m43OutPath = path.join(m43TmpDir, 'request-index-out.json');
+  const m43OutResult = runCli(['request', 'index', '--manifest', m43ManifestPath, '--out', m43OutPath], { cwd: m43TmpDir });
+  if (m43OutResult.stdout !== '') {
+    throw new Error(`M43(n): --out must emit no stdout on success, got: ${m43OutResult.stdout}`);
+  }
+  const m43OutContent = JSON.parse(await fs.readFile(m43OutPath, 'utf8'));
+  if (!Array.isArray(m43OutContent.sources) || m43OutContent.sources.length < 2) {
+    throw new Error(`M43(n): --out file must contain at least two source entries: ${JSON.stringify(m43OutContent.sources)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m43OutContent, 'warnings') || !Array.isArray(m43OutContent.warnings)) {
+    throw new Error(`M43(n): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m43OutContent)}`);
+  }
+
+  // M43(o): --out .tusq/ path rejected with correct message and empty stdout
+  const m43TusqOutResult = runCli(
+    ['request', 'index', '--manifest', m43ManifestPath, '--out', path.join(m43TmpDir, '.tusq', 'index.json')],
+    { cwd: m43TmpDir, expectedStatus: 1 }
+  );
+  if (!m43TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m43TusqOutResult.stdout !== '') {
+    throw new Error(`M43(o): --out .tusq/ must reject with correct message:\nstdout=${m43TusqOutResult.stdout}\nstderr=${m43TusqOutResult.stderr}`);
+  }
+
+  // M43(p): --json outputs valid JSON with sources[] and warnings[] present
+  const m43CleanManifestPath = path.join(m43TmpDir, 'clean.json');
+  await fs.writeFile(m43CleanManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_path', description: 'Path', method: 'GET', path: '/a/:id', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' } }, required: ['id'] } },
+      { name: 'cap_body', description: 'Body', method: 'POST', path: '/b', domain: 'x', side_effect_class: 'write', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { body: { type: 'object', source: 'request_body' } }, required: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m43CleanJson = JSON.parse(runCli(['request', 'index', '--manifest', m43CleanManifestPath, '--json'], { cwd: m43TmpDir }).stdout);
+  if (!Array.isArray(m43CleanJson.sources) || !Array.isArray(m43CleanJson.warnings)) {
+    throw new Error(`M43(p): --json must include sources[] and warnings[]:\n${JSON.stringify(m43CleanJson)}`);
+  }
+  if (m43CleanJson.warnings.length !== 0) {
+    throw new Error(`M43(p): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m43CleanJson.warnings)}`);
+  }
+
+  // M43(q): determinism — three consecutive runs produce byte-identical stdout
+  const m43Human1 = runCli(['request', 'index', '--manifest', m43ManifestPath], { cwd: m43TmpDir });
+  const m43Human2 = runCli(['request', 'index', '--manifest', m43ManifestPath], { cwd: m43TmpDir });
+  const m43Human3 = runCli(['request', 'index', '--manifest', m43ManifestPath], { cwd: m43TmpDir });
+  if (m43Human1.stdout !== m43Human2.stdout || m43Human2.stdout !== m43Human3.stdout) {
+    throw new Error('M43(q): expected byte-identical human index output across three runs');
+  }
+  const m43JsonQ1 = runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  const m43JsonQ2 = runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  if (m43JsonQ1.stdout !== m43JsonQ2.stdout) {
+    throw new Error('M43(q): expected byte-identical JSON index output across runs');
+  }
+
+  // M43(r): manifest mtime + content invariant pre/post index run + non-persistence + compile byte-identical
+  const m43ManifestBefore = await fs.readFile(m43ManifestPath, 'utf8');
+  runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  const m43ManifestAfter = await fs.readFile(m43ManifestPath, 'utf8');
+  if (m43ManifestBefore !== m43ManifestAfter) {
+    throw new Error('M43(r): tusq request index must not mutate the manifest (read-only invariant)');
+  }
+  const m43ManifestParsed = JSON.parse(m43ManifestAfter);
+  for (const cap of m43ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_primary_parameter_source')) {
+      throw new Error(`M43(r): input_schema_primary_parameter_source must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+  // compile byte-identical pre/post
+  const m43CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m43-compile-'));
+  const m43CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } }]
+  };
+  await fs.writeFile(path.join(m43CompileDir, 'tusq.manifest.json'), JSON.stringify(m43CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m43CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m43CompileDir });
+  const m43CompiledToolPath = path.join(m43CompileDir, 'tusq-tools', 'list_users.json');
+  const m43CompileContentBefore = await fs.readFile(m43CompiledToolPath, 'utf8');
+  runCli(['request', 'index', '--manifest', path.join(m43CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m43CompileDir });
+  const m43CompileContentAfter = await fs.readFile(m43CompiledToolPath, 'utf8');
+  if (m43CompileContentBefore !== m43CompileContentAfter) {
+    throw new Error('M43(r): tusq compile output must be byte-identical before and after request index run');
+  }
+
+  // M43(s): other index commands are byte-identical before and after request index run
+  const m43SurfaceBefore = runCli(['surface', 'plan', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir }).stdout;
+  runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  const m43SurfaceAfter = runCli(['surface', 'plan', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir }).stdout;
+  if (m43SurfaceBefore !== m43SurfaceAfter) {
+    throw new Error('M43(s): tusq surface plan output must be byte-identical before and after request index run');
+  }
+  const m43ResponseBefore = runCli(['response', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir }).stdout;
+  runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir });
+  const m43ResponseAfter = runCli(['response', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir }).stdout;
+  if (m43ResponseBefore !== m43ResponseAfter) {
+    throw new Error('M43(s): tusq response index output must be byte-identical before and after request index run');
+  }
+
+  // M43(t): empty-capabilities manifest emits documented human line and sources: [] in JSON, warnings: [] in JSON
+  const m43EmptyManifestPath = path.join(m43TmpDir, 'empty.json');
+  await fs.writeFile(m43EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m43EmptyHuman = runCli(['request', 'index', '--manifest', m43EmptyManifestPath], { cwd: m43TmpDir });
+  if (m43EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M43(t): empty-capabilities human output must be exactly the documented line:\n${m43EmptyHuman.stdout}`);
+  }
+  const m43EmptyJson = JSON.parse(runCli(['request', 'index', '--manifest', m43EmptyManifestPath, '--json'], { cwd: m43TmpDir }).stdout);
+  if (!Array.isArray(m43EmptyJson.sources) || m43EmptyJson.sources.length !== 0) {
+    throw new Error(`M43(t): empty-capabilities JSON must have sources: []:\n${JSON.stringify(m43EmptyJson)}`);
+  }
+  if (!Array.isArray(m43EmptyJson.warnings) || m43EmptyJson.warnings.length !== 0) {
+    throw new Error(`M43(t): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m43EmptyJson)}`);
+  }
+
+  // M43(u): malformed input_schema capability produces warning in stderr (human) and in warnings[] (--json)
+  // Covering all five frozen reason codes:
+  // no_schema_cap → input_schema_field_missing
+  // bad_schema_str → input_schema_field_not_object
+  // no_props_field_cap → input_schema_properties_field_missing
+  // bad_props_cap → input_schema_properties_field_not_object
+  // cookie_source_cap → input_schema_property_source_field_missing_or_invalid
+  const m43WarnHuman = runCli(['request', 'index', '--manifest', m43ManifestPath], { cwd: m43TmpDir });
+  if (!m43WarnHuman.stderr.includes("Warning: capability 'no_schema_cap' has malformed input_schema (input_schema_field_missing)")) {
+    throw new Error(`M43(u): human mode must emit warning for no_schema_cap (input_schema_field_missing) on stderr:\n${m43WarnHuman.stderr}`);
+  }
+  if (!m43WarnHuman.stderr.includes("Warning: capability 'bad_schema_str' has malformed input_schema (input_schema_field_not_object)")) {
+    throw new Error(`M43(u): human mode must emit warning for bad_schema_str (input_schema_field_not_object) on stderr:\n${m43WarnHuman.stderr}`);
+  }
+  if (!m43WarnHuman.stderr.includes("Warning: capability 'no_props_field_cap' has malformed input_schema (input_schema_properties_field_missing)")) {
+    throw new Error(`M43(u): human mode must emit warning for no_props_field_cap (input_schema_properties_field_missing) on stderr:\n${m43WarnHuman.stderr}`);
+  }
+  if (!m43WarnHuman.stderr.includes("Warning: capability 'bad_props_cap' has malformed input_schema (input_schema_properties_field_not_object)")) {
+    throw new Error(`M43(u): human mode must emit warning for bad_props_cap (input_schema_properties_field_not_object) on stderr:\n${m43WarnHuman.stderr}`);
+  }
+  if (!m43WarnHuman.stderr.includes("Warning: capability 'cookie_source_cap' has malformed input_schema (input_schema_property_source_field_missing_or_invalid)")) {
+    throw new Error(`M43(u): human mode must emit warning for cookie_source_cap (input_schema_property_source_field_missing_or_invalid) on stderr:\n${m43WarnHuman.stderr}`);
+  }
+  const m43WarnJsonObj = JSON.parse(runCli(['request', 'index', '--manifest', m43ManifestPath, '--json'], { cwd: m43TmpDir }).stdout);
+  const m43NoSchemaWarn = m43WarnJsonObj.warnings.find((w) => w.capability === 'no_schema_cap');
+  if (!m43NoSchemaWarn || m43NoSchemaWarn.reason !== 'input_schema_field_missing') {
+    throw new Error(`M43(u): warnings[] must include {capability: 'no_schema_cap', reason: 'input_schema_field_missing'}:\n${JSON.stringify(m43WarnJsonObj.warnings)}`);
+  }
+  const m43BadSchemaWarn = m43WarnJsonObj.warnings.find((w) => w.capability === 'bad_schema_str');
+  if (!m43BadSchemaWarn || m43BadSchemaWarn.reason !== 'input_schema_field_not_object') {
+    throw new Error(`M43(u): warnings[] must include {capability: 'bad_schema_str', reason: 'input_schema_field_not_object'}:\n${JSON.stringify(m43WarnJsonObj.warnings)}`);
+  }
+  const m43NoPropsWarn = m43WarnJsonObj.warnings.find((w) => w.capability === 'no_props_field_cap');
+  if (!m43NoPropsWarn || m43NoPropsWarn.reason !== 'input_schema_properties_field_missing') {
+    throw new Error(`M43(u): warnings[] must include {capability: 'no_props_field_cap', reason: 'input_schema_properties_field_missing'}:\n${JSON.stringify(m43WarnJsonObj.warnings)}`);
+  }
+  const m43BadPropsWarn = m43WarnJsonObj.warnings.find((w) => w.capability === 'bad_props_cap');
+  if (!m43BadPropsWarn || m43BadPropsWarn.reason !== 'input_schema_properties_field_not_object') {
+    throw new Error(`M43(u): warnings[] must include {capability: 'bad_props_cap', reason: 'input_schema_properties_field_not_object'}:\n${JSON.stringify(m43WarnJsonObj.warnings)}`);
+  }
+  const m43CookieWarn = m43WarnJsonObj.warnings.find((w) => w.capability === 'cookie_source_cap');
+  if (!m43CookieWarn || m43CookieWarn.reason !== 'input_schema_property_source_field_missing_or_invalid') {
+    throw new Error(`M43(u): warnings[] must include {capability: 'cookie_source_cap', reason: 'input_schema_property_source_field_missing_or_invalid'}:\n${JSON.stringify(m43WarnJsonObj.warnings)}`);
+  }
+
+  // M43(v): aggregation_key closed two-value enum for every emitted bucket
+  const m43ValidAggregationKeys = new Set(['source', 'unknown']);
+  for (const entry of m43IndexJson.sources) {
+    if (!m43ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M43(v): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for source '${entry.input_schema_primary_parameter_source}'`);
+    }
+  }
+  const m43PathEntry = m43IndexJson.sources.find((e) => e.input_schema_primary_parameter_source === 'path');
+  const m43UnknownEntry = m43IndexJson.sources.find((e) => e.input_schema_primary_parameter_source === 'unknown');
+  if (!m43PathEntry || m43PathEntry.aggregation_key !== 'source') {
+    throw new Error(`M43(v): path source must have aggregation_key 'source', got: ${m43PathEntry ? m43PathEntry.aggregation_key : null}`);
+  }
+  if (!m43UnknownEntry || m43UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M43(v): unknown source must have aggregation_key 'unknown', got: ${m43UnknownEntry ? m43UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M43(w): has_destructive_side_effect and has_restricted_or_confidential_sensitivity flags correct per bucket
+  // request_body bucket: create_item is destructive AND restricted
+  const m43RbEntry = m43IndexJson.sources.find((e) => e.input_schema_primary_parameter_source === 'request_body');
+  if (!m43RbEntry || m43RbEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M43(w): request_body bucket must have has_destructive_side_effect=true (create_item is destructive); got: ${JSON.stringify(m43RbEntry)}`);
+  }
+  if (!m43RbEntry || m43RbEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M43(w): request_body bucket must have has_restricted_or_confidential_sensitivity=true (create_item is restricted); got: ${JSON.stringify(m43RbEntry)}`);
+  }
+  if (!m43PathEntry || m43PathEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M43(w): path bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m43PathEntry)}`);
+  }
+
+  // M43(x): tusq help enumerates 27 commands including 'request'
+  const m43HelpOutput = runCli(['help'], { cwd: m43TmpDir });
+  if (!m43HelpOutput.stdout.includes('request')) {
+    throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
+  }
+  const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m43CommandCount !== 27) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 27 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  }
+  // help text includes planning-aid framing
+  const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
+  if (!m43HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M43(x): request index help must include planning-aid framing:\n${m43HelpResult.stdout}`);
+  }
+  // unknown subcommand exits 1
+  const m43UnknownSubCmd = runCli(['request', 'bogusub'], { cwd: m43TmpDir, expectedStatus: 1 });
+  if (!m43UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m43UnknownSubCmd.stdout !== '') {
+    throw new Error(`M43(x): unknown subcommand must exit 1:\nstdout=${m43UnknownSubCmd.stdout}\nstderr=${m43UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m43TmpDir, { recursive: true, force: true });
+  await fs.rm(m43CompileDir, { recursive: true, force: true });
+
   // ── M42: Static Capability Output Schema Top-Level Type Index Export ──────────
   const m42TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m42-smoke-'));
 
@@ -3878,14 +4394,14 @@ async function run() {
     throw new Error(`M42: within object bucket, capabilities must follow manifest declared order (get_record first); got: ${JSON.stringify(m42ObjectEntry ? m42ObjectEntry.capabilities : null)}`);
   }
 
-  // M42: tusq help enumerates 26 commands including 'response'
+  // M42: tusq help enumerates 27 commands including 'response' (M43 ships in this run)
   const m42HelpOutput = runCli(['help'], { cwd: m42TmpDir });
   if (!m42HelpOutput.stdout.includes('response')) {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 26) {
-    throw new Error(`M42: tusq help must enumerate exactly 26 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 27) {
+    throw new Error(`M42: tusq help must enumerate exactly 27 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -4424,14 +4940,14 @@ async function run() {
     throw new Error(`M41: within low bucket, capabilities must follow manifest declared order (list_users, get_user); got: ${JSON.stringify(m41LowEntry ? m41LowEntry.capabilities : null)}`);
   }
 
-  // M41: tusq help enumerates 26 commands including 'path' (M42 ships in this run)
+  // M41: tusq help enumerates 27 commands including 'path' (M42/M43 ship in this run)
   const m41HelpOutput = runCli(['help'], { cwd: m41TmpDir });
   if (!m41HelpOutput.stdout.includes('path')) {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 26) {
-    throw new Error(`M41: tusq help must enumerate exactly 26 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 27) {
+    throw new Error(`M41: tusq help must enumerate exactly 27 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -4979,14 +5495,14 @@ async function run() {
     throw new Error(`M40: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m40NoneEntry ? m40NoneEntry.capabilities : null)}`);
   }
 
-  // M40: tusq help enumerates 26 commands including 'output' and 'path' (M41/M42 ship in this run)
+  // M40: tusq help enumerates 27 commands including 'output' and 'path' (M41/M42/M43 ship in this run)
   const m40HelpOutput = runCli(['help'], { cwd: m40TmpDir });
   if (!m40HelpOutput.stdout.includes('output')) {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 26) {
-    throw new Error(`M40: tusq help must enumerate exactly 26 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 27) {
+    throw new Error(`M40: tusq help must enumerate exactly 27 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -5451,14 +5967,14 @@ async function run() {
     throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
   }
 
-  // M39: tusq help enumerates 26 commands including 'input' (M40/M41/M42 ship in this run)
+  // M39: tusq help enumerates 27 commands including 'input' (M40/M41/M42/M43 ship in this run)
   const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
   if (!m39HelpOutput.stdout.includes('input')) {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 26) {
-    throw new Error(`M39: tusq help must enumerate exactly 26 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 27) {
+    throw new Error(`M39: tusq help must enumerate exactly 27 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -5922,14 +6438,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 26 commands including 'examples' (M39/M40/M41/M42 ship in this run)
+  // M38: tusq help enumerates 27 commands including 'examples' (M39/M40/M41/M42/M43 ship in this run)
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 26) {
-    throw new Error(`M38: tusq help must enumerate exactly 26 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 27) {
+    throw new Error(`M38: tusq help must enumerate exactly 27 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -6405,14 +6921,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 26 commands including 'pii' (M38/M39/M40/M41/M42 ship in this run)
+  // M37: tusq help enumerates 27 commands including 'pii' (M38/M39/M40/M41/M42/M43 ship in this run)
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 26) {
-    throw new Error(`M37: tusq help must enumerate exactly 26 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 27) {
+    throw new Error(`M37: tusq help must enumerate exactly 27 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -6863,14 +7379,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 26 commands including 'confidence' (M37/M38/M39/M40/M41/M42 ship in this run)
+  // M36: tusq help enumerates 27 commands including 'confidence' (M37/M38/M39/M40/M41/M42/M43 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 26) {
-    throw new Error(`M36: tusq help must enumerate exactly 26 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 27) {
+    throw new Error(`M36: tusq help must enumerate exactly 27 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -7256,14 +7772,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 26 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', and 'response' (M36/M37/M38/M39/M40/M41/M42 ship in this run)
+  // M35: tusq help enumerates 27 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', 'request', and 'response' (M36/M37/M38/M39/M40/M41/M42/M43 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 26) {
-    throw new Error(`M35: tusq help must enumerate exactly 26 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 27) {
+    throw new Error(`M35: tusq help must enumerate exactly 27 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

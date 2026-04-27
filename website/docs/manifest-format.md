@@ -449,6 +449,45 @@ The `tusq response index` command (M42) derives a per-type capability breakdown 
 
 **Non-persistence:** `output_schema_top_level_type` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq response index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Input Schema Primary Parameter Source Index
+
+The `tusq request index` command (M43) derives a per-source capability breakdown from each capability's `input_schema.properties[*].source` fields, as populated by the M11/M14 scan/compile pipeline from Express/Fastify route handler parameter annotations. This axis is orthogonal to M39 (M39 asks "how many required input fields?"; M43 asks "what HTTP anatomy locus do input parameters come from?"). Symmetric to M42 (M42 = response-shape contract; M43 = request-input-locus contract).
+
+**Source function** (applied to `input_schema.properties[*].source` values):
+
+| Source bucket | Condition |
+|---------------|-----------|
+| `path` | All properties have `source === 'path'` (single uniform source) |
+| `request_body` | All properties have `source === 'request_body'` (single uniform source) |
+| `query` | All properties have `source === 'query'` (single uniform source) |
+| `header` | All properties have `source === 'header'` (single uniform source) |
+| `mixed` | Properties have multiple distinct source values, all within the four-value set |
+| `none` | `input_schema.properties` is a valid plain object with zero keys |
+| `unknown` | All other cases (see below) |
+
+**`unknown` bucket conditions:** `input_schema` is missing, null, or not a plain object; `input_schema.properties` is missing, null, or not a plain object; any property whose `source` value is missing, not a string, is an array (`source: ['path', 'query']`), or is a string not in the closed four-value set (`path`, `request_body`, `query`, `header`) — including `'cookie'`, `'file'`, `'multipart'`, `'form-data'`, and any other unrecognized value.
+
+**Cookie and file/multipart source values → `unknown`:** The `cookie`-locus and file/multipart-locus distinctions are reserved for `M-Input-Source-Cookie-Bucket-1` and `M-Input-Source-File-Bucket-1`. All such values are bucketed as `unknown` with reason `input_schema_property_source_field_missing_or_invalid`.
+
+**`mixed` bucket:** A single catchall for capabilities whose properties span multiple source loci. No per-locus-pair enumeration (e.g., `path+request_body` as a distinct bucket) is performed; that is reserved for `M-Input-Source-Mixed-Pair-Enumeration-Index-1`.
+
+**Optional-vs-required collapse:** All properties' `source` fields are consulted regardless of `input_schema.required[]` membership. The optional-only vs required-only locus splits are reserved for `M-Input-Source-Optional-vs-Required-Split-1`.
+
+**Malformed values:** When a capability's `input_schema` or its properties are malformed, a `Warning: capability '<name>' has malformed input_schema (<reason>)` is emitted to stderr (human mode) or recorded in `warnings[]` (JSON mode). Five frozen reason codes:
+- `input_schema_field_missing` — no `input_schema` key on the capability
+- `input_schema_field_not_object` — `input_schema` is not a plain object
+- `input_schema_properties_field_missing` — `input_schema` has no `properties` field
+- `input_schema_properties_field_not_object` — `input_schema.properties` is not a plain object
+- `input_schema_property_source_field_missing_or_invalid` — a property has a missing, non-string, array, or unrecognized `source` value
+
+**Bucket iteration order:** `path → request_body → query → header → mixed → none → unknown` (closed-enum deterministic stable-output convention only — NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--source` filter:** Only lowercase values match. `--source PATH` exits 1 with `Unknown input schema primary parameter source: PATH`.
+
+**Non-persistence:** `input_schema_primary_parameter_source` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq request index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ### Path Segment Count Tier Index
 
 The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.

@@ -888,6 +888,54 @@ tusq redaction review --json
 tusq redaction review --capability post_auth_auth --json
 ```
 
+## `tusq request index`
+
+Index capabilities by the primary HTTP request input parameter source declared in their `input_schema.properties[*].source` fields. Groups capabilities into seven source buckets (`path`, `request_body`, `query`, `header`, `mixed`, `none`, `unknown`) for planning review. This is a **planning aid, not a runtime request executor, request-payload validator, input-contract conformance detector, request generator, or input-contract certifier**.
+
+```bash
+tusq request index [--source <path|request_body|query|header|mixed|none|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--source <value>` | all sources | Filter to a single source bucket. Case-sensitive lowercase; `PATH` exits 1. |
+| `--manifest <path>` | `tusq.manifest.json` | Path to manifest file. |
+| `--out <path>` | stdout | Write JSON output to file. Rejected if inside `.tusq/`. |
+| `--json` | human text | Emit machine-readable JSON with `sources[]` and `warnings[]`. |
+
+**Source rule:** The primary source bucket is derived from `input_schema.properties[*].source` values. All property `source` values must be strings in the closed four-value set (`path`, `request_body`, `query`, `header`). If all properties share a single source value, that value is the bucket key. If properties have multiple distinct source values, the bucket is `mixed`. If properties is an empty object, the bucket is `none`. The `unknown` bucket covers all malformed cases (missing/malformed `input_schema`, missing/malformed `properties`, any property with a missing, non-string, array-valued, or unrecognized `source` value — including `cookie`, `file`, `multipart`, `form-data`).
+
+**Bucket order (closed-enum):** `path → request_body → query → header → mixed → none → unknown` — deterministic stable-output convention only (HTTP anatomy reading order — NOT security-blast-radius-ranked, NOT workflow-criticality-ranked).
+
+**Warnings** (in `--json` mode, always present even when empty):
+
+| Reason code | When |
+|-------------|------|
+| `input_schema_field_missing` | Capability has no `input_schema` field |
+| `input_schema_field_not_object` | `input_schema` is not a plain object |
+| `input_schema_properties_field_missing` | `input_schema` has no `properties` field |
+| `input_schema_properties_field_not_object` | `input_schema.properties` is not a plain object |
+| `input_schema_property_source_field_missing_or_invalid` | A property has a missing, non-string, array, or unrecognized `source` value |
+
+**Examples:**
+
+```bash
+# All sources (human-readable)
+tusq request index
+
+# All sources (JSON)
+tusq request index --json
+
+# Single source bucket
+tusq request index --source path --json
+
+# Mixed bucket only
+tusq request index --source mixed --json
+
+# Write to file
+tusq request index --out request-source-index.json
+```
+
 ## `tusq response index`
 
 Index capabilities by the JSON Schema primitive type declared in their `output_schema.type` field. Groups capabilities into seven type buckets (`object`, `array`, `string`, `number`, `boolean`, `null`, `unknown`) for planning review. This is a **planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier**.

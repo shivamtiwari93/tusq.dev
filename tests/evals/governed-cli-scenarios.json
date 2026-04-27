@@ -1135,6 +1135,48 @@
       "expected_valid_output_schema_top_level_types": ["object", "array", "string", "number", "boolean", "null", "unknown"],
       "expected_valid_aggregation_keys": ["type", "unknown"],
       "expected_type_order": "object,array,unknown"
+    },
+    {
+      "id": "input-schema-primary-parameter-source-index-determinism",
+      "description": "M43: tusq request index --json produces byte-identical output across three runs on the same manifest; input_schema_primary_parameter_source bucket-key enum is closed (seven values: path/request_body/query/header/mixed/none/unknown); aggregation_key enum is closed (two values: source/unknown); bucket iteration order is the frozen closed-enum order (path → request_body → query → header → mixed → none, then unknown last); null/missing/non-object input_schema → unknown (with warning); non-object/null input_schema → unknown with warning; missing/non-object input_schema.properties → unknown with warning; any property source outside closed four-value set → unknown with warning; cookie/file/multipart/form-data source values → unknown (not in closed set); array-of-sources → unknown (source is array not string); mixed bucket = two or more distinct closed-set source values; none bucket = properties has 0 keys",
+      "scenario_type": "input_schema_primary_parameter_source_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "get_by_id",
+          "domain": "items",
+          "method": "GET",
+          "path": "/api/v1/items/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.9,
+          "input_schema": { "type": "object", "properties": { "id": { "type": "string", "source": "path" } }, "required": ["id"] }
+        },
+        {
+          "name": "create_item",
+          "domain": "items",
+          "method": "POST",
+          "path": "/api/v1/items",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.85,
+          "input_schema": { "type": "object", "properties": { "body": { "type": "object", "source": "request_body" } }, "required": [] }
+        },
+        {
+          "name": "no_schema_cap",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.7
+        }
+      ],
+      "expected_valid_input_schema_primary_parameter_sources": ["path", "request_body", "query", "header", "mixed", "none", "unknown"],
+      "expected_valid_aggregation_keys": ["source", "unknown"],
+      "expected_source_order": "path,request_body,unknown"
     }
   ]
 }

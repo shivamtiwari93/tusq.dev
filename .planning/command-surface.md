@@ -1,8 +1,72 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-### M43 Charter Sketch Reservation — 2026-04-27, run_3df735753a5adcb3, turn_0ec8ffbcbcddc54c
+### M43: Input Schema Primary Parameter Source Index — Product CLI Surface
 
-PM bound **M43: Static Capability Input Schema Primary Parameter Source Index Export from Manifest Evidence (~0.5 day) — V1.24 (PROPOSED)** in this turn. CLI surface growth: 26 → 27 commands. New top-level noun `request` with single subcommand `index`, inserted alphabetically between `redaction` and `response` in the post-`docs` block (`redaction` < `request` because `r`=`r`, `e`=`e`, `d` (100) < `q` (113) at position 2; `request` < `response` because `r`=`r`, `e`=`e`, `q` (113) < `s` (115) at position 2). Command shape: `tusq request index [--source <path|request_body|query|header|mixed|none|unknown>] [--manifest <path>] [--out <path>] [--json]`. Closed seven-value bucket-key enum (`path | request_body | query | header | mixed | none | unknown`); closed two-value aggregation_key enum (`source | unknown`); closed four-value property-`source` value set (`path`, `request_body`, `query`, `header`) — every `input_schema.properties[*].source` must be a string in this set or the capability buckets `unknown`; case-sensitive lowercase-only `--source` filter; result-array field name `sources` (plural, categorical — NOT `tiers`, consistent with M42's categorical-axis convention); per-bucket 8-field entry shape (`input_schema_primary_parameter_source`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); top-level `warnings[]` (only in `--json`, always present even when empty) with five frozen reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_properties_field_missing`, `input_schema_properties_field_not_object`, `input_schema_property_source_field_missing_or_invalid`); closed-enum bucket iteration order `path → request_body → query → header → mixed → none → unknown` (deterministic stable-output convention only — explicitly NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked); read-only invariants (manifest mtime + SHA-256 + every capability_digest byte-identical pre/post; `tusq compile` and the twelve existing index commands plus M42 `tusq response index` byte-identical pre/post); non-persistence rule (`input_schema_primary_parameter_source` MUST NOT be written into `tusq.manifest.json`); orthogonal to M39 (M39 measures `input_schema.required[]` cardinality; M43 measures `input_schema.properties[*].source` locus class — different but related fields) and symmetric to M42 (M42 = response-shape contract on `output_schema.type`; M43 = request-input-locus contract on `input_schema.properties[*].source`; together M42 and M43 bracket the request/response data contract); `cookie`/`file`/`multipart`/`form-data` property-`source` values bucketed as `unknown` (cookie-locus and file/multipart-locus distinctions reserved for `M-Input-Source-Cookie-Bucket-1` and `M-Input-Source-File-Bucket-1`); array-of-sources (`source: ['path', 'query']`) bucketed as `unknown`; `mixed` bucket is a single catchall (per-locus-pair enumeration like `path+request_body` reserved for `M-Input-Source-Mixed-Pair-Enumeration-Index-1`); optional-vs-required split intentionally collapsed (every property's `source` field consulted regardless of `input_schema.required[]` membership; the optional-only and required-only locus splits reserved for `M-Input-Source-Optional-vs-Required-Split-1`). The full Product CLI Surface detail block (two-row command table, four-flag table, bucket-key enum table, aggregation_key enum table, tier-function rules table, per-bucket entry shape table, bucket iteration order table, default-preservation table for the 26 unchanged commands, failure UX table, local-only invariants table) will be materialized in the dev implementation turn before any source code lands; this Reservation block names the charter and freezes the surface decisions for dev to carry forward verbatim.
+| Command | Shape |
+|---------|-------|
+| `tusq request` | `tusq request <subcommand>` |
+| `tusq request index` | `tusq request index [--source <path\|request_body\|query\|header\|mixed\|none\|unknown>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--source <value>` | all sources | Case-sensitive lowercase; `PATH` exits 1 |
+| `--manifest <path>` | `tusq.manifest.json` | Resolved relative to cwd |
+| `--out <path>` | stdout | Writes JSON; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | Includes `warnings[]` for malformed input_schema fields |
+
+| Bucket key | Source function condition |
+|------------|--------------------------|
+| `path` | All `input_schema.properties[*].source` === `'path'` (single uniform source) |
+| `request_body` | All `input_schema.properties[*].source` === `'request_body'` (single uniform source) |
+| `query` | All `input_schema.properties[*].source` === `'query'` (single uniform source) |
+| `header` | All `input_schema.properties[*].source` === `'header'` (single uniform source) |
+| `mixed` | Properties have multiple distinct source values, all in four-value set |
+| `none` | `input_schema.properties` is a valid plain object with zero keys |
+| `unknown` | input_schema missing/null/not-object; properties missing/null/not-object; any property source missing/not-string/array/not-in-four-value-set |
+
+| `aggregation_key` value | When |
+|------------------------|------|
+| `source` | Capability has a named source bucket (`path`, `request_body`, `query`, `header`, `mixed`, `none`) |
+| `unknown` | Capability has malformed or missing input_schema or properties field, or invalid source value |
+
+| Per-bucket entry field | Type | Notes |
+|------------------------|------|-------|
+| `input_schema_primary_parameter_source` | string | One of the seven closed-enum values |
+| `aggregation_key` | string | `source` or `unknown` |
+| `capability_count` | integer | Count of capabilities in bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Count with `approved === true` |
+| `gated_count` | integer | Count with `approved !== true` |
+| `has_destructive_side_effect` | boolean | true if any cap has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true if any cap has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+| Bucket iteration order | Notes |
+|-----------------------|-------|
+| `path → request_body → query → header → mixed → none → unknown` | Deterministic stable-output convention only — NOT security-blast-radius-ranked, NOT workflow-criticality-ranked |
+
+| Warning reason code | When emitted |
+|--------------------|-------------|
+| `input_schema_field_missing` | capability has no `input_schema` field |
+| `input_schema_field_not_object` | `input_schema` is present but not a plain object |
+| `input_schema_properties_field_missing` | `input_schema` is an object but has no `properties` field |
+| `input_schema_properties_field_not_object` | `input_schema.properties` is not a plain object |
+| `input_schema_property_source_field_missing_or_invalid` | A property has missing, non-string, array, or unrecognized `source` value |
+
+| Failure condition | Exit | Stderr |
+|-------------------|------|--------|
+| Manifest not found | 1 | `Manifest not found: <path>` |
+| Manifest not valid JSON | 1 | `Manifest is not valid JSON: <path>` |
+| Unknown `--source` value | 1 | `Unknown input schema primary parameter source: <value>` |
+| `--source` with no value | 1 | `Missing value for --source` |
+| Unknown flag | 1 | `Unknown flag: --<flag>` |
+| `--out` path inside `.tusq/` | 1 | `Output path must not be inside .tusq/` |
+
+| Local-only invariant | Rule |
+|----------------------|------|
+| Manifest read-only | mtime + SHA-256 + all `capability_digest` values byte-identical pre/post |
+| `tusq compile` idempotent | Byte-identical output before and after `tusq request index` |
+| Other index commands idempotent | All 12 existing index commands byte-identical before and after |
+| No new dependencies | `package.json` and `package-lock.json` unmodified |
 
 ### M42 Charter Sketch Reservation — 2026-04-27, run_f33f485bb7998de9, turn_57c7b57416c90a9f
 
