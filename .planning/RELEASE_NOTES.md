@@ -1,5 +1,25 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M44 (turn_c640f6d66166bb52, run_d309bfeea0f99431, 2026-04-27, HEAD 2021751)
+
+**Milestone:** M44 — Static Capability Description Word Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.25
+
+**Command added:** `tusq description index` (CLI surface: 27 → 28 commands; new noun `description` with single subcommand `index`, inserted alphabetically between `confidence` and `diff`)
+
+**Key spec distinctions vs M43 (sources[]) and M42 (types[]):** (1) Result array field is `tiers[]` (consistent with M37/M38/M39/M40/M41 numeric-band-tier convention; NOT `sources[]` from M43, NOT `types[]` from M42). (2) `aggregation_key` values are `"tier"` for known buckets and `"unknown"` for the unknown bucket (same as M37–M41; NOT `"source"` from M43, NOT `"type"` from M42). (3) Flag is `--tier` (case-sensitive lowercase-only; identical name to M37–M41). (4) Four-value closed bucket enum: `low | medium | high | unknown` (strictly fewer values than M43's seven). (5) Tier function is `description.trim().split(/\s+/u).length` — purely whitespace-based token count; no markdown/HTML/punctuation stripping; no sub-schema walking; no per-language handling. (6) Three frozen warning reason codes: `description_field_missing | description_field_not_string | description_field_empty_after_trim`. (7) Thresholds `7` and `14` are post-ship-frozen inline integer literals. (8) Bucket order is ascending tier numeric span: `low → medium → high → unknown`. (9) `description_word_count_tier` MUST NOT be written into `tusq.manifest.json`.
+
+**Notable fixture observation:** All three express fixture capabilities have 8-10 description tokens and fall in the `medium` bucket. PM DEC-002 predicted a low/medium split (incorrectly estimating 7 and 6 tokens for two capabilities). Actual counts: get_users_users 8 tokens, post_users_users 8 tokens, get_users_api_v1_users_id 10 tokens. The implementation is correct per frozen thresholds. The smoke test suite correctly uses a synthetic M44 fixture (not the express fixture) to exercise all four tiers.
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (35 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardDescriptionWordCountTierBucketKey` and `_guardDescriptionWordCountTierAggregationKey` pass). `node bin/tusq.js help` → 28-command surface confirmed (`grep -c '^  [a-z]'` → 28). `node bin/tusq.js description index --help` → planning-aid framing, tier function (whitespace-token-count; no markdown stripping; sub-schema descriptions NOT walked), bucket order (`low → medium → high → unknown`) confirmed. `node bin/tusq.js description index --tier MEDIUM --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js description index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (single `medium` bucket: capability_count 3, all three express capabilities, aggregation_key `"tier"`) and `warnings: []`. `node bin/tusq.js description index --tier medium --manifest ... --json` → exit 0, single `medium` bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M44 ROADMAP checkboxes `[x]`. Boundary values 7→low, 8→medium, 14→medium, 15→high independently confirmed.
+
+**Acceptance criteria:** 25 new criteria added (REQ-465–REQ-489). Total: 489 (REQ-001–REQ-489). All PASS.
+
+**Dev turn challenge:** `git diff 17b6a3d..2021751 --name-only` → exactly 10 dev-owned files; zero reserved state / QA-owned / launch-owned files modified. All five dev decisions upheld. No objections.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Re-verification — M43 (turn_d6b242db408a1312, run_3df735753a5adcb3, 2026-04-27, HEAD 0ec18b8)
 
 **Milestone:** M43 — Static Capability Input Schema Primary Parameter Source Index Export from Manifest Evidence (~0.5 day) — V1.24

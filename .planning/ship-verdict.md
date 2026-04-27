@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c640f6d66166bb52 (role=qa, run_d309bfeea0f99431, M44 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_48fcfc7526b370ab, role=dev, HEAD 2021751) for run_d309bfeea0f99431 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff 17b6a3d..2021751 --name-only` confirms exactly 10 files changed since PM turn (17b6a3d): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (35 scenarios)`. Independently re-run this turn; 35 scenarios confirmed (up from 34 at M43 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardDescriptionWordCountTierBucketKey` and `_guardDescriptionWordCountTierAggregationKey` guards pass synchronously at module load.
+
+**4. CLI surface 28 commands:** `node bin/tusq.js help` → 28 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, **description**, diff, domain, effect, examples, input, method, output, path, pii, policy, redaction, request, response, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 28 confirmed. `description` correctly inserted between `confidence` and `diff` (alphabetically: `c`<`d` at pos 0; then `e`<`i` at pos 1 for `des` vs `dif`).
+
+**5. description index --help framing:** `node bin/tusq.js description index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime doc-quality enforcer, doc-contradiction detector, claim-richness certifier, or public-doc compliance auditor; tiers are deterministic stable-output ordering only (NOT doc-quality-ranked, NOT doc-completeness-ranked, NOT doc-richness-ranked)`); tier function (`description.trim().split(/\s+/u).length`; low ≤7 / medium 8-14 / high ≥15 / unknown for missing/null/non-string/empty-after-trim; no markdown/HTML/punctuation stripping; sub-schema descriptions NOT walked); bucket iteration order `low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js description index --tier MEDIUM --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown description word count tier: MEDIUM`, empty stdout. Independently verified this turn.
+
+**7. Default JSON output — tiers[] field name and aggregation_key:** `node bin/tusq.js description index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` (NOT `sources[]`, NOT `types[]`): single `medium` bucket (capability_count 3; all three express capabilities fall in medium: get_users_users 8 tokens, get_users_api_v1_users_id 10 tokens, post_users_users 8 tokens; aggregation_key `"tier"`); `warnings: []`. NOTE: PM DEC-002 incorrectly predicted low/medium split — actual token counts are 8/10/8, all above the 7-token low threshold. Implementation is correct; the PM's token-count prediction was inaccurate. Non-blocking finding — tests pass using synthetic M44 fixtures that exercise all four tiers.
+
+**8. Tier filter:** `node bin/tusq.js description index --tier medium --manifest ... --json` → exit 0, single `medium` bucket. `--tier low` on express fixture → exit 1 `No capabilities found for description word count tier: low` (consistent with M42/M43 absent-filter exit-1 pattern).
+
+**9. Boundary values verified:** Token thresholds independently confirmed: 7 tokens → low; 8 tokens → medium; 14 tokens → medium; 15 tokens → high. Threshold pair `7`/`14` are inline integer literals (post-ship-frozen per DEC-001). Unicode whitespace via `/\s+/u` flag confirmed. Markdown not stripped confirmed (markdown literals count as tokens).
+
+**10. ROADMAP M44 checkboxes:** All 18 M44 ROADMAP checkboxes `[x]` confirmed (zero `[ ]` items in M44 block).
+
+**11. classifyDescriptionWordCountTier thresholds:** Verified at `src/cli.js:5932`: null/undefined/non-string → unknown; empty-after-trim → unknown; split on `/\s+/u`; tokenCount ≤7 → low; 8 ≤ tokenCount ≤14 → medium; tokenCount ≥15 → high. No markdown/HTML/punctuation stripping. Sub-schema descriptions (input_schema.description, output_schema.description, examples[].description) NOT consulted. No per-language handling — CJK descriptions with no whitespace tokenize as single token.
+
+**12. Three frozen warning reason codes:** `description_field_missing`, `description_field_not_string`, `description_field_empty_after_trim` — exercised in smoke M44(u) with absent key, `description: 42`, `description: "   "` respectively. warnings[] always present in --json mode even when empty.
+
+**13. Dev decisions upheld, no objections:** All five dev decisions (DEC-001 through DEC-005) upheld. Zero blocking objections raised. OBJ-001 (R6 dead code, medium), OBJ-002 (surface-plan-determinism eval uses synthetic fixtures, low), OBJ-003 (M31 per-domain flag value assertions, low) carried forward. 489 acceptance criteria (REQ-001–REQ-489) pass. Ship verdict: SHIP.
+
 ## QA Challenge — turn_d6b242db408a1312 (role=qa, run_3df735753a5adcb3, M43 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_3f3d861b475bc439, role=dev, HEAD 0ec18b8) for run_3df735753a5adcb3 independently rather than rubber-stamping it.
