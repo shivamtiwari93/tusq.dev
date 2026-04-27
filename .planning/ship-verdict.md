@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_b7f84e0d69dcabf6 (role=qa, run_533b2f8c47cc0bf0, M39 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_60ca77d51809c98f, role=dev, HEAD 52c5e56) for run_533b2f8c47cc0bf0 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff 1ac33dc..52c5e56 --name-only` confirms exactly 10 files changed since PM turn (1ac33dc): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (30 scenarios)`. Independently re-run this turn; 30 scenarios confirmed (up from 29 at M38 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Both `_guardRequiredInputFieldCountTierBucketKey` and `_guardRequiredInputFieldCountTierAggregationKey` pass synchronously at module load.
+
+**4. CLI surface 23 commands:** `node bin/tusq.js help` → 23 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, **input**, method, pii, policy, redaction, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 23 confirmed. `input` correctly inserted between `examples` and `method` (alphabetic order `ex` < `in` < `me`).
+
+**5. input index --help framing:** `node bin/tusq.js input index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier. Tiers are deterministic stable-output ordering only (NOT exposure-risk-ranked, NOT blast-radius-ranked, NOT easy-call-ranked, NOT input-complexity-ranked).`); tier function (`none if required.length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if input_schema/required missing or malformed`); bucket order `none → low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js input index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown required input field count tier: HIGH`, empty stdout. Independently verified this turn.
+
+**7. JSON output shape:** `node bin/tusq.js input index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`none` bucket: capability_count 2, approved_count 2, gated_count 0, has_destructive_side_effect false, has_restricted_or_confidential_sensitivity false; `low` bucket: capability_count 1) and `warnings: []`. `manifest_path`, `manifest_version`, `generated_at` top-level fields present.
+
+**8. Tier function verification:** `classifyRequiredInputFieldCountTier` at `src/cli.js:4080–4107` independently read: returns `unknown` for null/undefined (lines 4082–4084), non-object/array input_schema (lines 4085–4087), missing required property (lines 4088–4090), non-array required (lines 4091–4093), non-string or empty-string element in required (lines 4094–4098); returns `none` for length 0 (line 4099), `low` for 1–2 (line 4100), `medium` for 3–5 (line 4101), `high` for ≥ 6 (line 4102). Thresholds `0/2/5/6` are frozen.
+
+**9. M39 ROADMAP checkboxes:** All 18 M39 checkboxes confirmed `[x]`; zero unchecked items in the M39 block.
+
+**10. Zero package drift:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. No new dependencies introduced.
+
+**11. Acceptance criteria count:** REQ-340–REQ-364 (25 new M39 criteria) added to `.planning/acceptance-matrix.md`. Total: 364 REQs (REQ-001–REQ-364), all PASS.
+
+**12. Carried objections:** OBJ-001 (medium, non-blocking): R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — implementation correct for manually-edited manifests. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M39 close their own analogs. No new blocking objections raised for M39.
+
+**13. Ship verdict:** All M39 acceptance criteria pass. npm test exits 0 with 30 scenarios. CLI surface is 23 commands with `input` between `examples` and `method`. No blocking objections. **Verdict: SHIP.**
+
 ## QA Challenge — turn_6d4662cdbbeeb118 (role=qa, run_0c5145f830f5940e, M38 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_0ec2cb6d0b868173, role=dev, HEAD 71d5474) for run_0c5145f830f5940e independently rather than rubber-stamping it.

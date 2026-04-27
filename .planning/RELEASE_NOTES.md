@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M39 (turn_b7f84e0d69dcabf6, run_533b2f8c47cc0bf0, 2026-04-27, HEAD 52c5e56)
+
+**Milestone:** M39 — Static Capability Required Input Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.20
+
+**Command added:** `tusq input index` (CLI surface: 22 → 23 commands; `input` inserted alphabetically between `examples` and `method`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (30 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardRequiredInputFieldCountTierBucketKey` and `_guardRequiredInputFieldCountTierAggregationKey` pass). `node bin/tusq.js help` → 23-command surface confirmed (`grep -c '^  [a-z]'` → 23). `node bin/tusq.js input index --help` → planning-aid framing (`This is a planning aid, not a runtime input executor, input-schema validator, input generator, or exposure-safety certifier`), tier function (`none if required.length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if input_schema/required missing or malformed`), and bucket order (`none → low → medium → high → unknown`) confirmed. `node bin/tusq.js input index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js input index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`none` and `low` buckets) and `warnings: []`. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M39 ROADMAP checkboxes `[x]`.
+
+**New acceptance criteria:** REQ-340–REQ-364 (25 criteria) — CLI surface 23, closed 5-value tier enum (none|low|medium|high|unknown), closed 2-value aggregation_key enum (tier|unknown), frozen tier-function thresholds (0/2/5/6), five frozen warning reason codes, per-bucket 8-field shape, determinism, non-persistence, empty-capabilities, --out, case-sensitive filter, unknown bucket warnings, eval 30 scenarios.
+
+**Closed enums shipped (immutable):** `required_input_field_count_tier` (none|low|medium|high|unknown), `aggregation_key` (tier|unknown), tier thresholds (0/2/5/6), warning reason codes (input_schema_field_missing|input_schema_field_not_object|required_field_missing|required_field_not_array|required_array_contains_non_string_or_empty_element).
+
+**Non-breaking:** every existing command's stdout, stderr, and exit code is byte-identical pre/post M39.
+
 ## QA Re-verification — M38 (turn_6d4662cdbbeeb118, run_0c5145f830f5940e, 2026-04-27, HEAD 71d5474)
 
 **Milestone:** M38 — Static Capability Examples Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.19
