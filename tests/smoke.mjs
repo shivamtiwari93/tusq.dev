@@ -3352,6 +3352,494 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M37: Static Capability PII Field Count Tier Index Export ─────────────────
+  const m37TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m37-smoke-'));
+
+  // M37 fixture manifest: capabilities across none/low/medium/high/unknown PII tiers.
+  // 'unknown' tier: capability with null pii_fields and capability with non-string element.
+  // Capabilities declared in this order: high(bulk_export), none(health_check), low(get_profile),
+  // medium(process_payment), none(list_orders), unknown-null(legacy_sync), unknown-bad(bad_cap)
+  // to verify within-tier manifest declared order AND closed-enum tier order
+  // (none → low → medium → high → unknown, NOT manifest first-appearance).
+  const m37Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'bulk_export',
+        description: 'Bulk export all records',
+        method: 'POST',
+        path: '/export',
+        domain: 'ops',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        confidence: 0.9,
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['email', 'ssn', 'phone', 'dob', 'address', 'credit_card'], pii_categories: [] }
+      },
+      {
+        name: 'health_check',
+        description: 'Health check endpoint',
+        method: 'GET',
+        path: '/health',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        confidence: 0.95,
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'get_profile',
+        description: 'Get user profile',
+        method: 'GET',
+        path: '/profile',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'confidential',
+        confidence: 0.75,
+        approved: false,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['email', 'phone'], pii_categories: [] }
+      },
+      {
+        name: 'process_payment',
+        description: 'Process a payment',
+        method: 'POST',
+        path: '/payment',
+        domain: 'billing',
+        side_effect_class: 'write',
+        sensitivity_class: 'restricted',
+        confidence: 0.65,
+        approved: false,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: ['credit_card', 'cvv', 'billing_address'], pii_categories: [] }
+      },
+      {
+        name: 'list_orders',
+        description: 'List all orders',
+        method: 'GET',
+        path: '/orders',
+        domain: 'orders',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        confidence: 0.88,
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] }
+      },
+      {
+        name: 'legacy_sync',
+        description: 'Legacy sync route',
+        method: 'POST',
+        path: '/sync',
+        domain: 'admin',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        confidence: 0.4,
+        approved: false,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'api_key', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: null, pii_categories: [] }
+      },
+      {
+        name: 'bad_cap',
+        description: 'Route with non-string pii_fields element',
+        method: 'GET',
+        path: '/bad',
+        domain: null,
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        confidence: 0.5,
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'unknown', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [123, 'email'], pii_categories: [] }
+      }
+    ]
+  };
+
+  const m37ManifestPath = path.join(m37TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m37ManifestPath, JSON.stringify(m37Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m37TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M37(a): default tusq pii index produces exit 0 and per-bucket entries in closed-enum order
+  const m37DefaultResult = runCli(['pii', 'index', '--manifest', m37ManifestPath], { cwd: m37TmpDir });
+  if (!m37DefaultResult.stdout.includes('[none]') || !m37DefaultResult.stdout.includes('[low]') || !m37DefaultResult.stdout.includes('[high]') || !m37DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M37(a): default index must include all present buckets (none,low,high,unknown):\n${m37DefaultResult.stdout}`);
+  }
+  if (!m37DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M37(a): default index must include planning-aid framing:\n${m37DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: none before low before high before unknown
+  const m37DefaultLines = m37DefaultResult.stdout.split('\n');
+  const m37NonePos = m37DefaultLines.findIndex((l) => l === '[none]');
+  const m37LowPos = m37DefaultLines.findIndex((l) => l === '[low]');
+  const m37HighPos = m37DefaultLines.findIndex((l) => l === '[high]');
+  const m37UnknownPos = m37DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m37NonePos < m37LowPos && m37LowPos < m37HighPos && m37HighPos < m37UnknownPos)) {
+    throw new Error(`M37(a): bucket order must be none < low < high < unknown; got positions none=${m37NonePos} low=${m37LowPos} high=${m37HighPos} unknown=${m37UnknownPos}`);
+  }
+
+  // M37(b): --json output has all 8 per-bucket fields, top-level shape, and warnings[] always present
+  const m37Json1 = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir });
+  const m37IndexJson = JSON.parse(m37Json1.stdout);
+  if (!Array.isArray(m37IndexJson.tiers) || m37IndexJson.tiers.length === 0) {
+    throw new Error(`M37(b): JSON output must have tiers array with at least one entry:\n${m37Json1.stdout}`);
+  }
+  const m37FirstEntry = m37IndexJson.tiers[0];
+  const m37RequiredFields = ['pii_field_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m37RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m37FirstEntry, field)) {
+      throw new Error(`M37(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m37FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m37IndexJson, 'warnings') || !Array.isArray(m37IndexJson.warnings)) {
+    throw new Error(`M37(b): JSON output must have top-level warnings[] array:\n${m37Json1.stdout}`);
+  }
+  // Both legacy_sync (null) and bad_cap (non-string element) should produce warnings
+  if (m37IndexJson.warnings.length < 2) {
+    throw new Error(`M37(b): warnings[] must contain entries for legacy_sync (null) and bad_cap (non-string):\n${JSON.stringify(m37IndexJson.warnings)}`);
+  }
+
+  // M37(c): --tier filter (case-sensitive lowercase) returns single matching bucket
+  const m37TierFilter = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--tier', 'high', '--json'], { cwd: m37TmpDir });
+  const m37TierFilterJson = JSON.parse(m37TierFilter.stdout);
+  if (m37TierFilterJson.tiers.length !== 1 || m37TierFilterJson.tiers[0].pii_field_count_tier !== 'high') {
+    throw new Error(`M37(c): --tier high must return exactly one high bucket:\n${m37TierFilter.stdout}`);
+  }
+
+  // M37(c2): --tier uppercase exits 1 with "Unknown pii field count tier:" on stderr and empty stdout
+  const m37UppercaseTier = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--tier', 'HIGH'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37UppercaseTier.stderr.includes('Unknown pii field count tier: HIGH') || m37UppercaseTier.stdout !== '') {
+    throw new Error(`M37(c2): --tier HIGH (uppercase) must exit 1 with Unknown pii field count tier: message:\nstdout=${m37UppercaseTier.stdout}\nstderr=${m37UppercaseTier.stderr}`);
+  }
+
+  // M37(c3): --tier bogus exits 1
+  const m37BogusFilter = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--tier', 'bogus'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37BogusFilter.stderr.includes('Unknown pii field count tier: bogus') || m37BogusFilter.stdout !== '') {
+    throw new Error(`M37(c3): --tier bogus must exit 1 with Unknown pii field count tier: message`);
+  }
+
+  // M37(d): missing manifest exits 1 with error on stderr and empty stdout
+  const m37MissingManifest = runCli(['pii', 'index', '--manifest', path.join(m37TmpDir, 'nonexistent.json')], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37MissingManifest.stderr.includes('Manifest not found') || m37MissingManifest.stdout !== '') {
+    throw new Error(`M37(d): missing manifest must exit 1:\nstdout=${m37MissingManifest.stdout}\nstderr=${m37MissingManifest.stderr}`);
+  }
+
+  // M37(e): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m37BadJsonPath = path.join(m37TmpDir, 'bad.json');
+  await fs.writeFile(m37BadJsonPath, '{ not valid json', 'utf8');
+  const m37BadJson = runCli(['pii', 'index', '--manifest', m37BadJsonPath], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37BadJson.stderr.includes('Invalid manifest JSON') || m37BadJson.stdout !== '') {
+    throw new Error(`M37(e): malformed manifest must exit 1:\nstdout=${m37BadJson.stdout}\nstderr=${m37BadJson.stderr}`);
+  }
+
+  // M37(f): running twice produces byte-identical stdout in both modes
+  const m37Human1 = runCli(['pii', 'index', '--manifest', m37ManifestPath], { cwd: m37TmpDir });
+  const m37Human2 = runCli(['pii', 'index', '--manifest', m37ManifestPath], { cwd: m37TmpDir });
+  if (m37Human1.stdout !== m37Human2.stdout) {
+    throw new Error('M37(f): expected byte-identical human index output across runs');
+  }
+  const m37Json2 = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir });
+  if (m37Json1.stdout !== m37Json2.stdout) {
+    throw new Error('M37(f): expected byte-identical JSON index output across runs');
+  }
+
+  // M37(g): M37 does not mutate the manifest (mtime/content unchanged)
+  const m37ManifestBefore = await fs.readFile(m37ManifestPath, 'utf8');
+  runCli(['pii', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir });
+  const m37ManifestAfter = await fs.readFile(m37ManifestPath, 'utf8');
+  if (m37ManifestBefore !== m37ManifestAfter) {
+    throw new Error('M37(g): tusq pii index must not mutate the manifest (read-only invariant)');
+  }
+
+  // M37(h): capability_digest does not flip on any capability after an index run
+  // (already covered by manifest byte-identity above)
+
+  // M37(h2): post-run manifest does NOT contain a pii_field_count_tier key on any capability (non-persistence)
+  const m37ManifestParsed = JSON.parse(m37ManifestAfter);
+  for (const cap of m37ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'pii_field_count_tier')) {
+      throw new Error(`M37(h2): pii_field_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M37(i): tusq compile output is byte-identical before and after pii index run
+  const m37CompileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m37-compile-'));
+  const m37CompileManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [{ name: 'list_users', description: 'List users', method: 'GET', path: '/users', domain: 'users', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'internal', approved: true, capability_digest: 'abc', auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }]
+  };
+  await fs.writeFile(path.join(m37CompileDir, 'tusq.manifest.json'), JSON.stringify(m37CompileManifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m37CompileDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+  runCli(['compile'], { cwd: m37CompileDir });
+  const m37CompiledToolPath = path.join(m37CompileDir, 'tusq-tools', 'list_users.json');
+  const m37CompileContentBefore = await fs.readFile(m37CompiledToolPath, 'utf8');
+  runCli(['pii', 'index', '--manifest', path.join(m37CompileDir, 'tusq.manifest.json'), '--json'], { cwd: m37CompileDir });
+  const m37CompileContentAfter = await fs.readFile(m37CompiledToolPath, 'utf8');
+  if (m37CompileContentBefore !== m37CompileContentAfter) {
+    throw new Error('M37(i): tusq compile output must be byte-identical before and after pii index run');
+  }
+
+  // M37(j): tusq surface plan, domain index, effect index, sensitivity index, method index, auth index, confidence index outputs are byte-identical pre and post-M37
+  const m37SurfaceBefore = runCli(['surface', 'plan', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir }).stdout;
+  runCli(['pii', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir });
+  const m37SurfaceAfter = runCli(['surface', 'plan', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir }).stdout;
+  if (m37SurfaceBefore !== m37SurfaceAfter) {
+    throw new Error('M37(j): tusq surface plan output must be byte-identical before and after pii index run');
+  }
+  const m37ConfidenceBefore = runCli(['confidence', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir }).stdout;
+  runCli(['pii', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir });
+  const m37ConfidenceAfter = runCli(['confidence', 'index', '--manifest', m37ManifestPath, '--json'], { cwd: m37TmpDir }).stdout;
+  if (m37ConfidenceBefore !== m37ConfidenceAfter) {
+    throw new Error('M37(j): tusq confidence index output must be byte-identical before and after pii index run');
+  }
+
+  // M37(k): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m37EmptyManifestPath = path.join(m37TmpDir, 'empty.json');
+  await fs.writeFile(m37EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m37EmptyHuman = runCli(['pii', 'index', '--manifest', m37EmptyManifestPath], { cwd: m37TmpDir });
+  if (m37EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M37(k): empty-capabilities human output must be exactly the documented line:\n${m37EmptyHuman.stdout}`);
+  }
+  const m37EmptyJson = JSON.parse(runCli(['pii', 'index', '--manifest', m37EmptyManifestPath, '--json'], { cwd: m37TmpDir }).stdout);
+  if (!Array.isArray(m37EmptyJson.tiers) || m37EmptyJson.tiers.length !== 0) {
+    throw new Error(`M37(k): empty-capabilities JSON must have tiers: [] :\n${JSON.stringify(m37EmptyJson)}`);
+  }
+  if (!Array.isArray(m37EmptyJson.warnings) || m37EmptyJson.warnings.length !== 0) {
+    throw new Error(`M37(k): empty-capabilities JSON must have warnings: [] :\n${JSON.stringify(m37EmptyJson)}`);
+  }
+
+  // M37(l): --out <path> writes to the path and emits no stdout on success
+  const m37OutPath = path.join(m37TmpDir, 'pii-index-out.json');
+  const m37OutResult = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--out', m37OutPath], { cwd: m37TmpDir });
+  if (m37OutResult.stdout !== '') {
+    throw new Error(`M37(l): --out must emit no stdout on success, got: ${m37OutResult.stdout}`);
+  }
+  const m37OutContent = JSON.parse(await fs.readFile(m37OutPath, 'utf8'));
+  if (!Array.isArray(m37OutContent.tiers) || m37OutContent.tiers.length < 2) {
+    throw new Error(`M37(l): --out file must contain at least two tier entries: ${JSON.stringify(m37OutContent.tiers)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m37OutContent, 'warnings') || !Array.isArray(m37OutContent.warnings)) {
+    throw new Error(`M37(l): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m37OutContent)}`);
+  }
+
+  // M37(m): --out to an unwritable path exits 1 with empty stdout
+  const m37BadOut = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--out', '/no-such-dir/a/b/c/index.json'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (m37BadOut.stdout !== '') {
+    throw new Error(`M37(m): --out unwritable must produce empty stdout, got: ${m37BadOut.stdout}`);
+  }
+
+  // M37(n): --out .tusq/ path rejected with correct message and empty stdout
+  const m37TusqOutResult = runCli(
+    ['pii', 'index', '--manifest', m37ManifestPath, '--out', path.join(m37TmpDir, '.tusq', 'index.json')],
+    { cwd: m37TmpDir, expectedStatus: 1 }
+  );
+  if (!m37TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m37TusqOutResult.stdout !== '') {
+    throw new Error(`M37(n): --out .tusq/ must reject with correct message:\nstdout=${m37TusqOutResult.stdout}\nstderr=${m37TusqOutResult.stderr}`);
+  }
+
+  // M37(o): aggregation_key is exactly one of the two closed values for every emitted bucket
+  const m37ValidAggregationKeys = new Set(['tier', 'unknown']);
+  for (const entry of m37IndexJson.tiers) {
+    if (!m37ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M37(o): aggregation_key '${entry.aggregation_key}' is outside the closed two-value enum for tier '${entry.pii_field_count_tier}'`);
+    }
+  }
+  const m37NoneEntry = m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'none');
+  const m37HighEntry = m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'high');
+  const m37UnknownEntry = m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'unknown');
+  if (!m37NoneEntry || m37NoneEntry.aggregation_key !== 'tier') {
+    throw new Error(`M37(o): none tier must have aggregation_key 'tier', got: ${m37NoneEntry ? m37NoneEntry.aggregation_key : null}`);
+  }
+  if (!m37UnknownEntry || m37UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M37(o): unknown tier must have aggregation_key 'unknown', got: ${m37UnknownEntry ? m37UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M37(p): pii_fields bucketing boundary values
+  // p: pii_fields: [] → none
+  if (!m37NoneEntry || !m37NoneEntry.capabilities.includes('health_check') || !m37NoneEntry.capabilities.includes('list_orders')) {
+    throw new Error(`M37(p): health_check and list_orders (pii_fields: []) must be in none bucket:\n${JSON.stringify(m37NoneEntry)}`);
+  }
+  // p2: pii_fields: ['email', 'phone'] (length 2) → low
+  const m37LowEntry = m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'low');
+  if (!m37LowEntry || !m37LowEntry.capabilities.includes('get_profile')) {
+    throw new Error(`M37(p2): get_profile (pii_fields length 2) must be in low bucket:\n${JSON.stringify(m37LowEntry)}`);
+  }
+  // p3: pii_fields length 3 → medium
+  const m37MediumEntry = m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'medium');
+  if (!m37MediumEntry || !m37MediumEntry.capabilities.includes('process_payment')) {
+    throw new Error(`M37(p3): process_payment (pii_fields length 3) must be in medium bucket:\n${JSON.stringify(m37MediumEntry)}`);
+  }
+  // p4: pii_fields length 6 → high
+  if (!m37HighEntry || !m37HighEntry.capabilities.includes('bulk_export')) {
+    throw new Error(`M37(p4): bulk_export (pii_fields length 6) must be in high bucket:\n${JSON.stringify(m37HighEntry)}`);
+  }
+  // p5: pii_fields: null → unknown with warning
+  if (!m37UnknownEntry || !m37UnknownEntry.capabilities.includes('legacy_sync')) {
+    throw new Error(`M37(p5): legacy_sync (pii_fields: null) must be in unknown bucket:\n${JSON.stringify(m37UnknownEntry)}`);
+  }
+  const m37LegacySyncWarning = m37IndexJson.warnings.find((w) => w.includes('legacy_sync'));
+  if (!m37LegacySyncWarning) {
+    throw new Error(`M37(p5): warnings[] must include entry for legacy_sync (pii_fields: null):\n${JSON.stringify(m37IndexJson.warnings)}`);
+  }
+  // p6: pii_fields: [123, 'email'] (non-string element) → unknown with warning
+  if (!m37UnknownEntry.capabilities.includes('bad_cap')) {
+    throw new Error(`M37(p6): bad_cap (pii_fields: [123, 'email']) must be in unknown bucket:\n${JSON.stringify(m37UnknownEntry)}`);
+  }
+  const m37BadCapWarning = m37IndexJson.warnings.find((w) => w.includes('bad_cap'));
+  if (!m37BadCapWarning) {
+    throw new Error(`M37(p6): warnings[] must include entry for bad_cap (non-string element):\n${JSON.stringify(m37IndexJson.warnings)}`);
+  }
+
+  // M37(q): empty buckets MUST NOT appear in output
+  // medium is present (process_payment), so no "medium absent" check here
+  // Use a none-only manifest to verify only none bucket appears
+  const m37NoneOnlyManifestPath = path.join(m37TmpDir, 'none-only.json');
+  await fs.writeFile(m37NoneOnlyManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_a', description: 'A', method: 'GET', path: '/a', domain: 'ops', confidence: 0.9, side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'cap_b', description: 'B', method: 'GET', path: '/b', domain: 'ops', confidence: 0.95, side_effect_class: 'read', sensitivity_class: 'public', approved: true, auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' }, redaction: { pii_fields: [], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m37NoneOnlyJson = JSON.parse(runCli(['pii', 'index', '--manifest', m37NoneOnlyManifestPath, '--json'], { cwd: m37TmpDir }).stdout);
+  if (m37NoneOnlyJson.tiers.length !== 1 || m37NoneOnlyJson.tiers[0].pii_field_count_tier !== 'none') {
+    throw new Error(`M37(q): none-only manifest must produce exactly one bucket [none]; got: ${JSON.stringify(m37NoneOnlyJson.tiers.map((e) => e.pii_field_count_tier))}`);
+  }
+
+  // M37(r): within each bucket, capability names appear in manifest declared order (NOT alphabetized)
+  // none bucket: health_check declared before list_orders → must appear in that order
+  if (!m37NoneEntry || m37NoneEntry.capabilities[0] !== 'health_check' || m37NoneEntry.capabilities[1] !== 'list_orders') {
+    throw new Error(`M37(r): within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m37NoneEntry ? m37NoneEntry.capabilities : null)}`);
+  }
+
+  // M37(s): has_destructive_side_effect flag is correct per bucket
+  // high bucket has bulk_export (side_effect_class: destructive) → must be true
+  if (!m37HighEntry || m37HighEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M37(s): high bucket must have has_destructive_side_effect=true (bulk_export is destructive); got: ${JSON.stringify(m37HighEntry)}`);
+  }
+  // none bucket has only read capabilities → must be false
+  if (!m37NoneEntry || m37NoneEntry.has_destructive_side_effect !== false) {
+    throw new Error(`M37(s): none bucket must have has_destructive_side_effect=false; got: ${JSON.stringify(m37NoneEntry)}`);
+  }
+
+  // M37(t): has_restricted_or_confidential_sensitivity flag is correct per bucket
+  // high bucket has bulk_export (restricted) → must be true
+  if (!m37HighEntry || m37HighEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M37(t): high bucket must have has_restricted_or_confidential_sensitivity=true (bulk_export is restricted); got: ${JSON.stringify(m37HighEntry)}`);
+  }
+  // low bucket has get_profile (confidential) → must be true
+  if (!m37LowEntry || m37LowEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M37(t): low bucket must have has_restricted_or_confidential_sensitivity=true (get_profile is confidential); got: ${JSON.stringify(m37LowEntry)}`);
+  }
+  // none bucket has only public/internal capabilities → must be false
+  if (!m37NoneEntry || m37NoneEntry.has_restricted_or_confidential_sensitivity !== false) {
+    throw new Error(`M37(t): none bucket must have has_restricted_or_confidential_sensitivity=false; got: ${JSON.stringify(m37NoneEntry)}`);
+  }
+
+  // M37(u): --tier for a tier absent in the manifest exits 1
+  // Use none-only manifest so 'high' bucket is absent
+  const m37AbsentTier = runCli(['pii', 'index', '--manifest', m37NoneOnlyManifestPath, '--tier', 'high'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37AbsentTier.stderr.includes('Unknown pii field count tier: high') || m37AbsentTier.stdout !== '') {
+    throw new Error(`M37(u): --tier for absent tier must exit 1 with Unknown pii field count tier: message:\nstdout=${m37AbsentTier.stdout}\nstderr=${m37AbsentTier.stderr}`);
+  }
+
+  // M37(v): boundary-value smoke: 0→none, 1→low, 2→low, 3→medium, 5→medium, 6→high, 7→high
+  const m37BoundaryManifestPath = path.join(m37TmpDir, 'boundary.json');
+  await fs.writeFile(m37BoundaryManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'c0', description: '0 fields', method: 'GET', path: '/c0', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] } },
+      { name: 'c1', description: '1 field', method: 'GET', path: '/c1', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email'], pii_categories: [] } },
+      { name: 'c2', description: '2 fields', method: 'GET', path: '/c2', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email', 'phone'], pii_categories: [] } },
+      { name: 'c3', description: '3 fields', method: 'GET', path: '/c3', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email', 'phone', 'ssn'], pii_categories: [] } },
+      { name: 'c5', description: '5 fields', method: 'GET', path: '/c5', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email', 'phone', 'ssn', 'dob', 'address'], pii_categories: [] } },
+      { name: 'c6', description: '6 fields', method: 'GET', path: '/c6', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email', 'phone', 'ssn', 'dob', 'address', 'credit_card'], pii_categories: [] } },
+      { name: 'c7', description: '7 fields', method: 'GET', path: '/c7', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: ['email', 'phone', 'ssn', 'dob', 'address', 'credit_card', 'bankaccount'], pii_categories: [] } }
+    ]
+  }, null, 2), 'utf8');
+  const m37BoundaryJson = JSON.parse(runCli(['pii', 'index', '--manifest', m37BoundaryManifestPath, '--json'], { cwd: m37TmpDir }).stdout);
+  const m37BoundaryTierMap = {};
+  for (const entry of m37BoundaryJson.tiers) {
+    for (const capName of entry.capabilities) {
+      m37BoundaryTierMap[capName] = entry.pii_field_count_tier;
+    }
+  }
+  if (m37BoundaryTierMap['c0'] !== 'none') throw new Error(`M37(v): c0 (0 fields) must be 'none', got: ${m37BoundaryTierMap['c0']}`);
+  if (m37BoundaryTierMap['c1'] !== 'low') throw new Error(`M37(v): c1 (1 field) must be 'low', got: ${m37BoundaryTierMap['c1']}`);
+  if (m37BoundaryTierMap['c2'] !== 'low') throw new Error(`M37(v): c2 (2 fields) must be 'low', got: ${m37BoundaryTierMap['c2']}`);
+  if (m37BoundaryTierMap['c3'] !== 'medium') throw new Error(`M37(v): c3 (3 fields) must be 'medium', got: ${m37BoundaryTierMap['c3']}`);
+  if (m37BoundaryTierMap['c5'] !== 'medium') throw new Error(`M37(v): c5 (5 fields) must be 'medium', got: ${m37BoundaryTierMap['c5']}`);
+  if (m37BoundaryTierMap['c6'] !== 'high') throw new Error(`M37(v): c6 (6 fields) must be 'high', got: ${m37BoundaryTierMap['c6']}`);
+  if (m37BoundaryTierMap['c7'] !== 'high') throw new Error(`M37(v): c7 (7 fields) must be 'high', got: ${m37BoundaryTierMap['c7']}`);
+
+  // M37(w): filter consistency — pii index --tier high --json returns just the high bucket from the full output
+  const m37HighFilterJson = JSON.parse(runCli(['pii', 'index', '--manifest', m37ManifestPath, '--tier', 'high', '--json'], { cwd: m37TmpDir }).stdout);
+  if (m37HighFilterJson.tiers.length !== 1 || m37HighFilterJson.tiers[0].pii_field_count_tier !== 'high') {
+    throw new Error(`M37(w): filter consistency — --tier high must return exactly the high bucket`);
+  }
+  if (JSON.stringify(m37HighFilterJson.tiers[0]) !== JSON.stringify(m37IndexJson.tiers.find((e) => e.pii_field_count_tier === 'high'))) {
+    throw new Error(`M37(w): filter consistency — --tier high result must match the high entry from full index`);
+  }
+
+  // M37: unknown flag exits 1 with error on stderr and empty stdout
+  const m37UnknownFlag = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--badFlag'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m37UnknownFlag.stdout !== '') {
+    throw new Error(`M37: unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m37UnknownFlag.stdout}\nstderr=${m37UnknownFlag.stderr}`);
+  }
+
+  // M37: help text includes planning-aid framing
+  const m37HelpResult = runCli(['pii', 'index', '--help'], { cwd: m37TmpDir });
+  if (!m37HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
+  }
+
+  // M37: tusq help enumerates 21 commands including 'pii'
+  const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
+  if (!m37HelpOutput.stdout.includes('pii')) {
+    throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
+  }
+  const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m37CommandCount !== 21) {
+    throw new Error(`M37: tusq help must enumerate exactly 21 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  }
+
+  // M37: unknown subcommand exits 1
+  const m37UnknownSubCmd = runCli(['pii', 'bogusub'], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m37UnknownSubCmd.stdout !== '') {
+    throw new Error(`M37: unknown subcommand must exit 1:\nstdout=${m37UnknownSubCmd.stdout}\nstderr=${m37UnknownSubCmd.stderr}`);
+  }
+
+  // M37: manifest missing capabilities array exits 1
+  const m37NoCapsManifestPath = path.join(m37TmpDir, 'no-caps.json');
+  await fs.writeFile(m37NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m37NoCaps = runCli(['pii', 'index', '--manifest', m37NoCapsManifestPath], { cwd: m37TmpDir, expectedStatus: 1 });
+  if (!m37NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m37NoCaps.stdout !== '') {
+    throw new Error(`M37: missing capabilities array must exit 1:\nstdout=${m37NoCaps.stdout}\nstderr=${m37NoCaps.stderr}`);
+  }
+
+  // M37: --tier none / --tier low / --tier medium / --tier high / --tier unknown each emit exactly one matching entry
+  for (const tierVal of ['none', 'low', 'high', 'unknown']) {
+    const m37TierSingleResult = runCli(['pii', 'index', '--manifest', m37ManifestPath, '--tier', tierVal, '--json'], { cwd: m37TmpDir });
+    const m37TierSingleJson = JSON.parse(m37TierSingleResult.stdout);
+    if (m37TierSingleJson.tiers.length !== 1 || m37TierSingleJson.tiers[0].pii_field_count_tier !== tierVal) {
+      throw new Error(`M37: --tier ${tierVal} must return exactly one ${tierVal} bucket: ${JSON.stringify(m37TierSingleJson.tiers)}`);
+    }
+  }
+
+  await fs.rm(m37TmpDir, { recursive: true, force: true });
+  await fs.rm(m37CompileDir, { recursive: true, force: true });
+
   // ── M36: Static Capability Confidence Tier Index Export ───────────────────────
   const m36TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m36-smoke-'));
 
@@ -3774,14 +4262,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 20 commands including 'confidence'
+  // M36: tusq help enumerates 21 commands including 'confidence' (M37 ships in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 20) {
-    throw new Error(`M36: tusq help must enumerate exactly 20 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 21) {
+    throw new Error(`M36: tusq help must enumerate exactly 21 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -4167,14 +4655,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 20 commands including 'auth' and 'confidence' (M36 ships in this run)
+  // M35: tusq help enumerates 21 commands including 'auth', 'confidence', and 'pii' (M36/M37 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 20) {
-    throw new Error(`M35: tusq help must enumerate exactly 20 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 21) {
+    throw new Error(`M35: tusq help must enumerate exactly 21 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

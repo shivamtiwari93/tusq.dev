@@ -2,6 +2,46 @@
 
 ---
 
+## Dev Turn turn_0031ce2764696475 — Implementation Phase: M37 PII Field Count Tier Index (run_0b366d58febc99be, 2026-04-27)
+
+**Run:** run_0b366d58febc99be
+**Phase:** implementation
+**HEAD:** e8e1837 (baseline before this turn — last PM turn)
+
+### Challenge To Prior PM Turn
+
+**Prior turn:** turn_741c43114034bab7 (role=pm, phase=planning, attempt=2)
+
+PM's attempt 1 succeeded at writing all four PM-owned planning artifacts but was rejected at the orchestrator stage for a missing governed envelope. Attempt 2 re-emitted the envelope without re-writing files. PM correctly bound M37: Static Capability PII Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.18 (PROPOSED) under intake charter `intent_1777286540380_ef16` (vision_scan, category `roadmap_exhausted_vision_open`). PM froze: closed five-value `pii_field_count_tier` enum (none | low | medium | high | unknown), closed two-value `aggregation_key` enum (tier | unknown), tier-function thresholds (none if length === 0, low if 1-2, medium if 3-5, high >= 6, unknown if null/missing/not-an-array/non-string-element/empty-string), per-bucket 8-field entry shape, top-level `warnings[]` in --json mode, closed-enum bucket iteration order (none → low → medium → high → unknown), case-sensitive lowercase --tier filter, non-persistence rule. All five PM decisions upheld. Challenge resolved: no objections.
+
+### What Was Implemented
+
+M37 — Static Capability PII Field Count Tier Index Export:
+
+1. **Constants** (`src/cli.js`): Added `PII_FIELD_COUNT_TIER_ENUM` (frozen Set: none/low/medium/high/unknown), `PII_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM` (frozen Set: tier/unknown), `PII_FIELD_COUNT_TIER_BUCKET_ORDER` (frozen array: none/low/medium/high).
+
+2. **Dispatch** (`src/cli.js` dispatch()): Inserted `case 'pii':` between 'method' and 'policy', routing to `cmdPii()`.
+
+3. **Command implementation** (`src/cli.js`): `cmdPii` dispatcher, `cmdPiiIndex` handler (detection-before-output --out validation, --tier case-sensitive filter, manifest read/parse/validate, warnings to stderr in human mode), `parsePiiIndexArgs` (4-flag parser: tier, manifest, out, json), `_guardPiiFieldCountTierBucketKey` / `_guardPiiFieldCountTierAggregationKey` guards, `classifyPiiFieldCountTier` (pure tier function — null/missing/not-an-array/non-string-element/empty-string → 'unknown'; length 0 → 'none'; length 1-2 → 'low'; length 3-5 → 'medium'; length >= 6 → 'high'), `buildPiiFieldCountTierIndex` (reads from `redaction.pii_fields` with `pii_fields` fallback, closed-enum ordering, unknown appended last, empty buckets omitted, all 8 per-bucket fields, warnings[] always in returned object), `formatPiiFieldCountTierIndex` (human output with planning-aid callout).
+
+4. **Help text** (`src/cli.js` printHelp/printCommandHelp): Updated to 21 commands with 'pii' between 'method' and 'policy'; added 'pii' and 'pii index' entries to printCommandHelp() with tier function description, bucket order, and planning-aid framing.
+
+5. **Smoke tests** (`tests/smoke.mjs`): Added M37 smoke matrix (cases a-w + determinism/manifest-invariant/pii_field_count_tier-non-persistence/unknown-flag/help/help-count=21/unknown-subcommand edge cases); updated M36 and M35 help-count checks from 20 to 21.
+
+6. **Eval scenario** (`tests/evals/governed-cli-scenarios.json`): Added `pii-field-count-tier-index-determinism` scenario (eval count 27 → 28).
+
+7. **Eval handler** (`tests/eval-regression.mjs`): Added `runPiiFieldCountTierIndexDeterminismScenario` handler verifying byte-identical output across three runs, closed five-value tier enum, closed two-value aggregation_key enum, tier order (none,low,high,unknown for the test fixture), warnings[] always present, manifest non-mutation, pii_field_count_tier non-persistence.
+
+8. **Planning artifacts**: Updated IMPLEMENTATION_NOTES.md (this entry), ROADMAP.md (20 M37 checkboxes flipped [ ]→[x]), SYSTEM_SPEC.md (M37 detail block), command-surface.md (M37 detail block).
+
+9. **Website docs**: Updated `website/docs/cli-reference.md` (tusq pii index section), `website/docs/manifest-format.md` (PII Field Count Tier Index subsection).
+
+### Verification
+
+`npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (28 scenarios)". Zero new dependencies. Zero package drift. CLI surface confirmed at 21 commands.
+
+---
+
 ## Dev Turn turn_c3e78ecd352330aa — Implementation Phase: M36 Confidence Tier Index (run_8580d828f0e1cc1e, 2026-04-26)
 
 **Run:** run_8580d828f0e1cc1e

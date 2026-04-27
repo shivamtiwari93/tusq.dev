@@ -207,6 +207,67 @@ tusq confidence index --tier unknown --json
 tusq confidence index --out confidence-index.json
 ```
 
+## `tusq pii index`
+
+Emit a deterministic, per-PII-field-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from their `pii_fields[]` array length using frozen thresholds (`none` for length 0, `low` for 1–2, `medium` for 3–5, `high` for ≥6, `unknown` for null/missing/non-array/malformed), in closed-enum order (`none → low → medium → high → unknown`). This is a **planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier**.
+
+```bash
+tusq pii index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to a single PII field count tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown pii field count tier, `--out` path error, or unknown subcommand
+
+**Frozen tier function:**
+
+| `pii_fields` value | Tier |
+|-------------------|------|
+| Valid array, `length === 0` | `none` |
+| Valid array, `1 <= length <= 2` | `low` |
+| Valid array, `3 <= length <= 5` | `medium` |
+| Valid array, `length >= 6` | `high` |
+| null / undefined / missing | `unknown` (warning emitted) |
+| not an array / non-string element / empty string element | `unknown` (warning emitted) |
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (closed-enum order — NOT a leakage-severity or exposure ranking). Empty buckets do not appear.
+
+**Case-sensitive filter:** `--tier` values are matched verbatim. Uppercase values like `HIGH` exit 1 with `Unknown pii field count tier: HIGH` — do not silently coerce case.
+
+**Per-bucket fields:** `pii_field_count_tier`, `aggregation_key` (`"tier"` or `"unknown"`), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains one string per capability whose `pii_fields` is null, missing, not an array, contains a non-string element, or contains the empty string. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `pii_field_count_tier` is NOT written into the manifest — it is derived at read-time only.
+- The five-value `pii_field_count_tier` enum and the two-value `aggregation_key` enum are frozen; any addition is a material governance event.
+- A PII field count tier index is NOT a runtime enforcer, NOT a PII detector, and does NOT modify any capability field.
+
+```bash
+# All tiers (human-readable)
+tusq pii index
+
+# All tiers (JSON)
+tusq pii index --json
+
+# Single tier (lowercase — case-sensitive)
+tusq pii index --tier high --json
+
+# Unknown/malformed bucket
+tusq pii index --tier unknown --json
+
+# Write to file
+tusq pii index --out pii-index.json
+```
+
 ## `tusq approve`
 
 Approve selected capabilities in `tusq.manifest.json` without hand-editing approval fields.

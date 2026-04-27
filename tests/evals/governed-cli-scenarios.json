@@ -831,6 +831,60 @@
       "expected_valid_confidence_tiers": ["high", "medium", "low", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "high,medium,low,unknown"
+    },
+    {
+      "id": "pii-field-count-tier-index-determinism",
+      "description": "M37: tusq pii index --json produces byte-identical output across three runs on the same manifest; pii_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/non-array pii_fields → unknown (with warning); non-string element in pii_fields → unknown with warning",
+      "scenario_type": "pii_field_count_tier_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "bulk_export",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/export",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "restricted",
+          "approved": true,
+          "confidence": 0.9,
+          "pii_fields": ["email", "ssn", "phone", "dob", "address", "credit_card"]
+        },
+        {
+          "name": "health_check",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/health",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.95,
+          "pii_fields": []
+        },
+        {
+          "name": "get_profile",
+          "domain": "users",
+          "method": "GET",
+          "path": "/profile",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.75,
+          "pii_fields": ["email", "phone"]
+        },
+        {
+          "name": "legacy_sync",
+          "domain": "admin",
+          "method": "POST",
+          "path": "/sync",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "confidence": 0.4,
+          "pii_fields": null
+        }
+      ],
+      "expected_valid_pii_tiers": ["none", "low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "none,low,high,unknown"
     }
   ]
 }

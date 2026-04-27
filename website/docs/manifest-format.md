@@ -322,6 +322,35 @@ Starting with M36, `tusq confidence index` emits a static, read-only capability 
 
 **Framing boundary:** `tusq confidence index` is a planning aid only. It does NOT gate capability compilation, does NOT authenticate requests, does NOT re-classify the `confidence` field, and does NOT certify evidence quality. The `confidence` field itself remains a heuristic score set by `tusq manifest` — M36 only groups it into planning buckets.
 
+## PII Field Count Tier Index (V1.18)
+
+Starting with M37, `tusq pii index` emits a static, read-only capability index grouped by a derived `pii_field_count_tier` bucket. The tier is computed at read-time from the `pii_fields[]` array length already present in each capability's `redaction` object (M25-derived); it is **never written back into `tusq.manifest.json`**.
+
+**Frozen tier function (Constraint 30):**
+
+| `pii_fields` value | Derived tier |
+|-------------------|-------------|
+| Valid array, `length === 0` | `none` |
+| Valid array, `1 <= length <= 2` | `low` |
+| Valid array, `3 <= length <= 5` | `medium` |
+| Valid array, `length >= 6` | `high` |
+| null / missing / not-an-array | `unknown` (warning emitted) |
+| array with non-string or empty-string element | `unknown` (warning emitted) |
+
+Boundaries `0/2/5/6` are immutable once M37 ships. Any threshold change is a material governance event.
+
+**Closed five-value `pii_field_count_tier` enum:** `none | low | medium | high | unknown`. Any addition is a material governance event.
+
+**Closed two-value `aggregation_key` enum:** `tier` (for named buckets) and `unknown` (for the malformed/missing bucket). Any addition is a material governance event.
+
+**Bucket iteration order:** `none → low → medium → high → unknown`. This is a deterministic stable-output convention — NOT a leakage-severity ranking, NOT an exposure-risk statement.
+
+**Case-sensitive `--tier` filter:** Lowercase canonical values only. `HIGH` exits 1 with `Unknown pii field count tier: HIGH`.
+
+**Non-persistence rule (Constraint 30):** `pii_field_count_tier` MUST NOT appear as a key on any capability object inside `tusq.manifest.json`. It is a derived, ephemeral label that exists only in the index output. `tusq compile`, `tusq serve`, and all other commands are byte-identical before and after any `tusq pii index` invocation.
+
+**Framing boundary:** `tusq pii index` is a planning aid only. It does NOT detect PII at runtime, does NOT prevent data leakage, does NOT enforce redaction at runtime, does NOT certify GDPR/HIPAA/PCI/PHI compliance, and does NOT alter M25's canonical PII name set or `pii_fields[]` extraction rules. The `pii_fields[]` array remains the M25-derived source-literal name hint — M37 only groups it into planning buckets by array length.
+
 ## Examples and constraints (V1)
 
 `examples` and `constraints` are part of the manifest in `v0.1.0` so downstream tooling can keep governance and usage context stable.

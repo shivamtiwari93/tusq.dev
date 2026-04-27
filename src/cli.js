@@ -139,6 +139,20 @@ const CONFIDENCE_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unk
 // or "highest-quality-first." The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const CONFIDENCE_TIER_BUCKET_ORDER = Object.freeze(['high', 'medium', 'low']);
 
+// M37: frozen five-value pii_field_count_tier bucket-key enum. Immutable once M37 ships.
+// Tier function thresholds (0/2/5/6) are immutable once M37 ships. Any addition or threshold change is a governance event.
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const PII_FIELD_COUNT_TIER_ENUM = Object.freeze(new Set(['none', 'low', 'medium', 'high', 'unknown']));
+
+// M37: frozen two-value aggregation_key enum (parallel to M31–M36). Immutable once M37 ships.
+// An implementation-time guard fires if buildPiiFieldCountTierIndex produces a key outside this set.
+const PII_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['tier', 'unknown']));
+
+// M37: closed-enum bucket iteration order (none → low → medium → high). NOT leakage-risk-precedence —
+// deterministic stable-output convention only. MUST NOT be described as "leakage-ranked" or "exposure-ordered."
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const PII_FIELD_COUNT_TIER_BUCKET_ORDER = Object.freeze(['none', 'low', 'medium', 'high']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -265,6 +279,9 @@ function dispatch(argv) {
       return;
     case 'method':
       cmdMethod(args);
+      return;
+    case 'pii':
+      cmdPii(args);
       return;
     case 'policy':
       cmdPolicy(args);
@@ -3176,6 +3193,344 @@ function formatConfidenceIndex(index) {
   return lines.join('\n');
 }
 
+// M37: tusq pii — top-level noun dispatcher
+function cmdPii(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('pii');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdPiiIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M37: tusq pii index — handler
+function cmdPiiIndex(args) {
+  const { opts, positionals } = parsePiiIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('pii index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildPiiFieldCountTierIndex(manifest, manifestPath);
+
+  const tierFilter = opts.tier || null;
+  let outputIndex;
+  if (tierFilter !== null) {
+    // Case-sensitive: lowercase canonical pii_field_count_tier values; anything else exits 1
+    if (!PII_FIELD_COUNT_TIER_ENUM.has(tierFilter)) {
+      throw new CliError(`Unknown pii field count tier: ${tierFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.tiers.find((e) => e.pii_field_count_tier === tierFilter);
+    if (!matchedEntry) {
+      throw new CliError(`Unknown pii field count tier: ${tierFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { tiers: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: ${w}\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: ${w}\n`);
+  }
+  process.stdout.write(formatPiiFieldCountTierIndex(outputIndex));
+}
+
+function parsePiiIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['tier', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardPiiFieldCountTierBucketKey(key) {
+  if (!PII_FIELD_COUNT_TIER_ENUM.has(key)) {
+    throw new Error(`Internal error: pii_field_count_tier outside closed five-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardPiiFieldCountTierAggregationKey(key) {
+  if (!PII_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed two-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M37: classifyPiiFieldCountTier(piiFields) → 'none' | 'low' | 'medium' | 'high' | 'unknown'
+// Tier function thresholds (0/2/5/6) are immutable once M37 ships — any change is a governance event.
+// Valid pii_fields: array of non-empty strings.
+// null/undefined/missing/not-an-array/non-string-element/empty-string → 'unknown' (with warning).
+function classifyPiiFieldCountTier(piiFields) {
+  if (!Array.isArray(piiFields)) {
+    return 'unknown';
+  }
+  for (const el of piiFields) {
+    if (typeof el !== 'string' || el === '') {
+      return 'unknown';
+    }
+  }
+  const len = piiFields.length;
+  if (len === 0) return 'none';
+  if (len <= 2) return 'low';
+  if (len <= 5) return 'medium';
+  return 'high';
+}
+
+// M37: buildPiiFieldCountTierIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered PII field count tier index from the manifest's capabilities[].
+// Bucket iteration order: none → low → medium → high (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// pii_field_count_tier MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildPiiFieldCountTierIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      tiers: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) tier values — the four ordered bucket keys.
+  const namedTiers = new Set(PII_FIELD_COUNT_TIER_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their pii_field_count_tier.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const piiFields = Object.prototype.hasOwnProperty.call(capability, 'redaction') &&
+      capability.redaction !== null &&
+      typeof capability.redaction === 'object' &&
+      Object.prototype.hasOwnProperty.call(capability.redaction, 'pii_fields')
+      ? capability.redaction.pii_fields
+      : Object.prototype.hasOwnProperty.call(capability, 'pii_fields')
+        ? capability.pii_fields
+        : undefined;
+
+    // Determine warning reason if pii_fields is malformed
+    let warningReason = null;
+    if (piiFields === null) {
+      warningReason = 'pii_fields is null';
+    } else if (piiFields === undefined) {
+      warningReason = 'pii_fields is missing';
+    } else if (!Array.isArray(piiFields)) {
+      warningReason = `pii_fields is not an array (got ${typeof piiFields})`;
+    } else {
+      for (let i = 0; i < piiFields.length; i += 1) {
+        const el = piiFields[i];
+        if (typeof el !== 'string') {
+          warningReason = `pii_fields contains a non-string element at index ${i}`;
+          break;
+        }
+        if (el === '') {
+          warningReason = `pii_fields contains an empty string at index ${i}`;
+          break;
+        }
+      }
+    }
+
+    if (warningReason !== null) {
+      warnings.push(`capability '${capability.name}' has malformed pii_fields: ${warningReason}`);
+    }
+
+    const tier = classifyPiiFieldCountTier(piiFields);
+    const isNamedBucket = namedTiers.has(tier);
+    const bucketKey = isNamedBucket ? tier : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: none → low → medium → high, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...PII_FIELD_COUNT_TIER_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const tiers = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const piiTier = isUnknownBucket ? _guardPiiFieldCountTierBucketKey('unknown') : _guardPiiFieldCountTierBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket ? _guardPiiFieldCountTierAggregationKey('unknown') : _guardPiiFieldCountTierAggregationKey('tier');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      pii_field_count_tier: piiTier,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    tiers,
+    warnings
+  };
+}
+
+// M37: format PII field count tier index as human-readable text
+function formatPiiFieldCountTierIndex(index) {
+  if (index.tiers.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `PII Field Count Tier Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier.',
+    ''
+  ];
+
+  for (const entry of index.tiers) {
+    lines.push(`[${entry.pii_field_count_tier}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -4333,6 +4688,7 @@ function printHelp() {
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
+  process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
@@ -4440,6 +4796,31 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown method, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier.'
+    ].join('\n'),
+    pii: 'Usage: tusq pii <subcommand>\n  Subcommands: index',
+    'pii index': [
+      'Usage: tusq pii index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --tier <none|low|medium|high|unknown>  Filter to a single PII field count tier bucket (default: all tiers; case-sensitive lowercase)',
+      '  --manifest <path>                      Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                           Write index to file (no stdout on success)',
+      '  --json                                 Emit machine-readable JSON (includes warnings[] for malformed pii_fields)',
+      '',
+      'Tier function (applied to pii_fields[] array length):',
+      '  none    if length === 0',
+      '  low     if 1 <= length <= 2',
+      '  medium  if 3 <= length <= 5',
+      '  high    if length >= 6',
+      '  unknown if pii_fields is null/missing/not-an-array, contains a non-string element, or contains the empty string',
+      '',
+      'Bucket iteration order: none → low → medium → high → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier; PII field counts are reviewer-aid metadata derived from M25 source-literal name hints, not validated PII presence.'
     ].join('\n'),
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',

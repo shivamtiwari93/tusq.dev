@@ -1375,6 +1375,52 @@ Closed-enum order: `public → internal → confidential → restricted`, then `
 | Planning-aid framing | Help text, docs, README, launch artifacts MUST use "planning aid" language; MUST NOT use "enforces sensitivity policy", "certifies GDPR/HIPAA/PCI compliance", "generates retention policy", "alters the M28 classifier", or "alters the M30 gating rule" |
 | Future sensitivity milestones reserved | M-Risk-1, M-Compliance-1 ship under their own ROADMAP entries with fresh acceptance contracts; M33 is **not** a substitute for any of them |
 
+## M37 Product CLI Surface
+
+M37 (Static Capability PII Field Count Tier Index Export from Manifest Evidence — V1.18) adds the `pii` top-level noun with a single subcommand `index`. The CLI surface grows from **20 → 21** commands, with `pii` inserted alphabetically between `method` and `policy` (`method` vs `pii`: `m` < `p`; `pii` vs `policy`: `pi` < `po` because `i` < `o`).
+
+### M37 Command Table
+
+| Command | Description |
+|---------|-------------|
+| `tusq pii` | Print enumerate-subcommands block for pii |
+| `tusq pii index` | Index capabilities by PII field count tier (static, read-only, planning aid) |
+
+### M37 Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--tier <none\|low\|medium\|high\|unknown>` | all tiers | Filter to single PII field count tier bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+### M37 Frozen Five-Value `pii_field_count_tier` Enum
+
+`none | low | medium | high | unknown`
+
+### M37 Frozen Tier Function
+
+| `pii_fields` value | Tier |
+|-------------------|------|
+| Valid array, length === 0 | `none` |
+| Valid array, 1 ≤ length ≤ 2 | `low` |
+| Valid array, 3 ≤ length ≤ 5 | `medium` |
+| Valid array, length ≥ 6 | `high` |
+| null / missing / not-an-array / non-string element / empty string | `unknown` (warning) |
+
+### M37 Bucket Iteration Order
+
+`none → low → medium → high → unknown` (closed-enum order — NOT a leakage-severity ranking)
+
+### M37 Per-Bucket 8-Field Entry Shape
+
+`pii_field_count_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`
+
+### M37 Planning-Aid Boundary
+
+This is a planning aid, not a runtime PII detector, data-leakage prevention engine, runtime redaction enforcer, or compliance certifier. `pii_field_count_tier` is reviewer-aid metadata derived from M25 source-literal name hints and is NOT persisted into the manifest.
+
 ## M36 Product CLI Surface
 
 M36 (Static Capability Confidence Tier Index Export from Manifest Evidence — V1.17) adds the `confidence` top-level noun with a single subcommand `index`. The CLI surface grows from **19 → 20** commands, with `confidence` inserted alphabetically between `auth` and `diff` (`auth` vs `confidence`: `a` < `c`; `confidence` vs `diff`: `c` < `d`).

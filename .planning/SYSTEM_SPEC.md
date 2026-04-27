@@ -3928,6 +3928,96 @@ The `--method <value>` flag limits output to a single bucket. Filter matching is
 - `website/docs/cli-reference.md` — `tusq method index` documentation.
 - `website/docs/manifest-format.md` — HTTP Method Index subsection.
 
+## M37: Static Capability PII Field Count Tier Index Export from Manifest Evidence (V1.18 — SHIPPED)
+
+### M37 Purpose and Boundary
+
+`tusq pii index` is a **planning aid** that surfaces what PII-field-count tiers the manifest's capabilities span and the cross-axis side-effect/sensitivity exposure of each tier. It does NOT detect PII at runtime, does NOT prevent data leakage at runtime, does NOT enforce field redaction at runtime, does NOT certify GDPR/HIPAA/PCI/PHI compliance, does NOT alter M25's canonical PII name set or `pii_fields[]` extraction rules, does NOT persist `pii_field_count_tier` into `tusq.manifest.json`, and does NOT compute statistical aggregates (`min`, `max`, `mean`, percentiles, distributions).
+
+### M37 Command Shape
+
+```
+tusq pii index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+### M37 Frozen Tier Function
+
+| `pii_fields` value | Tier |
+|-------------------|------|
+| Valid array, `length === 0` | `none` |
+| Valid array, `1 <= length <= 2` | `low` |
+| Valid array, `3 <= length <= 5` | `medium` |
+| Valid array, `length >= 6` | `high` |
+| null / undefined / missing | `unknown` (warning emitted) |
+| not an array | `unknown` (warning emitted) |
+| array with non-string element | `unknown` (warning emitted) |
+| array with empty string element | `unknown` (warning emitted) |
+
+Thresholds `0`, `2`, `5`, `6` are immutable once M37 ships. Any threshold change or enum extension is a material governance event requiring its own ROADMAP milestone with a fresh re-approval expectation.
+
+### M37 Frozen Five-Value `pii_field_count_tier` Bucket-Key Enum
+
+`none | low | medium | high | unknown`
+
+The enum is immutable once M37 ships. `pii_field_count_tier` MUST NOT be written into `tusq.manifest.json` (non-persistence rule). Any addition to the enum is a material governance event.
+
+### M37 Frozen Two-Value `aggregation_key` Enum
+
+`tier | unknown`
+
+Parallel to M31's `domain | unknown`, M32's `class | unknown`, M33's `class | unknown`, M34's `method | unknown`, M35's `scheme | unknown`, M36's `tier | unknown`. The `unknown` aggregation-key marks the malformed/missing-pii_fields bucket; the `tier` aggregation-key marks every named tier bucket (none/low/medium/high). The enum is immutable once M37 ships.
+
+### M37 Frozen Per-Bucket Entry Shape (name-and-counters only)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pii_field_count_tier` | string | One of `none/low/medium/high/unknown` |
+| `aggregation_key` | string | One of `tier/unknown` |
+| `capability_count` | integer | Number of capabilities in this bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Capabilities where `approved === true` |
+| `gated_count` | integer | `capability_count - approved_count` |
+| `has_destructive_side_effect` | boolean | true iff any cap has `side_effect_class === "destructive"` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true iff any cap has `sensitivity_class === "restricted"` or `"confidential"` |
+
+**Deliberately omitted** (parallel to M31–M36 omissions): no `domains_represented[]`, no `pii_categories_represented[]`, no derived `risk_tier`, no `pii_field_count_min/max/mean/distribution[]`.
+
+### M37 Top-Level `warnings[]` Array Rule
+
+Present in `--json` output always (even when empty `[]` for shape stability). Each entry is a string describing a malformed `pii_fields` value for a specific capability. In human mode, warnings write to stderr (NOT stdout).
+
+### M37 Closed-Enum Bucket Iteration Order
+
+Bucket iteration follows the **closed-enum order: `none → low → medium → high`**, then `unknown` last. This is a deterministic stable-output convention only and MUST NOT be described as "leakage-ranked," "exposure-ranked," "risk-precedence-ordered," or any phrase implying a data-leakage-severity semantic.
+
+### M37 Case-Sensitive `--tier` Filter Rule
+
+`--tier` values are matched verbatim (lowercase canonical form). Uppercase or mixed-case values like `HIGH` exit 1 with `Unknown pii field count tier: HIGH`.
+
+### M37 Empty-Capabilities and stdout-Discipline Rules
+
+When `capabilities: []`, exit 0 in both modes. Human: `No capabilities in manifest — nothing to index.` JSON: `{ manifest_path, manifest_version, generated_at, tiers: [], warnings: [] }`. Missing/non-array `capabilities` exits 1 with `Invalid manifest: missing capabilities array`. Every error path empties stdout and writes exclusively to stderr.
+
+### M37 Read-Only Invariants
+
+| Invariant | Verified by |
+|-----------|-------------|
+| `tusq.manifest.json` mtime/content unchanged after every invocation | Smoke assertion |
+| No write to `.tusq/`; no write to any path other than `--out <path>` | Smoke assertion |
+| `capability_digest` MUST NOT flip on any capability | Smoke assertion |
+| `pii_field_count_tier` MUST NOT be written into manifest | Smoke assertion |
+| `tusq compile` output byte-identical pre and post-M37 | Smoke assertion |
+| `tusq surface plan`, `tusq domain index`, `tusq confidence index`, etc. byte-identical | Smoke assertion |
+
+### M37 Deliverables (dev-owned)
+
+- `src/cli.js` — `PII_FIELD_COUNT_TIER_ENUM`, `PII_FIELD_COUNT_TIER_AGGREGATION_KEY_ENUM`, `PII_FIELD_COUNT_TIER_BUCKET_ORDER`, `cmdPii`, `cmdPiiIndex`, `parsePiiIndexArgs`, `buildPiiFieldCountTierIndex`, `formatPiiFieldCountTierIndex`, `_guardPiiFieldCountTierBucketKey`, `_guardPiiFieldCountTierAggregationKey`, `classifyPiiFieldCountTier`; updated `dispatch()`, `printHelp()`, `printCommandHelp()` (CLI surface 20 → 21).
+- `tests/smoke.mjs` — M37 smoke matrix (assertions a-w per ROADMAP § M37).
+- `tests/evals/governed-cli-scenarios.json` — `pii-field-count-tier-index-determinism` scenario (eval harness 27 → 28).
+- `tests/eval-regression.mjs` — `runPiiFieldCountTierIndexDeterminismScenario` handler.
+- `website/docs/cli-reference.md` — `tusq pii index` documentation.
+- `website/docs/manifest-format.md` — PII Field Count Tier Index subsection.
+
 ## Constraints
 
 1. **Docusaurus version** — Use Docusaurus 3.x (latest stable)
