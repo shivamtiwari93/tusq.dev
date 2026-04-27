@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_63c7cc83d4a3e120 (role=qa, run_0ce75469bde80380, M40 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_5dfd6a1036bcf940, role=dev, HEAD aa81869) for run_0ce75469bde80380 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff 5a67550..aa81869 --name-only` confirms exactly 10 files changed since PM turn (5a67550): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (31 scenarios)`. Independently re-run this turn; 31 scenarios confirmed (up from 30 at M39 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Both `_guardOutputSchemaPropertyCountTierBucketKey` and `_guardOutputSchemaPropertyCountTierAggregationKey` pass synchronously at module load.
+
+**4. CLI surface 24 commands:** `node bin/tusq.js help` → 24 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, input, method, **output**, pii, policy, redaction, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 24 confirmed. `output` correctly inserted between `method` and `pii` (alphabetic order `me` < `ou` < `pi`).
+
+**5. output index --help framing:** `node bin/tusq.js output index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier. Tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked, NOT staleness-ranked, NOT contract-surface-area-ranked).`); tier function (`none if Object.keys(output_schema.properties).length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if output_schema/properties missing or malformed`); type:array informative note; bucket order `none → low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js output index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown output schema property count tier: HIGH`, empty stdout. Independently verified this turn.
+
+**7. JSON output shape:** `node bin/tusq.js output index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`low` bucket: capability_count 2, capabilities [get_users_api_v1_users_id, post_users_users], approved_count 1, gated_count 1, has_destructive_side_effect false, has_restricted_or_confidential_sensitivity false; `unknown` bucket: capability_count 1, capabilities [get_users_users], aggregation_key "unknown") and `warnings: [{capability: "get_users_users", reason: "output_schema_properties_field_missing"}]`. Lowercase `--tier low` filter → exit 0, single `low` bucket confirmed.
+
+**8. Tier function verification:** `classifyOutputSchemaPropertyCountTier` at `src/cli.js:4444–4468` independently read: returns `unknown` for null/undefined output_schema (lines 4445–4447), non-object/array output_schema (lines 4448–4450), missing properties (lines 4451–4453), null/non-object/array properties (lines 4454–4456), properties containing non-object descriptor (lines 4459–4462); returns `none` for length 0 (line 4465), `low` for length ≤ 2 (line 4466), `medium` for length ≤ 5 (line 4467), `high` for length ≥ 6 (line 4468). Thresholds `0/2/5/6` are frozen.
+
+**9. M40 ROADMAP checkboxes:** All 18 M40 checkboxes confirmed `[x]`; zero unchecked items in the M40 block.
+
+**10. Zero package drift:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. No new dependencies introduced.
+
+**11. Acceptance criteria count:** REQ-365–REQ-389 (25 new M40 criteria) added to `.planning/acceptance-matrix.md`. Total: 389 REQs (REQ-001–REQ-389), all PASS.
+
+**12. Carried objections:** OBJ-001 (medium, non-blocking): R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in the automated pipeline — implementation correct for manually-edited manifests. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M40 close their own analogs. No new blocking objections raised for M40.
+
+**13. Ship verdict:** All M40 acceptance criteria pass. npm test exits 0 with 31 scenarios. CLI surface is 24 commands with `output` between `method` and `pii`. No blocking objections. **Verdict: SHIP.**
+
 ## QA Challenge — turn_b7f84e0d69dcabf6 (role=qa, run_533b2f8c47cc0bf0, M39 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_60ca77d51809c98f, role=dev, HEAD 52c5e56) for run_533b2f8c47cc0bf0 independently rather than rubber-stamping it.

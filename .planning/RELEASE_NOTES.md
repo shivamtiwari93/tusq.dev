@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M40 (turn_63c7cc83d4a3e120, run_0ce75469bde80380, 2026-04-27, HEAD aa81869)
+
+**Milestone:** M40 — Static Capability Output Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.21
+
+**Command added:** `tusq output index` (CLI surface: 23 → 24 commands; `output` inserted alphabetically between `method` and `pii`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (31 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardOutputSchemaPropertyCountTierBucketKey` and `_guardOutputSchemaPropertyCountTierAggregationKey` pass). `node bin/tusq.js help` → 24-command surface confirmed (`grep -c '^  [a-z]'` → 24). `node bin/tusq.js output index --help` → planning-aid framing (`This is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier`), tier function (`none if Object.keys(output_schema.properties).length === 0; low if 1-2; medium if 3-5; high if >= 6; unknown if output_schema/properties missing or malformed`), type:array informative note, and bucket order (`none → low → medium → high → unknown`) confirmed. `node bin/tusq.js output index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js output index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`low` bucket: 2 capabilities; `unknown` bucket: 1 capability with reason `output_schema_properties_field_missing`) and `warnings: [{capability: "get_users_users", reason: "output_schema_properties_field_missing"}]`. `node bin/tusq.js output index --tier low --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, single `low` bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M40 ROADMAP checkboxes `[x]`.
+
+**New acceptance criteria:** REQ-365–REQ-389 (25 criteria) — CLI surface 24, closed 5-value tier enum (none|low|medium|high|unknown), closed 2-value aggregation_key enum (tier|unknown), frozen tier-function thresholds (0/2/5/6), five frozen warning reason codes, per-bucket 8-field shape, determinism, non-persistence, empty-capabilities, --out, case-sensitive filter, unknown bucket warnings (including type:array informative bucketing), eval 31 scenarios.
+
+**Closed enums shipped (immutable):** `output_schema_property_count_tier` (none|low|medium|high|unknown), `aggregation_key` (tier|unknown), tier thresholds (0/2/5/6), warning reason codes (output_schema_field_missing|output_schema_field_not_object|output_schema_properties_field_missing|output_schema_properties_field_not_object|output_schema_properties_object_contains_non_object_property_descriptor).
+
+**Non-breaking:** every existing command's stdout, stderr, and exit code is byte-identical pre/post M40.
+
 ## QA Re-verification — M39 (turn_b7f84e0d69dcabf6, run_533b2f8c47cc0bf0, 2026-04-27, HEAD 52c5e56)
 
 **Milestone:** M39 — Static Capability Required Input Field Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.20
