@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_bb74bbc5f03f0d87 (role=qa, run_f33f485bb7998de9, M42 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_8f2c26df7726bc2e, role=dev, HEAD 5583b8d) for run_f33f485bb7998de9 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff 2890573..5583b8d --name-only` confirms exactly 10 files changed since PM turn (2890573): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (33 scenarios)`. Independently re-run this turn; 33 scenarios confirmed (up from 32 at M41 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Both `_guardOutputSchemaTopLevelTypeBucketKey` and `_guardOutputSchemaTopLevelTypeAggregationKey` pass synchronously at module load.
+
+**4. CLI surface 26 commands:** `node bin/tusq.js help` → 26 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, input, method, output, path, pii, policy, redaction, **response**, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 26 confirmed. `response` correctly inserted between `redaction` and `sensitivity`.
+
+**5. response index --help framing:** `node bin/tusq.js response index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier; types are deterministic stable-output ordering only (NOT data-contract-completeness-ranked).`); type rule (literal exact-string match against six JSON Schema 2020-12 spec primitives; `'integer'` bucketed as unknown; compositional schemas → unknown; array-of-types → unknown); bucket order `object → array → string → number → boolean → null → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js response index --type OBJECT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown output schema top-level type: OBJECT`, empty stdout. Independently verified this turn.
+
+**7. Default JSON output — types[] field name and aggregation_key:** `node bin/tusq.js response index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `types[]` (NOT `tiers[]`): `object` bucket (capability_count 2; aggregation_key `"type"`) and `array` bucket (capability_count 1; aggregation_key `"type"`); `warnings: []`. Result field `types` (categorical) and `aggregation_key: "type"` (NOT `"tier"`) confirmed.
+
+**8. Type filter:** `node bin/tusq.js response index --type object --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, single `object` bucket. Type filter is case-sensitive lowercase-only.
+
+**9. integer → unknown invariant:** `node bin/tusq.js response index --type integer` → exit 1, `Unknown output schema top-level type: integer`. `'integer'` is not a separate bucket in the closed seven-value enum.
+
+**10. ROADMAP M42 checkboxes:** All 18 M42 ROADMAP checkboxes `[x]` confirmed (zero `[ ]` items in M42 block).
+
+**11. classifyOutputSchemaTopLevelType thresholds:** Verified at `src/cli.js:5174–5193`: null/undefined → unknown; non-object/array → unknown; no `type` property → unknown; null/undefined/non-string `type` → unknown; array-of-types → unknown; type string not in closed six-value spec primitive set → unknown; each spec primitive → respective bucket. No coercion, no walking.
+
+**12. aggregation_key distinction from M35–M41:** M42 `aggregation_key` is `"type"` (NOT `"tier"`). `OUTPUT_SCHEMA_TOP_LEVEL_TYPE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['type', 'unknown']))` at `src/cli.js:225`. Deliberate M42 spec decision upheld by QA.
+
+**13. Package drift and dev decisions:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. All five dev decisions upheld: `response` noun between `redaction` and `sensitivity`; seven-value enum; `integer`→`unknown`; `aggregation_key: type|unknown`; bucket order `object→array→string→number→boolean→null→unknown`. No objections.
+
+Added REQ-415–REQ-439 (25 new M42 acceptance criteria). OBJ-001/OBJ-002/OBJ-003 carried forward (non-blocking). All 439 acceptance criteria (REQ-001–REQ-439) pass. **Verdict: SHIP.** Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_17fc87e4651eb033 (role=qa, run_7bad406d9ea95ce5, M41 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_a58d22a53169262b, role=dev, HEAD f7009bb) for run_7bad406d9ea95ce5 independently rather than rubber-stamping it.

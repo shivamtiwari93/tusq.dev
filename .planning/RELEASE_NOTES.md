@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M42 (turn_bb74bbc5f03f0d87, run_f33f485bb7998de9, 2026-04-27, HEAD 5583b8d)
+
+**Milestone:** M42 — Static Capability Output Schema Top-Level Type Index Export from Manifest Evidence (~0.5 day) — V1.23
+
+**Command added:** `tusq response index` (CLI surface: 25 → 26 commands; new noun `response` with single subcommand `index`, inserted alphabetically between `redaction` and `sensitivity`)
+
+**Key spec distinctions vs M35–M41:** (1) Result array field is `types[]` (NOT `tiers[]`) — the axis is a categorical primitive type, not a numeric tier. (2) `aggregation_key` values are `"type"` (not `"tier"`) for known buckets and `"unknown"` for the unknown bucket. (3) Flag is `--type` (not `--tier`). (4) Seven-value closed enum vs five-value (adds `string`, `number`, `boolean`, `null` as distinct buckets). (5) Bucket order matches JSON Schema 2020-12 spec primitive enumeration order: `object → array → string → number → boolean → null → unknown`. (6) `'integer'` → `unknown` (per JSON Schema spec, integer is a subset of number; no coercion).
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (33 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardOutputSchemaTopLevelTypeBucketKey` and `_guardOutputSchemaTopLevelTypeAggregationKey` pass). `node bin/tusq.js help` → 26-command surface confirmed (`grep -c '^  [a-z]'` → 26). `node bin/tusq.js response index --help` → planning-aid framing (`This is a planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier; types are deterministic stable-output ordering only (NOT data-contract-completeness-ranked).`), type rule (literal exact-string match; `'integer'` → unknown; compositional schemas → unknown; array-of-types → unknown), bucket order (`object → array → string → number → boolean → null → unknown`) confirmed. `node bin/tusq.js response index --type OBJECT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js response index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `types[]` array (`object` bucket: 2 capabilities [get_users_api_v1_users_id, post_users_users], aggregation_key `"type"`, approved_count 1, gated_count 1; `array` bucket: 1 capability [get_users_users], aggregation_key `"type"`, approved_count 1, gated_count 0) and `warnings: []`. `node bin/tusq.js response index --type object --manifest ... --json` → exit 0, single `object` bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M42 ROADMAP checkboxes `[x]`.
+
+**Acceptance criteria:** 25 new criteria added (REQ-415–REQ-439). Total: 439 (REQ-001–REQ-439). All PASS.
+
+**Dev turn challenge:** `git diff 2890573..5583b8d --name-only` → exactly 10 dev-owned files; zero reserved state / QA-owned / launch-owned files modified. All five dev decisions upheld. No objections.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Re-verification — M41 (turn_17fc87e4651eb033, run_7bad406d9ea95ce5, 2026-04-27, HEAD f7009bb)
 
 **Milestone:** M41 — Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22
