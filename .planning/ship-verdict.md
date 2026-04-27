@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_17fc87e4651eb033 (role=qa, run_7bad406d9ea95ce5, M41 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_a58d22a53169262b, role=dev, HEAD f7009bb) for run_7bad406d9ea95ce5 independently rather than rubber-stamping it.
+
+**1. File-change audit:** `git diff b29bf30..f7009bb --name-only` confirms exactly 10 files changed since PM turn (b29bf30): `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`.agentxchain/state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned artifacts modified. Zero launch-owned artifacts modified. Zero package.json / package-lock.json drift.
+
+**2. npm test:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (32 scenarios)`. Independently re-run this turn; 32 scenarios confirmed (up from 31 at M40 ship).
+
+**3. Module guard:** `node -e "require('./src/cli.js')"` → exit 0. Both `_guardPathSegmentCountTierBucketKey` and `_guardPathSegmentCountTierAggregationKey` pass synchronously at module load.
+
+**4. CLI surface 25 commands:** `node bin/tusq.js help` → 25 commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, diff, domain, effect, examples, input, method, output, **path**, pii, policy, redaction, sensitivity, surface, version, help). `grep -c '^  [a-z]'` → 25 confirmed. `path` correctly inserted between `output` and `pii` (alphabetic order `ou` < `pa` < `pi`).
+
+**5. path index --help framing:** `node bin/tusq.js path index --help` → exit 0; planning-aid callout (`This is a planning aid, not a runtime URL router, path validator, route registry, artifact sprawl executor, or path-depth certifier; tiers are deterministic stable-output ordering only (NOT sprawl-risk-ranked).`); tier function (`none if path is "/" (0 segments); low if 1-2; medium if 3-4; high if >= 5; unknown if path missing or malformed`); path-parameter-counts-as-one-segment note (`:id` syntax counts as one segment, parameter is not unwrapped); bucket order `none → low → medium → high → unknown` confirmed.
+
+**6. Case-sensitive uppercase enforcement:** `node bin/tusq.js path index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 1, stderr `Unknown path segment count tier: HIGH`, empty stdout. Independently verified this turn.
+
+**7. JSON output shape:** `node bin/tusq.js path index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`low` bucket: capability_count 2, capabilities [get_users_users, post_users_users], approved_count 2, gated_count 0, has_destructive_side_effect false, has_restricted_or_confidential_sensitivity false; `medium` bucket: capability_count 1, capabilities [get_users_api_v1_users_id], approved_count 0, gated_count 1, has_destructive_side_effect false, has_restricted_or_confidential_sensitivity false) and `warnings: []`. Lowercase `--tier low` filter → exit 0, single `low` bucket confirmed.
+
+**8. Tier function verification:** `classifyPathSegmentCountTier` at `src/cli.js:4811–4834` independently read: returns `unknown` for null/undefined (lines 4812–4814), non-string (lines 4815–4817), empty string (lines 4818–4820), no leading '/' (lines 4821–4823), empty interior segment (lines 4825–4828); returns `none` for count 0 (line 4830); `low` for count ≤ 2 (line 4831); `medium` for count ≤ 4 (line 4832); `high` for count ≥ 5 (line 4833). Thresholds `0/2/4/5` are frozen. Express fixture: `/users` → count 1 → low; `/api/v1/users/:id` → count 4 → medium (path-parameter `:id` correctly counts as one segment). No capabilities at 5+ segments → no `high` bucket in fixture.
+
+**9. M41 ROADMAP checkboxes:** All 18 M41 checkboxes confirmed `[x]`; zero unchecked items in the M41 block.
+
+**10. Zero package drift:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. No new dependencies introduced.
+
+**11. Acceptance criteria count:** REQ-390–REQ-414 (25 new M41 criteria) added to `.planning/acceptance-matrix.md`. Total: 414 REQs (REQ-001–REQ-414), all PASS.
+
+**12. Carried objections:** OBJ-001 (medium, non-blocking): R6 (`auth_required === false` → `auth_scheme: 'none'`) remains dead code in automated pipeline — auth_required is never set by the scanner; implementation is correct for manually-edited manifests. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses `synthetic_capabilities` rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M41 close their own analogs. No new blocking objections raised for M41.
+
+**13. Phase transition:** `phase_transition_request: "launch"`. All three `qa_ship_verdict` gate artifacts complete and updated. Ship verdict SHIP, 414 acceptance criteria pass.
+
 ## QA Challenge — turn_63c7cc83d4a3e120 (role=qa, run_0ce75469bde80380, M40 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_5dfd6a1036bcf940, role=dev, HEAD aa81869) for run_0ce75469bde80380 independently rather than rubber-stamping it.

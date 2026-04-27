@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Re-verification — M41 (turn_17fc87e4651eb033, run_7bad406d9ea95ce5, 2026-04-27, HEAD f7009bb)
+
+**Milestone:** M41 — Static Capability Path Segment Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.22
+
+**Command added:** `tusq path index` (CLI surface: 24 → 25 commands; `path` inserted alphabetically between `output` and `pii`)
+
+**Verification summary:** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (32 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardPathSegmentCountTierBucketKey` and `_guardPathSegmentCountTierAggregationKey` pass). `node bin/tusq.js help` → 25-command surface confirmed (`grep -c '^  [a-z]'` → 25). `node bin/tusq.js path index --help` → planning-aid framing (`This is a planning aid, not a runtime URL router, path validator, route registry, artifact sprawl executor, or path-depth certifier; tiers are deterministic stable-output ordering only (NOT sprawl-risk-ranked).`), tier function (`none if path is "/" (0 segments); low if 1-2; medium if 3-4; high if >= 5; unknown if path missing or malformed`), path-parameter-counts-as-one-segment note, and bucket order (`none → low → medium → high → unknown`) confirmed. `node bin/tusq.js path index --tier HIGH --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 1, case-sensitive enforcement confirmed. `node bin/tusq.js path index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, valid JSON with `tiers[]` array (`low` bucket: 2 capabilities [get_users_users, post_users_users], approved_count 2, gated_count 0; `medium` bucket: 1 capability [get_users_api_v1_users_id], approved_count 0, gated_count 1) and `warnings: []`. `node bin/tusq.js path index --tier low --manifest ... --json` → exit 0, single `low` bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero dependency drift). All 18 M41 ROADMAP checkboxes `[x]`.
+
+**New acceptance criteria:** REQ-390–REQ-414 (25 criteria) — CLI surface 25, closed 5-value tier enum (none|low|medium|high|unknown), closed 2-value aggregation_key enum (tier|unknown), frozen tier-function thresholds (0/2/4/5), five frozen warning reason codes, per-bucket 8-field shape, determinism, non-persistence, empty-capabilities, --out, case-sensitive filter, unknown bucket warnings, eval 32 scenarios.
+
+**Closed enums shipped (immutable):** `path_segment_count_tier` (none|low|medium|high|unknown), `aggregation_key` (tier|unknown), tier thresholds (0/2/4/5), warning reason codes (path_field_missing|path_field_not_string|path_field_empty_string|path_field_does_not_start_with_forward_slash|path_field_contains_empty_interior_segment).
+
+**Non-breaking:** every existing command's stdout, stderr, and exit code is byte-identical pre/post M41.
+
 ## QA Re-verification — M40 (turn_63c7cc83d4a3e120, run_0ce75469bde80380, 2026-04-27, HEAD aa81869)
 
 **Milestone:** M40 — Static Capability Output Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.21
