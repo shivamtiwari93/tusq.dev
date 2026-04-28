@@ -1,5 +1,9 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+### M48: Output Schema First Property Type Index — Product CLI Surface — Charter Sketch Reservation
+
+**Status:** Charter bound 2026-04-27 in `run_f61946531dda2fe6` / `turn_2b52784e96159e79` (PM attempt 1) at HEAD `1abac5e`. **Not yet shipped.** The full M48 Product CLI Surface block (two-row command table for `tusq shape` and `tusq shape index`, the four-flag table for `--first-type | --manifest | --out | --json`, the closed nine-value bucket-key enum table, the closed three-value aggregation_key enum table, the classifier-function rules table, the per-bucket entry shape table, the bucket iteration order table `string → number → integer → boolean → null → object → array → not_applicable → unknown`, the default-preservation table for the 31 unchanged commands, the failure UX table, and the local-only invariants table including non-persistence and 18-command byte-identity guard) will be authored in the dev materialization turn before any source code lands. The CLI surface grows from 31 → 32 commands; `shape` is inserted alphabetically between `sensitivity` and `strictness` in `printHelp()` (`s` = `s` at position 0; `e` (101) < `h` (104) < `t` (116) at position 1).
+
 ### M47: Input Schema Property Count Tier Index — Product CLI Surface
 
 **Status:** Shipped in `run_240679669ee78f0b` / `turn_cc1f4a9f48f528e8` (dev implementation). V1.28.
