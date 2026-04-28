@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_6d5b4b79eaf3ab7b (role=qa, run_6e53e7b50cd2c457, M50 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_99050f1349379e99, role=dev, HEAD 1a99caf) for run_6e53e7b50cd2c457 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff 2d191b6..1a99caf --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M50 does not modify the manifest format schema — input_schema_first_property_required_status is intentionally non-persistent by design). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound (4 PM-owned files correctly changed), M50 constants added at correct locations (INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_ENUM at src/cli.js:391, AGGREGATION_KEY_ENUM at src/cli.js:395, BUCKET_ORDER at src/cli.js:401), `obligation` noun inserted between `method` and `output`, non-persistence of `input_schema_first_property_required_status` confirmed, `required_statuses` field name is distinct from all prior index commands, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (41 scenarios)`. Independently re-run; 41 scenarios confirmed (40 prior + 1 M50 input-schema-first-property-required-status-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaFirstPropertyRequiredStatusBucketKey` (src/cli.js:6118) and `_guardInputSchemaFirstPropertyRequiredStatusAggregationKey` (src/cli.js:6125) guards pass synchronously.
+
+**4. CLI surface 34 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 34. `obligation` correctly positioned between `method` and `output` (m=109 < o(b)=111 < o(u)=117 — obligation<output confirmed by second-char b(98)<u(117)).
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `required_statuses[]` (NOT `tiers[]`, NOT `strictnesses[]`, NOT `types[]`, NOT `items_types[]`, NOT `first_property_types[]`) with `required` bucket (get_users_api_v1_users_id; capability_count 1; aggregation_key `"required_status"`), `optional` bucket (post_users_users; capability_count 1; aggregation_key `"required_status"`), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"`); `warnings: []`. Both `required` and `optional` buckets carry `aggregation_key: "required_status"` — distinguishing M50 from all prior index commands where only one bucket type shares an aggregation_key value.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --status REQUIRED` → exit 1, stderr `Unknown input schema first property required status: REQUIRED`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --status unknown` → exit 1, `No capabilities found for input schema first property required status: unknown` (no unknown-status capabilities in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. Fixture mutation (re-run this turn):** `git diff --quiet HEAD -- tests/fixtures/` → exit 0. Zero fixture mutation.
+
+**10. M50 ROADMAP checkboxes:** All 16 M50 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M50 block; 14 remaining unchecked items are in pre-M37 charter preamble stubs, not M50 deliverables), independently verified by Python scan of ROADMAP.md this turn.
+
+**11. `classifyInputSchemaFirstPropertyRequiredStatus` rules (code inspection at src/cli.js:6148–6195):** null/undefined inputSchema → unknown; non-object/Array inputSchema → unknown; inputSchema.type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning — semantically valid for non-object inputs with no first property); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); required present but not array-of-strings → unknown (input_schema_required_field_invalid_when_type_is_object); firstKey ∈ requiredArr → required (no warning); firstKey ∉ requiredArr → optional (no warning, even when requiredArr is empty — optional is a valid named classification outcome meaning "first property has no declared obligation"). No all-properties-required-status walking; no nested-property recursion; no output-side classification; no runtime validation.
+
+**12. Five frozen warning reason codes (code inspection at src/cli.js:6222–6252):** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_required_field_invalid_when_type_is_object`. All five present. Neither `not_applicable` nor `optional` bucket emits warnings (both are valid named classification outcomes). Only `unknown` triggers warnings. Note: the 5th reason code is `input_schema_required_field_invalid_when_type_is_object` (distinct from M49's `input_schema_properties_first_property_descriptor_invalid` — different malformation path).
+
+**13. Acceptance criteria count:** 639 (REQ-001–REQ-639). Added REQ-615–REQ-639 (25 new M50 criteria) this turn. All 639 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_cbc4204c2b1db778 (role=qa, run_9a2f6448e2199cda, M49 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_a71ef526db35c329, role=dev, HEAD 8801282) for run_9a2f6448e2199cda independently rather than rubber-stamping it.

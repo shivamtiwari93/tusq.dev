@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M50 (turn_6d5b4b79eaf3ab7b, run_6e53e7b50cd2c457, 2026-04-28, HEAD 1a99caf)
+
+**Milestone:** M50 — Static Capability Input Schema First Property Required Status Index Export from Manifest Evidence (~0.5 day) — V1.31
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_99050f1349379e99, role=dev). HEAD 1a99caf = M50 implementation checkpoint. All M50 implementation (src/cli.js, tests/smoke.mjs, 41 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (41 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyRequiredStatusBucketKey` at src/cli.js:6118 and `_guardInputSchemaFirstPropertyRequiredStatusAggregationKey` at src/cli.js:6125 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 34. `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `required_statuses[]` with `required` bucket (get_users_api_v1_users_id; aggregation_key `"required_status"`), `optional` bucket (post_users_users; aggregation_key `"required_status"`), and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --status REQUIRED` → exit 1 (case-sensitive). `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --status unknown` → exit 1, absent-bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**Acceptance criteria:** 639 total (REQ-001–REQ-639). Added REQ-615–REQ-639 (25 new M50 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_99050f1349379e99 upheld — 9 dev-owned files correctly modified (`git diff 2d191b6..1a99caf --name-only`; no manifest-format.md change because M50 is non-persistent), all 5 dev decisions sound, M50 implementation complete and correct.
+
+**Key M50 features:** `tusq obligation index` command added (34th CLI command); `required_statuses[]` result field (plural-categorical, distinct from all prior index commands); four-value bucket-key enum (required/optional/not_applicable/unknown); three-value aggregation_key enum (required_status/not_applicable/unknown) — both `required` and `optional` buckets share aggregation_key `"required_status"` distinguishing M50 from all prior milestones; per-bucket field name `input_schema_first_property_required_status` (distinct from M49's `input_schema_first_property_type`); `not_applicable` bucket covers both non-object inputs (input_schema.type !== 'object') and zero-property object inputs — emits NO warning; `optional` bucket covers cases where required[] is absent/empty or first property is not in required[] — emits NO warning; five frozen warning reason codes including `input_schema_required_field_invalid_when_type_is_object` (distinct from M49's `input_schema_properties_first_property_descriptor_invalid`); bucket order required→optional→not_applicable→unknown; `obligation` noun inserted alphabetically between `method` and `output`; eval count 40→41; `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_BUCKET_ORDER` frozen array has 3 values (required/optional/not_applicable); unknown appended dynamically last. VISION source: § Action Execution Policy (lines 409–422) — first milestone to cite this section as primary aggregation source.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Verification — M49 (turn_cbc4204c2b1db778, run_9a2f6448e2199cda, 2026-04-28, HEAD 8801282)
 
 **Milestone:** M49 — Static Capability Input Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.30
