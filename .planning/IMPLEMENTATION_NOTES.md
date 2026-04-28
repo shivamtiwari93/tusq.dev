@@ -2,6 +2,44 @@
 
 ---
 
+## M67 (run_a32ec6b13eb1a938, turn_cd878f1f2157ef33, dev)
+
+### Axis: input_schema.properties[firstKey].exclusiveMinimum (JSON-Schema Draft 6+ numeric-exclusive-lower-bound)
+
+**CLI noun:** `above` (subcommand: `index`), inserted before `approve` as FIRST entry in post-`docs` alphabetical block (CLI surface 50 → 51).
+
+**Bucket-key enum (closed, four-value):** `lower_exclusive_bounded | lower_exclusive_unbounded | not_applicable | unknown`
+
+**Aggregation_key enum (closed, three-value):** `numeric_lower_exclusive_bound_constraint | not_applicable | unknown`
+
+**Bucket iteration order:** `lower_exclusive_bounded → lower_exclusive_unbounded → not_applicable → unknown` (deterministic stable-output convention only)
+
+**Classifier:** `typeof v === 'number' && Number.isFinite(v)` — STRICT check, no coercion.
+- ZERO-IS-VALID-EXCLUSIVE-LOWER-BOUND (M67-SPECIFIC): `exclusiveMinimum:0` → `lower_exclusive_bounded`
+- NEGATIVE-IS-VALID-EXCLUSIVE-LOWER-BOUND (M67-SPECIFIC): `exclusiveMinimum:-273.15` → `lower_exclusive_bounded`
+- FRACTIONAL-IS-VALID-EXCLUSIVE-LOWER-BOUND (M67-SPECIFIC): `exclusiveMinimum:0.5` → `lower_exclusive_bounded`
+- DRAFT-4-BOOLEAN-IS-INVALID (M67-SPECIFIC): `exclusiveMinimum:true/false` → `unknown` WITH 6th code (Draft-4 boolean form invalid)
+- NULL-AS-ABSENT: `exclusiveMinimum:null` → `lower_exclusive_unbounded` (mirrors M55-M66)
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (carried forward)
+6. `input_schema_properties_first_property_exclusive_minimum_invalid_when_present` (NEW — covers ALL non-finite-number malformations including Draft-4 boolean form)
+
+**Result array field name:** `first_property_exclusive_minimum_states`
+**Per-bucket field name:** `input_schema_first_property_exclusive_minimum`
+
+**VISION primary citation:** § Ecosystem Integration Compiler (lines 535–537) — first milestone to use this section as primary aggregation source.
+
+**Files changed:** `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`
+
+**Test counts:** 24-case M67 smoke matrix (a-x4); 1 new eval scenario (57→58 scenarios)
+
+---
+
 ## M66 (run_f11fc93257e4e50c, turn_0522461f4f32c54c, dev)
 
 ### Axis: input_schema.properties[firstKey].maximum (JSON-Schema Draft 4+ numeric-inclusive-upper-bound)

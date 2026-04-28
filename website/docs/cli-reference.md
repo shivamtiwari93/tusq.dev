@@ -1137,6 +1137,48 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq above index`
+
+Emit a deterministic, per-first-input-property-exclusiveMinimum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].exclusiveMinimum` is a finite number (`lower_exclusive_bounded`), absent/null/undefined (`lower_exclusive_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`lower_exclusive_bounded → lower_exclusive_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime exclusiveMinimum enforcer, doc-contradiction detector, minimum-crossref tool, maximum-crossref tool, below-crossref tool, joint-validity-crossref tool, type-applicability validator, Draft-4-crossref tool, LLM-exclusiveMinimum inferrer, ecosystem-integration-compiler-criticality tier emitter, or statistical aggregator**.
+
+**M67-vs-M65 distinction:** `tusq above index` (M67) reads `input_schema.properties[firstKey].exclusiveMinimum` (the **FIRST input property's** JSON-Schema Draft 6+ `exclusiveMinimum` finite-number keyword — a numeric-**exclusive**-LOWER-bound constraint; `value > exclusiveMinimum`; zero, negative, and fractional values ARE VALID as the bound itself; DRAFT-4-BOOLEAN-IS-INVALID: boolean `true`/`false` → unknown with 6th code). `tusq lower index` (M65) reads `input_schema.properties[firstKey].minimum` (the **FIRST input property's** JSON-Schema `minimum` finite-number keyword — a numeric-**inclusive**-LOWER-bound constraint; `value >= minimum`). The equality boundary semantics differ: M67's `exclusiveMinimum:5` means `value > 5`; M65's `minimum:5` means `value >= 5`. These two commands read orthogonal JSON-Schema validation keywords under two distinct nouns; neither alters the other's output bytes.
+
+**M67-vs-M66 distinction:** `tusq above index` (M67) reads `firstKey.exclusiveMinimum` (numeric-exclusive-LOWER-bound); `tusq upper index` (M66) reads `firstKey.maximum` (numeric-inclusive-UPPER-bound). Opposite directions and opposite equality semantics.
+
+**M67-vs-M64 distinction:** `tusq divisor index` (M64) reads `firstKey.multipleOf` (strictly-positive-finite-number numeric-divisibility; zero is INVALID per JSON-Schema). `tusq above index` (M67) reads `firstKey.exclusiveMinimum` (finite-number numeric-exclusive-lower-bound; zero IS VALID as the bound). These read orthogonal JSON-Schema validation keywords; neither alters the other's output bytes.
+
+```
+tusq above index [--above <lower_exclusive_bounded|lower_exclusive_unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--above <value>` | Filter to a single exclusiveMinimum annotation bucket (case-sensitive lowercase, default: all buckets) |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (rejects paths inside `.tusq/`) |
+| `--json` | Emit machine-readable JSON |
+
+**Bucket rules:**
+
+- `lower_exclusive_bounded` — `typeof firstKey.exclusiveMinimum === 'number' && Number.isFinite(firstKey.exclusiveMinimum)` (STRICT: NO coercion; ZERO-IS-VALID: 0→lower_exclusive_bounded; NEGATIVE-IS-VALID: -273.15→lower_exclusive_bounded; FRACTIONAL-IS-VALID: 0.5→lower_exclusive_bounded; DRAFT-4-BOOLEAN-IS-INVALID: true/false→unknown)
+- `lower_exclusive_unbounded` — `firstKey.exclusiveMinimum` absent, undefined, or null (null-as-absent per M55–M66 precedent — no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object
+- `unknown` — malformed `input_schema`, `firstKey` not a plain object, or `exclusiveMinimum` present non-null but not a finite number (NaN, Infinity, -Infinity, string `'0'`, boolean `true`/`false`, array `[0]`, plain object `{}`)
+
+**Exit codes:** `0` = index produced; `1` = missing/invalid manifest, unknown flag, unknown exclusiveMinimum state, `--out` path error, or unknown subcommand
+
+**Examples:**
+
+```
+tusq above index
+tusq above index --json
+tusq above index --above lower_exclusive_bounded --json
+tusq above index --above lower_exclusive_unbounded --json
+tusq above index --out above-index.json
+```
+
 ## `tusq upper index`
 
 Emit a deterministic, per-first-input-property-maximum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].maximum` is a finite number (`upper_bounded`), absent/null/undefined (`upper_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`upper_bounded → upper_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime maximum enforcer, doc-contradiction detector, minimum-crossref tool, exclusiveMaximum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-maximum inferrer, data-intelligence-compiler-criticality tier emitter, or statistical aggregator**.
