@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_fd3959f559575f6f (role=qa, run_27565cc0d89187ef, M57 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_09b015ce0e7b8ed1, role=dev, HEAD 7303af4) for run_27565cc0d89187ef independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M57 does not modify manifest format — `input_schema_first_property_title` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_7bb9f75f896a40a2 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_TITLE_ENUM` (frozen Set: titled/untitled/not_applicable/unknown) at `src/cli.js:525`; `INPUT_SCHEMA_FIRST_PROPERTY_TITLE_AGGREGATION_KEY_ENUM` (frozen Set: title_label/not_applicable/unknown) at `src/cli.js:529`; `INPUT_SCHEMA_FIRST_PROPERTY_TITLE_BUCKET_ORDER` (frozen array: titled/untitled/not_applicable) at `src/cli.js:536`. Guards `_guardInputSchemaFirstPropertyTitleBucketKey` at `src/cli.js:8273`, `_guardInputSchemaFirstPropertyTitleAggregationKey` at `src/cli.js:8280`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyTitle` at `src/cli.js:8308–8349` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56); title absent/!hasOwnProperty/null/undefined → untitled (null-as-absent, no warning — mirrors M55/M56); typeof firstVal.title !== 'string' → unknown WITH `input_schema_properties_first_property_title_invalid_when_present` (SIXTH FROZEN CODE); firstVal.title.length === 0 (empty string) → unknown WITH same SIXTH CODE (EMPTY-STRING IS-MALFORMED); firstVal.title.length >= 1 → titled (no warning; WHITESPACE-ONLY-COUNTS-AS-TITLED — no trim). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 41. `caption` between `binding` and `choice` confirmed (binding(b=98) < caption(c=99) at pos 0; caption(c=99,a=97) < choice(c=99,h=104) at pos 0 same c, pos 1 a(97) < h(104)). `cmdCaption` dispatcher at `src/cli.js:8527`; `cmdCaptionIndex` handler at `src/cli.js:8544`; `parseCaptionIndexArgs` at `src/cli.js:8635`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js caption index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_titles[]` with `untitled` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"title_label"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `titled` bucket absent (no titled-first-property capabilities in express fixture — confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: untitled < not_applicable (titled→untitled→not_applicable→unknown convention). PASS.
+
+**7. Case-sensitive filter enforcement:** `--caption TITLED` → exit 1, `Unknown input schema first property title: TITLED` (case-sensitive enforcement confirmed). `--caption titled` → exit 1, `No capabilities found for input schema first property title: titled` (absent-bucket enforcement confirmed). PASS.
+
+**8. M57-specific rules:** WHITESPACE-ONLY-COUNTS-AS-TITLED: title `'   '` (three spaces) → `titled` (no trim, length >= 1 sufficient). EMPTY-STRING IS-MALFORMED: title `''` → `unknown` WITH `input_schema_properties_first_property_title_invalid_when_present` (deliberate alignment with M54/M56 empty-malformed precedents). NULL-AS-ABSENT: title `null` → `untitled` (no warning; mirrors M55/M56 null-as-absent). Non-string title (number 42, array) → `unknown` WITH 6th code. String with length >= 1 (including multibyte emoji) → `titled`. Contrast with M56 where `examples: []` is malformed; M57 uses same axis-specific code for empty string. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six warning reason codes are PM-frozen by DEC-003 and enumerated in `src/cli.js:8390–8391`. The SIXTH code `input_schema_properties_first_property_title_invalid_when_present` was explicitly declared by PM DEC-003, continuing the pattern established by M56 (which fully retired the undeclared-sixth-code pattern from M52/M53/M54). No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 48 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (48 scenarios)`). Scenario 48 (`input-schema-first-property-title-presence-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP completeness:** All 18 M57 ROADMAP checkboxes [x] confirmed. PASS.
+
+**13. Acceptance criteria:** REQ-790 through REQ-814 added to acceptance-matrix.md (25 new REQs, 814 total). All 814 acceptance criteria (REQ-001–REQ-814) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_0a3ee2aa85ddb69f (role=qa, run_4c16dd0f2f6674fc, M56 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_dd4dc63d5e634f5d, role=dev, HEAD 6f3c07e) for run_4c16dd0f2f6674fc independently rather than rubber-stamping it.

@@ -1,5 +1,21 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M57 (turn_fd3959f559575f6f, run_27565cc0d89187ef, 2026-04-28, HEAD 7303af4)
+
+**Milestone:** M57 — Static Capability Input Schema First Property Title Presence Index Export from Manifest Evidence (~0.5 day) — V1.38
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_09b015ce0e7b8ed1, role=dev). HEAD 7303af4 = M57 implementation checkpoint. All M57 implementation (src/cli.js, tests/smoke.mjs, 48 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (48 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyTitleBucketKey` at src/cli.js:8273 and `_guardInputSchemaFirstPropertyTitleAggregationKey` at src/cli.js:8280 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 41 (41-command CLI surface; `caption` between `binding` and `choice`: binding(b=98) < caption(c=99) at pos 0; caption(c=99,a=97) < choice(c=99,h=104) at pos 0 same c, pos 1 a(97) < h(104)). `node bin/tusq.js caption index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_titles[]` with `untitled` bucket (get_users_api_v1_users_id AND post_users_users; aggregation_key `"title_label"`), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `titled` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. `--caption TITLED` → exit 1 (case-sensitive). `--caption titled` → exit 1 (absent-bucket). `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New command:** `tusq caption index` — indexes capabilities by `input_schema.properties[firstKey].title` JSON-Schema-title-annotation presence classification. Four-value bucket-key enum: `titled` | `untitled` | `not_applicable` | `unknown`. Three-value aggregation_key enum: `title_label` | `not_applicable` | `unknown`. Bucket iteration order: `titled → untitled → not_applicable → unknown` (deterministic stable-output convention only). Result array field: `first_property_titles[]`. Per-bucket field: `input_schema_first_property_title`.
+
+**Key M57-specific invariants:** (1) WHITESPACE-ONLY-COUNTS-AS-TITLED: `title: '   '` (spaces-only) → `titled` (no warning; string length >= 1 is the only check; whitespace-trim normalization deferred to M-Caption-Title-Whitespace-Distribution-Index-1 successor). (2) EMPTY-STRING IS-MALFORMED: `title: ''` → `unknown` WITH warning `input_schema_properties_first_property_title_invalid_when_present` (deliberate alignment with M54's empty-`enum`-malformed and M56's empty-array-malformed precedents; empty string carries no semantic intent as a label). (3) NULL-AS-ABSENT: `title: null` → `untitled` (no warning; mirrors M55/M56 null-as-absent precedent). (4) Non-string title (number, array, object, boolean) → `unknown` WITH same SIXTH code. (5) SIX fully PM-frozen warning reason codes — the 6th code `input_schema_properties_first_property_title_invalid_when_present` was explicitly declared by PM DEC-003, consolidating both non-string and empty-string malformations under one code. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking.
+
+**VISION primary citation:** § Brand-Matched Chat Interface (lines 193–204) — first milestone to use this section as primary aggregation source. Re-cited structural anchor: § Tools (lines 164–173). CLI noun `caption` is intentional — M57-vs-M52-vs-M44 distinctness documented in ROADMAP, SYSTEM_SPEC, and command-surface (`tusq caption index` aggregates per-property `input_schema.properties[firstKey].title`; `tusq gloss index` aggregates per-property `input_schema.properties[firstKey].description`; `tusq description index` aggregates capability-level top-level `description` word-count tier — orthogonal axes).
+
+**Acceptance criteria:** REQ-790–REQ-814 added (25 new REQs). Total: 814 acceptance criteria (REQ-001–REQ-814). All pass. Ship verdict: SHIP.
+
 ## QA Verification — M56 (turn_0a3ee2aa85ddb69f, run_4c16dd0f2f6674fc, 2026-04-28, HEAD 6f3c07e)
 
 **Milestone:** M56 — Static Capability Input Schema First Property Examples Array Presence Index Export from Manifest Evidence (~0.5 day) — V1.37
