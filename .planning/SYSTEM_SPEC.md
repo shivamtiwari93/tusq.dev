@@ -1,5 +1,34 @@
 # System Spec — tusq.dev Docs & Website Platform
 
+### M47: Static Capability Input Schema Property Count Tier Index — Charter Sketch Reservation (PM-bound 2026-04-27 in `run_240679669ee78f0b` / `turn_357704fa614b9c94`)
+
+**Status:** PROPOSED — Charter bound by PM in this turn. Full SYSTEM_SPEC § M47 detail block, command-surface § M47 detail block, source-code constants/guards/handlers, smoke matrix, and eval scenario will be authored by the dev materialization turn. This sketch reservation block exists so that the planning_signoff gate's `system_spec` semantics check sees fresh PM participation and the dev turn has a non-empty anchor to expand.
+
+**Purpose (PM-frozen):** Export a per-bucket breakdown of capabilities by the cardinality tier of the manifest's per-capability `input_schema.properties` Object.keys length. Five-value bucket-key enum `none | low | medium | high | unknown` (matches M40 verbatim). Two-value aggregation_key enum `tier | unknown`. Tier function: `Object.keys(input_schema.properties).length` with thresholds `0 → 'none'`; `1–2 → 'low'`; `3–5 → 'medium'`; `≥ 6 → 'high'`; missing/malformed → `'unknown'` (boundaries 0/2/5/6 match M40 verbatim and are immutable). Directly answers: "for the MCP-listed tools generated from my capabilities, how many input parameters does each tool accept (none / few / a moderate handful / many), and which destructive or restricted-sensitivity capabilities sit in the high-cardinality bucket where parameter sprawl most blunts review-by-eye?" Operationalizes VISION § MCP Server (lines 229–239) — "MCP is a first-class output. The generated MCP server exposes tools and skills with: versioned registry metadata, **approval-aware tool listing**, IAM-aware execution context, dry-run and confirmation paths, self-hosted runtime support" — as the primary aggregation source; the first shipped milestone to use this section. Distinct from M39 (`input_schema.required[]` cardinality — M47 measures full properties count, M39 measures required-only subset count); orthogonal to M40 (`output_schema.properties` cardinality on object responses — M47 measures input side, M40 measures output side); orthogonal to M43 (`input_schema.properties[].source` categorical classification — M47 measures cardinality, M43 measures source class).
+
+**Command:** `tusq parameter index [--tier <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**Frozen invariants** (carry forward verbatim into dev materialization):
+- Closed five-value bucket-key enum: `none | low | medium | high | unknown`. No additional values may be introduced.
+- Closed two-value aggregation_key enum: `tier | unknown`.
+- Closed five-value warning reason-code enum: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_properties_field_missing`, `input_schema_properties_field_not_object`, `input_schema_properties_field_contains_invalid_descriptor`. The `none` bucket emits NO warning; only `unknown` triggers warnings.
+- Closed-enum bucket iteration order (deterministic stable-output convention only): `none → low → medium → high → unknown`. NOT a complexity-blast-radius ranking, NOT a parameter-sprawl-precedence ranking, NOT a tool-generation-difficulty ranking, NOT a review-burden-priority ranking, NOT an LLM-context-length ranking.
+- Frozen 8-field per-bucket entry: `input_schema_property_count_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`. Order matches M31–M46.
+- Top-level `warnings[]` always present in `--json` mode (empty `[]` when no malformed capabilities) for shape stability.
+- Within-bucket order: manifest declared order (capabilities[] index ascending). Empty buckets MUST NOT appear.
+- Case-sensitive lowercase-only `--tier` filter; uppercase or mixed-case exits 1 with `Unknown input schema property count tier:`. Filtering on a zero-capability bucket exits 1 with `No capabilities found for input schema property count tier:`.
+- Non-persistence rule: `input_schema_property_count_tier` MUST NOT be written into `tusq.manifest.json`.
+- Read-only invariants: manifest mtime + SHA-256 + every capability's `capability_digest` byte-identical pre/post; `tusq compile` byte-identical pre/post; all 18 prior peer index commands byte-identical pre/post.
+- Result-array field name `tiers` (matches M40, M44 precedent — plural categorical with shared bucket-key family).
+- CLI surface: 30 → 31 commands. New noun `parameter` between `output` and `path` in `printHelp()` post-`docs` block.
+- Eval count: 37 → 38. New scenario `input-schema-property-count-tier-index-determinism`.
+- Constraint 40 (planning-aid scope; not a runtime validator / not a tool-listing-budget generator / not an LLM-context-length policy / not a parameter-cardinality middleware) reserved for the dev turn to insert into SYSTEM_SPEC § Constraints.
+- Deferred successors: `M-Parameter-Nested-Properties-1`, `M-Parameter-Required-Property-Count-1`, `M-Parameter-Property-Type-Index-1`, `M-Parameter-Persistence-1`, `M-Parameter-Doc-Contradiction-1`, `M-Parameter-Runtime-Conformance-1`, `M-Parameter-AdditionalProperties-Effect-1`.
+
+The dev materialization turn MUST author the full `### M47:` SYSTEM_SPEC detail block with the same level of detail as the M46 block below, plus add Constraint 40 to SYSTEM_SPEC § Constraints, before any source code lands.
+
+---
+
 ### M46: Static Capability Output Schema additionalProperties Strictness Index
 
 **Status:** Shipped in `run_7c4036f0eba4cde3` / `turn_c5d62ccd1c2a4bcd` (dev implementation). V1.27.

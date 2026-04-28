@@ -1,5 +1,36 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+### M47: Input Schema Property Count Tier Index — Product CLI Surface — Charter Sketch Reservation (PM-bound 2026-04-27 in `run_240679669ee78f0b` / `turn_357704fa614b9c94`)
+
+**Status:** PROPOSED — Charter bound by PM in this turn. Full command-surface § M47 detail block (two-row command table, four-flag table, bucket-key enum table, aggregation_key enum table, tier-function rules table, per-bucket entry shape table, bucket iteration order table, default-preservation table for the 30 unchanged commands, failure UX table, and local-only invariants table) will be authored by the dev materialization turn. This sketch reservation block exists so that the planning_signoff gate's `section_check` semantics check sees fresh PM participation.
+
+**Command (PM-frozen):** `tusq parameter index [--tier <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**CLI surface growth:** 30 → 31 commands. New top-level noun `parameter` with single subcommand `index`, inserted alphabetically between `output` and `path` in the `printHelp()` post-`docs` block. Insertion sequence: `..., method, output, parameter, path, pii, policy, redaction, request, response, sensitivity, strictness, surface, version, help`.
+
+**Frozen invariants** (PM-bound; dev MUST carry forward verbatim):
+
+| Axis | Frozen value |
+|------|--------------|
+| Bucket-key enum | `none | low | medium | high | unknown` (closed five-value, matches M40 verbatim) |
+| Aggregation_key enum | `tier | unknown` (closed two-value, matches M40 verbatim) |
+| Tier-function thresholds | `0 → 'none'`; `1–2 → 'low'`; `3–5 → 'medium'`; `≥ 6 → 'high'` (immutable; matches M40 verbatim) |
+| Warning reason-code enum | `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_properties_field_missing`, `input_schema_properties_field_not_object`, `input_schema_properties_field_contains_invalid_descriptor` (closed five-value) |
+| Bucket iteration order | `none → low → medium → high → unknown` (deterministic stable-output convention only — explicitly NOT complexity-blast-radius-ranked, NOT parameter-sprawl-precedence-ranked, NOT tool-generation-difficulty-ranked, NOT review-burden-priority-ranked) |
+| Per-bucket entry shape | 8 fields: `input_schema_property_count_tier`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity` |
+| `--tier` filter | Case-sensitive lowercase-only; uppercase or mixed-case exits 1 with `Unknown input schema property count tier:` |
+| Non-persistence | `input_schema_property_count_tier` MUST NOT be written into `tusq.manifest.json` |
+| Result-array field name | `tiers` (matches M40, M44 plural-categorical precedent) |
+
+**Distinguishing axes** (PM-bound; dev help-text MUST surface these):
+- Distinct from **M39** (`tusq input index`) which counts `input_schema.required[]` length only — M47 counts full `Object.keys(input_schema.properties).length`.
+- Orthogonal to **M40** (`tusq output index`) which buckets `output_schema.properties` cardinality on the response side — M47 measures input side.
+- Orthogonal to **M43** (`tusq request index`) which buckets categorical primary-parameter-source classification (`path | query | request_body | mixed | none`) — M47 measures numeric cardinality tier.
+
+The dev materialization turn MUST expand this sketch into a full Product CLI Surface block with the same level of detail as the M46 block below.
+
+---
+
 ### M46: Output Schema Strictness Index — Product CLI Surface
 
 **Status:** Shipped in `run_7c4036f0eba4cde3` / `turn_c5d62ccd1c2a4bcd` (dev implementation). V1.27.
