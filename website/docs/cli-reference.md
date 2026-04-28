@@ -1137,6 +1137,64 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq floor index`
+
+Emit a deterministic, per-first-input-property-minLength-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].minLength` is a non-negative integer (`length_floored`), absent/null/undefined (`length_unfloored`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`length_floored → length_unfloored → not_applicable → unknown`). This is a **planning aid, not a runtime minLength enforcer, doc-contradiction detector, maxLength-crossref tool, pattern-crossref tool, format-crossref tool, type-applicability validator, LLM-minLength inferrer, tool-and-skill-compiler strictness tier emitter, or statistical aggregator**.
+
+**M62-vs-M59 distinction:** `tusq regex index` (M59) reads `input_schema.properties[firstKey].pattern` (the **FIRST input property's** JSON-Schema `pattern` regex string — a shape-bound input-validation constraint). `tusq floor index` (M62) reads `input_schema.properties[firstKey].minLength` (the **FIRST input property's** JSON-Schema `minLength` non-negative-integer keyword — a numeric-bound string-length lower-bound constraint). These two commands read orthogonal JSON-Schema string-validation keywords under two distinct nouns; neither alters the other's output bytes. An operator may set both, either, or neither on the same property.
+
+**M62-vs-M53 distinction:** `tusq hint index` (M53) reads `input_schema.properties[firstKey].format` (a closed-vocabulary semantic hint such as `email`/`uri`/`date-time`). `tusq floor index` (M62) reads `input_schema.properties[firstKey].minLength` (a numeric integer floor). These read orthogonal JSON-Schema string-annotation keywords — orthogonal JSON-Schema string-annotation keywords, read-only-invariant peers.
+
+```bash
+tusq floor index [--floor <length_floored|length_unfloored|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--floor <length_floored\|length_unfloored\|not_applicable\|unknown>` | all buckets | Filter to a single minLength annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].minLength` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `length_floored` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `Number.isInteger(properties[firstKey].minLength) && properties[firstKey].minLength >= 0` (STRICT-NUMERIC: must be a non-negative integer, NO Number()/parseInt()/truthy coercion; EXPLICIT-ZERO-IS-FLOORED: `minLength === 0` → `length_floored` — mirrors M58/M60/M61 explicit-default-value precedent) |
+| `length_unfloored` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].minLength` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57/M58/M59/M60/M61 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].minLength` present non-null but NOT a non-negative integer (negative integer `−1`, fractional `1.5`, NaN, Infinity, −Infinity, string `'1'`, boolean `true`, array `[1]`, plain object `{}`) |
+
+**Bucket iteration order:** `length_floored → length_unfloored → not_applicable → unknown` (deterministic stable-output convention — NOT tool-and-skill-compiler-strictness-ranked, NOT strict-tool-input-validation-strength-ranked, NOT chat-prompt-input-rejection-priority-ranked, NOT marketplace-package-strictness-tier-ranked, NOT MCP-tool-validation-tier-ranked, NOT empty-string-rejection-priority-ranked, NOT injection-attack-mitigation-priority-ranked, NOT domain-skill-pack-input-strictness-ranked).
+
+**Six frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_min_length_invalid_when_present`). The sixth code covers ALL non-non-negative-integer `minLength` malformations under a single consolidated code.
+
+**Exit codes:**
+
+| Code | Condition |
+|------|-----------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown `--floor` value, `--floor` value with absent bucket, `--out` path error, or unknown subcommand |
+
+**Examples:**
+
+```bash
+# Human-readable output
+tusq floor index
+
+# JSON output
+tusq floor index --json
+
+# Filter to length_floored bucket
+tusq floor index --floor length_floored --json
+
+# Filter to length_unfloored bucket
+tusq floor index --floor length_unfloored --json
+
+# Write to file
+tusq floor index --out floor-index.json
+```
+
 ## `tusq gloss index`
 
 Emit a deterministic, per-first-input-property-description-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].description` is a non-empty trimmed string (`described`), missing/null/empty/whitespace-only (`undescribed`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`described → undescribed → not_applicable → unknown`). This is a **planning aid, not a runtime documentation validator, doc-contradiction detector, quality scorer, LLM synthesizer, or SDK help-text generator**.
