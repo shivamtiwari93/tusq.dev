@@ -2960,6 +2960,139 @@
         "unknown"
       ],
       "expected_bucket_order": "deprecated,active,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-pattern-index-determinism",
+      "scenario_type": "input_schema_first_property_pattern_index_determinism",
+      "description": "Verifies that tusq regex index produces byte-identical output across three runs on a synthetic manifest with patterned, unpatterned, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (patterned/unpatterned/not_applicable/unknown), closed three-value aggregation_key enum (pattern_constraint/not_applicable/unknown), bucket order determinism (patterned \u2192 unpatterned \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_pattern non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has pattern='^foo$' (patterned), a has no pattern (unpatterned), b has pattern='' (unknown with warning input_schema_properties_first_property_pattern_invalid_when_present) \u2014 firstKey=z \u2192 patterned (insertion-order, NOT sorted). NULL-AS-ABSENT: pattern:null \u2192 unpatterned (no warning, mirroring M55/M56/M57/M58 null-as-absent). WHITESPACE-ONLY-COUNTS-AS-PATTERNED: pattern:'   ' \u2192 patterned (length >= 1, no trim). EMPTY-STRING IS-MALFORMED: pattern:'' \u2192 unknown WITH warning. Sixth frozen warning reason code: input_schema_properties_first_property_pattern_invalid_when_present (single consolidated code covers both non-string AND empty-string malformations). Classifier MUST NOT compile or validate regex syntax.",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "patterned_cap",
+          "method": "POST",
+          "path": "/patterned",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has pattern='^foo$' (non-empty string) \u2014 lands in patterned bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "subscription_id": {
+                "type": "string",
+                "pattern": "^foo$"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unpatterned_cap",
+          "method": "GET",
+          "path": "/unpatterned",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no pattern field \u2014 lands in unpatterned bucket (absent \u2192 unpatterned)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "User identifier"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "null_pattern_cap",
+          "method": "GET",
+          "path": "/null-pattern",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has pattern=null \u2014 lands in unpatterned bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "pattern": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has pattern='^foo$' (patterned), a has no pattern (unpatterned), b has pattern='' (unknown+warning). firstKey=z \u2192 patterned (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "pattern": "^foo$"
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "pattern": ""
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_pattern_values": [
+        "patterned",
+        "unpatterned",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "pattern_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "patterned,unpatterned,not_applicable,unknown"
     }
   ]
 }

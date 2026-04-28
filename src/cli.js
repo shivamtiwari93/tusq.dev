@@ -556,6 +556,22 @@ const INPUT_SCHEMA_FIRST_PROPERTY_DEPRECATED_AGGREGATION_KEY_ENUM = Object.freez
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_DEPRECATED_BUCKET_ORDER = Object.freeze(['deprecated', 'active', 'not_applicable']);
 
+// M59: frozen four-value bucket-key enum. Immutable once M59 ships.
+// An implementation-time guard fires if classifyInputSchemaFirstPropertyPattern returns a value outside this set.
+// Bucket keys: patterned (firstKey.pattern is a string with length >= 1) | unpatterned (firstKey.pattern absent/undefined/null) | not_applicable (type !== 'object' or zero-property) | unknown (malformed)
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_ENUM = Object.freeze(new Set(['patterned', 'unpatterned', 'not_applicable', 'unknown']));
+
+// M59: frozen three-value aggregation_key enum. Immutable once M59 ships.
+// patterned/unpatterned buckets carry 'pattern_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['pattern_constraint', 'not_applicable', 'unknown']));
+
+// M59: closed-enum bucket iteration order (patterned → unpatterned → not_applicable). Unknown appended last.
+// NOT static-understanding-completeness-ranked, NOT schema-extraction-coverage-ranked, NOT input-validation-strength-ranked,
+// NOT regex-coverage-ranked, NOT pre-flight-validation-readiness-ranked, NOT framework-detection-confidence-ranked,
+// NOT route-extraction-completeness-ranked, NOT auth-detection-completeness-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_BUCKET_ORDER = Object.freeze(['patterned', 'unpatterned', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -736,6 +752,9 @@ function dispatch(argv) {
       return;
     case 'redaction':
       cmdRedaction(args);
+      return;
+    case 'regex':
+      cmdRegex(args);
       return;
     case 'request':
       cmdRequest(args);
@@ -9105,6 +9124,409 @@ function parseLegacyIndexArgs(args) {
   return { opts, positionals };
 }
 
+// M59: guard functions — synchronous module-init guards for closed enums.
+function _guardInputSchemaFirstPropertyPatternBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_pattern outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyPatternAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M59: classifyInputSchemaFirstPropertyPattern(inputSchema) → 'patterned'|'unpatterned'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              HAS-OWN-PROPERTY check: Object.prototype.hasOwnProperty.call(firstVal, 'pattern')
+//              if NOT hasOwn OR firstVal.pattern === undefined OR firstVal.pattern === null → 'unpatterned' (null-as-absent, no warning)
+//              if firstVal.pattern is a string with length >= 1 → 'patterned' (WHITESPACE-ONLY-COUNTS-AS-PATTERNED, no trim)
+//              if firstVal.pattern is present, non-null, and (typeof !== 'string' OR length === 0) → 'unknown'
+//                (reason: input_schema_properties_first_property_pattern_invalid_when_present — SIXTH FROZEN CODE)
+// MUST NOT compile or validate regex. MUST NOT trim whitespace.
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property pattern annotation beyond the FIRST is NOT walked (reserved for M-Regex-All-Properties-Pattern-Index-1).
+// Nested-object property pattern annotation NOT walked (reserved for M-Regex-Nested-Property-Pattern-Index-1).
+// output_schema first-property pattern is NOT classified (reserved for M-Regex-Output-First-Property-Pattern-Index-1).
+// input_schema_first_property_pattern MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyPattern(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // pattern absent, undefined, or null → unpatterned (null-as-absent, mirroring M55/M56/M57/M58)
+  if (!Object.prototype.hasOwnProperty.call(firstVal, 'pattern') || firstVal.pattern === undefined || firstVal.pattern === null) {
+    return 'unpatterned';
+  }
+  // pattern present, non-null: must be a string with length >= 1
+  if (typeof firstVal.pattern === 'string' && firstVal.pattern.length >= 1) {
+    return 'patterned';
+  }
+  // typeof !== 'string' OR empty string → unknown (6th frozen code)
+  return 'unknown';
+}
+
+// M59: buildInputSchemaFirstPropertyPatternIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property pattern annotation index from the manifest's capabilities[].
+// Bucket iteration order: patterned → unpatterned → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_pattern MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyPatternIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_pattern_constraints: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_pattern.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M59 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55/M56/M57/M58)
+    //   6. input_schema_properties_first_property_pattern_invalid_when_present (NEW axis-specific code for M59)
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (Object.prototype.hasOwnProperty.call(firstVal, 'pattern') && firstVal.pattern !== undefined && firstVal.pattern !== null) {
+            // pattern present non-null: must be a string with length >= 1; otherwise emit 6th warning
+            if (typeof firstVal.pattern !== 'string' || firstVal.pattern.length === 0) {
+              warningReason = 'input_schema_properties_first_property_pattern_invalid_when_present';
+            }
+            // else: valid patterned string — no warning
+          }
+          // else: pattern absent, undefined, or null → unpatterned, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const patternClass = classifyInputSchemaFirstPropertyPattern(inputSchema);
+    const isNamedBucket = namedBuckets.has(patternClass);
+    const bucketKey = isNamedBucket ? patternClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: patterned → unpatterned → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyPatternConstraints = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const patternKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPatternBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyPatternBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPatternAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyPatternAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyPatternAggregationKey('pattern_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_pattern: patternKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_pattern_constraints: firstPropertyPatternConstraints,
+    warnings
+  };
+}
+
+// M59: format input schema first property pattern annotation index as human-readable text
+function formatInputSchemaFirstPropertyPatternIndex(index) {
+  if (index.first_property_pattern_constraints.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Pattern Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].pattern JSON-Schema regex string keyword presence classification; it does NOT execute capability invocations, validate runtime payloads, compile or validate regex syntax, infer regex patterns from docs, cross-reference patterns against format annotations, rank input-validation strength, assess pre-flight validation readiness, measure schema-extraction coverage, or classify static-understanding completeness. Bucket order is deterministic stable-output ordering only (NOT static-understanding-completeness-ranked, NOT schema-extraction-coverage-ranked, NOT input-validation-strength-ranked, NOT regex-coverage-ranked, NOT pre-flight-validation-readiness-ranked, NOT framework-detection-confidence-ranked, NOT route-extraction-completeness-ranked, NOT auth-detection-completeness-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_pattern_constraints) {
+    lines.push(`[${entry.input_schema_first_property_pattern}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: patterned (firstKey.pattern is a string with length >= 1 — WHITESPACE-ONLY-COUNTS-AS-PATTERNED; MUST NOT compile regex) | unpatterned (firstKey.pattern absent, undefined, or null — null-as-absent per M55/M56/M57/M58 precedent) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema, firstKey not a plain object, or firstKey.pattern present non-null but not a string with length >= 1: non-string OR empty-string).");
+  lines.push('Bucket order: patterned → unpatterned → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M59: tusq regex — top-level noun dispatcher
+function cmdRegex(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('regex');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdRegexIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M59: tusq regex index — handler
+function cmdRegexIndex(args) {
+  const { opts, positionals } = parseRegexIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('regex index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyPatternIndex(manifest, manifestPath);
+
+  const regexFilter = opts['regex'] || null;
+  let outputIndex;
+  if (regexFilter !== null) {
+    // Case-sensitive: lowercase canonical pattern bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_ENUM.has(regexFilter)) {
+      throw new CliError(`Unknown input schema first property pattern state: ${regexFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_pattern_constraints.find((e) => e.input_schema_first_property_pattern === regexFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property pattern state: ${regexFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_pattern_constraints: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyPatternIndex(outputIndex));
+}
+
+function parseRegexIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['regex', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
 // M55: classifyInputSchemaFirstPropertyDefaultValue(inputSchema) → 'defaulted'|'undefaulted'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -12985,6 +13407,7 @@ function printHelp() {
   process.stdout.write('  policy             Manage execution policy artifacts\n');
   process.stdout.write('  preset             Index capabilities by input schema first property default value presence for planning review\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
+  process.stdout.write('  regex              Index capabilities by input schema first property pattern regex annotation presence for planning review\n');
   process.stdout.write('  request            Index capabilities by input schema primary parameter source for planning review\n');
   process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
   process.stdout.write('  sample             Index capabilities by input schema first property examples presence for planning review\n');
@@ -13632,6 +14055,31 @@ function printCommandHelp(command) {
       'This is a planning aid, not a runtime payload validator, doc-contradiction detector, default-value-type distributor, default-value-cardinality-tier distributor, LLM inferrer, SDK pre-fill generator, or voice-confirmation-policy enforcer; per-FIRST-property default value presence is deterministic stable-output ordering only (NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked).'
     ].join('\n'),
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
+    regex: 'Usage: tusq regex <subcommand>\n  Subcommands: index',
+    'regex index': [
+      'Usage: tusq regex index [--regex <patterned|unpatterned|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --regex <patterned|unpatterned|not_applicable|unknown>',
+      '                                     Filter to a single input schema first property pattern annotation bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'Pattern annotation rule (applied to input_schema.properties[firstKey].pattern when input_schema.type === "object"):',
+      "  patterned      if properties[firstKey].pattern is a string with length >= 1 (WHITESPACE-ONLY-COUNTS-AS-PATTERNED; MUST NOT compile regex)",
+      "  unpatterned    if properties[firstKey].pattern is absent, undefined, or null (null-as-absent per M55/M56/M57/M58 precedent — no warning)",
+      "  not_applicable if input_schema.type is a string but not 'object' OR zero-property object",
+      "  unknown        if input_schema or properties are malformed, firstKey not a plain object, or pattern present non-null but not a string with length >= 1 (non-string OR empty-string)",
+      '',
+      'Bucket iteration order: patterned → unpatterned → not_applicable → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown pattern annotation value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime regex validator, regex compiler, regex-syntax-error detector, doc-contradiction detector, LLM-pattern-inferrer, pattern-format-crossref, or pattern-length-tier-distributor; bucket order is deterministic stable-output ordering only (NOT static-understanding-completeness-ranked, NOT schema-extraction-coverage-ranked, NOT input-validation-strength-ranked, NOT regex-coverage-ranked).'
+    ].join('\n'),
     request: 'Usage: tusq request <subcommand>\n  Subcommands: index',
     'request index': [
       'Usage: tusq request index [--source <path|request_body|query|header|mixed|none|unknown>] [--manifest <path>] [--out <path>] [--json]',

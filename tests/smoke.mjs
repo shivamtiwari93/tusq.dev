@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 42) {
+  if (m45CommandCount !== 43) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 42) {
-    throw new Error(`M46(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 43) {
+    throw new Error(`M46(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 42) {
-    throw new Error(`M47(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 43) {
+    throw new Error(`M47(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 42) {
-    throw new Error(`M48(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 43) {
+    throw new Error(`M48(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 42) {
-    throw new Error(`M49(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 43) {
+    throw new Error(`M49(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 42) {
-    throw new Error(`M50(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 43) {
+    throw new Error(`M50(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 42) {
-    throw new Error(`M51(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 43) {
+    throw new Error(`M51(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 42) {
-    throw new Error(`M52(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 43) {
+    throw new Error(`M52(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 42) {
-    throw new Error(`M53(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 43) {
+    throw new Error(`M53(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 42) {
-    throw new Error(`M54(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 43) {
+    throw new Error(`M54(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 42) {
-    throw new Error(`M55(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 43) {
+    throw new Error(`M55(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8506,8 +8506,8 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 42) {
-    throw new Error(`M56(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  if (m56HelpCommandCount !== 43) {
+    throw new Error(`M56(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
     throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
@@ -8906,11 +8906,11 @@ async function run() {
     }
   }
 
-  // M57(x2): help enumerates 42 commands (M58 adds 'legacy') and includes 'caption' between 'binding' and 'choice'
+  // M57(x2): help enumerates 43 commands (M59 adds 'regex') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 42) {
-    throw new Error(`M57(x2): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
+  if (m57HelpCommandCount !== 43) {
+    throw new Error(`M57(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
     throw new Error(`M57(x2): tusq help must include 'caption' command:\n${m57HelpResult.stdout}`);
@@ -9335,8 +9335,8 @@ async function run() {
   // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
   const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
   const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m58HelpCommandCount !== 42) {
-    throw new Error(`M58(x2): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
+  if (m58HelpCommandCount !== 43) {
+    throw new Error(`M58(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
   }
   if (!m58HelpResult.stdout.includes('  legacy')) {
     throw new Error(`M58(x2): tusq help must include 'legacy' command:\n${m58HelpResult.stdout}`);
@@ -9363,6 +9363,409 @@ async function run() {
   }
 
   await fs.rm(m58TmpDir, { recursive: true, force: true });
+
+  // ── M59: Static Capability Input Schema First Property Pattern Regex Annotation Presence Index ──
+  const m59TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m59-smoke-'));
+
+  // M59 fixture manifest: synthetic capabilities across patterned/unpatterned/not_applicable buckets.
+  // patterned_cap → firstKey.pattern = '^[a-z]+$' (non-empty string → patterned)
+  // unpatterned_cap → firstKey has no pattern field (absent → unpatterned)
+  // not_applicable_cap → input_schema.type = 'array' (non-object → not_applicable, no warning)
+  const m59SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'patterned_cap',
+        description: 'Capability with pattern on first property',
+        method: 'POST',
+        path: '/api/v1/subscriptions',
+        domain: 'subscriptions',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { subscription_id: { type: 'string', pattern: '^[a-z]+$' } },
+          required: ['subscription_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'unpatterned_cap',
+        description: 'Capability with no pattern on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m59SyntheticManifestPath = path.join(m59TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m59SyntheticManifestPath, JSON.stringify(m59SyntheticManifest, null, 2), 'utf8');
+
+  // M59(a): default tusq regex index on synthetic fixture produces correct buckets in closed-enum order
+  const m59DefaultResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--json'], { cwd: m59TmpDir });
+  if (m59DefaultResult.status !== 0) {
+    throw new Error(`M59(a): regex index must exit 0:\nstderr=${m59DefaultResult.stderr}`);
+  }
+  const m59DefaultJson = JSON.parse(m59DefaultResult.stdout);
+  if (!Array.isArray(m59DefaultJson.first_property_pattern_constraints)) {
+    throw new Error(`M59(a): JSON output must have first_property_pattern_constraints[] array:\n${m59DefaultResult.stdout}`);
+  }
+  if (m59DefaultJson.tiers !== undefined || m59DefaultJson.first_property_titles !== undefined || m59DefaultJson.first_property_deprecation_states !== undefined) {
+    throw new Error(`M59(a): JSON output must NOT have tiers/first_property_titles/first_property_deprecation_states; field name must be first_property_pattern_constraints[]:\n${m59DefaultResult.stdout}`);
+  }
+  if (!m59DefaultJson.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'patterned' && e.capabilities.includes('patterned_cap'))) {
+    throw new Error(`M59(a): patterned bucket must include patterned_cap:\n${JSON.stringify(m59DefaultJson.first_property_pattern_constraints)}`);
+  }
+  if (!m59DefaultJson.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unpatterned' && e.capabilities.includes('unpatterned_cap'))) {
+    throw new Error(`M59(a): unpatterned bucket must include unpatterned_cap:\n${JSON.stringify(m59DefaultJson.first_property_pattern_constraints)}`);
+  }
+  if (!m59DefaultJson.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M59(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m59DefaultJson.first_property_pattern_constraints)}`);
+  }
+  if (m59DefaultJson.warnings.length !== 0) {
+    throw new Error(`M59(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m59DefaultJson.warnings)}`);
+  }
+
+  // M59(b): bucket order is patterned → unpatterned → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m59BucketOrder = m59DefaultJson.first_property_pattern_constraints.map((e) => e.input_schema_first_property_pattern);
+  if (m59BucketOrder[0] !== 'patterned' || m59BucketOrder[1] !== 'unpatterned' || m59BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M59(b): bucket order must be patterned→unpatterned→not_applicable; got ${m59BucketOrder}`);
+  }
+
+  // M59(c): --regex patterned filter returns only patterned bucket
+  const m59PatternedResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex', 'patterned', '--json'], { cwd: m59TmpDir });
+  if (m59PatternedResult.status !== 0) {
+    throw new Error(`M59(c): --regex patterned must exit 0:\nstderr=${m59PatternedResult.stderr}`);
+  }
+  const m59PatternedJson = JSON.parse(m59PatternedResult.stdout);
+  if (m59PatternedJson.first_property_pattern_constraints.length !== 1 || m59PatternedJson.first_property_pattern_constraints[0].input_schema_first_property_pattern !== 'patterned') {
+    throw new Error(`M59(c): --regex patterned must return exactly one patterned entry:\n${m59PatternedResult.stdout}`);
+  }
+
+  // M59(d): --regex unpatterned filter returns only unpatterned bucket
+  const m59UnpatteredResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex', 'unpatterned', '--json'], { cwd: m59TmpDir });
+  if (m59UnpatteredResult.status !== 0) {
+    throw new Error(`M59(d): --regex unpatterned must exit 0:\nstderr=${m59UnpatteredResult.stderr}`);
+  }
+  const m59UnpatteredJson = JSON.parse(m59UnpatteredResult.stdout);
+  if (m59UnpatteredJson.first_property_pattern_constraints.length !== 1 || m59UnpatteredJson.first_property_pattern_constraints[0].input_schema_first_property_pattern !== 'unpatterned') {
+    throw new Error(`M59(d): --regex unpatterned must return exactly one unpatterned entry:\n${m59UnpatteredResult.stdout}`);
+  }
+
+  // M59(e): --regex not_applicable filter returns only not_applicable bucket
+  const m59NaResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex', 'not_applicable', '--json'], { cwd: m59TmpDir });
+  if (m59NaResult.status !== 0) {
+    throw new Error(`M59(e): --regex not_applicable must exit 0:\nstderr=${m59NaResult.stderr}`);
+  }
+  const m59NaJson = JSON.parse(m59NaResult.stdout);
+  if (m59NaJson.first_property_pattern_constraints.length !== 1 || m59NaJson.first_property_pattern_constraints[0].input_schema_first_property_pattern !== 'not_applicable') {
+    throw new Error(`M59(e): --regex not_applicable must return exactly one not_applicable entry:\n${m59NaResult.stdout}`);
+  }
+
+  // M59(f): --regex unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m59UnknownAbsentResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex', 'unknown'], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59UnknownAbsentResult.status !== 1 || !m59UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M59(f): --regex unknown on a manifest with no unknown caps must exit 1:\nstdout=${m59UnknownAbsentResult.stdout}\nstderr=${m59UnknownAbsentResult.stderr}`);
+  }
+
+  // M59(g): --regex PATTERNED exits 1 (case-sensitive enforcement)
+  const m59CaseResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex', 'PATTERNED'], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59CaseResult.status !== 1) {
+    throw new Error(`M59(g): --regex PATTERNED uppercase must exit 1 (case-sensitive):\nstdout=${m59CaseResult.stdout}\nstderr=${m59CaseResult.stderr}`);
+  }
+
+  // M59(h): unknown flag exits 1
+  const m59UnknownFlagResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--bogus'], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59UnknownFlagResult.status !== 1) {
+    throw new Error(`M59(h): unknown flag must exit 1:\nstdout=${m59UnknownFlagResult.stdout}\nstderr=${m59UnknownFlagResult.stderr}`);
+  }
+
+  // M59(i): missing manifest exits 1
+  const m59MissingManifestResult = runCli(['regex', 'index', '--manifest', path.join(m59TmpDir, 'nonexistent.json')], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59MissingManifestResult.status !== 1) {
+    throw new Error(`M59(i): missing manifest must exit 1:\nstdout=${m59MissingManifestResult.stdout}\nstderr=${m59MissingManifestResult.stderr}`);
+  }
+
+  // M59(j): malformed JSON exits 1
+  const m59BadJsonPath = path.join(m59TmpDir, 'bad.json');
+  await fs.writeFile(m59BadJsonPath, 'not json', 'utf8');
+  const m59BadJsonResult = runCli(['regex', 'index', '--manifest', m59BadJsonPath], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59BadJsonResult.status !== 1) {
+    throw new Error(`M59(j): malformed JSON manifest must exit 1:\nstdout=${m59BadJsonResult.stdout}\nstderr=${m59BadJsonResult.stderr}`);
+  }
+
+  // M59(k): missing capabilities array exits 1
+  const m59NoCapPath = path.join(m59TmpDir, 'nocap.json');
+  await fs.writeFile(m59NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m59NoCapResult = runCli(['regex', 'index', '--manifest', m59NoCapPath], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59NoCapResult.status !== 1) {
+    throw new Error(`M59(k): missing capabilities array must exit 1:\nstdout=${m59NoCapResult.stdout}\nstderr=${m59NoCapResult.stderr}`);
+  }
+
+  // M59(l): --regex with no value exits 1
+  const m59NoValueResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--regex'], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59NoValueResult.status !== 1) {
+    throw new Error(`M59(l): --regex with no value must exit 1:\nstdout=${m59NoValueResult.stdout}\nstderr=${m59NoValueResult.stderr}`);
+  }
+
+  // M59(m): --out writes to a file (no stdout)
+  const m59OutPath = path.join(m59TmpDir, 'out', 'regex-index.json');
+  const m59OutResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--out', m59OutPath], { cwd: m59TmpDir });
+  if (m59OutResult.status !== 0) {
+    throw new Error(`M59(m): --out must exit 0:\nstderr=${m59OutResult.stderr}`);
+  }
+  if (m59OutResult.stdout !== '') {
+    throw new Error(`M59(m): --out must produce no stdout:\nstdout=${m59OutResult.stdout}`);
+  }
+  const m59OutContent = JSON.parse(await fs.readFile(m59OutPath, 'utf8'));
+  if (!Array.isArray(m59OutContent.first_property_pattern_constraints)) {
+    throw new Error(`M59(m): --out file must contain first_property_pattern_constraints[]:\n${JSON.stringify(m59OutContent)}`);
+  }
+
+  // M59(n): --out inside .tusq/ exits 1
+  const m59TusqOutResult = runCli(['regex', 'index', '--manifest', m59SyntheticManifestPath, '--out', path.join(m59TmpDir, '.tusq', 'regex.json')], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (m59TusqOutResult.status !== 1) {
+    throw new Error(`M59(n): --out inside .tusq/ must exit 1:\nstdout=${m59TusqOutResult.stdout}\nstderr=${m59TusqOutResult.stderr}`);
+  }
+
+  // M59(o): empty capabilities → exit 0, first_property_pattern_constraints: []
+  const m59EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m59EmptyCapPath = path.join(m59TmpDir, 'empty-cap.json');
+  await fs.writeFile(m59EmptyCapPath, JSON.stringify(m59EmptyCapManifest, null, 2), 'utf8');
+  const m59EmptyCapResult = runCli(['regex', 'index', '--manifest', m59EmptyCapPath, '--json'], { cwd: m59TmpDir });
+  if (m59EmptyCapResult.status !== 0) {
+    throw new Error(`M59(o): empty capabilities must exit 0:\nstderr=${m59EmptyCapResult.stderr}`);
+  }
+  const m59EmptyCapJson = JSON.parse(m59EmptyCapResult.stdout);
+  if (!Array.isArray(m59EmptyCapJson.first_property_pattern_constraints) || m59EmptyCapJson.first_property_pattern_constraints.length !== 0) {
+    throw new Error(`M59(o): empty capabilities must produce first_property_pattern_constraints: []:\n${m59EmptyCapResult.stdout}`);
+  }
+
+  // M59(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m59AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'empty_string_pattern', description: 'pattern:""', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: '' } } } }
+    ]
+  };
+  const m59AllWarningsPath = path.join(m59TmpDir, 'all-warnings.json');
+  await fs.writeFile(m59AllWarningsPath, JSON.stringify(m59AllWarningsManifest, null, 2), 'utf8');
+  const m59WarningsResult = runCli(['regex', 'index', '--manifest', m59AllWarningsPath, '--json'], { cwd: m59TmpDir });
+  if (m59WarningsResult.status !== 0) {
+    throw new Error(`M59(p): malformed schemas must exit 0 (not crash):\nstderr=${m59WarningsResult.stderr}`);
+  }
+  const m59WarningsJson = JSON.parse(m59WarningsResult.stdout);
+  if (!Array.isArray(m59WarningsJson.warnings) || m59WarningsJson.warnings.length !== 6) {
+    throw new Error(`M59(p): must produce exactly 6 warnings:\n${JSON.stringify(m59WarningsJson.warnings)}`);
+  }
+  const m59WarningReasons = m59WarningsJson.warnings.map((w) => w.reason);
+  if (!m59WarningReasons.includes('input_schema_field_missing')) throw new Error('M59(p): missing input_schema_field_missing reason');
+  if (!m59WarningReasons.includes('input_schema_field_not_object')) throw new Error('M59(p): missing input_schema_field_not_object reason');
+  if (!m59WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M59(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m59WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M59(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m59WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M59(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m59WarningReasons.includes('input_schema_properties_first_property_pattern_invalid_when_present')) throw new Error('M59(p): missing input_schema_properties_first_property_pattern_invalid_when_present reason');
+  if (!m59WarningsJson.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unknown')) {
+    throw new Error(`M59(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m59WarningsJson.first_property_pattern_constraints)}`);
+  }
+
+  // M59(q): null pattern → unpatterned (null-as-absent precedent from M55/M56/M57/M58, no warning)
+  const m59NullPatternManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_pattern_cap', description: 'pattern:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: null } } } }]
+  };
+  const m59NullPatternPath = path.join(m59TmpDir, 'null-pattern.json');
+  await fs.writeFile(m59NullPatternPath, JSON.stringify(m59NullPatternManifest, null, 2), 'utf8');
+  const m59NullPatternResult = runCli(['regex', 'index', '--manifest', m59NullPatternPath, '--json'], { cwd: m59TmpDir });
+  const m59NullPatternParsed = JSON.parse(m59NullPatternResult.stdout);
+  if (!m59NullPatternParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unpatterned' && e.capabilities.includes('null_pattern_cap'))) {
+    throw new Error(`M59(q): pattern:null must bucket as unpatterned (null-as-absent):\n${m59NullPatternResult.stdout}`);
+  }
+  if (m59NullPatternParsed.warnings.length !== 0) {
+    throw new Error(`M59(q): pattern:null must produce NO warning:\n${JSON.stringify(m59NullPatternParsed.warnings)}`);
+  }
+
+  // M59(r): whitespace-only pattern → patterned (M59-SPECIFIC: WHITESPACE-ONLY-COUNTS-AS-PATTERNED, length >= 1, no trim)
+  const m59WhitespaceManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'whitespace_cap', description: 'pattern:"   "', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: '   ' } } } }]
+  };
+  const m59WhitespacePath = path.join(m59TmpDir, 'whitespace.json');
+  await fs.writeFile(m59WhitespacePath, JSON.stringify(m59WhitespaceManifest, null, 2), 'utf8');
+  const m59WhitespaceResult = runCli(['regex', 'index', '--manifest', m59WhitespacePath, '--json'], { cwd: m59TmpDir });
+  const m59WhitespaceParsed = JSON.parse(m59WhitespaceResult.stdout);
+  if (!m59WhitespaceParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'patterned' && e.capabilities.includes('whitespace_cap'))) {
+    throw new Error(`M59(r): pattern:'   ' whitespace-only must bucket as patterned (whitespace-trim deferred to successor):\n${m59WhitespaceResult.stdout}`);
+  }
+  if (m59WhitespaceParsed.warnings.length !== 0) {
+    throw new Error(`M59(r): whitespace-only pattern must produce NO warning:\n${JSON.stringify(m59WhitespaceParsed.warnings)}`);
+  }
+
+  // M59(s): empty-string pattern → unknown WITH 6th warning code (M59-SPECIFIC: empty string is malformed)
+  const m59EmptyStrManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_str_cap', description: 'pattern:""', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: '' } } } }]
+  };
+  const m59EmptyStrPath = path.join(m59TmpDir, 'empty-str.json');
+  await fs.writeFile(m59EmptyStrPath, JSON.stringify(m59EmptyStrManifest, null, 2), 'utf8');
+  const m59EmptyStrResult = runCli(['regex', 'index', '--manifest', m59EmptyStrPath, '--json'], { cwd: m59TmpDir });
+  const m59EmptyStrParsed = JSON.parse(m59EmptyStrResult.stdout);
+  if (!m59EmptyStrParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unknown' && e.capabilities.includes('empty_str_cap'))) {
+    throw new Error(`M59(s): pattern:'' empty string must bucket as unknown WITH 6th warning code:\n${m59EmptyStrResult.stdout}`);
+  }
+  if (!m59EmptyStrParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_pattern_invalid_when_present')) {
+    throw new Error(`M59(s): pattern:'' must produce warning input_schema_properties_first_property_pattern_invalid_when_present:\n${JSON.stringify(m59EmptyStrParsed.warnings)}`);
+  }
+
+  // M59(t): number pattern → unknown WITH 6th warning code (non-string present non-null)
+  const m59NumberPatternManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'number_pattern_cap', description: 'pattern:123', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: 123 } } } }]
+  };
+  const m59NumberPatternPath = path.join(m59TmpDir, 'number-pattern.json');
+  await fs.writeFile(m59NumberPatternPath, JSON.stringify(m59NumberPatternManifest, null, 2), 'utf8');
+  const m59NumberPatternResult = runCli(['regex', 'index', '--manifest', m59NumberPatternPath, '--json'], { cwd: m59TmpDir });
+  const m59NumberPatternParsed = JSON.parse(m59NumberPatternResult.stdout);
+  if (!m59NumberPatternParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unknown' && e.capabilities.includes('number_pattern_cap'))) {
+    throw new Error(`M59(t): pattern:123 (number) must bucket as unknown:\n${m59NumberPatternResult.stdout}`);
+  }
+  if (!m59NumberPatternParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_pattern_invalid_when_present')) {
+    throw new Error(`M59(t): pattern:123 must produce warning:\n${JSON.stringify(m59NumberPatternParsed.warnings)}`);
+  }
+
+  // M59(u): boolean pattern → unknown WITH 6th warning code (non-string present non-null)
+  const m59BoolPatternManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'bool_pattern_cap', description: 'pattern:true', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: true } } } }]
+  };
+  const m59BoolPatternPath = path.join(m59TmpDir, 'bool-pattern.json');
+  await fs.writeFile(m59BoolPatternPath, JSON.stringify(m59BoolPatternManifest, null, 2), 'utf8');
+  const m59BoolPatternResult = runCli(['regex', 'index', '--manifest', m59BoolPatternPath, '--json'], { cwd: m59TmpDir });
+  const m59BoolPatternParsed = JSON.parse(m59BoolPatternResult.stdout);
+  if (!m59BoolPatternParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unknown' && e.capabilities.includes('bool_pattern_cap'))) {
+    throw new Error(`M59(u): pattern:true (boolean) must bucket as unknown:\n${m59BoolPatternResult.stdout}`);
+  }
+  if (!m59BoolPatternParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_pattern_invalid_when_present')) {
+    throw new Error(`M59(u): pattern:true must produce warning:\n${JSON.stringify(m59BoolPatternParsed.warnings)}`);
+  }
+
+  // M59(v): array pattern → unknown WITH 6th warning code (non-string present non-null)
+  const m59ArrayPatternManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'array_pattern_cap', description: 'pattern:["^foo$"] (array)', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', pattern: ['^foo$'] } } } }]
+  };
+  const m59ArrayPatternPath = path.join(m59TmpDir, 'array-pattern.json');
+  await fs.writeFile(m59ArrayPatternPath, JSON.stringify(m59ArrayPatternManifest, null, 2), 'utf8');
+  const m59ArrayPatternResult = runCli(['regex', 'index', '--manifest', m59ArrayPatternPath, '--json'], { cwd: m59TmpDir });
+  const m59ArrayPatternParsed = JSON.parse(m59ArrayPatternResult.stdout);
+  if (!m59ArrayPatternParsed.first_property_pattern_constraints.some((e) => e.input_schema_first_property_pattern === 'unknown' && e.capabilities.includes('array_pattern_cap'))) {
+    throw new Error(`M59(v): pattern:['^foo$'] (array) must bucket as unknown:\n${m59ArrayPatternResult.stdout}`);
+  }
+  if (!m59ArrayPatternParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_pattern_invalid_when_present')) {
+    throw new Error(`M59(v): pattern:['^foo$'] must produce warning:\n${JSON.stringify(m59ArrayPatternParsed.warnings)}`);
+  }
+
+  // M59(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'pattern_constraint','not_applicable','unknown'}
+  const m59AggKeyResult = runCli(['regex', 'index', '--manifest', m59AllWarningsPath, '--json'], { cwd: m59TmpDir });
+  const m59AggKeyParsed = JSON.parse(m59AggKeyResult.stdout);
+  const m59ValidAggKeys = new Set(['pattern_constraint', 'not_applicable', 'unknown']);
+  for (const entry of m59AggKeyParsed.first_property_pattern_constraints) {
+    if (!m59ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M59(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m59AggPatterned = m59DefaultJson.first_property_pattern_constraints.find((e) => e.input_schema_first_property_pattern === 'patterned');
+  if (!m59AggPatterned || m59AggPatterned.aggregation_key !== 'pattern_constraint') {
+    throw new Error(`M59(w): patterned bucket must have aggregation_key 'pattern_constraint':\n${JSON.stringify(m59AggPatterned)}`);
+  }
+  const m59AggUnpatterned = m59DefaultJson.first_property_pattern_constraints.find((e) => e.input_schema_first_property_pattern === 'unpatterned');
+  if (!m59AggUnpatterned || m59AggUnpatterned.aggregation_key !== 'pattern_constraint') {
+    throw new Error(`M59(w): unpatterned bucket must have aggregation_key 'pattern_constraint':\n${JSON.stringify(m59AggUnpatterned)}`);
+  }
+  const m59AggNA = m59DefaultJson.first_property_pattern_constraints.find((e) => e.input_schema_first_property_pattern === 'not_applicable');
+  if (!m59AggNA || m59AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M59(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m59AggNA)}`);
+  }
+
+  // M59(x): non-persistence — manifest file not mutated
+  const m59ManifestAfter = JSON.parse(await fs.readFile(m59SyntheticManifestPath, 'utf8'));
+  for (const cap of m59ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_pattern')) {
+      throw new Error(`M59(x): input_schema_first_property_pattern must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M59(x2): help enumerates 43 commands (M59 adds 'regex') and includes 'regex' between 'redaction' and 'request'
+  const m59HelpResult = runCli(['help'], { cwd: m59TmpDir });
+  const m59HelpCommandCount = (m59HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m59HelpCommandCount !== 43) {
+    throw new Error(`M59(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
+  }
+  if (!m59HelpResult.stdout.includes('  regex')) {
+    throw new Error(`M59(x2): tusq help must include 'regex' command:\n${m59HelpResult.stdout}`);
+  }
+  // Verify ordering: redaction before regex before request
+  const m59HelpLines = m59HelpResult.stdout.split('\n');
+  const m59RedactionIdx = m59HelpLines.findIndex((l) => l.startsWith('  redaction'));
+  const m59RegexIdx = m59HelpLines.findIndex((l) => l.startsWith('  regex'));
+  const m59RequestIdx = m59HelpLines.findIndex((l) => l.startsWith('  request'));
+  if (!(m59RedactionIdx < m59RegexIdx && m59RegexIdx < m59RequestIdx)) {
+    throw new Error(`M59(x2): 'regex' must appear between 'redaction' and 'request' in help:\n${m59HelpResult.stdout}`);
+  }
+
+  // M59(x3): regex index --help includes planning-aid framing
+  const m59IndexHelpResult = runCli(['regex', 'index', '--help'], { cwd: m59TmpDir });
+  if (!m59IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M59(x3): regex index help must include planning-aid framing:\n${m59IndexHelpResult.stdout}`);
+  }
+
+  // M59(x4): unknown subcommand exits 1
+  const m59UnknownSubCmd = runCli(['regex', 'bogusub'], { cwd: m59TmpDir, expectedStatus: 1 });
+  if (!m59UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m59UnknownSubCmd.stdout !== '') {
+    throw new Error(`M59(x4): unknown subcommand must exit 1:\nstdout=${m59UnknownSubCmd.stdout}\nstderr=${m59UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m59TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -9831,7 +10234,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 42) {
+  if (m44CommandCount !== 43) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -10369,7 +10772,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 42) {
+  if (m43CommandCount !== 43) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -10918,7 +11321,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 42) {
+  if (m42CommandCount !== 43) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -11464,7 +11867,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 42) {
+  if (m41CommandCount !== 43) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -12019,7 +12422,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 42) {
+  if (m40CommandCount !== 43) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -12491,7 +12894,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 42) {
+  if (m39CommandCount !== 43) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -12962,7 +13365,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 42) {
+  if (m38CommandCount !== 43) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -13445,7 +13848,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 42) {
+  if (m37CommandCount !== 43) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -13903,7 +14306,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 42) {
+  if (m36CommandCount !== 43) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -14296,7 +14699,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 42) {
+  if (m35CommandCount !== 43) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 

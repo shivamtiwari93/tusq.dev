@@ -837,6 +837,71 @@ tusq items index --items-type integer --json
 tusq items index --out items-type-index.json
 ```
 
+## `tusq regex index`
+
+Emit a deterministic, per-first-input-property-pattern-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].pattern` is a non-empty string (`patterned`), absent or `null` (`unpatterned`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime regex validator, regex compiler, regex-syntax-error detector, doc-contradiction detector, LLM-pattern-inferrer, or pattern-format-crossref**.
+
+**M59-vs-M53 distinctness:** `tusq hint index` (M53) reads `input_schema.properties[firstKey].format` (JSON-Schema's closed-vocabulary string-format hint such as `email`, `uri`, `date-time`). `tusq regex index` (M59) reads `input_schema.properties[firstKey].pattern` (JSON-Schema's open-ended regex string keyword). The two commands are read-only-invariant peers reading two orthogonal JSON-Schema string-validation primitives under two distinct nouns; neither alters the other's output bytes. The M53 `format` axis is a closed-vocabulary semantic hint; the M59 `pattern` axis is an open-ended regex constraint; an operator may set both, either, or neither on the same property.
+
+```bash
+tusq regex index [--regex <patterned|unpatterned|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--regex <patterned\|unpatterned\|not_applicable\|unknown>` | all buckets | Filter to a single pattern annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].pattern` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `patterned` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].pattern` is a string with `length >= 1` (WHITESPACE-ONLY-COUNTS-AS-PATTERNED — the classifier MUST NOT compile the regex or trim whitespace) |
+| `unpatterned` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].pattern` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57/M58 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].pattern` present non-null but not a string with length >= 1 (non-string OR empty-string `''`) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_pattern_invalid_when_present` ← M59 axis-specific code; covers BOTH non-string AND empty-string `pattern` malformations under a single consolidated code
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown pattern value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `patterned → unpatterned → not_applicable → unknown` (deterministic stable-output convention only — NOT static-understanding-completeness-ranked, NOT schema-extraction-coverage-ranked, NOT input-validation-strength-ranked, NOT regex-coverage-ranked, NOT pre-flight-validation-readiness-ranked, NOT framework-detection-confidence-ranked, NOT route-extraction-completeness-ranked, NOT auth-detection-completeness-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_pattern` is NEVER written into the manifest.
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- The classifier MUST NOT compile the regex, MUST NOT validate regex syntax, and MUST NOT cross-reference the pattern against the M53 `.format` annotation.
+- Per-property pattern annotation beyond the FIRST is NOT walked (reserved for `M-Regex-All-Properties-Pattern-Index-1`).
+- Whitespace-only patterns (`'   '`) are classified as `patterned` at this milestone (string length >= 1 is the only check; whitespace-trim normalization deferred to `M-Regex-Pattern-Whitespace-Distribution-1`).
+- Empty-string patterns (`''`) are classified as `unknown` with the 6th warning code (EMPTY-STRING IS-MALFORMED, deliberate alignment with M57's `title:''` → unknown precedent).
+
+```bash
+# All pattern annotation buckets (human-readable)
+tusq regex index
+
+# All buckets (JSON)
+tusq regex index --json
+
+# Patterned capabilities only (pattern is a non-empty string on first property)
+tusq regex index --regex patterned --json
+
+# Unpatterned capabilities (pattern absent, undefined, or null on first property)
+tusq regex index --regex unpatterned --json
+
+# Write to file
+tusq regex index --out regex-index.json
+```
+
 ## `tusq legacy index`
 
 Emit a deterministic, per-first-input-property-deprecated-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].deprecated` is boolean `true` (`deprecated`), boolean `false` or absent or `null` (`active`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime integration-readiness ranker, sunset-priority ranker, side-effect-emitter triage tool, webhook-migration planner, billing-integration stability assessor, queue-job deprecation scheduler, analytics-event sunset planner, or CRM-sync lifecycle-stage classifier**.
