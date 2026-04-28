@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_295646f00d65038f (role=qa, run_8024d2c7f8ee0f10, M59 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_faf61809c4ae34cb, role=dev, HEAD a8616be) for run_8024d2c7f8ee0f10 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M59 does not modify manifest format — `input_schema_first_property_pattern` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_5943645cb90ffa81 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_ENUM` (frozen Set: patterned/unpatterned/not_applicable/unknown) at `src/cli.js:562`; `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_AGGREGATION_KEY_ENUM` (frozen Set: pattern_constraint/not_applicable/unknown) at `src/cli.js:566`; `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_BUCKET_ORDER` (frozen array: patterned/unpatterned/not_applicable) at `src/cli.js:573`. Guards `_guardInputSchemaFirstPropertyPatternBucketKey` at `src/cli.js:9128`, `_guardInputSchemaFirstPropertyPatternAggregationKey` at `src/cli.js:9135`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyPattern` at `src/cli.js:9163–9202` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57/M58); pattern absent/!hasOwnProperty/null/undefined → unpatterned (null-as-absent, no warning — mirrors M55/M56/M57/M58; `Object.prototype.hasOwnProperty.call(firstVal, 'pattern')` idiom used); string with length >= 1 → patterned (WHITESPACE-ONLY-COUNTS-AS-PATTERNED, MUST NOT trim, no warning); empty string (length === 0) OR non-string → unknown WITH `input_schema_properties_first_property_pattern_invalid_when_present` (SIXTH FROZEN CODE — consolidates BOTH non-string AND empty-string malformations under one code, mirrors M57); classifier MUST NOT compile, validate, or otherwise interpret the regex string. PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 43. `regex` between `redaction` and `request` confirmed (redaction(r=114,e=101,d=100) < regex(r=114,e=101,g=103) at pos 2; regex(r=114,e=101,g=103) < request(r=114,e=101,q=113) at pos 2). `cmdRegex` at `src/cli.js:9379`; `cmdRegexIndex` at `src/cli.js:9396`; `parseRegexIndexArgs` at `src/cli.js:9487`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js regex index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_pattern_constraints[]` with `unpatterned` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"pattern_constraint"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `patterned` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: unpatterned < not_applicable (patterned→unpatterned→not_applicable→unknown convention with patterned absent). PASS.
+
+**7. Case-sensitive filter enforcement:** `--regex PATTERNED` → exit 1, `Unknown input schema first property pattern state: PATTERNED` (case-sensitive enforcement confirmed). `--regex patterned` → exit 1, `No capabilities found for input schema first property pattern state: patterned` (absent-bucket enforcement confirmed). PASS.
+
+**8. M59-specific rules:** WHITESPACE-ONLY-COUNTS-AS-PATTERNED: pattern `'   '` (spaces-only string, length >= 1) → `patterned` (no warning; no trim; mirrors M57 title-whitespace precedent). EMPTY-STRING IS-MALFORMED: pattern `''` → `unknown` + 6th code (deliberate alignment with M57's empty-string-malformed precedent; empty-string carries no regex constraint intent). NULL-AS-ABSENT: pattern `null` → `unpatterned` (no warning; mirrors M55/M56/M57/M58 null-as-absent but maps to `unpatterned` as JSON-Schema pattern default is absent). MUST-NOT-COMPILE: classifier MUST NOT compile, validate, or interpret the regex. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_pattern_invalid_when_present` at `src/cli.js:9265`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 50 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (50 scenarios)`). Scenario 50 (`input-schema-first-property-pattern-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. All 18 M59 ROADMAP checkboxes [x]:** All M59 items marked complete in `.planning/ROADMAP.md`. PASS.
+
+**13. Acceptance criteria:** REQ-840–REQ-864 added (25 new REQs). Total: 864 acceptance criteria (REQ-001–REQ-864). All pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_89a29b5f1eb2186e (role=qa, run_68913f73e2cc30a6, M58 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_729ead92ab56d17f, role=dev, HEAD 78471e7) for run_68913f73e2cc30a6 independently rather than rubber-stamping it.
