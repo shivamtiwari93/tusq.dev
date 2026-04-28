@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 30) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 30 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 31) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 31 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 30) {
-    throw new Error(`M46(x): tusq help must enumerate 30 commands (M46 adds 'strictness'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 31) {
+    throw new Error(`M46(x): tusq help must enumerate 31 commands (M47 adds 'parameter'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4337,6 +4337,523 @@ async function run() {
   }
 
   await fs.rm(m46TmpDir, { recursive: true, force: true });
+
+  // ── M47: Static Capability Input Schema Property Count Tier Index Export ─────────
+  const m47TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m47-smoke-'));
+
+  // M47 fixture manifest: capabilities across none/low/medium/high/unknown input_schema_property_count_tier buckets.
+  // Declared order:
+  //   get_no_props (none — input_schema={type:'object',properties:{},required:[]}, gated — unapproved)
+  //   get_low (low — 1 property, read+public+approved)
+  //   delete_low_destructive (low — 2 properties, destructive+restricted+approved — cross-axis flags)
+  //   post_medium (medium — 3 properties, write+internal+approved)
+  //   put_high (high — 6 properties, write+confidential+approved — cross-axis flags)
+  //   no_schema_cap (unknown — missing input_schema → input_schema_field_missing)
+  //   bad_schema_cap (unknown — input_schema='a string' → input_schema_field_not_object)
+  //   no_props_field_cap (unknown — input_schema={type:'object'} missing properties → input_schema_properties_field_missing)
+  //   null_props_cap (unknown — input_schema={type:'object',properties:null} → input_schema_properties_field_not_object)
+  //   invalid_desc_cap (unknown — properties contains null descriptor → input_schema_properties_field_contains_invalid_descriptor)
+  const m47Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'get_no_props',
+        description: 'Get with no input properties',
+        method: 'GET',
+        path: '/api/v1/noprops',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: {}, required: [] }
+        // → none bucket (0 properties)
+      },
+      {
+        name: 'get_low',
+        description: 'Get with one input property',
+        method: 'GET',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' } }, required: ['id'] }
+        // → low bucket (1 property)
+      },
+      {
+        name: 'delete_low_destructive',
+        description: 'Delete with two input properties',
+        method: 'DELETE',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string', source: 'path' }, force: { type: 'boolean', source: 'query' } }, required: ['id'] }
+        // → low bucket (2 properties, destructive + restricted)
+      },
+      {
+        name: 'post_medium',
+        description: 'Create with three input properties',
+        method: 'POST',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { name: { type: 'string' }, price: { type: 'number' }, category: { type: 'string' } }, required: ['name'] }
+        // → medium bucket (3 properties)
+      },
+      {
+        name: 'put_high',
+        description: 'Update with six input properties',
+        method: 'PUT',
+        path: '/api/v1/items/:id',
+        domain: 'items',
+        side_effect_class: 'write',
+        sensitivity_class: 'confidential',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, price: { type: 'number' }, category: { type: 'string' }, tags: { type: 'array' }, active: { type: 'boolean' } }, required: ['id'] }
+        // → high bucket (6 properties, confidential)
+      },
+      {
+        name: 'no_schema_cap',
+        description: 'Missing input schema',
+        method: 'GET',
+        path: '/api/v1/noschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // input_schema field absent → input_schema_field_missing
+      },
+      {
+        name: 'bad_schema_cap',
+        description: 'Bad input schema type',
+        method: 'GET',
+        path: '/api/v1/badschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: 'a string'
+        // input_schema is not an object → input_schema_field_not_object
+      },
+      {
+        name: 'no_props_field_cap',
+        description: 'Missing properties field',
+        method: 'GET',
+        path: '/api/v1/nopropsfield',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object' }
+        // input_schema.properties absent → input_schema_properties_field_missing
+      },
+      {
+        name: 'null_props_cap',
+        description: 'Null properties field',
+        method: 'GET',
+        path: '/api/v1/nullprops',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: null }
+        // input_schema.properties is null → input_schema_properties_field_not_object
+      },
+      {
+        name: 'invalid_desc_cap',
+        description: 'Invalid property descriptor',
+        method: 'GET',
+        path: '/api/v1/invaliddesc',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'object', properties: { id: null } }
+        // properties contains null descriptor → input_schema_properties_field_contains_invalid_descriptor
+      }
+    ]
+  };
+  const m47ManifestPath = path.join(m47TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m47ManifestPath, JSON.stringify(m47Manifest, null, 2), 'utf8');
+
+  // M47(a): default tusq parameter index produces exit 0 and per-bucket entries in closed-enum order
+  const m47DefaultResult = runCli(['parameter', 'index', '--manifest', m47ManifestPath], { cwd: m47TmpDir });
+  if (!m47DefaultResult.stdout.includes('[none]') || !m47DefaultResult.stdout.includes('[low]') || !m47DefaultResult.stdout.includes('[medium]') || !m47DefaultResult.stdout.includes('[high]') || !m47DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M47(a): default index must include all present buckets:\n${m47DefaultResult.stdout}`);
+  }
+  if (!m47DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M47(a): default index must include planning-aid framing:\n${m47DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: none < low < medium < high < unknown
+  const m47DefaultLines = m47DefaultResult.stdout.split('\n');
+  const m47NonePos = m47DefaultLines.findIndex((l) => l === '[none]');
+  const m47LowPos = m47DefaultLines.findIndex((l) => l === '[low]');
+  const m47MediumPos = m47DefaultLines.findIndex((l) => l === '[medium]');
+  const m47HighPos = m47DefaultLines.findIndex((l) => l === '[high]');
+  const m47UnknownPos = m47DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m47NonePos < m47LowPos && m47LowPos < m47MediumPos && m47MediumPos < m47HighPos && m47HighPos < m47UnknownPos)) {
+    throw new Error(`M47(a): bucket order must be none < low < medium < high < unknown; got positions none=${m47NonePos} low=${m47LowPos} medium=${m47MediumPos} high=${m47HighPos} unknown=${m47UnknownPos}`);
+  }
+
+  // M47(b): --json output has all 8 per-bucket fields, top-level shape, tiers[] field name, and warnings[] always present
+  const m47Json1 = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47IndexJson = JSON.parse(m47Json1.stdout);
+  if (!Array.isArray(m47IndexJson.tiers) || m47IndexJson.tiers.length === 0) {
+    throw new Error(`M47(b): JSON output must have tiers[] array with at least one entry:\n${m47Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m47IndexJson, 'strictnesses')) {
+    throw new Error(`M47(b): JSON output must NOT have a strictnesses[] field (that is M46); field name must be tiers[]:\n${m47Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m47IndexJson, 'items_types')) {
+    throw new Error(`M47(b): JSON output must NOT have an items_types[] field (that is M45); field name must be tiers[]:\n${m47Json1.stdout}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m47IndexJson, 'warnings') || !Array.isArray(m47IndexJson.warnings)) {
+    throw new Error(`M47(b): JSON output must have top-level warnings[] array:\n${m47Json1.stdout}`);
+  }
+  // Validate all 8 per-bucket fields
+  for (const entry of m47IndexJson.tiers) {
+    const required8 = ['input_schema_property_count_tier', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+    for (const field of required8) {
+      if (!Object.prototype.hasOwnProperty.call(entry, field)) {
+        throw new Error(`M47(b): per-bucket entry missing required field '${field}':\n${JSON.stringify(entry)}`);
+      }
+    }
+  }
+
+  // M47(c): --tier none returns single matching bucket (no warning — none is a valid named bucket, not a malformation)
+  const m47NoneResult = runCli(['parameter', 'index', '--tier', 'none', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47NoneJson = JSON.parse(m47NoneResult.stdout);
+  if (m47NoneJson.tiers.length !== 1 || m47NoneJson.tiers[0].input_schema_property_count_tier !== 'none') {
+    throw new Error(`M47(c): --tier none must return single none bucket:\n${m47NoneResult.stdout}`);
+  }
+  if (m47NoneJson.tiers[0].aggregation_key !== 'tier') {
+    throw new Error(`M47(c): none bucket must have aggregation_key 'tier':\n${JSON.stringify(m47NoneJson.tiers[0])}`);
+  }
+  // none bucket emits NO warning (none = 0 properties = a valid named bucket, not a malformation)
+  if (m47NoneJson.warnings.some((w) => w.capability === 'get_no_props')) {
+    throw new Error(`M47(c): get_no_props (none bucket) must NOT produce a warning:\n${JSON.stringify(m47NoneJson.warnings)}`);
+  }
+
+  // M47(d): --tier low returns single matching bucket with correct cross-axis flags
+  const m47LowResult = runCli(['parameter', 'index', '--tier', 'low', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47LowJson = JSON.parse(m47LowResult.stdout);
+  if (m47LowJson.tiers.length !== 1 || m47LowJson.tiers[0].input_schema_property_count_tier !== 'low') {
+    throw new Error(`M47(d): --tier low must return single low bucket:\n${m47LowResult.stdout}`);
+  }
+  if (m47LowJson.tiers[0].aggregation_key !== 'tier') {
+    throw new Error(`M47(d): low bucket must have aggregation_key 'tier':\n${JSON.stringify(m47LowJson.tiers[0])}`);
+  }
+  // delete_low_destructive is destructive + restricted → both flags true on the low bucket
+  if (!m47LowJson.tiers[0].has_destructive_side_effect) {
+    throw new Error(`M47(d): low bucket must have has_destructive_side_effect=true (delete_low_destructive is destructive):\n${JSON.stringify(m47LowJson.tiers[0])}`);
+  }
+  if (!m47LowJson.tiers[0].has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M47(d): low bucket must have has_restricted_or_confidential_sensitivity=true (delete_low_destructive is restricted):\n${JSON.stringify(m47LowJson.tiers[0])}`);
+  }
+
+  // M47(e): --tier medium returns single matching bucket
+  const m47MediumResult = runCli(['parameter', 'index', '--tier', 'medium', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47MediumJson = JSON.parse(m47MediumResult.stdout);
+  if (m47MediumJson.tiers.length !== 1 || m47MediumJson.tiers[0].input_schema_property_count_tier !== 'medium') {
+    throw new Error(`M47(e): --tier medium must return single medium bucket:\n${m47MediumResult.stdout}`);
+  }
+  if (m47MediumJson.tiers[0].aggregation_key !== 'tier') {
+    throw new Error(`M47(e): medium bucket must have aggregation_key 'tier':\n${JSON.stringify(m47MediumJson.tiers[0])}`);
+  }
+
+  // M47(f): --tier high returns single matching bucket with confidential cross-axis flag
+  const m47HighResult = runCli(['parameter', 'index', '--tier', 'high', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47HighJson = JSON.parse(m47HighResult.stdout);
+  if (m47HighJson.tiers.length !== 1 || m47HighJson.tiers[0].input_schema_property_count_tier !== 'high') {
+    throw new Error(`M47(f): --tier high must return single high bucket:\n${m47HighResult.stdout}`);
+  }
+  if (m47HighJson.tiers[0].aggregation_key !== 'tier') {
+    throw new Error(`M47(f): high bucket must have aggregation_key 'tier':\n${JSON.stringify(m47HighJson.tiers[0])}`);
+  }
+  if (!m47HighJson.tiers[0].has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M47(f): high bucket must have has_restricted_or_confidential_sensitivity=true (put_high is confidential):\n${JSON.stringify(m47HighJson.tiers[0])}`);
+  }
+
+  // M47(g): --tier NONE (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m47UpperResult = runCli(['parameter', 'index', '--tier', 'NONE', '--manifest', m47ManifestPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47UpperResult.stderr.includes('Unknown input schema property count tier: NONE') || m47UpperResult.stdout !== '') {
+    throw new Error(`M47(g): uppercase --tier NONE must exit 1 with error on stderr, empty stdout:\nstdout=${m47UpperResult.stdout}\nstderr=${m47UpperResult.stderr}`);
+  }
+
+  // M47(h): --tier Low (mixed-case) exits 1
+  const m47MixedResult = runCli(['parameter', 'index', '--tier', 'Low', '--manifest', m47ManifestPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47MixedResult.stderr.includes('Unknown input schema property count tier: Low') || m47MixedResult.stdout !== '') {
+    throw new Error(`M47(h): mixed-case --tier must exit 1:\nstdout=${m47MixedResult.stdout}\nstderr=${m47MixedResult.stderr}`);
+  }
+
+  // M47(i): --tier xyz (unknown value) exits 1
+  const m47UnknownVal = runCli(['parameter', 'index', '--tier', 'xyz', '--manifest', m47ManifestPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47UnknownVal.stderr.includes('Unknown input schema property count tier: xyz') || m47UnknownVal.stdout !== '') {
+    throw new Error(`M47(i): unknown --tier xyz must exit 1:\nstdout=${m47UnknownVal.stdout}\nstderr=${m47UnknownVal.stderr}`);
+  }
+
+  // M47(j): missing manifest exits 1 with error on stderr and empty stdout
+  const m47MissingManifest = runCli(['parameter', 'index', '--manifest', '/nonexistent/tusq.manifest.json'], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47MissingManifest.stderr.includes('Manifest not found') || m47MissingManifest.stdout !== '') {
+    throw new Error(`M47(j): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m47MissingManifest.stdout}\nstderr=${m47MissingManifest.stderr}`);
+  }
+
+  // M47(k): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m47BadJsonPath = path.join(m47TmpDir, 'bad.json');
+  await fs.writeFile(m47BadJsonPath, 'not json', 'utf8');
+  const m47MalformedManifest = runCli(['parameter', 'index', '--manifest', m47BadJsonPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47MalformedManifest.stderr.includes('Invalid manifest JSON') || m47MalformedManifest.stdout !== '') {
+    throw new Error(`M47(k): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m47MalformedManifest.stdout}\nstderr=${m47MalformedManifest.stderr}`);
+  }
+
+  // M47(l): manifest missing capabilities array exits 1
+  const m47NoCapPath = path.join(m47TmpDir, 'nocap.json');
+  await fs.writeFile(m47NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m47NoCapManifest = runCli(['parameter', 'index', '--manifest', m47NoCapPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47NoCapManifest.stderr.includes('missing capabilities array') || m47NoCapManifest.stdout !== '') {
+    throw new Error(`M47(l): missing capabilities must exit 1 with error on stderr, empty stdout:\nstdout=${m47NoCapManifest.stdout}\nstderr=${m47NoCapManifest.stderr}`);
+  }
+
+  // M47(m): unknown flag exits 1 with error on stderr and empty stdout
+  const m47UnknownFlag = runCli(['parameter', 'index', '--unknown-flag', '--manifest', m47ManifestPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47UnknownFlag.stderr.includes('Unknown flag: --unknown-flag') || m47UnknownFlag.stdout !== '') {
+    throw new Error(`M47(m): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m47UnknownFlag.stdout}\nstderr=${m47UnknownFlag.stderr}`);
+  }
+
+  // M47(n): --tier with no value exits 1
+  const m47NoValue = runCli(['parameter', 'index', '--tier', '--manifest', m47ManifestPath], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47NoValue.stderr.includes('Missing value for --tier') || m47NoValue.stdout !== '') {
+    throw new Error(`M47(n): --tier with no value must exit 1:\nstdout=${m47NoValue.stdout}\nstderr=${m47NoValue.stderr}`);
+  }
+
+  // M47(o): --out <valid path> writes correctly and stdout is empty
+  const m47OutPath = path.join(m47TmpDir, 'parameter-out.json');
+  const m47OutResult = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--out', m47OutPath], { cwd: m47TmpDir });
+  if (m47OutResult.stdout !== '') {
+    throw new Error(`M47(o): --out must produce empty stdout:\nstdout=${m47OutResult.stdout}`);
+  }
+  const m47OutContent = JSON.parse(await fs.readFile(m47OutPath, 'utf8'));
+  if (!Array.isArray(m47OutContent.tiers)) {
+    throw new Error(`M47(o): --out file must contain valid JSON with tiers[] array:\n${JSON.stringify(m47OutContent)}`);
+  }
+
+  // M47(p): --out .tusq/ path rejected with correct message and empty stdout
+  const m47TusqOutResult = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--out', '.tusq/parameter.json'], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m47TusqOutResult.stdout !== '') {
+    throw new Error(`M47(p): --out .tusq/ must exit 1 with correct message:\nstdout=${m47TusqOutResult.stdout}\nstderr=${m47TusqOutResult.stderr}`);
+  }
+
+  // M47(q): --json outputs valid JSON with tiers[] and warnings[] present (canonical express fixture)
+  // Express: get_users_users → none (0 props); get_users_api_v1_users_id, post_users_users → low (1 prop each)
+  const m47ExpressResult = runCli(['parameter', 'index', '--manifest', 'tests/fixtures/express-sample/tusq.manifest.json', '--json'], { cwd: process.cwd() });
+  const m47ExpressJson = JSON.parse(m47ExpressResult.stdout);
+  if (!Array.isArray(m47ExpressJson.tiers)) {
+    throw new Error(`M47(q): express fixture JSON must have tiers[] array:\n${m47ExpressResult.stdout}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m47ExpressJson, 'warnings') || !Array.isArray(m47ExpressJson.warnings)) {
+    throw new Error(`M47(q): express fixture JSON must have warnings[] array:\n${m47ExpressResult.stdout}`);
+  }
+  if (m47ExpressJson.warnings.length !== 0) {
+    throw new Error(`M47(q): express fixture must produce zero warnings (all caps have valid input_schema with properties):\n${JSON.stringify(m47ExpressJson.warnings)}`);
+  }
+  // Express fixture: get_users_users → none; get_users_api_v1_users_id + post_users_users → low
+  const m47NoneBucket = m47ExpressJson.tiers.find((e) => e.input_schema_property_count_tier === 'none');
+  if (!m47NoneBucket || !m47NoneBucket.capabilities.includes('get_users_users')) {
+    throw new Error(`M47(q): express fixture none bucket must include get_users_users:\n${JSON.stringify(m47ExpressJson.tiers)}`);
+  }
+  const m47LowBucket = m47ExpressJson.tiers.find((e) => e.input_schema_property_count_tier === 'low');
+  if (!m47LowBucket || !m47LowBucket.capabilities.includes('get_users_api_v1_users_id') || !m47LowBucket.capabilities.includes('post_users_users')) {
+    throw new Error(`M47(q): express fixture low bucket must include get_users_api_v1_users_id and post_users_users:\n${JSON.stringify(m47ExpressJson.tiers)}`);
+  }
+
+  // M47(r): determinism — three consecutive runs produce byte-identical stdout
+  const m47Det1 = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47Det2 = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47Det3 = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  if (m47Det1.stdout !== m47Det2.stdout || m47Det2.stdout !== m47Det3.stdout) {
+    throw new Error(`M47(r): parameter index --json must be byte-identical across three consecutive runs`);
+  }
+
+  // M47(s): manifest mtime + content invariant pre/post index run + non-persistence (input_schema_property_count_tier not written)
+  const m47ManifestBefore = await fs.readFile(m47ManifestPath, 'utf8');
+  const m47StatBefore = await fs.stat(m47ManifestPath);
+  runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47ManifestAfter = await fs.readFile(m47ManifestPath, 'utf8');
+  const m47StatAfter = await fs.stat(m47ManifestPath);
+  if (m47ManifestBefore !== m47ManifestAfter) {
+    throw new Error(`M47(s): manifest must not be mutated by parameter index`);
+  }
+  if (m47StatBefore.mtimeMs !== m47StatAfter.mtimeMs) {
+    throw new Error(`M47(s): manifest mtime must not change after parameter index run`);
+  }
+  const m47ManifestParsed = JSON.parse(m47ManifestAfter);
+  for (const cap of m47ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_property_count_tier')) {
+      throw new Error(`M47(s): input_schema_property_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M47(t): empty-capabilities manifest emits documented human line and tiers: [] in JSON, warnings: [] in JSON
+  const m47EmptyManifestPath = path.join(m47TmpDir, 'empty.json');
+  await fs.writeFile(m47EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T00:00:00.000Z', capabilities: [] }), 'utf8');
+  const m47EmptyHuman = runCli(['parameter', 'index', '--manifest', m47EmptyManifestPath], { cwd: m47TmpDir });
+  if (!m47EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M47(t): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m47EmptyHuman.stdout}`);
+  }
+  const m47EmptyJson = runCli(['parameter', 'index', '--manifest', m47EmptyManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47EmptyJsonParsed = JSON.parse(m47EmptyJson.stdout);
+  if (!Array.isArray(m47EmptyJsonParsed.tiers) || m47EmptyJsonParsed.tiers.length !== 0) {
+    throw new Error(`M47(t): empty capabilities (JSON) must have tiers: []:\n${m47EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(m47EmptyJsonParsed.warnings) || m47EmptyJsonParsed.warnings.length !== 0) {
+    throw new Error(`M47(t): empty capabilities (JSON) must have warnings: []:\n${m47EmptyJson.stdout}`);
+  }
+
+  // M47(u): malformed input_schema capabilities produce all 5 warning reason codes in warnings[] and on stderr
+  const m47AllWarnings = runCli(['parameter', 'index', '--manifest', m47ManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47AllWarningsJson = JSON.parse(m47AllWarnings.stdout);
+  const m47ExpectedReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_properties_field_missing',
+    'input_schema_properties_field_not_object',
+    'input_schema_properties_field_contains_invalid_descriptor'
+  ];
+  for (const reason of m47ExpectedReasons) {
+    if (!m47AllWarningsJson.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M47(u): warnings[] must include reason '${reason}':\n${JSON.stringify(m47AllWarningsJson.warnings)}`);
+    }
+  }
+  // none bucket must NOT produce a warning (get_no_props has 0 properties → none, not a malformation)
+  if (m47AllWarningsJson.warnings.some((w) => w.capability === 'get_no_props')) {
+    throw new Error(`M47(u): get_no_props (none bucket) must NOT produce a warning:\n${JSON.stringify(m47AllWarningsJson.warnings)}`);
+  }
+  // Human mode: verify warnings on stderr
+  const m47HumanWarnings = runCli(['parameter', 'index', '--manifest', m47ManifestPath], { cwd: m47TmpDir });
+  if (!m47HumanWarnings.stderr.includes('has malformed input_schema')) {
+    throw new Error(`M47(u): human mode must emit warning to stderr:\nstderr=${m47HumanWarnings.stderr}`);
+  }
+
+  // M47(v): aggregation_key closed two-value enum: every emitted bucket must have aggregation_key in {'tier', 'unknown'}
+  const m47ValidAggKeys = new Set(['tier', 'unknown']);
+  for (const entry of m47IndexJson.tiers) {
+    if (!m47ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M47(v): aggregation_key '${entry.aggregation_key}' outside closed two-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  // none/low/medium/high buckets must have aggregation_key 'tier'; unknown bucket must have aggregation_key 'unknown'
+  const m47NoneEntry = m47IndexJson.tiers.find((e) => e.input_schema_property_count_tier === 'none');
+  const m47LowEntry = m47IndexJson.tiers.find((e) => e.input_schema_property_count_tier === 'low');
+  const m47UnkEntry = m47IndexJson.tiers.find((e) => e.input_schema_property_count_tier === 'unknown');
+  if (!m47NoneEntry || m47NoneEntry.aggregation_key !== 'tier') {
+    throw new Error(`M47(v): none bucket must have aggregation_key 'tier':\n${JSON.stringify(m47NoneEntry)}`);
+  }
+  if (!m47LowEntry || m47LowEntry.aggregation_key !== 'tier') {
+    throw new Error(`M47(v): low bucket must have aggregation_key 'tier':\n${JSON.stringify(m47LowEntry)}`);
+  }
+  if (!m47UnkEntry || m47UnkEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M47(v): unknown bucket must have aggregation_key 'unknown':\n${JSON.stringify(m47UnkEntry)}`);
+  }
+
+  // M47(w): cross-axis flags: high bucket has put_high (confidential) → has_restricted_or_confidential_sensitivity=true
+  const m47HighEntry = m47IndexJson.tiers.find((e) => e.input_schema_property_count_tier === 'high');
+  if (!m47HighEntry || !m47HighEntry.has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M47(w): high bucket must have has_restricted_or_confidential_sensitivity=true (put_high is confidential):\n${JSON.stringify(m47HighEntry)}`);
+  }
+  // none bucket has only non-destructive, non-restricted caps → both flags false
+  if (m47NoneEntry.has_destructive_side_effect || m47NoneEntry.has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M47(w): none bucket must have has_destructive_side_effect=false and has_restricted_or_confidential_sensitivity=false:\n${JSON.stringify(m47NoneEntry)}`);
+  }
+
+  // M47(x): explicit boundary test at property counts 0/1/2/3/5/6 verifying bucket assignments none/low/low/medium/medium/high
+  // + tusq help enumerates 31 commands + planning-aid framing + unknown subcommand exits 1
+  const m47BoundaryManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_0_props', description: 'Zero props', method: 'GET', path: '/api/v1/a', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa1', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: {}, required: [] } },
+      { name: 'cap_1_props', description: 'One prop', method: 'GET', path: '/api/v1/b', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa2', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { a: { type: 'string' } }, required: [] } },
+      { name: 'cap_2_props', description: 'Two props', method: 'GET', path: '/api/v1/c', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa3', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' } }, required: [] } },
+      { name: 'cap_3_props', description: 'Three props', method: 'GET', path: '/api/v1/d', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa4', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } }, required: [] } },
+      { name: 'cap_5_props', description: 'Five props', method: 'GET', path: '/api/v1/e', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa5', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' }, d: { type: 'string' }, e: { type: 'string' } }, required: [] } },
+      { name: 'cap_6_props', description: 'Six props', method: 'GET', path: '/api/v1/f', domain: 'test', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aa6', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' }, d: { type: 'string' }, e: { type: 'string' }, f: { type: 'string' } }, required: [] } }
+    ]
+  };
+  const m47BoundaryManifestPath = path.join(m47TmpDir, 'boundary.json');
+  await fs.writeFile(m47BoundaryManifestPath, JSON.stringify(m47BoundaryManifest, null, 2), 'utf8');
+  const m47BoundaryResult = runCli(['parameter', 'index', '--manifest', m47BoundaryManifestPath, '--json'], { cwd: m47TmpDir });
+  const m47BoundaryJson = JSON.parse(m47BoundaryResult.stdout);
+  const m47Cap0Entry = m47BoundaryJson.tiers.find((e) => e.input_schema_property_count_tier === 'none');
+  const m47Cap1Entry = m47BoundaryJson.tiers.find((e) => e.input_schema_property_count_tier === 'low');
+  const m47Cap3Entry = m47BoundaryJson.tiers.find((e) => e.input_schema_property_count_tier === 'medium');
+  const m47Cap6Entry = m47BoundaryJson.tiers.find((e) => e.input_schema_property_count_tier === 'high');
+  if (!m47Cap0Entry || !m47Cap0Entry.capabilities.includes('cap_0_props')) {
+    throw new Error(`M47(x): 0-property cap must be in none bucket:\n${JSON.stringify(m47BoundaryJson.tiers)}`);
+  }
+  if (!m47Cap1Entry || !m47Cap1Entry.capabilities.includes('cap_1_props') || !m47Cap1Entry.capabilities.includes('cap_2_props')) {
+    throw new Error(`M47(x): 1-prop and 2-prop caps must both be in low bucket:\n${JSON.stringify(m47BoundaryJson.tiers)}`);
+  }
+  if (!m47Cap3Entry || !m47Cap3Entry.capabilities.includes('cap_3_props') || !m47Cap3Entry.capabilities.includes('cap_5_props')) {
+    throw new Error(`M47(x): 3-prop and 5-prop caps must both be in medium bucket:\n${JSON.stringify(m47BoundaryJson.tiers)}`);
+  }
+  if (!m47Cap6Entry || !m47Cap6Entry.capabilities.includes('cap_6_props')) {
+    throw new Error(`M47(x): 6-property cap must be in high bucket:\n${JSON.stringify(m47BoundaryJson.tiers)}`);
+  }
+  // Help text enumerates 31 commands
+  const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
+  const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m47HelpCommandCount !== 31) {
+    throw new Error(`M47(x): tusq help must enumerate 31 commands (M47 adds 'parameter'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  }
+  // parameter index help includes planning-aid framing
+  const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
+  if (!m47IndexHelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M47(x): parameter index help must include planning-aid framing:\n${m47IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m47UnknownSubCmd = runCli(['parameter', 'bogusub'], { cwd: m47TmpDir, expectedStatus: 1 });
+  if (!m47UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m47UnknownSubCmd.stdout !== '') {
+    throw new Error(`M47(x): unknown subcommand must exit 1:\nstdout=${m47UnknownSubCmd.stdout}\nstderr=${m47UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m47TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -4805,8 +5322,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 30) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 30 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 31) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 31 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -5343,8 +5860,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 30) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 30 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 31) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 31 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -5892,8 +6409,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 30) {
-    throw new Error(`M42: tusq help must enumerate exactly 30 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 31) {
+    throw new Error(`M42: tusq help must enumerate exactly 31 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -6438,8 +6955,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 30) {
-    throw new Error(`M41: tusq help must enumerate exactly 30 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 31) {
+    throw new Error(`M41: tusq help must enumerate exactly 31 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -6993,8 +7510,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 30) {
-    throw new Error(`M40: tusq help must enumerate exactly 30 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 31) {
+    throw new Error(`M40: tusq help must enumerate exactly 31 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -7465,8 +7982,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 30) {
-    throw new Error(`M39: tusq help must enumerate exactly 30 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 31) {
+    throw new Error(`M39: tusq help must enumerate exactly 31 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -7936,8 +8453,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 30) {
-    throw new Error(`M38: tusq help must enumerate exactly 30 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 31) {
+    throw new Error(`M38: tusq help must enumerate exactly 31 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -8419,8 +8936,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 30) {
-    throw new Error(`M37: tusq help must enumerate exactly 30 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 31) {
+    throw new Error(`M37: tusq help must enumerate exactly 31 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -8877,8 +9394,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 30) {
-    throw new Error(`M36: tusq help must enumerate exactly 30 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 31) {
+    throw new Error(`M36: tusq help must enumerate exactly 31 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -9270,8 +9787,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 30) {
-    throw new Error(`M35: tusq help must enumerate exactly 30 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 31) {
+    throw new Error(`M35: tusq help must enumerate exactly 31 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

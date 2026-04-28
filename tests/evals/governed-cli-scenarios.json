@@ -1329,6 +1329,59 @@
       "expected_valid_output_schema_strictnesses": ["strict", "permissive", "not_applicable", "unknown"],
       "expected_valid_aggregation_keys": ["strictness", "not_applicable", "unknown"],
       "expected_strictness_order": "strict,permissive,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-property-count-tier-index-determinism",
+      "scenario_type": "input_schema_property_count_tier_index_determinism",
+      "description": "Verifies that tusq parameter index produces byte-identical output across three runs on a synthetic manifest with none, low, high, and unknown buckets (medium deliberately absent — empty buckets must not appear). Also validates closed five-value bucket-key enum (none/low/medium/high/unknown), closed two-value aggregation_key enum (tier/unknown), bucket order determinism (none → low → high → unknown ascending-numeric-tier convention), warnings[] always present, manifest non-mutation, and input_schema_property_count_tier non-persistence. Boundary thresholds 0/2/5/6 match M40 verbatim and are immutable.",
+      "synthetic_capabilities": [
+        {
+          "name": "zero_props_cap",
+          "description": "Zero input properties",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/zero",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": { "type": "object", "properties": {}, "required": [] }
+        },
+        {
+          "name": "one_prop_cap",
+          "description": "One input property",
+          "domain": "items",
+          "method": "GET",
+          "path": "/api/v1/items/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] }
+        },
+        {
+          "name": "six_props_cap",
+          "description": "Six input properties — high bucket boundary",
+          "domain": "items",
+          "method": "POST",
+          "path": "/api/v1/items",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "input_schema": { "type": "object", "properties": { "a": { "type": "string" }, "b": { "type": "string" }, "c": { "type": "string" }, "d": { "type": "string" }, "e": { "type": "string" }, "f": { "type": "string" } }, "required": [] }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No input schema capability",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_input_schema_property_count_tiers": ["none", "low", "medium", "high", "unknown"],
+      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_tier_order": "none,low,high,unknown"
     }
   ]
 }

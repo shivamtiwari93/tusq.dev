@@ -379,6 +379,33 @@ Starting with M39, `tusq input index` emits a static, read-only capability index
 
 **Framing boundary:** `tusq input index` is a planning aid only. It does NOT execute capability inputs at runtime, does NOT validate `input_schema.properties[]` conformance against any per-element schema, does NOT generate new inputs or example payloads, does NOT measure runtime call frequency or call patterns, does NOT certify exposure-safety, and does NOT alter M11/M14/M24's canonical input-schema extraction rules. The `input_schema.required[]` array remains the M11/M14/M24-derived source — M39 only groups it into planning buckets by array length. Whether a capability is "safe to expose" remains the reviewer's judgment combining `sensitivity_class`, `side_effect_class`, `auth_scheme`, `confidence`, and `required_input_field_count_tier` together.
 
+### Input Schema Property Count Tier Index
+
+The `tusq parameter index` command (M47) derives a per-tier capability breakdown from each capability's `input_schema.properties` object — the full set of declared input parameters for an MCP-listed tool. Directly answers the operator question: "for the tools generated from my capabilities, how many input parameters does each tool accept, and which destructive or restricted-sensitivity capabilities sit in the high-cardinality bucket where parameter sprawl most blunts review-by-eye?" Operationalizes VISION § MCP Server (lines 229–239) — "approval-aware tool listing." Distinct from M39 (which counts `input_schema.required[]` — a subset of properties marking mandatory parameters).
+
+**Tier function** (thresholds `0/2/5/6` match M40 verbatim and are immutable):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | `Object.keys(input_schema.properties).length === 0` (no parameters) |
+| `low` | `1 <= length <= 2` |
+| `medium` | `3 <= length <= 5` |
+| `high` | `length >= 6` |
+| `unknown` | `input_schema` missing/not-a-plain-object, `properties` missing/not-a-plain-object, or any property descriptor value is not a plain non-null object |
+
+**Malformed values:** When `input_schema` or `input_schema.properties` is malformed, a `Warning: capability '<name>' has malformed input_schema (<reason>)` is emitted to stderr (human mode) or recorded in `warnings[]` (JSON mode). Five frozen reason codes:
+- `input_schema_field_missing` — no `input_schema` key or value is `null`
+- `input_schema_field_not_object` — `input_schema` is not a plain object
+- `input_schema_properties_field_missing` — no `properties` key
+- `input_schema_properties_field_not_object` — `properties` is not a plain object
+- `input_schema_properties_field_contains_invalid_descriptor` — `properties` has a value that is `null`, a primitive, or an array
+
+**Bucket iteration order:** `none → low → medium → high → unknown` (ascending-numeric-tier convention only — NOT parameter-sprawl-precedence-ranked, NOT complexity-blast-radius-ranked, NOT tool-generation-difficulty-ranked, NOT review-burden-priority-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Non-persistence:** `input_schema_property_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. Nested properties (`input_schema.properties[].properties`) are NOT walked. The `required ∩ properties` intersection is NOT computed.
+
 ### Output Schema Property Count Tier Index
 
 The `tusq output index` command (M40) derives a per-tier capability breakdown from each capability's `output_schema.properties` object, as populated by the M11/M14/M24 scan/compile pipeline from JSON Schema `responses` blocks, Fastify response schema literals, and handler-return-shape inference.

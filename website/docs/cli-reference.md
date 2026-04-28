@@ -801,6 +801,52 @@ tusq output index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [-
 
 **Planning aid notice:** This command is a planning aid, not a runtime output executor, output-schema validator, doc-contradiction detector, output generator, or doc-accuracy certifier. Tiers are deterministic stable-output ordering only (NOT doc-drift-risk-ranked, NOT staleness-ranked).
 
+### `tusq parameter index`
+
+Index capabilities by input schema property count tier. Groups capabilities by the cardinality of `input_schema.properties` Object.keys in closed-enum order (`none → low → medium → high → unknown`). This is a **planning aid, not a runtime request validator, parameter-count-driven tool-listing budget generator, LLM-context-length policy engine, or MCP parameter-footprint certifier**.
+
+```
+tusq parameter index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--tier <value>` | Filter to a single tier bucket (case-sensitive lowercase) |
+| `--manifest <path>` | Manifest file (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (suppresses stdout) |
+| `--json` | Machine-readable JSON output |
+
+**Tier function** (applied to `Object.keys(input_schema.properties).length`; thresholds `0/2/5/6` match M40 verbatim and are immutable):
+
+| Tier | Condition |
+|------|-----------|
+| `none` | `length === 0` (0 parameters — no parameter footprint) |
+| `low` | `1 <= length <= 2` |
+| `medium` | `3 <= length <= 5` |
+| `high` | `length >= 6` |
+| `unknown` | `input_schema` missing/not-an-object, `properties` missing/not-an-object, or `properties` contains a non-object descriptor |
+
+> **Note:** `none` is a valid named bucket (capabilities with 0 input properties), not a malformation — no warning is emitted. Only `unknown` triggers warnings. Nested properties (`input_schema.properties[].properties`) are NOT walked (reserved for `M-Parameter-Nested-Properties-1`). The `required ∩ properties` intersection is NOT computed (M39 covers `input_schema.required[]` cardinality).
+
+**Warning reason codes** (in `warnings[]` JSON field):
+- `input_schema_field_missing` — `input_schema` key absent or `null`
+- `input_schema_field_not_object` — `input_schema` is not a plain object
+- `input_schema_properties_field_missing` — `input_schema.properties` key absent
+- `input_schema_properties_field_not_object` — `input_schema.properties` is not a plain object
+- `input_schema_properties_field_contains_invalid_descriptor` — a property descriptor is `null`, primitive, or array
+
+**`--json` top-level shape:** `{ manifest_path, manifest_version, generated_at, tiers[], warnings[] }`. `warnings[]` is always present (empty `[]` when no malformed capabilities).
+
+**Per-bucket fields:** `input_schema_property_count_tier`, `aggregation_key` (`"tier"` for named buckets, `"unknown"` for unknown), `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown tier, `--out` path error, or unknown subcommand
+
+**Planning aid notice:** This command is a planning aid, not a runtime request validator, parameter-count-driven tool-listing budget generator, LLM-context-length policy engine, or MCP parameter-footprint certifier. Tiers are deterministic stable-output ordering only (NOT parameter-sprawl-precedence-ranked, NOT complexity-blast-radius-ranked).
+
 ### `tusq path index`
 
 Index capabilities by URL path segment count tier.
