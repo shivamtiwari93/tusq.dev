@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 40) {
+  if (m45CommandCount !== 41) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 40) {
-    throw new Error(`M46(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 41) {
+    throw new Error(`M46(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 40) {
-    throw new Error(`M47(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 41) {
+    throw new Error(`M47(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 40) {
-    throw new Error(`M48(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 41) {
+    throw new Error(`M48(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 40) {
-    throw new Error(`M49(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 41) {
+    throw new Error(`M49(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 40) {
-    throw new Error(`M50(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 41) {
+    throw new Error(`M50(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 40) {
-    throw new Error(`M51(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 41) {
+    throw new Error(`M51(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 40) {
-    throw new Error(`M52(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 41) {
+    throw new Error(`M52(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 40) {
-    throw new Error(`M53(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 41) {
+    throw new Error(`M53(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 40) {
-    throw new Error(`M54(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 41) {
+    throw new Error(`M54(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 40) {
-    throw new Error(`M55(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 41) {
+    throw new Error(`M55(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8506,8 +8506,8 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 40) {
-    throw new Error(`M56(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  if (m56HelpCommandCount !== 41) {
+    throw new Error(`M56(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
     throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
@@ -8534,6 +8534,409 @@ async function run() {
   }
 
   await fs.rm(m56TmpDir, { recursive: true, force: true });
+
+  // ── M57: Static Capability Input Schema First Property Title Presence Index Export ─────────
+  const m57TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m57-smoke-'));
+
+  // M57 fixture manifest: synthetic capabilities across titled/untitled/not_applicable buckets.
+  // titled_cap → firstKey.title='Subscription ID' (non-empty string → titled)
+  // untitled_cap → firstKey has no title field (absent → untitled)
+  // not_applicable_cap → input_schema.type='array' (non-object → not_applicable, no warning)
+  const m57SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'titled_cap',
+        description: 'Capability with title on first property',
+        method: 'POST',
+        path: '/api/v1/subscriptions',
+        domain: 'subscriptions',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { subscription_id: { type: 'string', title: 'Subscription ID' } },
+          required: ['subscription_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'untitled_cap',
+        description: 'Capability with no title on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m57SyntheticManifestPath = path.join(m57TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m57SyntheticManifestPath, JSON.stringify(m57SyntheticManifest, null, 2), 'utf8');
+
+  // M57(a): default tusq caption index on synthetic fixture produces correct buckets in closed-enum order
+  const m57DefaultResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--json'], { cwd: m57TmpDir });
+  if (m57DefaultResult.status !== 0) {
+    throw new Error(`M57(a): caption index must exit 0:\nstderr=${m57DefaultResult.stderr}`);
+  }
+  const m57DefaultJson = JSON.parse(m57DefaultResult.stdout);
+  if (!Array.isArray(m57DefaultJson.first_property_titles)) {
+    throw new Error(`M57(a): JSON output must have first_property_titles[] array:\n${m57DefaultResult.stdout}`);
+  }
+  if (m57DefaultJson.tiers !== undefined || m57DefaultJson.first_property_examples !== undefined || m57DefaultJson.first_property_default_values !== undefined) {
+    throw new Error(`M57(a): JSON output must NOT have tiers/first_property_examples/first_property_default_values; field name must be first_property_titles[]:\n${m57DefaultResult.stdout}`);
+  }
+  if (!m57DefaultJson.first_property_titles.some((e) => e.input_schema_first_property_title === 'titled' && e.capabilities.includes('titled_cap'))) {
+    throw new Error(`M57(a): titled bucket must include titled_cap:\n${JSON.stringify(m57DefaultJson.first_property_titles)}`);
+  }
+  if (!m57DefaultJson.first_property_titles.some((e) => e.input_schema_first_property_title === 'untitled' && e.capabilities.includes('untitled_cap'))) {
+    throw new Error(`M57(a): untitled bucket must include untitled_cap:\n${JSON.stringify(m57DefaultJson.first_property_titles)}`);
+  }
+  if (!m57DefaultJson.first_property_titles.some((e) => e.input_schema_first_property_title === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M57(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m57DefaultJson.first_property_titles)}`);
+  }
+  if (m57DefaultJson.warnings.length !== 0) {
+    throw new Error(`M57(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m57DefaultJson.warnings)}`);
+  }
+
+  // M57(b): bucket order is titled → untitled → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m57BucketOrder = m57DefaultJson.first_property_titles.map((e) => e.input_schema_first_property_title);
+  if (m57BucketOrder[0] !== 'titled' || m57BucketOrder[1] !== 'untitled' || m57BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M57(b): bucket order must be titled→untitled→not_applicable; got ${m57BucketOrder}`);
+  }
+
+  // M57(c): --caption titled filter returns only titled bucket
+  const m57TitledResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption', 'titled', '--json'], { cwd: m57TmpDir });
+  if (m57TitledResult.status !== 0) {
+    throw new Error(`M57(c): --caption titled must exit 0:\nstderr=${m57TitledResult.stderr}`);
+  }
+  const m57TitledJson = JSON.parse(m57TitledResult.stdout);
+  if (m57TitledJson.first_property_titles.length !== 1 || m57TitledJson.first_property_titles[0].input_schema_first_property_title !== 'titled') {
+    throw new Error(`M57(c): --caption titled must return exactly one titled entry:\n${m57TitledResult.stdout}`);
+  }
+
+  // M57(d): --caption untitled filter returns only untitled bucket
+  const m57UntitledResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption', 'untitled', '--json'], { cwd: m57TmpDir });
+  if (m57UntitledResult.status !== 0) {
+    throw new Error(`M57(d): --caption untitled must exit 0:\nstderr=${m57UntitledResult.stderr}`);
+  }
+  const m57UntitledJson = JSON.parse(m57UntitledResult.stdout);
+  if (m57UntitledJson.first_property_titles.length !== 1 || m57UntitledJson.first_property_titles[0].input_schema_first_property_title !== 'untitled') {
+    throw new Error(`M57(d): --caption untitled must return exactly one untitled entry:\n${m57UntitledResult.stdout}`);
+  }
+
+  // M57(e): --caption not_applicable filter returns only not_applicable bucket
+  const m57NaResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption', 'not_applicable', '--json'], { cwd: m57TmpDir });
+  if (m57NaResult.status !== 0) {
+    throw new Error(`M57(e): --caption not_applicable must exit 0:\nstderr=${m57NaResult.stderr}`);
+  }
+  const m57NaJson = JSON.parse(m57NaResult.stdout);
+  if (m57NaJson.first_property_titles.length !== 1 || m57NaJson.first_property_titles[0].input_schema_first_property_title !== 'not_applicable') {
+    throw new Error(`M57(e): --caption not_applicable must return exactly one not_applicable entry:\n${m57NaResult.stdout}`);
+  }
+
+  // M57(f): --caption unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m57UnknownAbsentResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption', 'unknown'], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57UnknownAbsentResult.status !== 1 || !m57UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M57(f): --caption unknown on a manifest with no unknown caps must exit 1:\nstdout=${m57UnknownAbsentResult.stdout}\nstderr=${m57UnknownAbsentResult.stderr}`);
+  }
+
+  // M57(g): --caption TITLED exits 1 (case-sensitive enforcement)
+  const m57CaseResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption', 'TITLED'], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57CaseResult.status !== 1) {
+    throw new Error(`M57(g): --caption TITLED uppercase must exit 1 (case-sensitive):\nstdout=${m57CaseResult.stdout}\nstderr=${m57CaseResult.stderr}`);
+  }
+
+  // M57(h): unknown flag exits 1
+  const m57UnknownFlagResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--bogus'], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57UnknownFlagResult.status !== 1) {
+    throw new Error(`M57(h): unknown flag must exit 1:\nstdout=${m57UnknownFlagResult.stdout}\nstderr=${m57UnknownFlagResult.stderr}`);
+  }
+
+  // M57(i): missing manifest exits 1
+  const m57MissingManifestResult = runCli(['caption', 'index', '--manifest', path.join(m57TmpDir, 'nonexistent.json')], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57MissingManifestResult.status !== 1) {
+    throw new Error(`M57(i): missing manifest must exit 1:\nstdout=${m57MissingManifestResult.stdout}\nstderr=${m57MissingManifestResult.stderr}`);
+  }
+
+  // M57(j): malformed JSON exits 1
+  const m57BadJsonPath = path.join(m57TmpDir, 'bad.json');
+  await fs.writeFile(m57BadJsonPath, 'not json', 'utf8');
+  const m57BadJsonResult = runCli(['caption', 'index', '--manifest', m57BadJsonPath], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57BadJsonResult.status !== 1) {
+    throw new Error(`M57(j): malformed JSON manifest must exit 1:\nstdout=${m57BadJsonResult.stdout}\nstderr=${m57BadJsonResult.stderr}`);
+  }
+
+  // M57(k): missing capabilities array exits 1
+  const m57NoCapPath = path.join(m57TmpDir, 'nocap.json');
+  await fs.writeFile(m57NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m57NoCapResult = runCli(['caption', 'index', '--manifest', m57NoCapPath], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57NoCapResult.status !== 1) {
+    throw new Error(`M57(k): missing capabilities array must exit 1:\nstdout=${m57NoCapResult.stdout}\nstderr=${m57NoCapResult.stderr}`);
+  }
+
+  // M57(l): --caption with no value exits 1
+  const m57NoValueResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--caption'], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57NoValueResult.status !== 1) {
+    throw new Error(`M57(l): --caption with no value must exit 1:\nstdout=${m57NoValueResult.stdout}\nstderr=${m57NoValueResult.stderr}`);
+  }
+
+  // M57(m): --out writes to a file (no stdout)
+  const m57OutPath = path.join(m57TmpDir, 'out', 'caption-index.json');
+  const m57OutResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--out', m57OutPath], { cwd: m57TmpDir });
+  if (m57OutResult.status !== 0) {
+    throw new Error(`M57(m): --out must exit 0:\nstderr=${m57OutResult.stderr}`);
+  }
+  if (m57OutResult.stdout !== '') {
+    throw new Error(`M57(m): --out must produce no stdout:\nstdout=${m57OutResult.stdout}`);
+  }
+  const m57OutContent = JSON.parse(await fs.readFile(m57OutPath, 'utf8'));
+  if (!Array.isArray(m57OutContent.first_property_titles)) {
+    throw new Error(`M57(m): --out file must contain first_property_titles[]:\n${JSON.stringify(m57OutContent)}`);
+  }
+
+  // M57(n): --out inside .tusq/ exits 1
+  const m57TusqOutResult = runCli(['caption', 'index', '--manifest', m57SyntheticManifestPath, '--out', path.join(m57TmpDir, '.tusq', 'caption.json')], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (m57TusqOutResult.status !== 1) {
+    throw new Error(`M57(n): --out inside .tusq/ must exit 1:\nstdout=${m57TusqOutResult.stdout}\nstderr=${m57TusqOutResult.stderr}`);
+  }
+
+  // M57(o): empty capabilities → exit 0, first_property_titles: []
+  const m57EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m57EmptyCapPath = path.join(m57TmpDir, 'empty-cap.json');
+  await fs.writeFile(m57EmptyCapPath, JSON.stringify(m57EmptyCapManifest, null, 2), 'utf8');
+  const m57EmptyCapResult = runCli(['caption', 'index', '--manifest', m57EmptyCapPath, '--json'], { cwd: m57TmpDir });
+  if (m57EmptyCapResult.status !== 0) {
+    throw new Error(`M57(o): empty capabilities must exit 0:\nstderr=${m57EmptyCapResult.stderr}`);
+  }
+  const m57EmptyCapJson = JSON.parse(m57EmptyCapResult.stdout);
+  if (!Array.isArray(m57EmptyCapJson.first_property_titles) || m57EmptyCapJson.first_property_titles.length !== 0) {
+    throw new Error(`M57(o): empty capabilities must produce first_property_titles: []:\n${m57EmptyCapResult.stdout}`);
+  }
+
+  // M57(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m57AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'empty_string_title', description: 'title:""', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: '' } } } }
+    ]
+  };
+  const m57AllWarningsPath = path.join(m57TmpDir, 'all-warnings.json');
+  await fs.writeFile(m57AllWarningsPath, JSON.stringify(m57AllWarningsManifest, null, 2), 'utf8');
+  const m57WarningsResult = runCli(['caption', 'index', '--manifest', m57AllWarningsPath, '--json'], { cwd: m57TmpDir });
+  if (m57WarningsResult.status !== 0) {
+    throw new Error(`M57(p): malformed schemas must exit 0 (not crash):\nstderr=${m57WarningsResult.stderr}`);
+  }
+  const m57WarningsJson = JSON.parse(m57WarningsResult.stdout);
+  if (!Array.isArray(m57WarningsJson.warnings) || m57WarningsJson.warnings.length !== 6) {
+    throw new Error(`M57(p): must produce exactly 6 warnings:\n${JSON.stringify(m57WarningsJson.warnings)}`);
+  }
+  const m57WarningReasons = m57WarningsJson.warnings.map((w) => w.reason);
+  if (!m57WarningReasons.includes('input_schema_field_missing')) throw new Error('M57(p): missing input_schema_field_missing reason');
+  if (!m57WarningReasons.includes('input_schema_field_not_object')) throw new Error('M57(p): missing input_schema_field_not_object reason');
+  if (!m57WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M57(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m57WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M57(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m57WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M57(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m57WarningReasons.includes('input_schema_properties_first_property_title_invalid_when_present')) throw new Error('M57(p): missing input_schema_properties_first_property_title_invalid_when_present reason');
+  if (!m57WarningsJson.first_property_titles.some((e) => e.input_schema_first_property_title === 'unknown')) {
+    throw new Error(`M57(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m57WarningsJson.first_property_titles)}`);
+  }
+
+  // M57(q): null title → untitled (null-as-absent precedent from M55/M56, no warning)
+  const m57NullTitleManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_title_cap', description: 'title:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: null } } } }]
+  };
+  const m57NullTitlePath = path.join(m57TmpDir, 'null-title.json');
+  await fs.writeFile(m57NullTitlePath, JSON.stringify(m57NullTitleManifest, null, 2), 'utf8');
+  const m57NullTitleResult = runCli(['caption', 'index', '--manifest', m57NullTitlePath, '--json'], { cwd: m57TmpDir });
+  const m57NullTitleParsed = JSON.parse(m57NullTitleResult.stdout);
+  if (!m57NullTitleParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'untitled' && e.capabilities.includes('null_title_cap'))) {
+    throw new Error(`M57(q): title:null must bucket as untitled (null-as-absent):\n${m57NullTitleResult.stdout}`);
+  }
+  if (m57NullTitleParsed.warnings.length !== 0) {
+    throw new Error(`M57(q): title:null must produce NO warning:\n${JSON.stringify(m57NullTitleParsed.warnings)}`);
+  }
+
+  // M57(r): single-char title → titled (length >= 1 sufficient, no warning)
+  const m57SingleCharManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'single_char_cap', description: 'title:"X"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: 'X' } } } }]
+  };
+  const m57SingleCharPath = path.join(m57TmpDir, 'single-char.json');
+  await fs.writeFile(m57SingleCharPath, JSON.stringify(m57SingleCharManifest, null, 2), 'utf8');
+  const m57SingleCharResult = runCli(['caption', 'index', '--manifest', m57SingleCharPath, '--json'], { cwd: m57TmpDir });
+  const m57SingleCharParsed = JSON.parse(m57SingleCharResult.stdout);
+  if (!m57SingleCharParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'titled' && e.capabilities.includes('single_char_cap'))) {
+    throw new Error(`M57(r): title:'X' single-char must bucket as titled:\n${m57SingleCharResult.stdout}`);
+  }
+  if (m57SingleCharParsed.warnings.length !== 0) {
+    throw new Error(`M57(r): title:'X' single-char must produce NO warning:\n${JSON.stringify(m57SingleCharParsed.warnings)}`);
+  }
+
+  // M57(s): whitespace-only title → titled (M57-SPECIFIC: whitespace-only counts as titled — length >= 1 is the only check)
+  const m57WhitespaceManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'whitespace_cap', description: 'title:"   "', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: '   ' } } } }]
+  };
+  const m57WhitespacePath = path.join(m57TmpDir, 'whitespace.json');
+  await fs.writeFile(m57WhitespacePath, JSON.stringify(m57WhitespaceManifest, null, 2), 'utf8');
+  const m57WhitespaceResult = runCli(['caption', 'index', '--manifest', m57WhitespacePath, '--json'], { cwd: m57TmpDir });
+  const m57WhitespaceParsed = JSON.parse(m57WhitespaceResult.stdout);
+  if (!m57WhitespaceParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'titled' && e.capabilities.includes('whitespace_cap'))) {
+    throw new Error(`M57(s): title:'   ' whitespace-only must bucket as titled (whitespace-trim deferred to successor):\n${m57WhitespaceResult.stdout}`);
+  }
+  if (m57WhitespaceParsed.warnings.length !== 0) {
+    throw new Error(`M57(s): whitespace-only title must produce NO warning:\n${JSON.stringify(m57WhitespaceParsed.warnings)}`);
+  }
+
+  // M57(t): empty-string title → unknown WITH 6th warning code (M57-SPECIFIC: empty string is malformed)
+  const m57EmptyStrManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_str_cap', description: 'title:""', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: '' } } } }]
+  };
+  const m57EmptyStrPath = path.join(m57TmpDir, 'empty-str.json');
+  await fs.writeFile(m57EmptyStrPath, JSON.stringify(m57EmptyStrManifest, null, 2), 'utf8');
+  const m57EmptyStrResult = runCli(['caption', 'index', '--manifest', m57EmptyStrPath, '--json'], { cwd: m57TmpDir });
+  const m57EmptyStrParsed = JSON.parse(m57EmptyStrResult.stdout);
+  if (!m57EmptyStrParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'unknown' && e.capabilities.includes('empty_str_cap'))) {
+    throw new Error(`M57(t): title:'' empty string must bucket as unknown WITH 6th warning code:\n${m57EmptyStrResult.stdout}`);
+  }
+  if (!m57EmptyStrParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_title_invalid_when_present')) {
+    throw new Error(`M57(t): title:'' must produce warning input_schema_properties_first_property_title_invalid_when_present:\n${JSON.stringify(m57EmptyStrParsed.warnings)}`);
+  }
+
+  // M57(u): number title → unknown WITH 6th warning code (non-string present non-null)
+  const m57NumberTitleManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'number_title_cap', description: 'title:42', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: 42 } } } }]
+  };
+  const m57NumberTitlePath = path.join(m57TmpDir, 'number-title.json');
+  await fs.writeFile(m57NumberTitlePath, JSON.stringify(m57NumberTitleManifest, null, 2), 'utf8');
+  const m57NumberTitleResult = runCli(['caption', 'index', '--manifest', m57NumberTitlePath, '--json'], { cwd: m57TmpDir });
+  const m57NumberTitleParsed = JSON.parse(m57NumberTitleResult.stdout);
+  if (!m57NumberTitleParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'unknown' && e.capabilities.includes('number_title_cap'))) {
+    throw new Error(`M57(u): title:42 (number) must bucket as unknown:\n${m57NumberTitleResult.stdout}`);
+  }
+  if (!m57NumberTitleParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_title_invalid_when_present')) {
+    throw new Error(`M57(u): title:42 must produce warning:\n${JSON.stringify(m57NumberTitleParsed.warnings)}`);
+  }
+
+  // M57(v): array title → unknown WITH 6th warning code (non-string present non-null)
+  const m57ArrayTitleManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'array_title_cap', description: 'title:["Subscription ID"]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', title: ['Subscription ID'] } } } }]
+  };
+  const m57ArrayTitlePath = path.join(m57TmpDir, 'array-title.json');
+  await fs.writeFile(m57ArrayTitlePath, JSON.stringify(m57ArrayTitleManifest, null, 2), 'utf8');
+  const m57ArrayTitleResult = runCli(['caption', 'index', '--manifest', m57ArrayTitlePath, '--json'], { cwd: m57TmpDir });
+  const m57ArrayTitleParsed = JSON.parse(m57ArrayTitleResult.stdout);
+  if (!m57ArrayTitleParsed.first_property_titles.some((e) => e.input_schema_first_property_title === 'unknown' && e.capabilities.includes('array_title_cap'))) {
+    throw new Error(`M57(v): title:['Subscription ID'] (array) must bucket as unknown:\n${m57ArrayTitleResult.stdout}`);
+  }
+  if (!m57ArrayTitleParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_title_invalid_when_present')) {
+    throw new Error(`M57(v): title:['Subscription ID'] must produce warning:\n${JSON.stringify(m57ArrayTitleParsed.warnings)}`);
+  }
+
+  // M57(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'title_label','not_applicable','unknown'}
+  const m57AggKeyResult = runCli(['caption', 'index', '--manifest', m57AllWarningsPath, '--json'], { cwd: m57TmpDir });
+  const m57AggKeyParsed = JSON.parse(m57AggKeyResult.stdout);
+  const m57ValidAggKeys = new Set(['title_label', 'not_applicable', 'unknown']);
+  for (const entry of m57AggKeyParsed.first_property_titles) {
+    if (!m57ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M57(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m57AggTitled = m57DefaultJson.first_property_titles.find((e) => e.input_schema_first_property_title === 'titled');
+  if (!m57AggTitled || m57AggTitled.aggregation_key !== 'title_label') {
+    throw new Error(`M57(w): titled bucket must have aggregation_key 'title_label':\n${JSON.stringify(m57AggTitled)}`);
+  }
+  const m57AggUntitled = m57DefaultJson.first_property_titles.find((e) => e.input_schema_first_property_title === 'untitled');
+  if (!m57AggUntitled || m57AggUntitled.aggregation_key !== 'title_label') {
+    throw new Error(`M57(w): untitled bucket must have aggregation_key 'title_label':\n${JSON.stringify(m57AggUntitled)}`);
+  }
+  const m57AggNA = m57DefaultJson.first_property_titles.find((e) => e.input_schema_first_property_title === 'not_applicable');
+  if (!m57AggNA || m57AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M57(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m57AggNA)}`);
+  }
+
+  // M57(x): non-persistence — manifest file not mutated
+  const m57ManifestAfter = JSON.parse(await fs.readFile(m57SyntheticManifestPath, 'utf8'));
+  for (const cap of m57ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_title')) {
+      throw new Error(`M57(x): input_schema_first_property_title must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M57(x2): help enumerates 41 commands and includes 'caption' between 'binding' and 'choice'
+  const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
+  const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m57HelpCommandCount !== 41) {
+    throw new Error(`M57(x2): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
+  }
+  if (!m57HelpResult.stdout.includes('  caption')) {
+    throw new Error(`M57(x2): tusq help must include 'caption' command:\n${m57HelpResult.stdout}`);
+  }
+  // Verify ordering: binding before caption before choice
+  const m57HelpLines = m57HelpResult.stdout.split('\n');
+  const m57BindingIdx = m57HelpLines.findIndex((l) => l.startsWith('  binding'));
+  const m57CaptionIdx = m57HelpLines.findIndex((l) => l.startsWith('  caption'));
+  const m57ChoiceIdx = m57HelpLines.findIndex((l) => l.startsWith('  choice'));
+  if (!(m57BindingIdx < m57CaptionIdx && m57CaptionIdx < m57ChoiceIdx)) {
+    throw new Error(`M57(x2): 'caption' must appear between 'binding' and 'choice' in help:\n${m57HelpResult.stdout}`);
+  }
+
+  // M57(x3): caption index --help includes planning-aid framing
+  const m57IndexHelpResult = runCli(['caption', 'index', '--help'], { cwd: m57TmpDir });
+  if (!m57IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M57(x3): caption index help must include planning-aid framing:\n${m57IndexHelpResult.stdout}`);
+  }
+
+  // M57(x4): unknown subcommand exits 1
+  const m57UnknownSubCmd = runCli(['caption', 'bogusub'], { cwd: m57TmpDir, expectedStatus: 1 });
+  if (!m57UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m57UnknownSubCmd.stdout !== '') {
+    throw new Error(`M57(x4): unknown subcommand must exit 1:\nstdout=${m57UnknownSubCmd.stdout}\nstderr=${m57UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m57TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -9002,7 +9405,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 40) {
+  if (m44CommandCount !== 41) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -9540,7 +9943,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 40) {
+  if (m43CommandCount !== 41) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -10089,7 +10492,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 40) {
+  if (m42CommandCount !== 41) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -10635,7 +11038,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 40) {
+  if (m41CommandCount !== 41) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -11190,7 +11593,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 40) {
+  if (m40CommandCount !== 41) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -11662,7 +12065,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 40) {
+  if (m39CommandCount !== 41) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -12133,7 +12536,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 40) {
+  if (m38CommandCount !== 41) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -12616,7 +13019,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 40) {
+  if (m37CommandCount !== 41) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -13074,7 +13477,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 40) {
+  if (m36CommandCount !== 41) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -13467,7 +13870,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 40) {
+  if (m35CommandCount !== 41) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 

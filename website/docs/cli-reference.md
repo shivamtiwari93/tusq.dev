@@ -1325,6 +1325,68 @@ tusq method index --method unknown --json
 tusq method index --out method-index.json
 ```
 
+## `tusq caption index`
+
+Emit a deterministic, per-first-input-property-title-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].title` is a non-empty string (`titled`), absent or null (`untitled`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime payload validator, doc-contradiction detector, title-length-tier distributor, title-whitespace-distribution distributor, LLM title inferrer, brand-voice adapter, or chat-interface compiler**.
+
+**M57-vs-M52-vs-M44 distinctness:** `tusq description index` (M44) reads the **capability-level top-level `description` field word-count tier** (a longer prose explanation of the entire capability). `tusq gloss index` (M52) reads the **per-property `input_schema.properties[firstKey].description` field** (a longer prose explanation of the first input parameter). `tusq caption index` (M57) reads the **per-property `input_schema.properties[firstKey].title` field** (JSON-Schema's per-property short-label keyword — a distinct annotation intended for UI rendering in confirmation prompts and slot-filling forms, NOT the longer prose description). These three commands are read-only-invariant peers; none alters the others' output bytes.
+
+```bash
+tusq caption index [--caption <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--caption <titled\|untitled\|not_applicable\|unknown>` | all buckets | Filter to a single title bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].title` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `titled` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].title` is a `string` with `length >= 1`. Whitespace-only titles (e.g. `"   "`) count as `titled` at this milestone — whitespace-trim normalization is deferred to `M-Caption-Title-Whitespace-Distribution-Index-1`. |
+| `untitled` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].title` is absent, `undefined`, or `null` (null-as-absent per M55/M56 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; `properties[firstKey].title` present non-null but NOT a `string`; OR `properties[firstKey].title` is a string with `length === 0` (empty string `""` is `unknown` WITH warning — deliberate alignment with M54 empty-`enum`-is-malformed and M56 empty-`examples`-is-malformed precedents) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_title_invalid_when_present` ← M57 axis-specific code; covers both non-string AND empty-string malformations under a single consolidated code
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown caption value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `titled → untitled → not_applicable → unknown` (deterministic stable-output convention only — NOT chat-interface-readiness-ranked, NOT brand-matched-chat-readiness-ranked, NOT UX-label-completeness-ranked, NOT confirmation-prompt-readability-ranked, NOT form-widget-label-coverage-ranked, NOT embedded-chat-friendliness-ranked, NOT CSS-override-readiness-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_title` is NEVER written into the manifest.
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- Per-property title beyond the FIRST is NOT walked (reserved for `M-Caption-All-Properties-Title-Index-1`).
+
+```bash
+# All title buckets (human-readable)
+tusq caption index
+
+# All title buckets (JSON)
+tusq caption index --json
+
+# Titled capabilities (non-empty string title on first property)
+tusq caption index --caption titled --json
+
+# Untitled capabilities (no title field on first property)
+tusq caption index --caption untitled --json
+
+# Write to file
+tusq caption index --out caption-index.json
+```
+
 ## `tusq sample index`
 
 Emit a deterministic, per-first-input-property-examples-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].examples` is a non-empty array (`exampled`), absent or null (`unexampled`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime payload validator, doc-contradiction detector, examples-element-type distributor, LLM inferrer, or marketplace-listing generator**.

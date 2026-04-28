@@ -2065,6 +2065,8 @@ async function run() {
       await runInputSchemaFirstPropertyDefaultValuePresenceIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_examples_index_determinism') {
       await runInputSchemaFirstPropertyExamplesIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_title_presence_index_determinism') {
+      await runInputSchemaFirstPropertyTitlePresenceIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -3473,6 +3475,144 @@ async function runInputSchemaFirstPropertyExamplesIndexDeterminismScenario(tmpRo
   // Assert exampled bucket has aggregation_key 'example_set'
   if (exampledEntry.aggregation_key !== 'example_set') {
     fail(`${scenario.id}: exampled bucket must have aggregation_key 'example_set'; got '${exampledEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyTitlePresenceIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-title-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq caption index --json three times and assert byte-identical output
+  const run1 = runCli(['caption', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['caption', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['caption', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: caption index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_title bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validTitleValues = new Set(scenario.expected_valid_title_values);
+  for (const entry of index.first_property_titles) {
+    if (!validTitleValues.has(entry.input_schema_first_property_title)) {
+      fail(`${scenario.id}: input_schema_first_property_title '${entry.input_schema_first_property_title}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_titles) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_title}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (titled → untitled → not_applicable → unknown)
+  const bucketOrder = index.first_property_titles.map((e) => e.input_schema_first_property_title).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_title must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by caption index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_title')) {
+      fail(`${scenario.id}: input_schema_first_property_title must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_titles.find((e) => e.input_schema_first_property_title === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_titles.find((e) => e.input_schema_first_property_title === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert titled_cap is in titled bucket
+  const titledEntry = index.first_property_titles.find((e) => e.input_schema_first_property_title === 'titled');
+  if (!titledEntry || !titledEntry.capabilities.includes('titled_cap')) {
+    fail(`${scenario.id}: titled_cap (firstKey.title='Subscription ID') must be in titled bucket`);
+  }
+
+  // Assert untitled_cap is in untitled bucket
+  const untitledEntry = index.first_property_titles.find((e) => e.input_schema_first_property_title === 'untitled');
+  if (!untitledEntry || !untitledEntry.capabilities.includes('untitled_cap')) {
+    fail(`${scenario.id}: untitled_cap (firstKey.title missing) must be in untitled bucket`);
+  }
+
+  // Assert insertion_order_cap is in titled bucket (firstKey='z', title='Subscription ID') NOT untitled (sorted 'a' has no title)
+  if (!titledEntry || !titledEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has title='Subscription ID') must be in titled bucket (insertion-order, NOT sorted)`);
+  }
+  // insertion_order_cap's 'b' property has title='' which would be unknown, but firstKey='z' is titled — no warning for cap
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (titled bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert titled bucket has aggregation_key 'title_label'
+  if (titledEntry.aggregation_key !== 'title_label') {
+    fail(`${scenario.id}: titled bucket must have aggregation_key 'title_label'; got '${titledEntry.aggregation_key}'`);
+  }
+
+  // Assert untitled bucket has aggregation_key 'title_label'
+  if (untitledEntry.aggregation_key !== 'title_label') {
+    fail(`${scenario.id}: untitled bucket must have aggregation_key 'title_label'; got '${untitledEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

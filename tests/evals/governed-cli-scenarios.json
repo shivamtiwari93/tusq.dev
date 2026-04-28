@@ -2714,6 +2714,119 @@
         "unknown"
       ],
       "expected_bucket_order": "exampled,unexampled,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-title-presence-index-determinism",
+      "scenario_type": "input_schema_first_property_title_presence_index_determinism",
+      "description": "Verifies that tusq caption index produces byte-identical output across three runs on a synthetic manifest with titled, untitled, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (titled/untitled/not_applicable/unknown), closed three-value aggregation_key enum (title_label/not_applicable/unknown), bucket order determinism (titled \u2192 untitled \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_title non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has title='Subscription ID' (titled), a has no title (untitled), b has title='' (unknown with warning input_schema_properties_first_property_title_invalid_when_present) \u2014 firstKey=z \u2192 titled (insertion-order, NOT sorted). EMPTY-STRING title:'' is unknown WITH warning (alignment with M54 empty-enum-is-malformed and M56 empty-array-is-malformed precedents). null-as-absent: title:null \u2192 untitled (no warning, mirroring M55/M56 null-as-absent). WHITESPACE-ONLY title:'   ' \u2192 titled (string length >= 1 is the only check; whitespace-trim deferred to M-Caption-Title-Whitespace-Distribution-Index-1). Sixth frozen warning reason code: input_schema_properties_first_property_title_invalid_when_present (single consolidated code covers both non-string and empty-string malformations).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "titled_cap",
+          "method": "POST",
+          "path": "/titled",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has title='Subscription ID' \u2014 lands in titled bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "subscription_id": {
+                "type": "string",
+                "title": "Subscription ID"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "untitled_cap",
+          "method": "GET",
+          "path": "/untitled",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no title field \u2014 lands in untitled bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "User identifier"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has title='Subscription ID' (titled), a has no title (untitled), b has title='' (unknown+warning). firstKey=z \u2192 titled (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "title": "Subscription ID"
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "title": ""
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_title_values": [
+        "titled",
+        "untitled",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "title_label",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "titled,untitled,not_applicable,unknown"
     }
   ]
 }
