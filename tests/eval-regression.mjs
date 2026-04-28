@@ -2063,6 +2063,8 @@ async function run() {
       await runInputSchemaFirstPropertyEnumConstraintIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_default_value_presence_index_determinism') {
       await runInputSchemaFirstPropertyDefaultValuePresenceIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_examples_index_determinism') {
+      await runInputSchemaFirstPropertyExamplesIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -3348,6 +3350,139 @@ async function runInputSchemaFirstPropertyDefaultValuePresenceIndexDeterminismSc
   }
   if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
     fail(`${scenario.id}: insertion_order_cap (defaulted bucket) must NOT produce a warning`);
+  }
+}
+
+async function runInputSchemaFirstPropertyExamplesIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-examples-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq sample index --json three times and assert byte-identical output
+  const run1 = runCli(['sample', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['sample', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['sample', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: sample index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_examples bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validExamplesValues = new Set(scenario.expected_valid_examples_values);
+  for (const entry of index.first_property_examples) {
+    if (!validExamplesValues.has(entry.input_schema_first_property_examples)) {
+      fail(`${scenario.id}: input_schema_first_property_examples '${entry.input_schema_first_property_examples}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_examples) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_examples}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (exampled → unexampled → not_applicable → unknown)
+  const bucketOrder = index.first_property_examples.map((e) => e.input_schema_first_property_examples).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_examples must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by sample index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_examples')) {
+      fail(`${scenario.id}: input_schema_first_property_examples must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_examples.find((e) => e.input_schema_first_property_examples === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_examples.find((e) => e.input_schema_first_property_examples === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert exampled_cap is in exampled bucket
+  const exampledEntry = index.first_property_examples.find((e) => e.input_schema_first_property_examples === 'exampled');
+  if (!exampledEntry || !exampledEntry.capabilities.includes('exampled_cap')) {
+    fail(`${scenario.id}: exampled_cap (firstKey.examples=['active','inactive']) must be in exampled bucket`);
+  }
+
+  // Assert unexampled_cap is in unexampled bucket
+  const unexampledEntry = index.first_property_examples.find((e) => e.input_schema_first_property_examples === 'unexampled');
+  if (!unexampledEntry || !unexampledEntry.capabilities.includes('unexampled_cap')) {
+    fail(`${scenario.id}: unexampled_cap (firstKey.examples missing) must be in unexampled bucket`);
+  }
+
+  // Assert insertion_order_cap is in exampled bucket (firstKey='z', examples=['seed']) NOT unexampled (sorted 'a' has no examples)
+  if (!exampledEntry || !exampledEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has examples=['seed']) must be in exampled bucket (insertion-order, NOT sorted)`);
+  }
+  // insertion_order_cap's 'b' property has examples=[] which would be unknown, but firstKey='z' is exampled — no warning for cap
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (exampled bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert exampled bucket has aggregation_key 'example_set'
+  if (exampledEntry.aggregation_key !== 'example_set') {
+    fail(`${scenario.id}: exampled bucket must have aggregation_key 'example_set'; got '${exampledEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
   }
 }
 

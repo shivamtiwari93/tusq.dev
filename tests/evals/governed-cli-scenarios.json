@@ -1818,7 +1818,7 @@
     {
       "id": "input-schema-first-property-type-index-determinism",
       "scenario_type": "input_schema_first_property_type_index_determinism",
-      "description": "Verifies that tusq signature index produces byte-identical output across three runs on a synthetic manifest with string, object, not_applicable, and unknown buckets (number/integer/null/boolean/array deliberately absent — empty buckets must not appear). Also validates closed nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown), closed three-value aggregation_key enum (first_property_type/not_applicable/unknown), bucket order determinism (string → number → integer → boolean → null → object → array → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_type non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys.",
+      "description": "Verifies that tusq signature index produces byte-identical output across three runs on a synthetic manifest with string, object, not_applicable, and unknown buckets (number/integer/null/boolean/array deliberately absent \u2014 empty buckets must not appear). Also validates closed nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown), closed three-value aggregation_key enum (first_property_type/not_applicable/unknown), bucket order determinism (string \u2192 number \u2192 integer \u2192 boolean \u2192 null \u2192 object \u2192 array \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_type non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys.",
       "synthetic_capabilities": [
         {
           "name": "string_cap",
@@ -1860,7 +1860,7 @@
         },
         {
           "name": "array_input_cap",
-          "description": "Non-object input (array type) — not_applicable, no warning",
+          "description": "Non-object input (array type) \u2014 not_applicable, no warning",
           "domain": "users",
           "method": "GET",
           "path": "/api/v1/users",
@@ -1876,7 +1876,7 @@
         },
         {
           "name": "no_schema_cap",
-          "description": "No input schema — unknown bucket",
+          "description": "No input schema \u2014 unknown bucket",
           "domain": "ops",
           "method": "GET",
           "path": "/api/v1/noschema",
@@ -1906,7 +1906,7 @@
     {
       "id": "input-schema-first-property-required-status-index-determinism",
       "scenario_type": "input_schema_first_property_required_status_index_determinism",
-      "description": "Verifies that tusq obligation index produces byte-identical output across three runs on a synthetic manifest with required, optional, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (required/optional/not_applicable/unknown), closed three-value aggregation_key enum (required_status/not_applicable/unknown), bucket order determinism (required → optional → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_required_status non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys. The determinism fixture uses {c, a, b} key order with required=['a'] to verify firstKey selected is 'c' (optional, not sorted 'a' which would be required).",
+      "description": "Verifies that tusq obligation index produces byte-identical output across three runs on a synthetic manifest with required, optional, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (required/optional/not_applicable/unknown), closed three-value aggregation_key enum (required_status/not_applicable/unknown), bucket order determinism (required \u2192 optional \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_required_status non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys. The determinism fixture uses {c, a, b} key order with required=['a'] to verify firstKey selected is 'c' (optional, not sorted 'a' which would be required).",
       "synthetic_capabilities": [
         {
           "name": "required_cap",
@@ -1920,9 +1920,13 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" }
+              "id": {
+                "type": "string"
+              }
             },
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         },
         {
@@ -1937,7 +1941,9 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "body": { "type": "object" }
+              "body": {
+                "type": "object"
+              }
             },
             "required": []
           }
@@ -1954,16 +1960,24 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "c": { "type": "string" },
-              "a": { "type": "string" },
-              "b": { "type": "string" }
+              "c": {
+                "type": "string"
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string"
+              }
             },
-            "required": ["a"]
+            "required": [
+              "a"
+            ]
           }
         },
         {
           "name": "array_input_cap",
-          "description": "Non-object input (array type) — not_applicable, no warning",
+          "description": "Non-object input (array type) \u2014 not_applicable, no warning",
           "domain": "users",
           "method": "GET",
           "path": "/api/v1/items",
@@ -1972,12 +1986,14 @@
           "approved": true,
           "input_schema": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         {
           "name": "no_schema_cap",
-          "description": "No input schema — unknown bucket",
+          "description": "No input schema \u2014 unknown bucket",
           "domain": "ops",
           "method": "GET",
           "path": "/api/v1/noschema",
@@ -2002,7 +2018,7 @@
     {
       "id": "input-schema-first-property-source-index-determinism",
       "scenario_type": "input_schema_first_property_source_index_determinism",
-      "description": "Verifies that tusq binding index produces byte-identical output across three runs on a synthetic manifest with path, request_body, query, header, not_applicable, and unknown buckets. Also validates closed six-value bucket-key enum (path/request_body/query/header/not_applicable/unknown), closed three-value aggregation_key enum (source/not_applicable/unknown), bucket order determinism (path → request_body → query → header → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_source non-persistence. Object.keys insertion-order is preserved; MUST NOT sort or reorder property keys.",
+      "description": "Verifies that tusq binding index produces byte-identical output across three runs on a synthetic manifest with path, request_body, query, header, not_applicable, and unknown buckets. Also validates closed six-value bucket-key enum (path/request_body/query/header/not_applicable/unknown), closed three-value aggregation_key enum (source/not_applicable/unknown), bucket order determinism (path \u2192 request_body \u2192 query \u2192 header \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_source non-persistence. Object.keys insertion-order is preserved; MUST NOT sort or reorder property keys.",
       "synthetic_capabilities": [
         {
           "name": "path_cap",
@@ -2016,7 +2032,10 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "source": "path" }
+              "id": {
+                "type": "string",
+                "source": "path"
+              }
             }
           }
         },
@@ -2032,7 +2051,10 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "body": { "type": "object", "source": "request_body" }
+              "body": {
+                "type": "object",
+                "source": "request_body"
+              }
             }
           }
         },
@@ -2048,7 +2070,10 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "filter": { "type": "string", "source": "query" }
+              "filter": {
+                "type": "string",
+                "source": "query"
+              }
             }
           }
         },
@@ -2064,13 +2089,16 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "tenant_id": { "type": "string", "source": "header" }
+              "tenant_id": {
+                "type": "string",
+                "source": "header"
+              }
             }
           }
         },
         {
           "name": "array_input_cap",
-          "description": "Non-object input (array type) — not_applicable, no warning",
+          "description": "Non-object input (array type) \u2014 not_applicable, no warning",
           "domain": "users",
           "method": "GET",
           "path": "/api/v1/items",
@@ -2079,12 +2107,14 @@
           "approved": true,
           "input_schema": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         {
           "name": "no_schema_cap",
-          "description": "No input schema — unknown bucket",
+          "description": "No input schema \u2014 unknown bucket",
           "domain": "ops",
           "method": "GET",
           "path": "/api/v1/noschema",
@@ -2111,7 +2141,7 @@
     {
       "id": "input-schema-first-property-description-presence-index-determinism",
       "scenario_type": "input_schema_first_property_description_presence_index_determinism",
-      "description": "Verifies that tusq gloss index produces byte-identical output across three runs on a synthetic manifest with described, undescribed, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (described/undescribed/not_applicable/unknown), closed three-value aggregation_key enum (description_presence/not_applicable/unknown), bucket order determinism (described → undescribed → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_description_presence non-persistence. Object.keys insertion-order is preserved: keys={c,a,b} where c is undescribed (no description), a is described, b is described — firstKey=c → undescribed (NOT sorted 'a' which would be described).",
+      "description": "Verifies that tusq gloss index produces byte-identical output across three runs on a synthetic manifest with described, undescribed, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (described/undescribed/not_applicable/unknown), closed three-value aggregation_key enum (description_presence/not_applicable/unknown), bucket order determinism (described \u2192 undescribed \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_description_presence non-persistence. Object.keys insertion-order is preserved: keys={c,a,b} where c is undescribed (no description), a is described, b is described \u2014 firstKey=c \u2192 undescribed (NOT sorted 'a' which would be described).",
       "synthetic_capabilities": [
         {
           "name": "described_cap",
@@ -2125,7 +2155,10 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "description": "The user identifier" }
+              "id": {
+                "type": "string",
+                "description": "The user identifier"
+              }
             }
           }
         },
@@ -2141,13 +2174,15 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "body": { "type": "object" }
+              "body": {
+                "type": "object"
+              }
             }
           }
         },
         {
           "name": "not_applicable_cap",
-          "description": "Non-object input (array type) — not_applicable, no warning",
+          "description": "Non-object input (array type) \u2014 not_applicable, no warning",
           "domain": "users",
           "method": "GET",
           "path": "/api/v1/items",
@@ -2156,12 +2191,14 @@
           "approved": true,
           "input_schema": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         {
           "name": "no_schema_cap",
-          "description": "No input schema — unknown bucket",
+          "description": "No input schema \u2014 unknown bucket",
           "domain": "ops",
           "method": "GET",
           "path": "/api/v1/status",
@@ -2171,7 +2208,7 @@
         },
         {
           "name": "insertion_order_cap",
-          "description": "Object with keys {c,a,b} where c is undescribed (no description), a is described — firstKey=c → undescribed (insertion-order, NOT sorted)",
+          "description": "Object with keys {c,a,b} where c is undescribed (no description), a is described \u2014 firstKey=c \u2192 undescribed (insertion-order, NOT sorted)",
           "domain": "test",
           "method": "POST",
           "path": "/api/v1/test",
@@ -2181,9 +2218,17 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "c": { "type": "string" },
-              "a": { "type": "string", "description": "described second key" },
-              "b": { "type": "string", "description": "described third key" }
+              "c": {
+                "type": "string"
+              },
+              "a": {
+                "type": "string",
+                "description": "described second key"
+              },
+              "b": {
+                "type": "string",
+                "description": "described third key"
+              }
             }
           }
         }
@@ -2204,7 +2249,7 @@
     {
       "id": "input-schema-first-property-format-hint-index-determinism",
       "scenario_type": "input_schema_first_property_format_hint_index_determinism",
-      "description": "Verifies that tusq hint index produces byte-identical output across three runs on a synthetic manifest with hinted, unhinted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (hinted/unhinted/not_applicable/unknown), closed three-value aggregation_key enum (format_hint/not_applicable/unknown), bucket order determinism (hinted → unhinted → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_format_hint non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z is hinted (format='email'), a is unhinted (no format), b is hinted — firstKey=z → hinted (NOT sorted 'a' which would be unhinted).",
+      "description": "Verifies that tusq hint index produces byte-identical output across three runs on a synthetic manifest with hinted, unhinted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (hinted/unhinted/not_applicable/unknown), closed three-value aggregation_key enum (format_hint/not_applicable/unknown), bucket order determinism (hinted \u2192 unhinted \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_format_hint non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z is hinted (format='email'), a is unhinted (no format), b is hinted \u2014 firstKey=z \u2192 hinted (NOT sorted 'a' which would be unhinted).",
       "synthetic_capabilities": [
         {
           "name": "hinted_cap",
@@ -2218,9 +2263,14 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "email": { "type": "string", "format": "email" }
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
             },
-            "required": ["email"]
+            "required": [
+              "email"
+            ]
           }
         },
         {
@@ -2235,109 +2285,13 @@
           "input_schema": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" }
-            },
-            "required": ["id"]
-          }
-        },
-        {
-          "name": "not_applicable_cap",
-          "description": "Non-object input schema (array type)",
-          "domain": "items",
-          "method": "GET",
-          "path": "/api/v1/items",
-          "side_effect_class": "read",
-          "sensitivity_class": "public",
-          "approved": true,
-          "input_schema": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        },
-        {
-          "name": "no_schema_cap",
-          "description": "Missing input_schema field",
-          "domain": "misc",
-          "method": "GET",
-          "path": "/api/v1/misc",
-          "side_effect_class": "read",
-          "sensitivity_class": "public",
-          "approved": true
-        },
-        {
-          "name": "insertion_order_cap",
-          "description": "Keys={z,a,b}: z is hinted (format='email'), a is unhinted, b is hinted — firstKey=z → hinted (NOT sorted 'a')",
-          "domain": "misc",
-          "method": "POST",
-          "path": "/api/v1/test",
-          "side_effect_class": "write",
-          "sensitivity_class": "public",
-          "approved": true,
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "z": { "type": "string", "format": "email" },
-              "a": { "type": "string" },
-              "b": { "type": "string", "format": "date" }
-            }
-          }
-        }
-      ],
-      "expected_valid_hints": [
-        "hinted",
-        "unhinted",
-        "not_applicable",
-        "unknown"
-      ],
-      "expected_valid_aggregation_keys": [
-        "format_hint",
-        "not_applicable",
-        "unknown"
-      ],
-      "expected_bucket_order": "hinted,unhinted,not_applicable,unknown"
-    },
-    {
-      "id": "input-schema-first-property-enum-constraint-index-determinism",
-      "scenario_type": "input_schema_first_property_enum_constraint_index_determinism",
-      "description": "Verifies that tusq choice index produces byte-identical output across three runs on a synthetic manifest with enumerated, unenumerated, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (enumerated/unenumerated/not_applicable/unknown), closed three-value aggregation_key enum (enum_constraint/not_applicable/unknown), bucket order determinism (enumerated → unenumerated → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_enum_constraint non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z is enumerated (enum=['x']), a is unenumerated (no enum), b is enumerated — firstKey=z → enumerated (NOT sorted 'a' which would be unenumerated).",
-      "synthetic_capabilities": [
-        {
-          "name": "enumerated_cap",
-          "description": "First property has an enum constraint",
-          "domain": "users",
-          "method": "POST",
-          "path": "/api/v1/users",
-          "side_effect_class": "write",
-          "sensitivity_class": "internal",
-          "approved": true,
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string",
-                "enum": ["active", "inactive", "pending"]
-              }
-            },
-            "required": ["status"]
-          }
-        },
-        {
-          "name": "unenumerated_cap",
-          "description": "First property has no enum field",
-          "domain": "users",
-          "method": "GET",
-          "path": "/api/v1/users/:id",
-          "side_effect_class": "read",
-          "sensitivity_class": "internal",
-          "approved": false,
-          "input_schema": {
-            "type": "object",
-            "properties": {
               "id": {
                 "type": "string"
               }
             },
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         },
         {
@@ -2368,7 +2322,7 @@
         },
         {
           "name": "insertion_order_cap",
-          "description": "Keys={z,a,b}: z is enumerated (enum=['x']), a is unenumerated, b is enumerated — firstKey=z → enumerated (NOT sorted 'a')",
+          "description": "Keys={z,a,b}: z is hinted (format='email'), a is unhinted, b is hinted \u2014 firstKey=z \u2192 hinted (NOT sorted 'a')",
           "domain": "misc",
           "method": "POST",
           "path": "/api/v1/test",
@@ -2380,14 +2334,138 @@
             "properties": {
               "z": {
                 "type": "string",
-                "enum": ["x", "y"]
+                "format": "email"
               },
               "a": {
                 "type": "string"
               },
               "b": {
                 "type": "string",
-                "enum": ["p", "q"]
+                "format": "date"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_hints": [
+        "hinted",
+        "unhinted",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "format_hint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "hinted,unhinted,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-enum-constraint-index-determinism",
+      "scenario_type": "input_schema_first_property_enum_constraint_index_determinism",
+      "description": "Verifies that tusq choice index produces byte-identical output across three runs on a synthetic manifest with enumerated, unenumerated, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (enumerated/unenumerated/not_applicable/unknown), closed three-value aggregation_key enum (enum_constraint/not_applicable/unknown), bucket order determinism (enumerated \u2192 unenumerated \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_enum_constraint non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z is enumerated (enum=['x']), a is unenumerated (no enum), b is enumerated \u2014 firstKey=z \u2192 enumerated (NOT sorted 'a' which would be unenumerated).",
+      "synthetic_capabilities": [
+        {
+          "name": "enumerated_cap",
+          "description": "First property has an enum constraint",
+          "domain": "users",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive",
+                  "pending"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        {
+          "name": "unenumerated_cap",
+          "description": "First property has no enum field",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "not_applicable_cap",
+          "description": "Non-object input schema (array type)",
+          "domain": "items",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "Missing input_schema field",
+          "domain": "misc",
+          "method": "GET",
+          "path": "/api/v1/misc",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        },
+        {
+          "name": "insertion_order_cap",
+          "description": "Keys={z,a,b}: z is enumerated (enum=['x']), a is unenumerated, b is enumerated \u2014 firstKey=z \u2192 enumerated (NOT sorted 'a')",
+          "domain": "misc",
+          "method": "POST",
+          "path": "/api/v1/test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "enum": [
+                  "x",
+                  "y"
+                ]
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string",
+                "enum": [
+                  "p",
+                  "q"
+                ]
               }
             }
           }
@@ -2409,7 +2487,7 @@
     {
       "id": "input-schema-first-property-default-value-presence-index-determinism",
       "scenario_type": "input_schema_first_property_default_value_presence_index_determinism",
-      "description": "Verifies that tusq preset index produces byte-identical output across three runs on a synthetic manifest with defaulted, undefaulted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (defaulted/undefaulted/not_applicable/unknown), closed three-value aggregation_key enum (default_value/not_applicable/unknown), bucket order determinism (defaulted → undefaulted → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_default_value non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (also defaulted per FALSY-DEFAULT-COUNTS-AS-DEFAULTED) — firstKey=z → defaulted (NOT sorted 'a' which would be undefaulted). Fifth frozen warning reason code (input_schema_properties_first_property_descriptor_invalid) formally elevated from M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 pattern.",
+      "description": "Verifies that tusq preset index produces byte-identical output across three runs on a synthetic manifest with defaulted, undefaulted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (defaulted/undefaulted/not_applicable/unknown), closed three-value aggregation_key enum (default_value/not_applicable/unknown), bucket order determinism (defaulted \u2192 undefaulted \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_default_value non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (also defaulted per FALSY-DEFAULT-COUNTS-AS-DEFAULTED) \u2014 firstKey=z \u2192 defaulted (NOT sorted 'a' which would be undefaulted). Fifth frozen warning reason code (input_schema_properties_first_property_descriptor_invalid) formally elevated from M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 pattern.",
       "synthetic_capabilities": [
         {
           "name": "no_schema_cap",
@@ -2419,7 +2497,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
         },
         {
           "name": "not_applicable_cap",
@@ -2429,10 +2507,12 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
           "input_schema": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         {
@@ -2443,11 +2523,14 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property has default='active' — lands in defaulted bucket",
+          "description": "First property has default='active' \u2014 lands in defaulted bucket",
           "input_schema": {
             "type": "object",
             "properties": {
-              "status": { "type": "string", "default": "active" }
+              "status": {
+                "type": "string",
+                "default": "active"
+              }
             },
             "required": []
           }
@@ -2460,13 +2543,18 @@
           "side_effect_class": "read",
           "sensitivity_class": "internal",
           "approved": false,
-          "description": "First property has no default field — lands in undefaulted bucket",
+          "description": "First property has no default field \u2014 lands in undefaulted bucket",
           "input_schema": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "description": "User identifier" }
+              "id": {
+                "type": "string",
+                "description": "User identifier"
+              }
             },
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         },
         {
@@ -2477,7 +2565,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "Keys={z,a,b}: z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (defaulted). firstKey=z → defaulted (insertion-order, NOT sorted).",
+          "description": "Keys={z,a,b}: z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (defaulted). firstKey=z \u2192 defaulted (insertion-order, NOT sorted).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -2508,6 +2596,124 @@
         "unknown"
       ],
       "expected_bucket_order": "defaulted,undefaulted,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-examples-index-determinism",
+      "scenario_type": "input_schema_first_property_examples_index_determinism",
+      "description": "Verifies that tusq sample index produces byte-identical output across three runs on a synthetic manifest with exampled, unexampled, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (exampled/unexampled/not_applicable/unknown), closed three-value aggregation_key enum (example_set/not_applicable/unknown), bucket order determinism (exampled \u2192 unexampled \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_examples non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has examples=[\"seed\"] (exampled), a has no examples (unexampled), b has examples=[] (unknown with warning input_schema_properties_first_property_examples_invalid_when_present) \u2014 firstKey=z \u2192 exampled (insertion-order, NOT sorted). EMPTY-ARRAY examples:[] is unknown WITH warning (alignment with M54 empty-enum-is-malformed precedent; contrast with M55 where default:[] is defaulted per FALSY-DEFAULT-COUNTS-AS-DEFAULTED). null-as-absent: examples:null \u2192 unexampled (no warning, mirroring M55 null-as-absent). Sixth frozen warning reason code: input_schema_properties_first_property_examples_invalid_when_present (single consolidated code covers both non-array and empty-array malformations).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "exampled_cap",
+          "method": "POST",
+          "path": "/exampled",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has examples=[\"active\",\"inactive\"] \u2014 lands in exampled bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "examples": [
+                  "active",
+                  "inactive"
+                ]
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unexampled_cap",
+          "method": "GET",
+          "path": "/unexampled",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no examples field \u2014 lands in unexampled bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "User identifier"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has examples=[\"seed\"] (exampled), a has no examples (unexampled), b has examples=[] (unknown+warning). firstKey=z \u2192 exampled (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "examples": [
+                  "seed"
+                ]
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "examples": []
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_examples_values": [
+        "exampled",
+        "unexampled",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "example_set",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "exampled,unexampled,not_applicable,unknown"
     }
   ]
 }

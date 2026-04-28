@@ -1325,6 +1325,68 @@ tusq method index --method unknown --json
 tusq method index --out method-index.json
 ```
 
+## `tusq sample index`
+
+Emit a deterministic, per-first-input-property-examples-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].examples` is a non-empty array (`exampled`), absent or null (`unexampled`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime payload validator, doc-contradiction detector, examples-element-type distributor, LLM inferrer, or marketplace-listing generator**.
+
+**M56-vs-M40 distinctness:** `tusq examples index` (M40) reads the **capability-level top-level `examples` field** (worked-example invocation records `{name, request, response, ...}`). `tusq sample index` (M56) reads the **per-property `input_schema.properties[firstKey].examples` field** (JSON-Schema's per-property example-values keyword). These two commands are read-only-invariant peers reading two distinct JSON-Schema features under two distinct nouns.
+
+```bash
+tusq sample index [--sample <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--sample <exampled\|unexampled\|not_applicable\|unknown>` | all buckets | Filter to a single examples bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].examples` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `exampled` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].examples` is a non-empty Array (`length >= 1`) |
+| `unexampled` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].examples` is absent, `null`, or `undefined` (null-as-absent per JSON-Schema convention) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].examples` present and non-null but not a non-empty array (empty array `[]` is `unknown` WITH warning — JSON-Schema requires `>=1` element; deliberate alignment with M54 empty-`enum`-is-malformed precedent) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_examples_invalid_when_present` ← M56 axis-specific code; covers both non-array AND empty-array malformations under a single consolidated code
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown sample value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `exampled → unexampled → not_applicable → unknown` (deterministic stable-output convention only — NOT marketplace-readiness-ranked, NOT marketplace-discoverability-ranked, NOT OpenAI-ecosystem-readiness-ranked, NOT Claude/Anthropic-ecosystem-readiness-ranked, NOT MCP-registry-readiness-ranked, NOT example-prompt-coverage-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_examples` is NEVER written into the manifest.
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- Per-element type heterogeneity in `examples[]` is NOT classified at this milestone (reserved for `M-Sample-Examples-Element-Type-Distribution-Index-1`).
+
+```bash
+# All examples buckets (human-readable)
+tusq sample index
+
+# All examples buckets (JSON)
+tusq sample index --json
+
+# Exampled capabilities (non-empty examples array on first property)
+tusq sample index --sample exampled --json
+
+# Unexampled capabilities (no examples field on first property)
+tusq sample index --sample unexampled --json
+
+# Write to file
+tusq sample index --out sample-index.json
+```
+
 ## `tusq sensitivity index`
 
 Emit a deterministic, per-sensitivity-class capability index from manifest evidence. Groups capabilities by their M28-derived `sensitivity_class` field in closed-enum order (`public → internal → confidential → restricted → unknown`), with a special `unknown` bucket for capabilities whose `sensitivity_class` is `null`, missing, empty-string, or any value outside the closed four-value named set. This is a **planning aid, not a runtime sensitivity enforcer or compliance certifier**.

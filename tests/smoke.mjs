@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 39) {
+  if (m45CommandCount !== 40) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 39) {
-    throw new Error(`M46(x): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 40) {
+    throw new Error(`M46(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 39) {
-    throw new Error(`M47(x): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 40) {
+    throw new Error(`M47(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 39) {
-    throw new Error(`M48(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 40) {
+    throw new Error(`M48(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 39) {
-    throw new Error(`M49(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 40) {
+    throw new Error(`M49(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 39) {
-    throw new Error(`M50(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 40) {
+    throw new Error(`M50(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 39) {
-    throw new Error(`M51(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 40) {
+    throw new Error(`M51(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 39) {
-    throw new Error(`M52(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 40) {
+    throw new Error(`M52(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 39 commands and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 39) {
-    throw new Error(`M53(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 40) {
+    throw new Error(`M53(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 39 commands and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 39) {
-    throw new Error(`M54(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 40) {
+    throw new Error(`M54(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 39 commands and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 40 commands (M56 adds 'sample') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 39) {
-    throw new Error(`M55(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 40) {
+    throw new Error(`M55(x3): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8150,6 +8150,390 @@ async function run() {
   }
 
   await fs.rm(m55TmpDir, { recursive: true, force: true });
+
+  // ── M56: Static Capability Input Schema First Property Examples Presence Index Export ─────────
+  const m56TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m56-smoke-'));
+
+  // M56 fixture manifest: synthetic capabilities across exampled/unexampled/not_applicable buckets.
+  // exampled_cap → firstKey.examples=['value1','value2'] (non-empty array → exampled)
+  // unexampled_cap → firstKey has no examples field (absent → unexampled)
+  // not_applicable_cap → input_schema.type='array' (non-object → not_applicable, no warning)
+  const m56SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'exampled_cap',
+        description: 'Capability with examples on first property',
+        method: 'POST',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { role: { type: 'string', examples: ['admin', 'viewer'] } },
+          required: []
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'unexampled_cap',
+        description: 'Capability with no examples on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m56SyntheticManifestPath = path.join(m56TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m56SyntheticManifestPath, JSON.stringify(m56SyntheticManifest, null, 2), 'utf8');
+
+  // M56(a): default tusq sample index on synthetic fixture produces correct buckets in closed-enum order
+  const m56DefaultResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--json'], { cwd: m56TmpDir });
+  if (m56DefaultResult.status !== 0) {
+    throw new Error(`M56(a): sample index must exit 0:\nstderr=${m56DefaultResult.stderr}`);
+  }
+  const m56DefaultJson = JSON.parse(m56DefaultResult.stdout);
+  if (!Array.isArray(m56DefaultJson.first_property_examples)) {
+    throw new Error(`M56(a): JSON output must have first_property_examples[] array:\n${m56DefaultResult.stdout}`);
+  }
+  if (m56DefaultJson.tiers !== undefined || m56DefaultJson.first_property_enum_constraints !== undefined || m56DefaultJson.first_property_default_values !== undefined) {
+    throw new Error(`M56(a): JSON output must NOT have tiers/first_property_enum_constraints/first_property_default_values; field name must be first_property_examples[]:\n${m56DefaultResult.stdout}`);
+  }
+  if (!m56DefaultJson.first_property_examples.some((e) => e.input_schema_first_property_examples === 'exampled' && e.capabilities.includes('exampled_cap'))) {
+    throw new Error(`M56(a): exampled bucket must include exampled_cap:\n${JSON.stringify(m56DefaultJson.first_property_examples)}`);
+  }
+  if (!m56DefaultJson.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unexampled' && e.capabilities.includes('unexampled_cap'))) {
+    throw new Error(`M56(a): unexampled bucket must include unexampled_cap:\n${JSON.stringify(m56DefaultJson.first_property_examples)}`);
+  }
+  if (!m56DefaultJson.first_property_examples.some((e) => e.input_schema_first_property_examples === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M56(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m56DefaultJson.first_property_examples)}`);
+  }
+  if (m56DefaultJson.warnings.length !== 0) {
+    throw new Error(`M56(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m56DefaultJson.warnings)}`);
+  }
+
+  // M56(b): bucket order is exampled → unexampled → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m56BucketOrder = m56DefaultJson.first_property_examples.map((e) => e.input_schema_first_property_examples);
+  if (m56BucketOrder[0] !== 'exampled' || m56BucketOrder[1] !== 'unexampled' || m56BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M56(b): bucket order must be exampled→unexampled→not_applicable; got ${m56BucketOrder}`);
+  }
+
+  // M56(c): --sample exampled filter returns only exampled bucket
+  const m56ExampledResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample', 'exampled', '--json'], { cwd: m56TmpDir });
+  if (m56ExampledResult.status !== 0) {
+    throw new Error(`M56(c): --sample exampled must exit 0:\nstderr=${m56ExampledResult.stderr}`);
+  }
+  const m56ExampledJson = JSON.parse(m56ExampledResult.stdout);
+  if (m56ExampledJson.first_property_examples.length !== 1 || m56ExampledJson.first_property_examples[0].input_schema_first_property_examples !== 'exampled') {
+    throw new Error(`M56(c): --sample exampled must return exactly one exampled entry:\n${m56ExampledResult.stdout}`);
+  }
+
+  // M56(d): --sample unexampled filter returns only unexampled bucket
+  const m56UnexampledResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample', 'unexampled', '--json'], { cwd: m56TmpDir });
+  if (m56UnexampledResult.status !== 0) {
+    throw new Error(`M56(d): --sample unexampled must exit 0:\nstderr=${m56UnexampledResult.stderr}`);
+  }
+  const m56UnexampledJson = JSON.parse(m56UnexampledResult.stdout);
+  if (m56UnexampledJson.first_property_examples.length !== 1 || m56UnexampledJson.first_property_examples[0].input_schema_first_property_examples !== 'unexampled') {
+    throw new Error(`M56(d): --sample unexampled must return exactly one unexampled entry:\n${m56UnexampledResult.stdout}`);
+  }
+
+  // M56(e): --sample not_applicable filter returns only not_applicable bucket
+  const m56NaResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample', 'not_applicable', '--json'], { cwd: m56TmpDir });
+  if (m56NaResult.status !== 0) {
+    throw new Error(`M56(e): --sample not_applicable must exit 0:\nstderr=${m56NaResult.stderr}`);
+  }
+  const m56NaJson = JSON.parse(m56NaResult.stdout);
+  if (m56NaJson.first_property_examples.length !== 1 || m56NaJson.first_property_examples[0].input_schema_first_property_examples !== 'not_applicable') {
+    throw new Error(`M56(e): --sample not_applicable must return exactly one not_applicable entry:\n${m56NaResult.stdout}`);
+  }
+
+  // M56(f): --sample unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m56UnknownAbsentResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample', 'unknown'], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56UnknownAbsentResult.status !== 1 || !m56UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M56(f): --sample unknown on a manifest with no unknown caps must exit 1:\nstdout=${m56UnknownAbsentResult.stdout}\nstderr=${m56UnknownAbsentResult.stderr}`);
+  }
+
+  // M56(g): --sample EXAMPLED exits 1 (case-sensitive enforcement)
+  const m56CaseResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample', 'EXAMPLED'], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56CaseResult.status !== 1) {
+    throw new Error(`M56(g): --sample EXAMPLED uppercase must exit 1 (case-sensitive):\nstdout=${m56CaseResult.stdout}\nstderr=${m56CaseResult.stderr}`);
+  }
+
+  // M56(h): unknown flag exits 1
+  const m56UnknownFlagResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--bogus'], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56UnknownFlagResult.status !== 1) {
+    throw new Error(`M56(h): unknown flag must exit 1:\nstdout=${m56UnknownFlagResult.stdout}\nstderr=${m56UnknownFlagResult.stderr}`);
+  }
+
+  // M56(i): missing manifest exits 1
+  const m56MissingManifestResult = runCli(['sample', 'index', '--manifest', path.join(m56TmpDir, 'nonexistent.json')], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56MissingManifestResult.status !== 1) {
+    throw new Error(`M56(i): missing manifest must exit 1:\nstdout=${m56MissingManifestResult.stdout}\nstderr=${m56MissingManifestResult.stderr}`);
+  }
+
+  // M56(j): malformed JSON exits 1
+  const m56BadJsonPath = path.join(m56TmpDir, 'bad.json');
+  await fs.writeFile(m56BadJsonPath, 'not json', 'utf8');
+  const m56BadJsonResult = runCli(['sample', 'index', '--manifest', m56BadJsonPath], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56BadJsonResult.status !== 1) {
+    throw new Error(`M56(j): malformed JSON manifest must exit 1:\nstdout=${m56BadJsonResult.stdout}\nstderr=${m56BadJsonResult.stderr}`);
+  }
+
+  // M56(k): missing capabilities array exits 1
+  const m56NoCapPath = path.join(m56TmpDir, 'nocap.json');
+  await fs.writeFile(m56NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m56NoCapResult = runCli(['sample', 'index', '--manifest', m56NoCapPath], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56NoCapResult.status !== 1) {
+    throw new Error(`M56(k): missing capabilities array must exit 1:\nstdout=${m56NoCapResult.stdout}\nstderr=${m56NoCapResult.stderr}`);
+  }
+
+  // M56(l): --sample with no value exits 1
+  const m56NoValueResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--sample'], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56NoValueResult.status !== 1) {
+    throw new Error(`M56(l): --sample with no value must exit 1:\nstdout=${m56NoValueResult.stdout}\nstderr=${m56NoValueResult.stderr}`);
+  }
+
+  // M56(m): --out writes to a file (no stdout)
+  const m56OutPath = path.join(m56TmpDir, 'out', 'sample-index.json');
+  const m56OutResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--out', m56OutPath], { cwd: m56TmpDir });
+  if (m56OutResult.status !== 0) {
+    throw new Error(`M56(m): --out must exit 0:\nstderr=${m56OutResult.stderr}`);
+  }
+  if (m56OutResult.stdout !== '') {
+    throw new Error(`M56(m): --out must produce no stdout:\nstdout=${m56OutResult.stdout}`);
+  }
+  const m56OutContent = JSON.parse(await fs.readFile(m56OutPath, 'utf8'));
+  if (!Array.isArray(m56OutContent.first_property_examples)) {
+    throw new Error(`M56(m): --out file must contain first_property_examples[]:\n${JSON.stringify(m56OutContent)}`);
+  }
+
+  // M56(n): --out inside .tusq/ exits 1
+  const m56TusqOutResult = runCli(['sample', 'index', '--manifest', m56SyntheticManifestPath, '--out', path.join(m56TmpDir, '.tusq', 'sample.json')], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (m56TusqOutResult.status !== 1) {
+    throw new Error(`M56(n): --out inside .tusq/ must exit 1:\nstdout=${m56TusqOutResult.stdout}\nstderr=${m56TusqOutResult.stderr}`);
+  }
+
+  // M56(o): empty capabilities → exit 0, first_property_examples: []
+  const m56EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m56EmptyCapPath = path.join(m56TmpDir, 'empty-cap.json');
+  await fs.writeFile(m56EmptyCapPath, JSON.stringify(m56EmptyCapManifest, null, 2), 'utf8');
+  const m56EmptyCapResult = runCli(['sample', 'index', '--manifest', m56EmptyCapPath, '--json'], { cwd: m56TmpDir });
+  if (m56EmptyCapResult.status !== 0) {
+    throw new Error(`M56(o): empty capabilities must exit 0:\nstderr=${m56EmptyCapResult.stderr}`);
+  }
+  const m56EmptyCapJson = JSON.parse(m56EmptyCapResult.stdout);
+  if (!Array.isArray(m56EmptyCapJson.first_property_examples) || m56EmptyCapJson.first_property_examples.length !== 0) {
+    throw new Error(`M56(o): empty capabilities must produce first_property_examples: []:\n${m56EmptyCapResult.stdout}`);
+  }
+
+  // M56(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m56AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'empty_array_examples', description: 'examples:[]', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: [] } } } }
+    ]
+  };
+  const m56AllWarningsPath = path.join(m56TmpDir, 'all-warnings.json');
+  await fs.writeFile(m56AllWarningsPath, JSON.stringify(m56AllWarningsManifest, null, 2), 'utf8');
+  const m56WarningsResult = runCli(['sample', 'index', '--manifest', m56AllWarningsPath, '--json'], { cwd: m56TmpDir });
+  if (m56WarningsResult.status !== 0) {
+    throw new Error(`M56(p): malformed schemas must exit 0 (not crash):\nstderr=${m56WarningsResult.stderr}`);
+  }
+  const m56WarningsJson = JSON.parse(m56WarningsResult.stdout);
+  if (!Array.isArray(m56WarningsJson.warnings) || m56WarningsJson.warnings.length !== 6) {
+    throw new Error(`M56(p): must produce exactly 6 warnings:\n${JSON.stringify(m56WarningsJson.warnings)}`);
+  }
+  const m56WarningReasons = m56WarningsJson.warnings.map((w) => w.reason);
+  if (!m56WarningReasons.includes('input_schema_field_missing')) throw new Error('M56(p): missing input_schema_field_missing reason');
+  if (!m56WarningReasons.includes('input_schema_field_not_object')) throw new Error('M56(p): missing input_schema_field_not_object reason');
+  if (!m56WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M56(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m56WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M56(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m56WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M56(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m56WarningReasons.includes('input_schema_properties_first_property_examples_invalid_when_present')) throw new Error('M56(p): missing input_schema_properties_first_property_examples_invalid_when_present reason');
+  if (!m56WarningsJson.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unknown')) {
+    throw new Error(`M56(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m56WarningsJson.first_property_examples)}`);
+  }
+
+  // M56(q): null examples → unexampled (null-as-absent precedent from M55, no warning)
+  const m56NullExamplesManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_examples_cap', description: 'examples:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: null } } } }]
+  };
+  const m56NullExamplesPath = path.join(m56TmpDir, 'null-examples.json');
+  await fs.writeFile(m56NullExamplesPath, JSON.stringify(m56NullExamplesManifest, null, 2), 'utf8');
+  const m56NullExamplesResult = runCli(['sample', 'index', '--manifest', m56NullExamplesPath, '--json'], { cwd: m56TmpDir });
+  const m56NullExamplesParsed = JSON.parse(m56NullExamplesResult.stdout);
+  if (!m56NullExamplesParsed.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unexampled' && e.capabilities.includes('null_examples_cap'))) {
+    throw new Error(`M56(q): examples:null must bucket as unexampled (null-as-absent):\n${m56NullExamplesResult.stdout}`);
+  }
+  if (m56NullExamplesParsed.warnings.length !== 0) {
+    throw new Error(`M56(q): examples:null must produce NO warning:\n${JSON.stringify(m56NullExamplesParsed.warnings)}`);
+  }
+
+  // M56(r): single-element examples → exampled (non-empty array → exampled, no warning)
+  const m56SingleExamplesManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'single_examples_cap', description: 'examples:[x]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: ['admin'] } } } }]
+  };
+  const m56SingleExamplesPath = path.join(m56TmpDir, 'single-examples.json');
+  await fs.writeFile(m56SingleExamplesPath, JSON.stringify(m56SingleExamplesManifest, null, 2), 'utf8');
+  const m56SingleResult = runCli(['sample', 'index', '--manifest', m56SingleExamplesPath, '--json'], { cwd: m56TmpDir });
+  const m56SingleParsed = JSON.parse(m56SingleResult.stdout);
+  if (!m56SingleParsed.first_property_examples.some((e) => e.input_schema_first_property_examples === 'exampled' && e.capabilities.includes('single_examples_cap'))) {
+    throw new Error(`M56(r): single-element examples must bucket as exampled:\n${m56SingleResult.stdout}`);
+  }
+  if (m56SingleParsed.warnings.length !== 0) {
+    throw new Error(`M56(r): single-element examples must produce NO warning:\n${JSON.stringify(m56SingleParsed.warnings)}`);
+  }
+
+  // M56(s): empty-array examples → unknown WITH warning input_schema_properties_first_property_examples_invalid_when_present
+  // (deliberate alignment with M54 empty-enum-is-malformed precedent; contrast with M55 where default:[] is defaulted)
+  const m56EmptyArrExamplesManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_arr_examples_cap', description: 'examples:[]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: [] } } } }]
+  };
+  const m56EmptyArrPath = path.join(m56TmpDir, 'empty-arr-examples.json');
+  await fs.writeFile(m56EmptyArrPath, JSON.stringify(m56EmptyArrExamplesManifest, null, 2), 'utf8');
+  const m56EmptyArrResult = runCli(['sample', 'index', '--manifest', m56EmptyArrPath, '--json'], { cwd: m56TmpDir });
+  const m56EmptyArrParsed = JSON.parse(m56EmptyArrResult.stdout);
+  if (!m56EmptyArrParsed.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unknown' && e.capabilities.includes('empty_arr_examples_cap'))) {
+    throw new Error(`M56(s): empty-array examples must bucket as unknown (contrast with M55 where default:[] is defaulted):\n${m56EmptyArrResult.stdout}`);
+  }
+  if (!m56EmptyArrParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_examples_invalid_when_present')) {
+    throw new Error(`M56(s): empty-array examples must produce warning input_schema_properties_first_property_examples_invalid_when_present:\n${JSON.stringify(m56EmptyArrParsed.warnings)}`);
+  }
+
+  // M56(t): string examples → unknown WITH warning (non-array examples present non-null)
+  const m56StringExamplesManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'string_examples_cap', description: 'examples:"bad"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: 'bad' } } } }]
+  };
+  const m56StringExamplesPath = path.join(m56TmpDir, 'string-examples.json');
+  await fs.writeFile(m56StringExamplesPath, JSON.stringify(m56StringExamplesManifest, null, 2), 'utf8');
+  const m56StringResult = runCli(['sample', 'index', '--manifest', m56StringExamplesPath, '--json'], { cwd: m56TmpDir });
+  const m56StringParsed = JSON.parse(m56StringResult.stdout);
+  if (!m56StringParsed.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unknown' && e.capabilities.includes('string_examples_cap'))) {
+    throw new Error(`M56(t): string examples must bucket as unknown:\n${m56StringResult.stdout}`);
+  }
+  if (!m56StringParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_examples_invalid_when_present')) {
+    throw new Error(`M56(t): string examples must produce warning:\n${JSON.stringify(m56StringParsed.warnings)}`);
+  }
+
+  // M56(u): object examples → unknown WITH warning (non-array examples present non-null)
+  const m56ObjExamplesManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'obj_examples_cap', description: 'examples:{}', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', examples: {} } } } }]
+  };
+  const m56ObjExamplesPath = path.join(m56TmpDir, 'obj-examples.json');
+  await fs.writeFile(m56ObjExamplesPath, JSON.stringify(m56ObjExamplesManifest, null, 2), 'utf8');
+  const m56ObjResult = runCli(['sample', 'index', '--manifest', m56ObjExamplesPath, '--json'], { cwd: m56TmpDir });
+  const m56ObjParsed = JSON.parse(m56ObjResult.stdout);
+  if (!m56ObjParsed.first_property_examples.some((e) => e.input_schema_first_property_examples === 'unknown' && e.capabilities.includes('obj_examples_cap'))) {
+    throw new Error(`M56(u): object examples must bucket as unknown:\n${m56ObjResult.stdout}`);
+  }
+  if (!m56ObjParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_examples_invalid_when_present')) {
+    throw new Error(`M56(u): object examples must produce warning:\n${JSON.stringify(m56ObjParsed.warnings)}`);
+  }
+
+  // M56(v): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'example_set','not_applicable','unknown'}
+  const m56AggKeyResult = runCli(['sample', 'index', '--manifest', m56AllWarningsPath, '--json'], { cwd: m56TmpDir });
+  const m56AggKeyParsed = JSON.parse(m56AggKeyResult.stdout);
+  const m56ValidAggKeys = new Set(['example_set', 'not_applicable', 'unknown']);
+  for (const entry of m56AggKeyParsed.first_property_examples) {
+    if (!m56ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M56(v): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m56AggExampled = m56DefaultJson.first_property_examples.find((e) => e.input_schema_first_property_examples === 'exampled');
+  if (!m56AggExampled || m56AggExampled.aggregation_key !== 'example_set') {
+    throw new Error(`M56(v): exampled bucket must have aggregation_key 'example_set':\n${JSON.stringify(m56AggExampled)}`);
+  }
+  const m56AggNA = m56DefaultJson.first_property_examples.find((e) => e.input_schema_first_property_examples === 'not_applicable');
+  if (!m56AggNA || m56AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M56(v): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m56AggNA)}`);
+  }
+
+  // M56(w): non-persistence — manifest file not mutated
+  const m56ManifestAfter = JSON.parse(await fs.readFile(m56SyntheticManifestPath, 'utf8'));
+  for (const cap of m56ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_examples')) {
+      throw new Error(`M56(w): input_schema_first_property_examples must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
+  const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
+  const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m56HelpCommandCount !== 40) {
+    throw new Error(`M56(x): tusq help must enumerate 40 commands (M56 adds 'sample'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  }
+  if (!m56HelpResult.stdout.includes('  sample')) {
+    throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
+  }
+  // Verify ordering: response before sample before sensitivity
+  const m56HelpLines = m56HelpResult.stdout.split('\n');
+  const m56ResponseIdx = m56HelpLines.findIndex((l) => l.startsWith('  response'));
+  const m56SampleIdx = m56HelpLines.findIndex((l) => l.startsWith('  sample'));
+  const m56SensitivityIdx = m56HelpLines.findIndex((l) => l.startsWith('  sensitivity'));
+  if (!(m56ResponseIdx < m56SampleIdx && m56SampleIdx < m56SensitivityIdx)) {
+    throw new Error(`M56(x): 'sample' must appear between 'response' and 'sensitivity' in help:\n${m56HelpResult.stdout}`);
+  }
+
+  // M56(x2): sample index --help includes planning-aid framing
+  const m56IndexHelpResult = runCli(['sample', 'index', '--help'], { cwd: m56TmpDir });
+  if (!m56IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M56(x2): sample index help must include planning-aid framing:\n${m56IndexHelpResult.stdout}`);
+  }
+
+  // M56(x3): unknown subcommand exits 1
+  const m56UnknownSubCmd = runCli(['sample', 'bogusub'], { cwd: m56TmpDir, expectedStatus: 1 });
+  if (!m56UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m56UnknownSubCmd.stdout !== '') {
+    throw new Error(`M56(x3): unknown subcommand must exit 1:\nstdout=${m56UnknownSubCmd.stdout}\nstderr=${m56UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m56TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -8618,7 +9002,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 39) {
+  if (m44CommandCount !== 40) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -9156,7 +9540,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 39) {
+  if (m43CommandCount !== 40) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -9705,7 +10089,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 39) {
+  if (m42CommandCount !== 40) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -10251,7 +10635,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 39) {
+  if (m41CommandCount !== 40) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -10806,7 +11190,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 39) {
+  if (m40CommandCount !== 40) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -11278,7 +11662,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 39) {
+  if (m39CommandCount !== 40) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -11749,7 +12133,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 39) {
+  if (m38CommandCount !== 40) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -12232,7 +12616,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 39) {
+  if (m37CommandCount !== 40) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -12690,7 +13074,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 39) {
+  if (m36CommandCount !== 40) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -13083,7 +13467,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 39) {
+  if (m35CommandCount !== 40) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
