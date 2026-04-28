@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M55 (turn_fd961becbc051d28, run_a75232d11566c4cb, 2026-04-28, HEAD 1cd952c)
+
+**Milestone:** M55 — Static Capability Input Schema First Property Default Value Presence Index Export from Manifest Evidence (~0.5 day) — V1.36
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_103ec2af102d2d3a, role=dev). HEAD 1cd952c = M55 implementation checkpoint. All M55 implementation (src/cli.js, tests/smoke.mjs, 46 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (46 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyDefaultValueBucketKey` at src/cli.js:7812 and `_guardInputSchemaFirstPropertyDefaultValueAggregationKey` at src/cli.js:7819 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 39 (39-command CLI surface; `preset` between `policy` and `redaction`: policy(p,o=112,111) < preset(p,r=112,114) at pos 1; preset(p,r) < redaction(r) at pos 0: p(112) < r(114)). `node bin/tusq.js preset index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_default_values[]` with `undefaulted` bucket (get_users_api_v1_users_id AND post_users_users; aggregation_key `"default_value"`), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `defaulted` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. `--preset DEFAULTED` → exit 1 (case-sensitive). `--preset defaulted` → exit 1 (absent-bucket). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New command:** `tusq preset index` — indexes capabilities by `input_schema.properties[firstKey].default` JSON-Schema-default-value presence classification. Four-value bucket-key enum: `defaulted` | `undefaulted` | `not_applicable` | `unknown`. Three-value aggregation_key enum: `default_value` | `not_applicable` | `unknown`. Bucket iteration order: `defaulted → undefaulted → not_applicable → unknown` (deterministic stable-output convention only). Result array field: `first_property_default_values[]`. Per-bucket field: `input_schema_first_property_default_value`.
+
+**Key M55-specific invariants:** (1) FALSY-DEFAULT-COUNTS-AS-DEFAULTED: `default: null/false/0/""/[]/{}` → `defaulted` (no warning; deliberate deviation from M52/M53 empty-counts-as-absent precedent — operator explicitly typed the falsy value as the pre-fill seed, carrying semantic intent). (2) HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check: `Object.prototype.hasOwnProperty.call(firstVal, 'default') && firstVal.default !== undefined`; key absent OR present with `undefined` → `undefaulted` (no warning). (3) No axis-specific malformation code for `default` field (JSON-Schema `default` accepts ANY JSON value type). (4) Fifth frozen warning reason code `input_schema_properties_first_property_descriptor_invalid` formally elevated from M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 undeclared pattern — M55 retires the undeclared-sixth-code pattern.
+
+**Acceptance criteria:** REQ-740–REQ-764 added (25 new REQs). Total: 764 acceptance criteria (REQ-001–REQ-764). All pass. Ship verdict: SHIP.
+
 ## QA Verification — M54 (turn_03155e38972d94a4, run_ca31318ae2693a36, 2026-04-28, HEAD e3c08a2)
 
 **Milestone:** M54 — Static Capability Input Schema First Property Enum Constraint Presence Index Export from Manifest Evidence (~0.5 day) — V1.35

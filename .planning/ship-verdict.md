@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_fd961becbc051d28 (role=qa, run_a75232d11566c4cb, M55 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_103ec2af102d2d3a, role=dev, HEAD 1cd952c) for run_a75232d11566c4cb independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M55 does not modify manifest format — `input_schema_first_property_default_value` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_cb44215adb5a904f upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_ENUM` (frozen Set: defaulted/undefaulted/not_applicable/unknown) at `src/cli.js:483`; `INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_AGGREGATION_KEY_ENUM` (frozen Set: default_value/not_applicable/unknown) at `src/cli.js:487`; `INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_BUCKET_ORDER` (frozen array: defaulted/undefaulted/not_applicable) at `src/cli.js:494`. Guards `_guardInputSchemaFirstPropertyDefaultValueBucketKey` at `src/cli.js:7812`, `_guardInputSchemaFirstPropertyDefaultValueAggregationKey` at `src/cli.js:7819`. PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyDefaultValue` at `src/cli.js:7844–7879` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — formally elevated from M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 undeclared pattern; M55 retires that pattern); HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check at `src/cli.js:7874`: FALSY-DEFAULT-COUNTS-AS-DEFAULTED (null/false/0/""/[]/{}→defaulted, no warning); key absent OR present with undefined → undefaulted (no warning). No axis-specific malformation code (JSON-Schema `default` accepts ANY JSON value type). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 39. `preset` between `policy` and `redaction` confirmed (policy(p,o=112,111) < preset(p,r=112,114) at pos 1; preset(p,r) < redaction(r) at pos 0: p(112) < r(114)). `cmdPreset` dispatcher at `src/cli.js:8047`; `cmdPresetIndex` handler at `src/cli.js:8064`; `parsePresetIndexArgs` at `src/cli.js:8155`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js preset index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_default_values[]` with `undefaulted` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"default_value"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `defaulted` bucket absent (empty-bucket-MUST-NOT-appear invariant confirmed); `warnings: []`. Bucket order: undefaulted < not_applicable (defaulted→undefaulted→not_applicable→unknown convention). PASS.
+
+**7. Case-sensitive filter enforcement:** `--preset DEFAULTED` → exit 1, `Unknown input schema first property default value: DEFAULTED`. `--preset defaulted` → exit 1, `No capabilities found for input schema first property default value: defaulted` (absent-bucket enforcement). PASS.
+
+**8. FALSY-DEFAULT-COUNTS-AS-DEFAULTED verification:** Smoke cases (t)/(u)/(v)/(w) confirm: `default: null` → defaulted (no warning); `default: false` → defaulted (no warning); `default: 0` → defaulted (no warning); `default: ""` → defaulted (no warning); `default: []` → defaulted (no warning; contrast with M54 where `enum: []` → unknown WITH warning); `default: {}` → defaulted (no warning); absent key → undefaulted (no warning). Deliberate deviation from M52/M53 empty-counts-as-absent precedent confirmed. PASS.
+
+**9. Fifth frozen warning code elevation:** `input_schema_properties_first_property_descriptor_invalid` is now the FIFTH PM-FROZEN warning reason code for M55 — formally elevated from the OBJ-004/OBJ-005/OBJ-006 undeclared pattern raised against M52/M53/M54. M55 retires the undeclared-sixth-code pattern. OBJ-004/OBJ-005/OBJ-006 are retired. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 46 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (46 scenarios)`). Scenario 46 (`input-schema-first-property-default-value-presence-index-determinism`) with insertion-order test (keys={z,a,b}: z has default='seed', firstKey=z→defaulted, NOT sorted 'a'→undefaulted) verified. PASS.
+
+**11. Drift checks:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP completeness:** All 16 M55 ROADMAP checkboxes [x] confirmed. PASS.
+
+**13. Acceptance criteria:** REQ-740 through REQ-764 added to acceptance-matrix.md (25 new REQs, 764 total). All 764 acceptance criteria (REQ-001–REQ-764) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_03155e38972d94a4 (role=qa, run_ca31318ae2693a36, M54 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_bb0592709e7268f5, role=dev, HEAD e3c08a2) for run_ca31318ae2693a36 independently rather than rubber-stamping it.
