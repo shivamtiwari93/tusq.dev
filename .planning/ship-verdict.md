@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_dfcb56e6034f88b5 (role=qa, run_3f128359168988b4, M52 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_09c7bb9f6448bf1a, role=dev, HEAD c4aee92) for run_3f128359168988b4 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff 5b6fb5e..c4aee92 --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M52 does not modify the manifest format schema — input_schema_first_property_description_presence is intentionally non-persistent by design). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound (4 PM-owned files correctly changed, independently confirmed by git diff), M52 constants added at correct locations (`INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_ENUM` at `src/cli.js:428`, `INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_AGGREGATION_KEY_ENUM` at `src/cli.js:432`, `INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER` at `src/cli.js:439`), `gloss` noun inserted between `examples` and `input` (e=101 < g=103 < i=105), non-persistence of `input_schema_first_property_description_presence` confirmed, `first_property_description_presences` field name is distinct from all prior index commands, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (43 scenarios)`. Independently re-run; 43 scenarios confirmed (42 prior + 1 M52 input-schema-first-property-description-presence-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaFirstPropertyDescriptionPresenceBucketKey` (`src/cli.js:6936`) and `_guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey` (`src/cli.js:6943`) guards pass synchronously.
+
+**4. CLI surface 36 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 36. `gloss` correctly positioned between `examples` and `input` (e=101 < g=103 < i=105 at position 0).
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_description_presences[]` (NOT `tiers[]`, NOT `strictnesses[]`, NOT `types[]`, NOT `required_statuses[]`, NOT `first_property_sources[]`) with `described` bucket (get_users_api_v1_users_id; capability_count 1; aggregation_key `"description_presence"` — input_schema.properties.id.description='Path parameter: id'), `undescribed` bucket (post_users_users; capability_count 1; aggregation_key `"description_presence"` — input_schema.properties.body has no description field), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"` — input_schema.properties={}); `warnings: []`. Both `described` and `undescribed` buckets carry `aggregation_key: "description_presence"` — distinct from all prior index commands.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --presence DESCRIBED` → exit 1, stderr `Unknown input schema first property description presence: DESCRIBED`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --presence unknown` → exit 1, `No capabilities found for input schema first property description presence: unknown` (no unknown-description-presence capabilities in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. Fixture mutation (re-run this turn):** `git diff --quiet HEAD -- tests/fixtures/` → exit 0. Zero fixture mutation.
+
+**10. M52 ROADMAP checkboxes:** All 16 M52 ROADMAP items confirmed `[x]`, independently verified by grep this turn.
+
+**11. `classifyInputSchemaFirstPropertyDescriptionPresence` rules (code inspection at src/cli.js:6968–7010):** null/undefined inputSchema → unknown; non-object/Array inputSchema → unknown; inputSchema.type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); firstVal null/primitive/Array → unknown (input_schema_properties_first_property_descriptor_invalid); firstVal.description present AND non-null AND non-undefined AND non-string → unknown (input_schema_properties_first_property_description_invalid_when_present); firstVal.description missing/null/undefined OR empty/whitespace-only string → undescribed (no warning — documentation-completeness signal, not a typing failure); firstVal.description non-empty trimmed string → described (no warning). No all-properties-description walking; no nested-property recursion; no output-side description classification; no quality scoring; no LLM synthesis; no language detection.
+
+**12. Warning reason codes (code inspection at src/cli.js:7049–7078):** PM spec froze 5 codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_description_invalid_when_present`. Code also emits a 6th code `input_schema_properties_first_property_descriptor_invalid` (at src/cli.js:7064) for the firstVal-not-a-plain-object malformation path — raised as OBJ-004 (low, non-blocking). `not_applicable`, `described`, and `undescribed` buckets emit NO warnings; only `unknown` triggers warnings.
+
+**13. OBJ-001/OBJ-002/OBJ-003 carried forward; OBJ-004 raised:** OBJ-001 (medium, non-blocking): R6 (auth_required === false → auth_scheme: 'none') remains dead code in the automated pipeline. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M52 close their own analogs. OBJ-004 (low, non-blocking): M52 code emits undeclared 6th warning reason code `input_schema_properties_first_property_descriptor_invalid` at src/cli.js:7064 beyond the 5 PM-frozen codes — functionally correct but deviates from PM's frozen enum in DEC-003. No blocking objections raised for M52.
+
+**Verdict: SHIP** — 689 acceptance criteria pass (REQ-001–REQ-689). npm test exits 0 with 43 scenarios. All 16 M52 ROADMAP checkboxes [x].
+
 ## QA Challenge — turn_b92a6c6bfa23b2bb (role=qa, run_c39bd102a520411b, M51 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_b129a6090e6226ec, role=dev, HEAD 9502125) for run_c39bd102a520411b independently rather than rubber-stamping it.

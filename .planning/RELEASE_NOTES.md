@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M52 (turn_dfcb56e6034f88b5, run_3f128359168988b4, 2026-04-28, HEAD c4aee92)
+
+**Milestone:** M52 — Static Capability Input Schema First Property Description Presence Index Export from Manifest Evidence (~0.5 day) — V1.33
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_09c7bb9f6448bf1a, role=dev). HEAD c4aee92 = M52 implementation checkpoint. All M52 implementation (src/cli.js, tests/smoke.mjs, 43 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (43 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyDescriptionPresenceBucketKey` at src/cli.js:6936 and `_guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey` at src/cli.js:6943 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 36. `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_description_presences[]` with `described` bucket (get_users_api_v1_users_id; aggregation_key `"description_presence"`), `undescribed` bucket (post_users_users; aggregation_key `"description_presence"`), and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --presence DESCRIBED` → exit 1 (case-sensitive). `node bin/tusq.js gloss index --manifest tests/fixtures/express-sample/tusq.manifest.json --presence unknown` → exit 1, absent-bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New capability:** `tusq gloss index` — indexes capabilities by `input_schema.properties[firstKey].description` docstring-presence classification. Four-value bucket-key enum: `described | undescribed | not_applicable | unknown`. Three-value aggregation_key enum: `description_presence | not_applicable | unknown`. Classifier: described (non-empty trimmed description string), undescribed (missing/null/undefined or empty/whitespace-only description — documentation-completeness signal, not a typing failure), not_applicable (non-object input_schema or zero-property object), unknown (malformed input_schema or firstVal not a plain object or firstVal.description present-but-non-string). Bucket iteration order: `described → undescribed → not_applicable → unknown`. Case-sensitive lowercase-only `--presence` filter. Non-persistent (does NOT write `input_schema_first_property_description_presence` into tusq.manifest.json). Planning aid: surfaces docstring-presence exposure per capability to help governance reviewers assess documentation coverage gaps.
+
+**OBJ-004 (low, non-blocking):** M52 code emits undeclared 6th warning reason code `input_schema_properties_first_property_descriptor_invalid` (src/cli.js:7064) for the firstVal-not-a-plain-object malformation path, beyond the 5 PM-frozen codes. Functionally correct; does not affect classification outcomes. Carried forward for next PM cycle.
+
+**Acceptance criteria:** 689 total (REQ-001–REQ-689). Added REQ-665–REQ-689 (25 new M52 criteria) this turn. All 689 pass. Ship verdict: SHIP.
+
 ## QA Verification — M51 (turn_b92a6c6bfa23b2bb, run_c39bd102a520411b, 2026-04-28, HEAD 9502125)
 
 **Milestone:** M51 — Static Capability Input Schema First Property Source Index Export from Manifest Evidence (~0.5 day) — V1.32
