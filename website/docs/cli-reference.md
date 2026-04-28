@@ -1211,6 +1211,74 @@ tusq choice index --choice unenumerated --json
 tusq choice index --out choice-index.json
 ```
 
+## `tusq preset index`
+
+Emit a deterministic, per-first-input-property-default-value-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].default` is present with any JSON value (`defaulted`), absent or `undefined` (`undefaulted`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`defaulted → undefaulted → not_applicable → unknown`). This is a **planning aid, not a runtime payload validator, doc-contradiction detector, default-value-type distributor, default-value-cardinality-tier distributor, LLM inferrer, SDK pre-fill generator, or voice-confirmation-policy enforcer**.
+
+**M54 vs M55 distinction:** `tusq choice index` (M54) reads `input_schema.properties[firstKey].enum` (the **FIRST input property's** JSON-Schema enum constraint) and buckets on its presence. `tusq preset index` (M55) reads `input_schema.properties[firstKey].default` (the **FIRST input property's** JSON-Schema default value) and buckets on its presence. These two axes are orthogonal — an `enum`-constrained property MAY also carry a `default` value drawn from the enum set, MAY NOT, and an `unenumerated` property MAY also carry a `default` — the annotations are independent reviewer signals.
+
+```bash
+tusq preset index [--preset <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--preset <defaulted\|undefaulted\|not_applicable\|unknown>` | all buckets | Filter to a single default-value bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent preset value, `--out` path error, or unknown subcommand
+
+**Classifier rules** (applied to `input_schema.properties[firstKey].default` when `input_schema.type === "object"`):
+
+| Condition | Bucket |
+|-----------|--------|
+| `input_schema` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type` missing or non-string | `unknown` |
+| `input_schema.type` is a string but not `"object"` | `not_applicable` (no warning) |
+| `input_schema.type === "object"`, `properties` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type === "object"`, `Object.keys(properties).length === 0` | `not_applicable` (no warning) |
+| `properties[firstKey]` is not a plain non-null object | `unknown` (fifth frozen code: `input_schema_properties_first_property_descriptor_invalid`) |
+| `properties[firstKey].default` has own property with value `!== undefined` | `defaulted` (no warning) |
+| `properties[firstKey].default` key absent OR present with value `=== undefined` | `undefaulted` (no warning) |
+
+**FALSY-DEFAULT-COUNTS-AS-DEFAULTED:** A `default` value of `null`/`false`/`0`/`""`/`[]`/`{}` is `defaulted` — the operator explicitly typed the falsy value as the pre-fill seed, carrying semantic intent. This deliberately diverges from M52/M53's empty-string-counts-as-absent precedent. HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check: `Object.prototype.hasOwnProperty.call(firstVal, 'default') && firstVal.default !== undefined`. There is NO axis-specific malformation code because JSON-Schema `default` accepts ANY JSON value type.
+
+Object.keys insertion-order is used; key sequence is NOT sorted or reordered.
+
+**Bucket iteration order:** `defaulted → undefaulted → not_applicable → unknown` (deterministic stable-output convention only — NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked, NOT pre-fill-completeness-ranked, NOT UX-affordance-completeness-ranked, NOT agent-composition-readiness-ranked, NOT SaaS-onboarding-readiness-ranked, NOT copilot-pre-fill-readiness-ranked, NOT default-value-coverage-ranked). Empty buckets do not appear.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains `{ capability, reason }` objects for each capability landing in the `unknown` bucket. Five frozen warning reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid` (fifth code — formally elevated from the M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 undeclared pattern; M55 retires that pattern by making the firstVal-descriptor-invalid reason a first-class member of the PM-frozen set). The `not_applicable`, `defaulted`, and `undefaulted` buckets emit NO warnings — they are valid named outcomes. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `input_schema_first_property_default_value` is NOT written into the manifest — it is derived at read-time only (non-persistence rule).
+- The four-value `input_schema_first_property_default_value` enum, the three-value `aggregation_key` enum, and the five-value warning reason-code enum are frozen; any addition is a material governance event.
+- Per-property default beyond the FIRST is NOT walked (reserved for `M-Preset-All-Properties-Default-Value-Index-1`).
+- Nested-property default under `input_schema.properties[key].properties[nestedKey].default` is NOT walked (reserved for `M-Preset-Nested-Property-Default-Value-Index-1`).
+- `output_schema` first-property default is NOT classified (reserved for `M-Preset-Output-First-Property-Default-Value-Index-1`).
+- `tusq preset index` does NOT validate runtime payloads against the declared default value, cross-reference manifest first-property default vs OpenAPI/SDK docs, infer missing default values, analyze default-value types, compute default-value-cardinality tiers, generate SDK or voice pre-fill stubs, or enforce voice-confirmation policy on defaulted destructive capabilities.
+
+```bash
+# All default value buckets (human-readable)
+tusq preset index
+
+# All default value buckets (JSON)
+tusq preset index --json
+
+# Single default value bucket
+tusq preset index --preset defaulted --json
+
+# Undefaulted capabilities (no JSON-Schema default on first property)
+tusq preset index --preset undefaulted --json
+
+# Write to file
+tusq preset index --out preset-index.json
+```
+
 ## `tusq method index`
 
 Emit a deterministic, per-HTTP-method capability index from manifest evidence. Groups capabilities by their verbatim `method` field value in closed-enum order (`GET → POST → PUT → PATCH → DELETE → unknown`), with a special `unknown` bucket for capabilities whose `method` is `null`, missing, empty-string, or any non-canonical value (HEAD, OPTIONS, etc.). This is a **planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier**.

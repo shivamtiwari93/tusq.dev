@@ -2,6 +2,51 @@
 
 > **M55 Charter Sketch Reservation — 2026-04-28, run_a75232d11566c4cb, turn_cb44215adb5a904f, PM attempt 1, HEAD `f21f18d`.** Reserves the `### M55: Static Capability Input Schema First Property Default Value Presence Index` Product CLI Surface block for the dev materialization turn. PM-frozen scope (dev MUST carry forward verbatim): closed four-value `input_schema_first_property_default_value` bucket-key enum (`defaulted | undefaulted | not_applicable | unknown`); closed three-value `aggregation_key` enum (`default_value | not_applicable | unknown`); classifier function gated on `input_schema.type === 'object'` AND `Object.keys(properties).length > 0` AND `firstVal` is a plain non-null object, returning `'defaulted'` when `firstVal` has own property `'default'` AND `firstVal.default !== undefined` (any other JSON value valid: string, number, boolean, `null`, array, object — including `null`, `false`, `0`, empty string `""`, empty array `[]`, and empty object `{}` — all structurally valid JSON-Schema defaults), returning `'undefaulted'` when `firstVal` does NOT have own property `'default'` OR `firstVal.default === undefined`; `not_applicable` for non-object input or zero-property object (no warning); `unknown` for malformed input_schema, malformed properties (when type === 'object'), or `firstVal` not a plain non-null object; **five frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`) — **note: the fifth code is the firstVal-descriptor-invalid code itself, not an axis-specific code, because the JSON-Schema `default` keyword permits any JSON value type; this PM turn explicitly elevates the firstVal-descriptor-invalid reason into the formal frozen set, addressing the OBJ-004/OBJ-005/OBJ-006 pattern that QA raised against M52/M53/M54 where this same reason code was emitted but not declared in the PM-frozen set; only `unknown` triggers warnings, `not_applicable`, `defaulted`, and `undefaulted` emit NO warning (an absent default value is a pre-fill-readiness signal, not a malformation; a `default` value of `null`/`false`/`0`/`""`/`[]`/`{}` is a valid declared default)**; bucket iteration order `defaulted → undefaulted → not_applicable → unknown` (deterministic stable-output convention only — explicitly NOT a voice-interface-readiness ranking, NOT a reviewer-priority ranking, NOT a pre-fill-completeness ranking, NOT a UX-affordance-completeness ranking, NOT an agent-composition-readiness ranking, NOT a SaaS-onboarding-readiness ranking, NOT a copilot-pre-fill-readiness ranking, NOT a default-value-coverage ranking); within-bucket order is manifest declared order; empty buckets MUST NOT appear; `--preset` filter case-sensitive lowercase-only with stderr `Unknown input schema first property default value: <value>` for unknowns and `No capabilities found for input schema first property default value: <value>` for absent buckets; CLI surface 38 → 39 with new noun `preset` inserted alphabetically between `policy` and `redaction` (`policy` (p,o = 112,111) < `preset` (p,r = 112,114) at positions 0–1 (position 0: p == p; position 1: o (111) < r (114)); `preset` < `redaction` (p (112) < r (114) at position 0)); insertion sequence `..., pii, policy, preset, redaction, request, response, ...`; result-array field name `first_property_default_values` (plural categorical, matching M48/M51/M52/M53/M54 `first_property_<axis>` precedent verbatim); per-bucket field name `input_schema_first_property_default_value` (8-field entry shape: `input_schema_first_property_default_value, aggregation_key, capability_count, capabilities[], approved_count, gated_count, has_destructive_side_effect, has_restricted_or_confidential_sensitivity`); read-only invariants extend M54 list with `tusq choice index` byte-identity guard (25 commands now); non-persistence rule: `input_schema_first_property_default_value` MUST NOT be written into `tusq.manifest.json`; eval scenario `input-schema-first-property-default-value-presence-index-determinism` (45 → 46 scenarios); Constraint 48 reserved for explicit non-runtime-validator / non-doc-contradiction-detector / non-default-value-type-distributor / non-default-value-cardinality-tier-distributor / non-default-validator-crossref / non-LLM-default-inferrer / non-SDK-pre-fill-generator / non-statistical-aggregator boundary; deferred successor milestones (`M-Preset-All-Properties-Default-Value-Index-1`, `M-Preset-Nested-Property-Default-Value-Index-1`, `M-Preset-Output-First-Property-Default-Value-Index-1`, `M-Preset-Default-Value-Type-Distribution-Index-1`, `M-Preset-Default-Value-Cardinality-Tier-Index-1`, `M-Preset-Default-Validator-Crossref-1`, `M-Preset-Persistence-1`, `M-Preset-Doc-Contradiction-1`, `M-Preset-LLM-Default-Inferrer-1`, `M-Preset-SDK-Pre-Fill-Generator-1`). Distinct from M44 (capability-level top-level `description` word-count tier via `tusq description index`), distinct from M48 (output-side first-property type via `tusq shape index`), distinct from M49 (firstKey `.type` via `tusq signature index`), distinct from M50 (firstKey ∈ required[] membership via `tusq obligation index`), distinct from M51 (firstKey `.source` via `tusq binding index`), distinct from M52 (firstKey `.description` via `tusq gloss index`), distinct from M53 (firstKey `.format` via `tusq hint index`), distinct from M54 (firstKey `.enum` via `tusq choice index` — M54 reads enum-constraint presence, M55 reads default-value presence; an `enum`-constrained property MAY also carry a `default`, MAY NOT, and an unenumerated property MAY also carry a `default` — the two annotations are orthogonal). VISION sources cited: `.planning/VISION.md` lines 206–216 (`### Brand-Matched Voice Interface`) — primary aggregation source, NOT yet primary aggregation source for any shipped milestone; `.planning/VISION.md` lines 187–191 (`### Agents`) re-cited as structural anchor only. Full M55 Product CLI Surface block (two-row command table, four-flag table, bucket-key enum table, aggregation_key enum table, classifier-function rules table, per-bucket entry shape table, bucket iteration order table, default-preservation table for the 38 unchanged commands, failure UX table, local-only invariants table) lands in dev attempt 1 of this run alongside the source-code implementation; this PM block reserves the structure only.
 
+### M55: Input Schema First Property Default Value Presence Index — Product CLI Surface
+
+**Status:** Shipped in `run_a75232d11566c4cb` / `turn_103ec2af102d2d3a` (dev implementation). V1.36.
+
+**Commands (2 rows):**
+
+| Command | Description |
+|---------|-------------|
+| `tusq preset` | Top-level noun; no subcommand prints help |
+| `tusq preset index` | Emit deterministic per-first-property-default-value capability index |
+
+**Flags (4 flags):**
+
+| Flag | Default | Type | Effect |
+|------|---------|------|--------|
+| `--preset <value>` | all buckets | string | Filter to single default-value bucket; case-sensitive lowercase only |
+| `--manifest <path>` | `tusq.manifest.json` | path | Manifest file to read |
+| `--out <path>` | stdout | path | Write index to file; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | boolean | Emit machine-readable JSON |
+
+**Bucket-key enum (4 values):** `defaulted | undefaulted | not_applicable | unknown`
+
+**`aggregation_key` enum (3 values):** `default_value | not_applicable | unknown`
+
+**Classifier-function rules:** `input_schema` missing/null → unknown (input_schema_field_missing); not plain object → unknown (input_schema_field_not_object); type missing/non-string → unknown (input_schema_type_missing_or_invalid); type not 'object' → not_applicable (no warning); type==='object', properties missing/null/not-plain-object → unknown (input_schema_properties_field_missing_when_type_is_object); type==='object', keys.length===0 → not_applicable (no warning); firstVal not plain object → unknown (input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE); HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check: hasOwnProperty('default') && default!==undefined → defaulted (FALSY-DEFAULT-COUNTS-AS-DEFAULTED: null/false/0/''/[]/{}→defaulted); else → undefaulted (no warning).
+
+**Per-bucket entry shape (8 fields):**
+
+| Field | Description |
+|-------|-------------|
+| `input_schema_first_property_default_value` | Bucket key (`defaulted\|undefaulted\|not_applicable\|unknown`) |
+| `aggregation_key` | `default_value` (defaulted/undefaulted), `not_applicable`, or `unknown` |
+| `capability_count` | Count of capabilities in bucket |
+| `capabilities[]` | Names in manifest declared order |
+| `approved_count` | Count with `approved === true` |
+| `gated_count` | Count with `approved !== true` |
+| `has_destructive_side_effect` | Any capability has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | Any capability has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+**Bucket iteration order:** `defaulted → undefaulted → not_applicable → unknown` (deterministic stable-output convention only — NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked, NOT pre-fill-completeness-ranked, NOT UX-affordance-completeness-ranked, NOT agent-composition-readiness-ranked, NOT SaaS-onboarding-readiness-ranked, NOT copilot-pre-fill-readiness-ranked, NOT default-value-coverage-ranked). Empty buckets MUST NOT appear.
+
+**Local-only invariants:** Non-persistence (`input_schema_first_property_default_value` MUST NOT be written into manifest). No all-properties-default-walking. No nested-default-recursion. No output-side-default classification. No default-value-type distribution. No default-value-cardinality tier. No runtime-default-validation. No LLM inference. No doc-contradiction detection. No SDK/voice pre-fill stub generation. No voice-confirmation-policy enforcement.
+
+---
+
 ### M54: Input Schema First Property Enum Constraint Presence Index — Product CLI Surface
 
 **Status:** Shipped in `run_ca31318ae2693a36` / `turn_bb0592709e7268f5` (dev implementation). V1.35.

@@ -474,6 +474,25 @@ const INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_AGGREGATION_KEY_ENUM = Object.
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_BUCKET_ORDER = Object.freeze(['enumerated', 'unenumerated', 'not_applicable']);
 
+// M55: frozen four-value bucket-key enum. Immutable once M55 ships.
+// defaulted = firstKey.default is present (own property with value !== undefined) with ANY JSON value including null/false/0/''/[]/{}
+// undefaulted = firstKey.default is missing (no own property) or present with value === undefined
+// not_applicable = non-object input or zero-property object; unknown = malformed input_schema or firstKey not a plain object
+// FALSY-DEFAULT-COUNTS-AS-DEFAULTED: default of null/false/0/empty-string/empty-array/empty-object is 'defaulted' — deliberate divergence
+// from M52/M53's empty-string-counts-as-absent precedent because the operator explicitly typed the falsy value as the pre-fill seed.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_ENUM = Object.freeze(new Set(['defaulted', 'undefaulted', 'not_applicable', 'unknown']));
+
+// M55: frozen three-value aggregation_key enum. Immutable once M55 ships.
+// defaulted/undefaulted buckets carry 'default_value'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['default_value', 'not_applicable', 'unknown']));
+
+// M55: closed-enum bucket iteration order (defaulted → undefaulted → not_applicable). Unknown appended last.
+// NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked, NOT pre-fill-completeness-ranked,
+// NOT UX-affordance-completeness-ranked, NOT agent-composition-readiness-ranked, NOT SaaS-onboarding-readiness-ranked,
+// NOT copilot-pre-fill-readiness-ranked, NOT default-value-coverage-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_BUCKET_ORDER = Object.freeze(['defaulted', 'undefaulted', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -642,6 +661,9 @@ function dispatch(argv) {
       return;
     case 'policy':
       cmdPolicy(args);
+      return;
+    case 'preset':
+      cmdPreset(args);
       return;
     case 'redaction':
       cmdRedaction(args);
@@ -7786,6 +7808,393 @@ function _guardInputSchemaFirstPropertyEnumConstraintAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyDefaultValueBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_default_value outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyDefaultValueAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M55: classifyInputSchemaFirstPropertyDefaultValue(inputSchema) → 'defaulted'|'undefaulted'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid)
+//              HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check:
+//              if Object.prototype.hasOwnProperty.call(firstVal, 'default') && firstVal.default !== undefined → 'defaulted' (no warning)
+//                FALSY-DEFAULT-COUNTS-AS-DEFAULTED: null/false/0/''/[]/{}  are all 'defaulted' (deliberate deviation from M52/M53)
+//              else → 'undefaulted' (no warning; both 'key absent' and 'key present with undefined' are undefaulted)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property default beyond the FIRST is NOT walked (reserved for M-Preset-All-Properties).
+// Nested-object property default NOT walked (reserved for M-Preset-Nested).
+// output_schema first-property default is NOT classified (reserved for M-Preset-Output).
+// input_schema_first_property_default_value MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyDefaultValue(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check (canonical idiom per PM DEC-003)
+  // FALSY-DEFAULT-COUNTS-AS-DEFAULTED: null/false/0/''/[]/{}  are all 'defaulted'
+  if (Object.prototype.hasOwnProperty.call(firstVal, 'default') && firstVal.default !== undefined) {
+    return 'defaulted';
+  }
+  // key absent OR present with value === undefined → 'undefaulted'
+  return 'undefaulted';
+}
+
+// M55: buildInputSchemaFirstPropertyDefaultValueIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property default value index from the manifest's capabilities[].
+// Bucket iteration order: defaulted → undefaulted → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_default_value MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyDefaultValueIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_default_values: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_default_value.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Five frozen warning reason codes (M55 PM DEC-003): the fifth code is the firstVal-descriptor-invalid reason
+    // (formally elevated from the M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 pattern).
+    // Note: unlike M54, there is NO axis-specific malformation code because 'default' accepts ANY JSON value type.
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          }
+          // else: valid descriptor (default may be absent, undefined, or any JSON value) — no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const defaultClass = classifyInputSchemaFirstPropertyDefaultValue(inputSchema);
+    const isNamedBucket = namedBuckets.has(defaultClass);
+    const bucketKey = isNamedBucket ? defaultClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: defaulted → undefaulted → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyDefaultValues = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const defaultValueKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDefaultValueBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyDefaultValueBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDefaultValueAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyDefaultValueAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyDefaultValueAggregationKey('default_value');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_default_value: defaultValueKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_default_values: firstPropertyDefaultValues,
+    warnings
+  };
+}
+
+// M55: format input schema first property default value index as human-readable text
+function formatInputSchemaFirstPropertyDefaultValueIndex(index) {
+  if (index.first_property_default_values.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Default Value Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].default JSON-Schema-default-value presence classification; it does NOT execute capability invocations, validate runtime payloads against the declared default value, cross-reference manifest first-property default vs allowed value sets, infer missing default values, generate SDK or voice pre-fill stubs, or auto-flip tusq serve filtering. Bucket order is deterministic stable-output ordering only (NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked, NOT pre-fill-completeness-ranked, NOT UX-affordance-completeness-ranked, NOT agent-composition-readiness-ranked, NOT SaaS-onboarding-readiness-ranked, NOT copilot-pre-fill-readiness-ranked, NOT default-value-coverage-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_default_values) {
+    lines.push(`[${entry.input_schema_first_property_default_value}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: defaulted (firstKey.default has own property and value !== undefined — including null/false/0/empty-string/empty-array/empty-object per FALSY-DEFAULT-COUNTS-AS-DEFAULTED) | undefaulted (firstKey.default absent or present with value === undefined) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or firstKey not a plain object).");
+  lines.push('Bucket order: defaulted → undefaulted → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M55: tusq preset — top-level noun dispatcher
+function cmdPreset(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('preset');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdPresetIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M55: tusq preset index — handler
+function cmdPresetIndex(args) {
+  const { opts, positionals } = parsePresetIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('preset index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyDefaultValueIndex(manifest, manifestPath);
+
+  const presetFilter = opts['preset'] || null;
+  let outputIndex;
+  if (presetFilter !== null) {
+    // Case-sensitive: lowercase canonical default value bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_DEFAULT_VALUE_ENUM.has(presetFilter)) {
+      throw new CliError(`Unknown input schema first property default value: ${presetFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_default_values.find((e) => e.input_schema_first_property_default_value === presetFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property default value: ${presetFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_default_values: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyDefaultValueIndex(outputIndex));
+}
+
+function parsePresetIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['preset', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
 // M54: classifyInputSchemaFirstPropertyEnumConstraint(inputSchema) → 'enumerated'|'unenumerated'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -11289,6 +11698,7 @@ function printHelp() {
   process.stdout.write('  path               Index capabilities by path segment count tier for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
+  process.stdout.write('  preset             Index capabilities by input schema first property default value presence for planning review\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  request            Index capabilities by input schema primary parameter source for planning review\n');
   process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
@@ -11823,6 +12233,48 @@ function printCommandHelp(command) {
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
+    preset: 'Usage: tusq preset <subcommand>\n  Subcommands: index',
+    'preset index': [
+      'Usage: tusq preset index [--preset <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --preset <value>    Filter to a single input schema first property default value bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>   Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>        Write index to file (no stdout on success)',
+      '  --json              Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid firstKey descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[firstKey].default when input_schema.type === "object"):',
+      '  defaulted      if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].default has own property with value !== undefined',
+      '                 FALSY-DEFAULT-COUNTS-AS-DEFAULTED: default of null/false/0/empty-string/empty-array/empty-object is defaulted',
+      '                 (deliberate divergence from M52/M53 empty-string-counts-as-absent — operator typed the falsy value as the pre-fill seed)',
+      '  undefaulted    if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].default is absent or present with value === undefined',
+      '  not_applicable if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown        if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or properties[firstKey] is not a plain object.',
+      '               Note: unlike M54, there is NO axis-specific malformation code for the default field because JSON-Schema',
+      '               default accepts ANY JSON value type (null/false/0/empty-string/empty-array/empty-object are all valid defaults).',
+      '               HAS-OWN-PROPERTY-AND-NOT-UNDEFINED check: Object.prototype.hasOwnProperty.call(firstVal, "default") && firstVal.default !== undefined.',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property default beyond the FIRST is NOT walked (reserved for M-Preset-All-Properties).',
+      '               Nested-property default under input_schema.properties[key].properties NOT walked (reserved for M-Preset-Nested).',
+      '               output_schema first-property default NOT classified here (reserved for M-Preset-Output).',
+      '               Distinct from M54 (input_schema.properties[firstKey].enum presence via tusq choice index) —',
+      '               an enum-constrained property MAY also carry a default and an unenumerated property MAY also carry a default.',
+      '',
+      'Bucket iteration order: defaulted → undefaulted → not_applicable → unknown',
+      '  (deterministic stable-output convention only — NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked,',
+      '   NOT pre-fill-completeness-ranked, NOT UX-affordance-completeness-ranked, NOT agent-composition-readiness-ranked,',
+      '   NOT SaaS-onboarding-readiness-ranked, NOT copilot-pre-fill-readiness-ranked, NOT default-value-coverage-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown preset value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime payload validator, doc-contradiction detector, default-value-type distributor, default-value-cardinality-tier distributor, LLM inferrer, SDK pre-fill generator, or voice-confirmation-policy enforcer; per-FIRST-property default value presence is deterministic stable-output ordering only (NOT voice-interface-readiness-ranked, NOT reviewer-priority-ranked).'
+    ].join('\n'),
     redaction: 'Usage: tusq redaction <subcommand>\n  Subcommands: review',
     request: 'Usage: tusq request <subcommand>\n  Subcommands: index',
     'request index': [

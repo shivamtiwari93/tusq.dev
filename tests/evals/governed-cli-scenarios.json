@@ -2405,6 +2405,109 @@
         "unknown"
       ],
       "expected_bucket_order": "enumerated,unenumerated,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-default-value-presence-index-determinism",
+      "scenario_type": "input_schema_first_property_default_value_presence_index_determinism",
+      "description": "Verifies that tusq preset index produces byte-identical output across three runs on a synthetic manifest with defaulted, undefaulted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (defaulted/undefaulted/not_applicable/unknown), closed three-value aggregation_key enum (default_value/not_applicable/unknown), bucket order determinism (defaulted → undefaulted → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_default_value non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (also defaulted per FALSY-DEFAULT-COUNTS-AS-DEFAULTED) — firstKey=z → defaulted (NOT sorted 'a' which would be undefaulted). Fifth frozen warning reason code (input_schema_properties_first_property_descriptor_invalid) formally elevated from M52/M53/M54 OBJ-004/OBJ-005/OBJ-006 pattern.",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "defaulted_cap",
+          "method": "POST",
+          "path": "/defaulted",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has default='active' — lands in defaulted bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "default": "active" }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "undefaulted_cap",
+          "method": "GET",
+          "path": "/undefaulted",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no default field — lands in undefaulted bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "description": "User identifier" }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has default='seed' (defaulted), a has no default (undefaulted), b has default=0 (defaulted). firstKey=z → defaulted (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "default": "seed"
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "default": 0
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_default_values": [
+        "defaulted",
+        "undefaulted",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "default_value",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "defaulted,undefaulted,not_applicable,unknown"
     }
   ]
 }

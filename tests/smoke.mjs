@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 38) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 38 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 39) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 38) {
-    throw new Error(`M46(x): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 39) {
+    throw new Error(`M46(x): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 38) {
-    throw new Error(`M47(x): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 39) {
+    throw new Error(`M47(x): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 38) {
-    throw new Error(`M48(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 39) {
+    throw new Error(`M48(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 38) {
-    throw new Error(`M49(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 39) {
+    throw new Error(`M49(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 38) {
-    throw new Error(`M50(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 39) {
+    throw new Error(`M50(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 38) {
-    throw new Error(`M51(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 39) {
+    throw new Error(`M51(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 38) {
-    throw new Error(`M52(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 39) {
+    throw new Error(`M52(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 38 commands and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 39 commands and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 38) {
-    throw new Error(`M53(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 39) {
+    throw new Error(`M53(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 38 commands and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 39 commands and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 38) {
-    throw new Error(`M54(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 39) {
+    throw new Error(`M54(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -7710,6 +7710,446 @@ async function run() {
   }
 
   await fs.rm(m54TmpDir, { recursive: true, force: true });
+
+  // ── M55: Static Capability Input Schema First Property Default Value Presence Index Export ─────────
+  const m55TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m55-smoke-'));
+
+  // M55 fixture manifest: synthetic capabilities across defaulted/undefaulted/not_applicable buckets.
+  // defaulted_cap → firstKey.default='admin' (string default, present and !== undefined → defaulted)
+  // undefaulted_cap → firstKey has no default field (missing → undefaulted)
+  // not_applicable_cap → input_schema.type='array' (non-object → not_applicable, no warning)
+  const m55SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'defaulted_cap',
+        description: 'Capability with defaulted first property',
+        method: 'POST',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { role: { type: 'string', default: 'admin' } },
+          required: []
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'undefaulted_cap',
+        description: 'Capability with no default on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m55SyntheticManifestPath = path.join(m55TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m55SyntheticManifestPath, JSON.stringify(m55SyntheticManifest, null, 2), 'utf8');
+
+  // M55(a): default tusq preset index on synthetic fixture produces correct buckets in closed-enum order
+  const m55DefaultResult = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+  if (m55DefaultResult.status !== 0) {
+    throw new Error(`M55(a): preset index must exit 0:\nstderr=${m55DefaultResult.stderr}`);
+  }
+  const m55DefaultJson = JSON.parse(m55DefaultResult.stdout);
+  if (!Array.isArray(m55DefaultJson.first_property_default_values)) {
+    throw new Error(`M55(a): JSON output must have first_property_default_values[] array:\n${m55DefaultResult.stdout}`);
+  }
+  if (m55DefaultJson.tiers !== undefined || m55DefaultJson.first_property_enum_constraints !== undefined || m55DefaultJson.first_property_format_hints !== undefined || m55DefaultJson.first_property_description_presences !== undefined) {
+    throw new Error(`M55(a): JSON output must NOT have tiers/first_property_enum_constraints/first_property_format_hints/first_property_description_presences; field name must be first_property_default_values[]:\n${m55DefaultResult.stdout}`);
+  }
+  const m55DefaultedEntry = m55DefaultJson.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'defaulted');
+  if (!m55DefaultedEntry || !m55DefaultedEntry.capabilities.includes('defaulted_cap')) {
+    throw new Error(`M55(a): defaulted bucket must include defaulted_cap:\n${JSON.stringify(m55DefaultJson.first_property_default_values)}`);
+  }
+  const m55UndefaultedEntry = m55DefaultJson.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'undefaulted');
+  if (!m55UndefaultedEntry || !m55UndefaultedEntry.capabilities.includes('undefaulted_cap')) {
+    throw new Error(`M55(a): undefaulted bucket must include undefaulted_cap:\n${JSON.stringify(m55DefaultJson.first_property_default_values)}`);
+  }
+  const m55NotApplicableEntry = m55DefaultJson.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'not_applicable');
+  if (!m55NotApplicableEntry || !m55NotApplicableEntry.capabilities.includes('not_applicable_cap')) {
+    throw new Error(`M55(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m55DefaultJson.first_property_default_values)}`);
+  }
+  if (m55DefaultJson.warnings.length !== 0) {
+    throw new Error(`M55(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m55DefaultJson.warnings)}`);
+  }
+  // Bucket order: defaulted < undefaulted < not_applicable
+  const m55DefaultedPos = m55DefaultJson.first_property_default_values.findIndex((e) => e.input_schema_first_property_default_value === 'defaulted');
+  const m55UndefaultedPos = m55DefaultJson.first_property_default_values.findIndex((e) => e.input_schema_first_property_default_value === 'undefaulted');
+  const m55NotApplicablePos = m55DefaultJson.first_property_default_values.findIndex((e) => e.input_schema_first_property_default_value === 'not_applicable');
+  if (!(m55DefaultedPos < m55UndefaultedPos && m55UndefaultedPos < m55NotApplicablePos)) {
+    throw new Error(`M55(a): bucket order must be defaulted < undefaulted < not_applicable; got defaulted=${m55DefaultedPos} undefaulted=${m55UndefaultedPos} not_applicable=${m55NotApplicablePos}`);
+  }
+  const m55DefaultHuman = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath], { cwd: m55TmpDir });
+  if (!m55DefaultHuman.stdout.includes('[defaulted]') || !m55DefaultHuman.stdout.includes('[undefaulted]') || !m55DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M55(a): human mode must include [defaulted], [undefaulted], [not_applicable] sections:\n${m55DefaultHuman.stdout}`);
+  }
+  if (!m55DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M55(a): human mode must include planning-aid framing:\n${m55DefaultHuman.stdout}`);
+  }
+
+  // M55(b): --preset defaulted filter
+  const m55FilterDefaulted = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'defaulted', '--json'], { cwd: m55TmpDir });
+  if (m55FilterDefaulted.status !== 0) {
+    throw new Error(`M55(b): --preset defaulted must exit 0:\nstderr=${m55FilterDefaulted.stderr}`);
+  }
+  if (JSON.parse(m55FilterDefaulted.stdout).first_property_default_values.length !== 1 || JSON.parse(m55FilterDefaulted.stdout).first_property_default_values[0].input_schema_first_property_default_value !== 'defaulted') {
+    throw new Error(`M55(b): --preset defaulted must return exactly one defaulted bucket:\n${m55FilterDefaulted.stdout}`);
+  }
+
+  // M55(c): --preset undefaulted filter
+  const m55FilterUndefaulted = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'undefaulted', '--json'], { cwd: m55TmpDir });
+  if (m55FilterUndefaulted.status !== 0) {
+    throw new Error(`M55(c): --preset undefaulted must exit 0:\nstderr=${m55FilterUndefaulted.stderr}`);
+  }
+  if (JSON.parse(m55FilterUndefaulted.stdout).first_property_default_values.length !== 1 || JSON.parse(m55FilterUndefaulted.stdout).first_property_default_values[0].input_schema_first_property_default_value !== 'undefaulted') {
+    throw new Error(`M55(c): --preset undefaulted must return exactly one undefaulted bucket:\n${m55FilterUndefaulted.stdout}`);
+  }
+
+  // M55(d): --preset not_applicable filter
+  const m55FilterNotApplicable = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'not_applicable', '--json'], { cwd: m55TmpDir });
+  if (m55FilterNotApplicable.status !== 0) {
+    throw new Error(`M55(d): --preset not_applicable must exit 0:\nstderr=${m55FilterNotApplicable.stderr}`);
+  }
+  if (JSON.parse(m55FilterNotApplicable.stdout).first_property_default_values.length !== 1 || JSON.parse(m55FilterNotApplicable.stdout).first_property_default_values[0].input_schema_first_property_default_value !== 'not_applicable') {
+    throw new Error(`M55(d): --preset not_applicable must return exactly one not_applicable bucket:\n${m55FilterNotApplicable.stdout}`);
+  }
+
+  // M55(e): --preset unknown filter on synthetic fixture with malformed firstVal (not a plain object)
+  const m55UnknownManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{
+      name: 'unknown_cap', description: 'bad firstVal', method: 'GET', path: '/x', domain: 'x',
+      side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'xxx',
+      auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+      redaction: { pii_fields: [], pii_categories: [] },
+      input_schema: { type: 'object', properties: { x: 42 }, required: [] },
+      output_schema: { type: 'object', properties: {}, additionalProperties: true }
+    }]
+  };
+  const m55UnknownManifestPath = path.join(m55TmpDir, 'unknown.manifest.json');
+  await fs.writeFile(m55UnknownManifestPath, JSON.stringify(m55UnknownManifest, null, 2), 'utf8');
+  const m55FilterUnknown = runCli(['preset', 'index', '--manifest', m55UnknownManifestPath, '--preset', 'unknown', '--json'], { cwd: m55TmpDir });
+  if (m55FilterUnknown.status !== 0) {
+    throw new Error(`M55(e): --preset unknown (malformed firstVal=42) must exit 0:\nstderr=${m55FilterUnknown.stderr}`);
+  }
+  if (JSON.parse(m55FilterUnknown.stdout).first_property_default_values.length !== 1 || JSON.parse(m55FilterUnknown.stdout).first_property_default_values[0].input_schema_first_property_default_value !== 'unknown') {
+    throw new Error(`M55(e): --preset unknown must return exactly one unknown bucket:\n${m55FilterUnknown.stdout}`);
+  }
+
+  // M55(f): --preset DEFAULTED (uppercase) → exit 1 (case-sensitive)
+  const m55CaseDefaulted = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'DEFAULTED'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55CaseDefaulted.stderr.includes('Unknown input schema first property default value: DEFAULTED') || m55CaseDefaulted.stdout !== '') {
+    throw new Error(`M55(f): --preset DEFAULTED must exit 1 with case-sensitive error:\nstdout=${m55CaseDefaulted.stdout}\nstderr=${m55CaseDefaulted.stderr}`);
+  }
+
+  // M55(g): --preset Undefaulted (mixed-case) → exit 1
+  const m55CaseUndefaulted = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'Undefaulted'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55CaseUndefaulted.stderr.includes('Unknown input schema first property default value: Undefaulted') || m55CaseUndefaulted.stdout !== '') {
+    throw new Error(`M55(g): --preset Undefaulted must exit 1 with case-sensitive error:\nstdout=${m55CaseUndefaulted.stdout}\nstderr=${m55CaseUndefaulted.stderr}`);
+  }
+
+  // M55(h): --preset xyz (unknown value) → exit 1
+  const m55CaseXyz = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset', 'xyz'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55CaseXyz.stderr.includes('Unknown input schema first property default value: xyz') || m55CaseXyz.stdout !== '') {
+    throw new Error(`M55(h): --preset xyz must exit 1:\nstdout=${m55CaseXyz.stdout}\nstderr=${m55CaseXyz.stderr}`);
+  }
+
+  // M55(i): --manifest <missing> → exit 1
+  const m55MissingManifest = runCli(['preset', 'index', '--manifest', path.join(m55TmpDir, 'nonexistent.json')], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55MissingManifest.stderr.includes('Manifest not found') || m55MissingManifest.stdout !== '') {
+    throw new Error(`M55(i): missing manifest must exit 1:\nstdout=${m55MissingManifest.stdout}\nstderr=${m55MissingManifest.stderr}`);
+  }
+
+  // M55(j): malformed JSON manifest → exit 1
+  const m55BadJsonPath = path.join(m55TmpDir, 'bad.json');
+  await fs.writeFile(m55BadJsonPath, '{ invalid json }', 'utf8');
+  const m55BadJson = runCli(['preset', 'index', '--manifest', m55BadJsonPath], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55BadJson.stderr.includes('Invalid manifest JSON') || m55BadJson.stdout !== '') {
+    throw new Error(`M55(j): malformed JSON must exit 1:\nstdout=${m55BadJson.stdout}\nstderr=${m55BadJson.stderr}`);
+  }
+
+  // M55(k): missing capabilities array → exit 1
+  const m55NoCapsPath = path.join(m55TmpDir, 'nocaps.json');
+  await fs.writeFile(m55NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m55NoCaps = runCli(['preset', 'index', '--manifest', m55NoCapsPath], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55NoCaps.stderr.includes('missing capabilities array') || m55NoCaps.stdout !== '') {
+    throw new Error(`M55(k): missing capabilities array must exit 1:\nstdout=${m55NoCaps.stdout}\nstderr=${m55NoCaps.stderr}`);
+  }
+
+  // M55(l): unknown flag → exit 1
+  const m55UnknownFlag = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--bogus'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55UnknownFlag.stderr.includes('Unknown flag: --bogus') || m55UnknownFlag.stdout !== '') {
+    throw new Error(`M55(l): unknown flag must exit 1:\nstdout=${m55UnknownFlag.stdout}\nstderr=${m55UnknownFlag.stderr}`);
+  }
+
+  // M55(m): --preset with no value → exit 1
+  const m55NoPresetValue = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--preset'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55NoPresetValue.stderr.includes('Missing value for --preset') || m55NoPresetValue.stdout !== '') {
+    throw new Error(`M55(m): --preset with no value must exit 1:\nstdout=${m55NoPresetValue.stdout}\nstderr=${m55NoPresetValue.stderr}`);
+  }
+
+  // M55(n): --out valid path writes file and produces no stdout
+  const m55OutPath = path.join(m55TmpDir, 'm55-out.json');
+  const m55OutResult = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--out', m55OutPath], { cwd: m55TmpDir });
+  if (m55OutResult.status !== 0) {
+    throw new Error(`M55(n): --out valid path must exit 0:\nstderr=${m55OutResult.stderr}`);
+  }
+  if (m55OutResult.stdout !== '') {
+    throw new Error(`M55(n): --out valid path must produce no stdout:\nstdout=${m55OutResult.stdout}`);
+  }
+  const m55OutContent = JSON.parse(await fs.readFile(m55OutPath, 'utf8'));
+  if (!Array.isArray(m55OutContent.first_property_default_values)) {
+    throw new Error(`M55(n): --out file must have first_property_default_values[]:\n${JSON.stringify(m55OutContent)}`);
+  }
+
+  // M55(o): --out .tusq/ rejection → exit 1
+  const m55OutTusq = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--out', path.join(m55TmpDir, '.tusq', 'out.json')], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55OutTusq.stderr.includes('--out path must not be inside .tusq/') || m55OutTusq.stdout !== '') {
+    throw new Error(`M55(o): --out .tusq/ must exit 1:\nstdout=${m55OutTusq.stdout}\nstderr=${m55OutTusq.stderr}`);
+  }
+
+  // M55(p): --out unwritable parent → exit 1
+  const m55OutUnwritable = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--out', '/nonexistent_path_abc/m55.json'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (m55OutUnwritable.stdout !== '') {
+    throw new Error(`M55(p): --out unwritable parent must produce empty stdout:\nstdout=${m55OutUnwritable.stdout}`);
+  }
+
+  // M55(q): --json outputs valid JSON with first_property_default_values[] and warnings: []
+  const m55JsonResult = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+  if (m55JsonResult.status !== 0) {
+    throw new Error(`M55(q): --json must exit 0:\nstderr=${m55JsonResult.stderr}`);
+  }
+  const m55JsonParsed = JSON.parse(m55JsonResult.stdout);
+  if (!Array.isArray(m55JsonParsed.first_property_default_values)) {
+    throw new Error(`M55(q): --json output must have first_property_default_values[]:\n${m55JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m55JsonParsed.warnings)) {
+    throw new Error(`M55(q): --json output must have warnings[]:\n${m55JsonResult.stdout}`);
+  }
+
+  // M55(r): determinism — three consecutive runs produce byte-identical stdout
+  {
+    const m55Det1 = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+    const m55Det2 = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+    const m55Det3 = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+    if (m55Det1.stdout !== m55Det2.stdout || m55Det2.stdout !== m55Det3.stdout) {
+      throw new Error(`M55(r): preset index --json output must be byte-identical across three runs`);
+    }
+    // Non-persistence: manifest must not be mutated
+    const m55ManifestAfter = JSON.parse(await fs.readFile(m55SyntheticManifestPath, 'utf8'));
+    for (const cap of m55ManifestAfter.capabilities) {
+      if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_default_value')) {
+        throw new Error(`M55(r): input_schema_first_property_default_value must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+      }
+    }
+  }
+
+  // M55(s): malformed capabilities produce warnings covering all five frozen reason codes
+  const m55AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      // input_schema_field_missing
+      { name: 'no_schema_cap', description: 'x', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aaa', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_field_not_object
+      { name: 'non_object_schema_cap', description: 'x', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'bbb', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: 'bad', output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_type_missing_or_invalid
+      { name: 'no_type_cap', description: 'x', method: 'GET', path: '/c', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ccc', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { properties: { x: { type: 'string' } } }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_field_missing_when_type_is_object
+      { name: 'no_props_cap', description: 'x', method: 'GET', path: '/d', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ddd', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object' }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_first_property_descriptor_invalid (fifth frozen code — formally elevated from M52/M53/M54 OBJ pattern)
+      { name: 'bad_firstval_cap', description: 'x', method: 'GET', path: '/e', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'eee', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: 42 }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // valid defaulted cap (no warning)
+      { name: 'defaulted_valid_cap', description: 'x', method: 'POST', path: '/f', domain: 'x', side_effect_class: 'write', sensitivity_class: 'public', approved: true, capability_digest: 'fff', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { role: { type: 'string', default: 'admin' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }
+    ]
+  };
+  const m55AllWarningsManifestPath = path.join(m55TmpDir, 'all-warnings.manifest.json');
+  await fs.writeFile(m55AllWarningsManifestPath, JSON.stringify(m55AllWarningsManifest, null, 2), 'utf8');
+  const m55AllWarningsJson = runCli(['preset', 'index', '--manifest', m55AllWarningsManifestPath, '--json'], { cwd: m55TmpDir });
+  const m55AllWarningsParsed = JSON.parse(m55AllWarningsJson.stdout);
+  const m55ExpectedReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_properties_first_property_descriptor_invalid'
+  ];
+  for (const reason of m55ExpectedReasons) {
+    if (!m55AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M55(s): all five frozen warning reason codes must be present; missing ${reason}:\n${JSON.stringify(m55AllWarningsParsed.warnings)}`);
+    }
+  }
+  const m55AllWarningsHuman = runCli(['preset', 'index', '--manifest', m55AllWarningsManifestPath], { cwd: m55TmpDir });
+  if (!m55AllWarningsHuman.stderr.includes('Warning:')) {
+    throw new Error(`M55(s): human mode must emit warning to stderr:\nstderr=${m55AllWarningsHuman.stderr}`);
+  }
+  // defaulted/undefaulted/not_applicable buckets must not emit warnings on synthetic fixture
+  const m55DefaultedOnly = runCli(['preset', 'index', '--manifest', m55SyntheticManifestPath, '--json'], { cwd: m55TmpDir });
+  if (JSON.parse(m55DefaultedOnly.stdout).warnings.length !== 0) {
+    throw new Error(`M55(s): defaulted/undefaulted/not_applicable buckets must not emit warnings on synthetic fixture`);
+  }
+  // empty capabilities
+  const m55EmptyManifestPath = path.join(m55TmpDir, 'empty.manifest.json');
+  await fs.writeFile(m55EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m55EmptyHuman = runCli(['preset', 'index', '--manifest', m55EmptyManifestPath], { cwd: m55TmpDir });
+  if (!m55EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M55(s): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m55EmptyHuman.stdout}`);
+  }
+  const m55EmptyJson = runCli(['preset', 'index', '--manifest', m55EmptyManifestPath, '--json'], { cwd: m55TmpDir });
+  if (JSON.parse(m55EmptyJson.stdout).first_property_default_values.length !== 0) {
+    throw new Error(`M55(s): empty capabilities (JSON) must have first_property_default_values: []:\n${m55EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(JSON.parse(m55EmptyJson.stdout).warnings) || JSON.parse(m55EmptyJson.stdout).warnings.length !== 0) {
+    throw new Error(`M55(s): empty capabilities (JSON) must have warnings: []:\n${m55EmptyJson.stdout}`);
+  }
+
+  // M55(t): FALSY-DEFAULT-COUNTS-AS-DEFAULTED — default: null → defaulted (deliberate divergence from M52/M53 empty-counts-as-absent)
+  const m55FalsyDefaultManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'null_default_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ttt', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', default: null } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      { name: 'false_default_cap', description: 'x', method: 'GET', path: '/y', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'uuu', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { flag: { type: 'boolean', default: false } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      { name: 'zero_default_cap', description: 'x', method: 'GET', path: '/z', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'vvv', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { count: { type: 'number', default: 0 } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      { name: 'empty_str_default_cap', description: 'x', method: 'GET', path: '/w', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'www', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { label: { type: 'string', default: '' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }
+    ]
+  };
+  const m55FalsyDefaultPath = path.join(m55TmpDir, 'falsy-defaults.json');
+  await fs.writeFile(m55FalsyDefaultPath, JSON.stringify(m55FalsyDefaultManifest, null, 2), 'utf8');
+  const m55FalsyResult = runCli(['preset', 'index', '--manifest', m55FalsyDefaultPath, '--json'], { cwd: m55TmpDir });
+  const m55FalsyParsed = JSON.parse(m55FalsyResult.stdout);
+  for (const capName of ['null_default_cap', 'false_default_cap', 'zero_default_cap', 'empty_str_default_cap']) {
+    const defaultedEntry = m55FalsyParsed.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'defaulted');
+    if (!defaultedEntry || !defaultedEntry.capabilities.includes(capName)) {
+      throw new Error(`M55(t): FALSY-DEFAULT-COUNTS-AS-DEFAULTED: ${capName} must bucket as defaulted (falsy default is still a declared default):\n${JSON.stringify(m55FalsyParsed.first_property_default_values)}`);
+    }
+  }
+  if (m55FalsyParsed.warnings.length !== 0) {
+    throw new Error(`M55(t): falsy defaults must produce NO warning:\n${JSON.stringify(m55FalsyParsed.warnings)}`);
+  }
+
+  // M55(u): default key absent → undefaulted (no warning)
+  const m55AbsentDefaultManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'absent_default_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'yyy', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { id: { type: 'string', description: 'User identifier' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m55AbsentDefaultPath = path.join(m55TmpDir, 'absent-default.json');
+  await fs.writeFile(m55AbsentDefaultPath, JSON.stringify(m55AbsentDefaultManifest, null, 2), 'utf8');
+  const m55AbsentResult = runCli(['preset', 'index', '--manifest', m55AbsentDefaultPath, '--json'], { cwd: m55TmpDir });
+  const m55AbsentParsed = JSON.parse(m55AbsentResult.stdout);
+  if (!m55AbsentParsed.first_property_default_values.some((e) => e.input_schema_first_property_default_value === 'undefaulted' && e.capabilities.includes('absent_default_cap'))) {
+    throw new Error(`M55(u): absent default key must bucket as undefaulted:\n${m55AbsentResult.stdout}`);
+  }
+  if (m55AbsentParsed.warnings.length !== 0) {
+    throw new Error(`M55(u): absent default must produce NO warning:\n${JSON.stringify(m55AbsentParsed.warnings)}`);
+  }
+
+  // M55(v): default: {} (empty object) → defaulted (FALSY-DEFAULT-COUNTS-AS-DEFAULTED)
+  const m55EmptyObjDefaultManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_obj_default_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'vvv2', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { config: { type: 'object', default: {} } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m55EmptyObjDefaultPath = path.join(m55TmpDir, 'empty-obj-default.json');
+  await fs.writeFile(m55EmptyObjDefaultPath, JSON.stringify(m55EmptyObjDefaultManifest, null, 2), 'utf8');
+  const m55EmptyObjResult = runCli(['preset', 'index', '--manifest', m55EmptyObjDefaultPath, '--json'], { cwd: m55TmpDir });
+  const m55EmptyObjParsed = JSON.parse(m55EmptyObjResult.stdout);
+  if (!m55EmptyObjParsed.first_property_default_values.some((e) => e.input_schema_first_property_default_value === 'defaulted' && e.capabilities.includes('empty_obj_default_cap'))) {
+    throw new Error(`M55(v): default:{} must bucket as defaulted (FALSY-DEFAULT-COUNTS-AS-DEFAULTED):\n${m55EmptyObjResult.stdout}`);
+  }
+  if (m55EmptyObjParsed.warnings.length !== 0) {
+    throw new Error(`M55(v): empty-object default must produce NO warning:\n${JSON.stringify(m55EmptyObjParsed.warnings)}`);
+  }
+
+  // M55(w): default: [] (empty array) → defaulted (FALSY-DEFAULT-COUNTS-AS-DEFAULTED)
+  const m55EmptyArrDefaultManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_arr_default_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'www2', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { tags: { type: 'array', default: [] } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m55EmptyArrDefaultPath = path.join(m55TmpDir, 'empty-arr-default.json');
+  await fs.writeFile(m55EmptyArrDefaultPath, JSON.stringify(m55EmptyArrDefaultManifest, null, 2), 'utf8');
+  const m55EmptyArrResult = runCli(['preset', 'index', '--manifest', m55EmptyArrDefaultPath, '--json'], { cwd: m55TmpDir });
+  const m55EmptyArrParsed = JSON.parse(m55EmptyArrResult.stdout);
+  if (!m55EmptyArrParsed.first_property_default_values.some((e) => e.input_schema_first_property_default_value === 'defaulted' && e.capabilities.includes('empty_arr_default_cap'))) {
+    throw new Error(`M55(w): default:[] must bucket as defaulted (FALSY-DEFAULT-COUNTS-AS-DEFAULTED; contrast with M54 where enum:[] is unknown):\n${m55EmptyArrResult.stdout}`);
+  }
+  if (m55EmptyArrParsed.warnings.length !== 0) {
+    throw new Error(`M55(w): empty-array default must produce NO warning:\n${JSON.stringify(m55EmptyArrParsed.warnings)}`);
+  }
+
+  // M55(x): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'default_value', 'not_applicable', 'unknown'}
+  const m55AggKeyResult = runCli(['preset', 'index', '--manifest', m55AllWarningsManifestPath, '--json'], { cwd: m55TmpDir });
+  const m55AggKeyParsed = JSON.parse(m55AggKeyResult.stdout);
+  for (const entry of m55AggKeyParsed.first_property_default_values) {
+    if (!new Set(['default_value', 'not_applicable', 'unknown']).has(entry.aggregation_key)) {
+      throw new Error(`M55(x): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m55AggDefaulted = m55DefaultJson.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'defaulted');
+  if (!m55AggDefaulted || m55AggDefaulted.aggregation_key !== 'default_value') {
+    throw new Error(`M55(x): defaulted bucket must have aggregation_key 'default_value':\n${JSON.stringify(m55AggDefaulted)}`);
+  }
+  const m55AggNA = m55DefaultJson.first_property_default_values.find((e) => e.input_schema_first_property_default_value === 'not_applicable');
+  if (!m55AggNA || m55AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
+  }
+
+  // M55(x3): help enumerates 39 commands and includes 'preset' between 'policy' and 'redaction'
+  const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
+  const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m55HelpCommandCount !== 39) {
+    throw new Error(`M55(x3): tusq help must enumerate 39 commands (M55 adds 'preset'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  }
+  if (!m55HelpResult.stdout.includes('  preset')) {
+    throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
+  }
+
+  // preset between policy and redaction
+  const m55IndexHelpResult = runCli(['preset', 'index', '--help'], { cwd: m55TmpDir });
+  if (!m55IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M55(x3): preset index help must include planning-aid framing:\n${m55IndexHelpResult.stdout}`);
+  }
+
+  // Unknown subcommand exits 1
+  const m55UnknownSubCmd = runCli(['preset', 'bogusub'], { cwd: m55TmpDir, expectedStatus: 1 });
+  if (!m55UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m55UnknownSubCmd.stdout !== '') {
+    throw new Error(`M55(x3): unknown subcommand must exit 1:\nstdout=${m55UnknownSubCmd.stdout}\nstderr=${m55UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m55TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -8178,8 +8618,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 38) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 38 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 39) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -8716,8 +9156,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 38) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 38 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 39) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -9265,8 +9705,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 38) {
-    throw new Error(`M42: tusq help must enumerate exactly 38 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 39) {
+    throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -9811,8 +10251,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 38) {
-    throw new Error(`M41: tusq help must enumerate exactly 38 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 39) {
+    throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -10366,8 +10806,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 38) {
-    throw new Error(`M40: tusq help must enumerate exactly 38 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 39) {
+    throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -10838,8 +11278,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 38) {
-    throw new Error(`M39: tusq help must enumerate exactly 38 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 39) {
+    throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -11309,8 +11749,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 38) {
-    throw new Error(`M38: tusq help must enumerate exactly 38 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 39) {
+    throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -11792,8 +12232,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 38) {
-    throw new Error(`M37: tusq help must enumerate exactly 38 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 39) {
+    throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -12250,8 +12690,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 38) {
-    throw new Error(`M36: tusq help must enumerate exactly 38 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 39) {
+    throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -12643,8 +13083,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 38) {
-    throw new Error(`M35: tusq help must enumerate exactly 38 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 39) {
+    throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });
