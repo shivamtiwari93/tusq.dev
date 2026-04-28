@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_7c5f41d07c7e67e1 (role=qa, run_e05bf49856cd2880, M53 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_3bd0b034cb7c2180, role=dev, HEAD 7659122) for run_e05bf49856cd2880 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff 8107b6a..7659122 --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M53 does not modify the manifest format schema — input_schema_first_property_format_hint is intentionally non-persistent by design). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. Dev DEC-001 correctly challenged PM turn (8107b6a) — confirmed PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (44 scenarios)`. Independently re-run; 44 scenarios confirmed (43 prior + 1 M53 input-schema-first-property-format-hint-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaFirstPropertyFormatHintBucketKey` (`src/cli.js:7355`) and `_guardInputSchemaFirstPropertyFormatHintAggregationKey` (`src/cli.js:7362`) guards pass synchronously.
+
+**4. CLI surface 37 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 37. `hint` correctly positioned between `gloss` and `input` (g=103 < h=104 < i=105 at position 0). Constants: `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_ENUM` at `src/cli.js:445`, `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_AGGREGATION_KEY_ENUM` at `src/cli.js:449`, `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER` at `src/cli.js:456`.
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_format_hints[]` (NOT `tiers[]`, NOT `first_property_types[]`, NOT `required_statuses[]`, NOT `first_property_sources[]`, NOT `first_property_description_presences[]`) with `unhinted` bucket (get_users_api_v1_users_id AND post_users_users; capability_count 2; aggregation_key `"format_hint"` — neither first property has a `format` field), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"` — zero-property input_schema.properties); `hinted` bucket absent (no format-hinted first-property capabilities in express fixture); `warnings: []`. Per-bucket 8-field shape confirmed: `input_schema_first_property_format_hint`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --hint HINTED` → exit 1, stderr `Unknown input schema first property format hint: HINTED`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --hint hinted` → exit 1, `No capabilities found for input schema first property format hint: hinted` (no hinted-format-hint capabilities in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. Fixture mutation (re-run this turn):** `git diff --quiet HEAD -- tests/fixtures/` → exit 0. Zero fixture mutation.
+
+**10. M53 ROADMAP checkboxes:** All 16 M53 ROADMAP items confirmed `[x]`, independently verified by grep this turn.
+
+**11. `classifyInputSchemaFirstPropertyFormatHint` rules (code inspection at src/cli.js:7387–7428):** null/undefined inputSchema → unknown; non-object/Array inputSchema → unknown; inputSchema.type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning; non-object input has no first property); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); firstVal null/primitive/Array → unknown (input_schema_properties_first_property_descriptor_invalid — OBJ-005); firstVal.format present AND non-null AND non-undefined AND non-string → unknown (input_schema_properties_first_property_format_invalid_when_present); firstVal.format missing/null/undefined OR is string with trim().length === 0 → unhinted (no warning — knowledge-artifact-rendering signal, not a typing failure, mirrors M52 empty-string-counts-as-absent precedent verbatim); firstVal.format is string with trim().length > 0 → hinted (no warning). No all-properties-format walking; no nested-property recursion; no output-side format classification; no format-value distribution; no runtime-payload validation; no LLM inference.
+
+**12. Warning reason codes (code inspection at src/cli.js:7467–7498):** PM spec froze 5 codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_format_invalid_when_present`. Code also emits a 6th code `input_schema_properties_first_property_descriptor_invalid` (for the firstVal-not-a-plain-object malformation path) — raised as OBJ-005 (low, non-blocking). `not_applicable`, `hinted`, and `unhinted` buckets emit NO warnings; only `unknown` triggers warnings.
+
+**13. OBJ-001/OBJ-002/OBJ-003/OBJ-004 carried forward; OBJ-005 raised:** OBJ-001 (medium, non-blocking): R6 (auth_required === false → auth_scheme: 'none') remains dead code in the automated pipeline. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M53 close their own analogs. OBJ-004 (low, non-blocking): M52 code emits undeclared 6th warning reason code `input_schema_properties_first_property_descriptor_invalid`. OBJ-005 (low, non-blocking): M53 code emits the same undeclared 6th warning reason code `input_schema_properties_first_property_descriptor_invalid` for the firstVal-not-plain-object malformation path, beyond the 5 PM-frozen codes — functionally correct (classification outcome is still `unknown` and a warning is still emitted), but deviates from PM DEC-003's frozen enum; same pattern as M52's OBJ-004. No blocking objections raised for M53.
+
+**Verdict: SHIP** — 714 acceptance criteria pass (REQ-001–REQ-714). npm test exits 0 with 44 scenarios. All 16 M53 ROADMAP checkboxes [x].
+
 ## QA Challenge — turn_dfcb56e6034f88b5 (role=qa, run_3f128359168988b4, M52 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_09c7bb9f6448bf1a, role=dev, HEAD c4aee92) for run_3f128359168988b4 independently rather than rubber-stamping it.

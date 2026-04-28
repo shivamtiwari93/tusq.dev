@@ -1,5 +1,19 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M53 (turn_7c5f41d07c7e67e1, run_e05bf49856cd2880, 2026-04-28, HEAD 7659122)
+
+**Milestone:** M53 — Static Capability Input Schema First Property Format Hint Presence Index Export from Manifest Evidence (~0.5 day) — V1.34
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_3bd0b034cb7c2180, role=dev). HEAD 7659122 = M53 implementation checkpoint. All M53 implementation (src/cli.js, tests/smoke.mjs, 44 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (44 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyFormatHintBucketKey` at src/cli.js:7355 and `_guardInputSchemaFirstPropertyFormatHintAggregationKey` at src/cli.js:7362 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 37. `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_format_hints[]` with `unhinted` bucket (get_users_api_v1_users_id AND post_users_users; aggregation_key `"format_hint"`), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `hinted` bucket absent; `warnings: []`. `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --hint HINTED` → exit 1 (case-sensitive). `node bin/tusq.js hint index --manifest tests/fixtures/express-sample/tusq.manifest.json --hint hinted` → exit 1, absent-bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New capability:** `tusq hint index` — indexes capabilities by `input_schema.properties[firstKey].format` JSON-Schema-format-hint presence classification. Four-value bucket-key enum: `hinted | unhinted | not_applicable | unknown`. Three-value aggregation_key enum: `format_hint | not_applicable | unknown`. Classifier: hinted (non-empty trimmed format string present on first property — any JSON-Schema format hint such as `email`, `date`, `uri`, `uuid`), unhinted (format missing/null/undefined or empty/whitespace-only string — knowledge-artifact-rendering gap signal, not a typing failure), not_applicable (non-object input_schema or zero-property object), unknown (malformed input_schema or firstVal not a plain object or firstVal.format present-but-non-string). Bucket iteration order: `hinted → unhinted → not_applicable → unknown`. Case-sensitive lowercase-only `--hint` filter. Non-persistent (does NOT write `input_schema_first_property_format_hint` into tusq.manifest.json). Planning aid: surfaces format-hint presence exposure per capability to help governance reviewers assess knowledge-artifact rendering gaps (help flows, troubleshooting trees, RAG retrieval manifests, SDK-call-site widgets). First milestone to use § Knowledge Artifacts as primary VISION aggregation source.
+
+**OBJ-005 (low, non-blocking):** M53 code emits undeclared 6th warning reason code `input_schema_properties_first_property_descriptor_invalid` (for firstVal-not-a-plain-object malformation path), beyond the 5 PM-frozen codes. Same pattern as M52's OBJ-004. Functionally correct; does not affect classification outcomes. Carried forward for next PM cycle.
+
+**Acceptance criteria:** 714 total (REQ-001–REQ-714). Added REQ-690–REQ-714 (25 new M53 criteria) this turn. All 714 pass. Ship verdict: SHIP.
+
 ## QA Verification — M52 (turn_dfcb56e6034f88b5, run_3f128359168988b4, 2026-04-28, HEAD c4aee92)
 
 **Milestone:** M52 — Static Capability Input Schema First Property Description Presence Index Export from Manifest Evidence (~0.5 day) — V1.33
