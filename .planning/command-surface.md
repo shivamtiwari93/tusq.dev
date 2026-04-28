@@ -1,5 +1,58 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
+> **M69 Materialized — 2026-04-28, run_b755142c1e667f34, turn_34b72c9cd670d869, dev attempt 1.** `tusq fixed index` implemented. CLI surface 52→53. `fixed` between `examples` and `floor` in post-`docs` alphabetical block (examples(e=101)<fixed(f=102) at pos 0; fixed(f=102,i=105)<floor(f=102,l=108) at pos 1). Flags: `--manifest`, `--json`, `--out`, `--fixed` (case-sensitive). Output: `first_property_const_states[]` with 8-field per-bucket shape (`input_schema_first_property_const`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`). Five frozen warning reason codes (no 6th — const accepts ANY JSON value, mirrors M55 pattern). NULL-IS-VALID-CONST (M69-SPECIFIC): const:null→pinned (no warning; deliberate divergence from M55–M68 null-as-absent; mirrors M55's null-as-defaulted). FALSY-IS-VALID-CONST (M69-SPECIFIC): const:false/0/''/[]/{}→pinned (no warning). ANY-JSON-VALUE-IS-VALID-CONST (M69-SPECIFIC): any JSON value→pinned; classifier uses hasOwnProperty('const') && const !== undefined. Bucket iteration order: pinned → unpinned → not_applicable → unknown. npm test exits 0 (60 scenarios). See IMPLEMENTATION_NOTES.md § M69 for full detail.
+
+### tusq fixed index
+
+**Synopsis:** `tusq fixed index [--fixed <pinned|unpinned|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]`
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--fixed <value>` | all buckets | Filter to single const annotation bucket (case-sensitive lowercase: `pinned`, `unpinned`, `not_applicable`, `unknown`) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write JSON index to file (no stdout on success); rejects paths inside `.tusq/` |
+| `--json` | false | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**Output shape (JSON):**
+```json
+{
+  "manifest_path": "<path>",
+  "manifest_version": 1,
+  "generated_at": "<ISO-8601>",
+  "first_property_const_states": [
+    {
+      "input_schema_first_property_const": "pinned",
+      "aggregation_key": "single_value_constraint",
+      "capability_count": 2,
+      "capabilities": ["submit_quote_score", "get_fixed_price"],
+      "approved_count": 2,
+      "gated_count": 0,
+      "has_destructive_side_effect": false,
+      "has_restricted_or_confidential_sensitivity": false
+    }
+  ],
+  "warnings": []
+}
+```
+
+**Exit codes:**
+- `0`: Index produced (or empty-capabilities manifest)
+- `1`: Missing/invalid manifest, unknown flag, unknown const annotation value, `--out` path error, or unknown subcommand
+
+**Const annotation rule (applied to `input_schema.properties[firstKey].const` when `input_schema.type === "object"`):**
+- `pinned`: `Object.prototype.hasOwnProperty.call(firstVal, 'const') && firstVal.const !== undefined` (NULL-IS-VALID-CONST; FALSY-IS-VALID-CONST; ANY-JSON-VALUE-IS-VALID-CONST)
+- `unpinned`: `const` absent OR present with `=== undefined`
+- `not_applicable`: `input_schema.type` is a string but not `'object'`, OR zero-property object
+- `unknown`: malformed `input_schema`, or `firstVal` not a plain object
+
+**Bucket iteration order:** `pinned → unpinned → not_applicable → unknown`
+
+**Read-only invariant:** 39 prior peer index commands byte-identical pre/post (`surface plan`, `domain index`, …, `above index`, `below index`). `fixed index` does NOT write `input_schema_first_property_const` into `tusq.manifest.json` (non-persistence rule).
+
+**Distinctness:** `tusq fixed index` aggregates `firstKey.const` (cardinality-EXACTLY-1 single pin; operator NON-overridable); `tusq choice index` (M54) aggregates `firstKey.enum` (cardinality-≥1 closed LIST); `tusq preset index` (M55) aggregates `firstKey.default` (operator-OVERRIDABLE seed).
+
 > **M69 Charter Sketch Reservation — 2026-04-28, run_b755142c1e667f34, turn_5094853d8deae4ef, PM attempt 1.** Reserves the M69 boundary for the dev turn to materialize. `tusq fixed index` to be implemented. CLI surface 52→53. `fixed` between `examples` and `floor` in the post-`docs` alphabetical block (`examples` (e=101, x=120) < `fixed` (f=102) at pos 0 (e (101) < f (102)); `fixed` (f=102, i=105) < `floor` (f=102, l=108) at pos 1 (i (105) < l (108))). Flags: `--manifest`, `--json`, `--out` (rejects `.tusq/`), `--fixed` (case-sensitive lowercase only). Output: `first_property_const_states[]` with 8-field per-bucket shape (`input_schema_first_property_const`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`). Bucket-key enum (closed four-value): `pinned | unpinned | not_applicable | unknown`. Aggregation_key enum (closed three-value): `single_value_constraint | not_applicable | unknown`. Five frozen warning reason codes (mirrors M55 `default` ANY-JSON-VALUE precedent — NO axis-specific 6th code because `const` accepts any JSON value with no value-type validation failure mode; 5th: `input_schema_properties_first_property_descriptor_invalid` covers structural malformation only). NULL-IS-VALID-CONST (M69-SPECIFIC, departs from M55–M68 NULL-AS-ABSENT precedent): `const: null` → `pinned` (no warning) — JSON-Schema explicitly permits `null` as a valid pin; presence MUST be probed via `'const' in firstPropertyDescriptor` (Object.prototype.hasOwnProperty.call), NOT via `firstPropertyDescriptor.const !== undefined` (would correctly bucket null but would silently miss the `'const': undefined` edge case from accidental `Object.assign`) and NOT via `firstPropertyDescriptor.const !== null` (would misclassify `const: null` as `unpinned`). FALSY-IS-VALID-CONST (M69-SPECIFIC): `const: false` / `const: 0` / `const: ''` / `const: 0.0` / `const: -0` → `pinned` (no warning) — every JSON falsy is a legal pin. ANY-JSON-VALUE-IS-VALID-CONST (M69-SPECIFIC): `const: [1,2]` / `const: {a:1}` / `const: 'x'` / `const: 1.5` / `const: -273.15` → `pinned` (no warning) — any JSON-roundtripable value is acceptable. NO-VALUE-TYPE-VALIDATION: unlike M62/M63/M64/M65/M66/M67/M68, `const` has NO value-type predicate; the 5th frozen code applies ONLY when the surrounding `properties[firstKey]` descriptor is structurally malformed, NOT when the const value itself is unusual. Bucket iteration order: `pinned → unpinned → not_applicable → unknown` (deterministic stable-output convention only — NOT MCP-server-tool-criticality / marketplace-package-strictness-tier / ecosystem-metadata-completeness / icon-presence-priority / example-prompt-quality-tier / auth-scope-tightness / credentialed-publishing-eligibility / update-flow-priority ranking). Empty buckets MUST NOT appear. Read-only invariant: 39 prior peer index commands byte-identical pre/post (`tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`, `tusq examples index`, `tusq input index`, `tusq output index`, `tusq path index`, `tusq response index`, `tusq request index`, `tusq description index`, `tusq items index`, `tusq strictness index`, `tusq parameter index`, `tusq shape index`, `tusq signature index`, `tusq obligation index`, `tusq binding index`, `tusq gloss index`, `tusq hint index`, `tusq choice index`, `tusq preset index`, `tusq sample index`, `tusq caption index`, `tusq legacy index`, `tusq regex index`, `tusq seal index`, `tusq secret index`, `tusq floor index`, `tusq ceiling index`, `tusq divisor index`, `tusq lower index`, `tusq upper index`, `tusq above index`, `tusq below index`). Non-persistence: `input_schema_first_property_const` MUST NOT be written into `tusq.manifest.json`. M69-vs-M54-vs-M55 distinctness: `tusq fixed index` aggregates `firstKey.const` (single-allowed-value pin, cardinality-exactly-1, no operator override); `tusq presets index` (M54) aggregates `firstKey.enum` (closed list of allowed values, cardinality≥1, no operator override); `tusq seal index` (M55) aggregates `firstKey.default` (operator-overridable seed value, cardinality 1 hint, fully overridable). M69 aggregates the `const` PRESENCE annotation, not the const VALUE itself; even if `enum: [X]` (single-element enum) is semantically equivalent to `const: X`, single-element enums are bucketed by M54 as `enum_constrained`, NOT by M69. Dev turn replaces this reservation with a full `### tusq fixed index` entry mirroring M68's `### tusq below index` entry — synopsis, flags table, output shape, exit codes, peer-index read-only invariant note. See ROADMAP.md § M69 for the full PM-frozen scope.
 
 > **M68 Materialized — 2026-04-28, run_68afe5c0590c0d56, turn_71a39cd2a9291228, dev attempt 1.** `tusq below index` implemented. CLI surface 51→52. `below` between `auth` and `binding` in post-`docs` alphabetical block. Flags: `--manifest`, `--json`, `--out`, `--below` (case-sensitive). Output: `first_property_exclusive_maximum_states[]` with 8-field per-bucket shape. Six frozen warning reason codes (fifth: `input_schema_properties_first_property_descriptor_invalid`; sixth: `input_schema_properties_first_property_exclusive_maximum_invalid_when_present`). NULL-AS-ABSENT: exclusiveMaximum:null → upper_exclusive_unbounded (no warning, mirrors M55–M67). ZERO-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:0 → upper_exclusive_bounded (no warning). NEGATIVE-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:-273.15 → upper_exclusive_bounded (no warning). FRACTIONAL-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:0.5 → upper_exclusive_bounded (no warning). DRAFT-4-BOOLEAN-IS-INVALID (M68-SPECIFIC): exclusiveMaximum:true/false → unknown WITH 6th code. STRICT: `typeof v === 'number' && Number.isFinite(v)` — NO coercion. npm test exits 0 (59 scenarios). See IMPLEMENTATION_NOTES.md § M68 for full detail.

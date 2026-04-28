@@ -2089,6 +2089,8 @@ async function run() {
       await runInputSchemaFirstPropertyExclusiveMinimumIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_exclusive_maximum_index_determinism') {
       await runInputSchemaFirstPropertyExclusiveMaximumIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_const_index_determinism') {
+      await runInputSchemaFirstPropertyConstIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -5333,6 +5335,144 @@ async function runInputSchemaFirstPropertyExclusiveMaximumIndexDeterminismScenar
   // Assert upper_exclusive_unbounded bucket has aggregation_key 'numeric_upper_exclusive_bound_constraint'
   if (upperExclusiveUnboundedEntry.aggregation_key !== 'numeric_upper_exclusive_bound_constraint') {
     fail(`${scenario.id}: upper_exclusive_unbounded bucket must have aggregation_key 'numeric_upper_exclusive_bound_constraint'; got '${upperExclusiveUnboundedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyConstIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-const-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq fixed index --json three times and assert byte-identical output
+  const run1 = runCli(['fixed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['fixed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['fixed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: fixed index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_const bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validConstValues = new Set(scenario.expected_valid_const_values);
+  for (const entry of index.first_property_const_states) {
+    if (!validConstValues.has(entry.input_schema_first_property_const)) {
+      fail(`${scenario.id}: input_schema_first_property_const '${entry.input_schema_first_property_const}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_const_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_const}'`);
+    }
+  }
+
+  // Assert bucket order matches expected
+  const bucketOrder = index.first_property_const_states.map((e) => e.input_schema_first_property_const).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${scenario.expected_bucket_order}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_const must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_const')) {
+      fail(`${scenario.id}: input_schema_first_property_const must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert NULL-IS-VALID-CONST: null_const_cap → pinned (no warning)
+  const pinnedEntry = index.first_property_const_states.find((e) => e.input_schema_first_property_const === 'pinned');
+  if (!pinnedEntry || !pinnedEntry.capabilities.includes('null_const_cap')) {
+    fail(`${scenario.id}: null_const_cap (firstKey.const=null) must be in pinned bucket (NULL-IS-VALID-CONST)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_const_cap')) {
+    fail(`${scenario.id}: null_const_cap (NULL-IS-VALID-CONST → pinned) must NOT produce a warning`);
+  }
+
+  // Assert FALSY-IS-VALID-CONST: false_const_cap → pinned (no warning)
+  if (!pinnedEntry || !pinnedEntry.capabilities.includes('false_const_cap')) {
+    fail(`${scenario.id}: false_const_cap (firstKey.const=false) must be in pinned bucket (FALSY-IS-VALID-CONST)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'false_const_cap')) {
+    fail(`${scenario.id}: false_const_cap (FALSY-IS-VALID-CONST → pinned) must NOT produce a warning`);
+  }
+
+  // Assert pinned_cap is in pinned bucket (string const)
+  if (!pinnedEntry || !pinnedEntry.capabilities.includes('pinned_cap')) {
+    fail(`${scenario.id}: pinned_cap (firstKey.const='v3') must be in pinned bucket`);
+  }
+
+  // Assert unpinned_cap is in unpinned bucket (absent const)
+  const unpinnedEntry = index.first_property_const_states.find((e) => e.input_schema_first_property_const === 'unpinned');
+  if (!unpinnedEntry || !unpinnedEntry.capabilities.includes('unpinned_cap')) {
+    fail(`${scenario.id}: unpinned_cap (firstKey.const absent) must be in unpinned bucket`);
+  }
+
+  // Assert not_applicable bucket exists and has correct aggregation_key
+  const naEntry = index.first_property_const_states.find((e) => e.input_schema_first_property_const === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+
+  // Assert unknown bucket exists
+  const unknownEntry = index.first_property_const_states.find((e) => e.input_schema_first_property_const === 'unknown');
+  if (!unknownEntry) {
+    fail(`${scenario.id}: unknown bucket must be present`);
+  }
+
+  // Assert pinned bucket has aggregation_key 'single_value_constraint'
+  if (pinnedEntry.aggregation_key !== 'single_value_constraint') {
+    fail(`${scenario.id}: pinned bucket must have aggregation_key 'single_value_constraint'; got '${pinnedEntry.aggregation_key}'`);
+  }
+
+  // Assert unpinned bucket has aggregation_key 'single_value_constraint'
+  if (unpinnedEntry.aggregation_key !== 'single_value_constraint') {
+    fail(`${scenario.id}: unpinned bucket must have aggregation_key 'single_value_constraint'; got '${unpinnedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

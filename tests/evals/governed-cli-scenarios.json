@@ -4536,6 +4536,131 @@
         "unknown"
       ],
       "expected_bucket_order": "upper_exclusive_bounded,upper_exclusive_unbounded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-const-index-determinism",
+      "scenario_type": "input_schema_first_property_const_index_determinism",
+      "description": "Verifies that tusq fixed index produces byte-identical output across three runs on a synthetic manifest with pinned, unpinned, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (pinned/unpinned/not_applicable/unknown), closed three-value aggregation_key enum (single_value_constraint/not_applicable/unknown), bucket order determinism (pinned \u2192 unpinned \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_const non-persistence. NULL-IS-VALID-CONST (M69-SPECIFIC, deliberate divergence from M55-M68 null-as-absent): const:null \u2192 pinned (no warning) \u2014 JSON-Schema explicitly permits null as a valid single-allowed-value pin. FALSY-IS-VALID-CONST (M69-SPECIFIC, mirrors M55): false/0/empty-string/empty-array/empty-object \u2192 pinned (no warning). ANY-JSON-VALUE-IS-VALID-CONST (M69-SPECIFIC): any JSON value \u2192 pinned; NO 6th warning code because const accepts any JSON value type (deliberate alignment with M55 pattern; deliberate divergence from M56-M68 six-frozen-codes pattern). Classifier uses Object.prototype.hasOwnProperty.call(firstVal, 'const') && firstVal.const !== undefined (undefined-as-absent only; null is a valid pin).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "pinned_cap",
+          "method": "POST",
+          "path": "/pinned",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has const=\"v3\" (string) \u2014 lands in pinned bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "algorithm_version": {
+                "type": "string",
+                "const": "v3"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_const_cap",
+          "method": "POST",
+          "path": "/null-const",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has const=null \u2014 lands in pinned bucket (NULL-IS-VALID-CONST, deliberate divergence from M55-M68 null-as-absent; null is a valid JSON-Schema pin value)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "null",
+                "const": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "false_const_cap",
+          "method": "PUT",
+          "path": "/false-const",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has const=false \u2014 lands in pinned bucket (FALSY-IS-VALID-CONST, mirrors M55 falsy-default-counts-as-defaulted)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unpinned_cap",
+          "method": "GET",
+          "path": "/unpinned",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no const field \u2014 lands in unpinned bucket (absent \u2192 unpinned)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        }
+      ],
+      "expected_valid_const_values": [
+        "pinned",
+        "unpinned",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "single_value_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "pinned,unpinned,not_applicable,unknown"
     }
   ]
 }

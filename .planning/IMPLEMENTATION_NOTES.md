@@ -2,6 +2,52 @@
 
 ---
 
+## M69 (run_b755142c1e667f34, turn_34b72c9cd670d869, dev)
+
+**Milestone:** Static Capability Input Schema First Property Const Single-Allowed-Value Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.50
+
+**Axis:** `input_schema.properties[firstKey].const` (JSON-Schema Draft 6+ single-allowed-value pin — value MUST equal exactly the declared const; cardinality-exactly-1)
+
+**Classifier:** `classifyInputSchemaFirstPropertyConst(inputSchema)` → `'pinned'|'unpinned'|'not_applicable'|'unknown'`
+
+**Frozen bucket-key enum (closed four-value):** `pinned | unpinned | not_applicable | unknown`
+
+**Frozen aggregation_key enum (closed three-value):** `single_value_constraint | not_applicable | unknown`
+
+**Bucket iteration order:** `pinned → unpinned → not_applicable → unknown` (deterministic stable-output convention — NOT MCP-readiness-ranked)
+
+**Five frozen warning reason codes (NO axis-specific 6th — mirrors M55 pattern because const accepts ANY JSON value):**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+
+**M69-SPECIFIC invariants:**
+- **NULL-IS-VALID-CONST:** `const: null` → `pinned` (no warning) — deliberate divergence from M55–M68 null-as-absent; null is a valid JSON-Schema single-allowed-value pin
+- **FALSY-IS-VALID-CONST:** `const: false/0/''/[]/{}` → `pinned` (no warning) — mirrors M55's falsy-default-counts-as-defaulted; deliberate divergence from M52/M53 empty-string-counts-as-absent
+- **ANY-JSON-VALUE-IS-VALID-CONST:** any JSON value including string/number/boolean/null/array/object → `pinned`; NO 6th warning code because `const` accepts any JSON value type
+- **Undefined-as-absent (only):** `const: undefined` → `unpinned`; classifier uses `hasOwnProperty('const') && const !== undefined`
+- **STRICT:** no coercion; classifier reads ONLY presence/absence of `const` key
+
+**CLI noun:** `fixed` (inserted alphabetically between `examples` and `floor`; `examples` (e=101,x=120) < `fixed` (f=102,i=105) < `floor` (f=102,l=108) at pos 1 (i(105)<l(108)))
+
+**CLI surface:** 52 → 53
+
+**Result array field:** `first_property_const_states`
+
+**Per-bucket field:** `input_schema_first_property_const`
+
+**Non-persistence:** `input_schema_first_property_const` MUST NOT be written into `tusq.manifest.json`
+
+**Source files changed:** `src/cli.js`, `tests/smoke.mjs`, `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`
+
+**Test counts:** Smoke tests passed; eval regression harness passed (60 scenarios)
+
+**Distinction from peers:** M54 `tusq choice index` reads `firstKey.enum` (cardinality-≥1 closed LIST); M55 `tusq preset index` reads `firstKey.default` (operator-OVERRIDABLE seed); M69 `tusq fixed index` reads `firstKey.const` (cardinality-EXACTLY-1 single pin, operator-NON-overridable). All three are orthogonal JSON-Schema keywords reading orthogonal closed-vocabulary/pre-fill semantics.
+
+---
+
 ## M68 (run_68afe5c0590c0d56, turn_71a39cd2a9291228, dev)
 
 ### Axis: input_schema.properties[firstKey].exclusiveMaximum (JSON-Schema Draft 6+ numeric-exclusive-upper-bound)

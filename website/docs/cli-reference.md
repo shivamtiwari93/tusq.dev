@@ -1137,6 +1137,73 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq fixed index`
+
+Emit a deterministic, per-first-input-property-const-single-allowed-value-pin-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].const` is present with a non-`undefined` value (`pinned`), absent or `undefined` (`unpinned`), non-applicable (`not_applicable` — non-object input or zero-property object), or structurally malformed (`unknown`) in closed-enum order (`pinned → unpinned → not_applicable → unknown`). This is a **planning aid, not a runtime const enforcer, marketplace-pin-generator, MCP-server-output-generator, marketplace-package-generator, MCP-server-tool-call-wrapper-pin-enforcer, doc-contradiction detector, enum-aggregator, default-aggregator, value-type-distributor, value-cardinality-tier-distributor, joint-validity-validator, type-applicability validator, LLM-const-inferrer, or statistical aggregator**.
+
+**M69-vs-M54-vs-M55 distinction:** `tusq fixed index` (M69) reads `input_schema.properties[firstKey].const` — the **FIRST input property's** JSON-Schema Draft 6+ `const` keyword: a single-allowed-value pin with **cardinality-EXACTLY-1** (`value === const`; the operator **MUST NOT** override the pin at runtime). `tusq choice index` (M54) reads `firstKey.enum` — the closed LIST of allowed values with **cardinality-≥1** (orthogonal cardinality of the closed-vocabulary constraint; an `enum` LIST may have multiple allowed values while `const` pins to exactly one). `tusq preset index` (M55) reads `firstKey.default` — the **operator-OVERRIDABLE** pre-fill seed value (orthogonal mutability semantic: the operator **MAY** override `default` at runtime, but **MUST NOT** diverge from `const`). Three orthogonal JSON-Schema keywords; neither alters the others' output bytes.
+
+**M69-SPECIFIC invariants:**
+- **NULL-IS-VALID-CONST:** `const: null` → `pinned` (no warning) — deliberate divergence from M55–M68 null-as-absent precedent; `null` is a valid JSON-Schema single-allowed-value pin ("value MUST be null"), mirroring M55's `default: null` → `defaulted` pattern.
+- **FALSY-IS-VALID-CONST:** `const: false` / `const: 0` / `const: ""` / `const: []` / `const: {}` → `pinned` (no warning) — every JSON falsy is a legal declared pin value, mirrors M55's FALSY-DEFAULT-COUNTS-AS-DEFAULTED.
+- **ANY-JSON-VALUE-IS-VALID-CONST:** any JSON value (string, number, boolean, null, array, object) → `pinned`; NO 6th warning code because the JSON-Schema `const` keyword accepts any JSON value type with no value-type failure mode (deliberate alignment with M55 pattern; deliberate divergence from M56–M68 six-frozen-codes pattern).
+- **Undefined-as-absent (only):** `const: undefined` → `unpinned`; classifier uses `Object.prototype.hasOwnProperty.call(firstVal, 'const') && firstVal.const !== undefined`.
+
+```
+tusq fixed index [--fixed <pinned|unpinned|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--fixed <value>` | all buckets | Filter to single const annotation bucket; **case-sensitive lowercase only**: `pinned`, `unpinned`, `not_applicable`, `unknown` |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write JSON index to file (no stdout on success); rejects paths inside `.tusq/` |
+| `--json` | false | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**JSON output shape:**
+```json
+{
+  "manifest_path": "<path>",
+  "manifest_version": 1,
+  "generated_at": "<ISO-8601>",
+  "first_property_const_states": [
+    {
+      "input_schema_first_property_const": "pinned",
+      "aggregation_key": "single_value_constraint",
+      "capability_count": 2,
+      "capabilities": ["submit_quote_score", "get_fixed_price"],
+      "approved_count": 2,
+      "gated_count": 0,
+      "has_destructive_side_effect": false,
+      "has_restricted_or_confidential_sensitivity": false
+    }
+  ],
+  "warnings": []
+}
+```
+
+**Const annotation rule** (applied to `input_schema.properties[firstKey].const` when `input_schema.type === "object"`):
+- `pinned`: `Object.prototype.hasOwnProperty.call(firstVal, 'const') && firstVal.const !== undefined` — ANY JSON value (including `null`/`false`/`0`/`""`/`[]`/`{}`) is a valid pin
+- `unpinned`: `const` key absent OR present with value `=== undefined`
+- `not_applicable`: `input_schema.type` is a string but not `'object'`, OR zero-property object
+- `unknown`: malformed `input_schema` or `firstVal` not a plain object
+
+**Five frozen warning reason codes** (no axis-specific 6th — `const` accepts ANY JSON value): `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`.
+
+**Exit codes:**
+- `0`: Index produced (or empty-capabilities manifest)
+- `1`: Missing/invalid manifest, unknown flag, unknown const annotation value, `--out` path error, or unknown subcommand
+
+**Invariants:** `input_schema_first_property_const` is NOT written into the manifest (non-persistence rule). All 39 prior peer index commands remain byte-identical pre/post (`tusq surface plan`, `tusq domain index`, …, `tusq above index`, `tusq below index`).
+
+```
+tusq fixed index
+tusq fixed index --json
+tusq fixed index --fixed pinned --json
+tusq fixed index --fixed unpinned --json
+tusq fixed index --out fixed-index.json
+```
+
 ## `tusq below index`
 
 Emit a deterministic, per-first-input-property-exclusiveMaximum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].exclusiveMaximum` is a finite number (`upper_exclusive_bounded`), absent/null/undefined (`upper_exclusive_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`upper_exclusive_bounded → upper_exclusive_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime exclusiveMaximum enforcer, doc-contradiction detector, minimum-crossref tool, maximum-crossref tool, above-crossref tool, joint-validity-crossref tool, type-applicability validator, Draft-4-crossref tool, LLM-exclusiveMaximum inferrer, ecosystem-integration-compiler-criticality tier emitter, or statistical aggregator**.
