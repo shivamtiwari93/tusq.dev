@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_89a29b5f1eb2186e (role=qa, run_68913f73e2cc30a6, M58 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_729ead92ab56d17f, role=dev, HEAD 78471e7) for run_68913f73e2cc30a6 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M58 does not modify manifest format — `input_schema_first_property_deprecated` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_46c96427c73e4d4e upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_DEPRECATED_ENUM` (frozen Set: deprecated/active/not_applicable/unknown) at `src/cli.js:546`; `INPUT_SCHEMA_FIRST_PROPERTY_DEPRECATED_AGGREGATION_KEY_ENUM` (frozen Set: lifecycle_stage/not_applicable/unknown) at `src/cli.js:550`; `INPUT_SCHEMA_FIRST_PROPERTY_DEPRECATED_BUCKET_ORDER` (frozen array: deprecated/active/not_applicable) at `src/cli.js:557`. Guards `_guardInputSchemaFirstPropertyDeprecatedBucketKey` at `src/cli.js:8702`, `_guardInputSchemaFirstPropertyDeprecatedAggregationKey` at `src/cli.js:8709`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyDeprecated` at `src/cli.js:8737–8779` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57); deprecated absent/!hasOwnProperty/null/undefined → active (null-as-absent, no warning — mirrors M55/M56/M57 null-as-absent but maps to `active` because JSON-Schema deprecated default is false); deprecated===false → active (EXPLICIT-FALSE-IS-ACTIVE, no warning — explicit false carries same semantics as default/absent); typeof firstVal.deprecated !== 'boolean' → unknown WITH `input_schema_properties_first_property_deprecated_invalid_when_present` (SIXTH FROZEN CODE — covers ALL non-boolean malformations: string 'true', number 1/0, array, object; NO truthy/falsy coercion); deprecated===true → deprecated (no warning). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 42. `legacy` between `items` and `method` confirmed (items(i=105) < legacy(l=108) at pos 0; legacy(l=108) < method(m=109) at pos 0). `cmdLegacy` dispatcher at `src/cli.js:8957`; `parseLegacyIndexArgs` at `src/cli.js:9065`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js legacy index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_deprecation_states[]` with `active` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"lifecycle_stage"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `deprecated` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: active < not_applicable (deprecated→active→not_applicable→unknown convention). PASS.
+
+**7. Case-sensitive filter enforcement:** `--legacy DEPRECATED` → exit 1, `Unknown input schema first property deprecated annotation: DEPRECATED` (case-sensitive enforcement confirmed). `--legacy deprecated` → exit 1, `No capabilities found for input schema first property deprecated annotation: deprecated` (absent-bucket enforcement confirmed). PASS.
+
+**8. M58-specific rules:** NULL-AS-ABSENT: deprecated `null` → `active` (no warning; JSON-Schema deprecated default is false/not-deprecated so absent/null → `active`). EXPLICIT-FALSE-IS-ACTIVE: deprecated `false` → `active` (no warning). NO TRUTHY/FALSY COERCION: string 'true' → `unknown` + 6th code; number 1 → `unknown` + 6th code; number 0 → `unknown` + 6th code (falsy-but-non-boolean still invalid); array [] → `unknown` + 6th code; object {} → `unknown` + 6th code. Only strict boolean `true` → `deprecated`. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_deprecated_invalid_when_present` at `src/cli.js:8843`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 49 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (49 scenarios)`). Scenario 49 (`input-schema-first-property-deprecated-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP completeness:** All 18 M58 ROADMAP checkboxes [x] confirmed in `.planning/ROADMAP.md`. PASS.
+
+**13. Acceptance criteria:** REQ-815–REQ-839 added (25 new REQs). Total: 839 acceptance criteria (REQ-001–REQ-839). All pass. Ship verdict: SHIP.
+
 ## QA Challenge — turn_fd3959f559575f6f (role=qa, run_27565cc0d89187ef, M57 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_09b015ce0e7b8ed1, role=dev, HEAD 7303af4) for run_27565cc0d89187ef independently rather than rubber-stamping it.
