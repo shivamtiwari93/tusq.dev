@@ -1118,6 +1118,51 @@ tusq signature index --first-type not_applicable --json
 tusq signature index --out signature-index.json
 ```
 
+## `tusq obligation index`
+
+Index capabilities by whether the FIRST declared property in `input_schema.properties` (Object.keys insertion-order index 0) is a member of `input_schema.required[]` when `input_schema.type === 'object'`. Planning aid only — not a runtime request validator, action-execution policy enforcer, SDK call-site generator, or runtime conformance detector. Distinct from `tusq input index` (M39, input_schema.required count cardinality), `tusq request index` (M43, input primary parameter source), `tusq parameter index` (M47, input-property count cardinality), `tusq shape index` (M48, output-side first-property type), and `tusq signature index` (M49, input-side first-property primitive type).
+
+```
+tusq obligation index [--status <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--status <value>` | Filter to one bucket. Case-sensitive lowercase-only. Exit 1 if unknown or absent. |
+| `--manifest <path>` | Path to manifest (default: `tusq.manifest.json`) |
+| `--out <path>` | Write to file (no stdout on success; `.tusq/` paths rejected) |
+| `--json` | Machine-readable JSON with `required_statuses[]` and `warnings[]` |
+
+**Bucket-key enum (closed four-value):** `required` | `optional` | `not_applicable` | `unknown`
+
+Classifier: reads `firstKey = Object.keys(input_schema.properties)[0]`; treats `requiredArr = Array.isArray(input_schema.required) ? input_schema.required : []`. Returns `required` if `requiredArr.includes(firstKey)`, `optional` if not (including missing/empty `required[]` — valid, no warning). Returns `not_applicable` when `input_schema.type !== 'object'` or zero-property object (no warning). Returns `unknown` for malformed `input_schema` or invalid `required[]` (warning emitted with one of five frozen reason codes).
+
+**Aggregation-key enum:** `required_status` (required and optional buckets) | `not_applicable` | `unknown`
+
+**Bucket iteration order:** `required → optional → not_applicable → unknown` (deterministic stable-output ordering only — NOT runtime-execution-safety-ranked, NOT call-site-strictness-ranked, NOT destructive-action-priority-ranked, NOT action-policy-precedence-ranked)
+
+**Five frozen warning reason codes:** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_required_field_invalid_when_type_is_object`
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown status value, --out path error, or unknown subcommand
+
+**Examples:**
+
+```sh
+tusq obligation index
+
+tusq obligation index --json
+
+tusq obligation index --status required
+
+tusq obligation index --status not_applicable --json
+
+tusq obligation index --out obligation-index.json
+```
+
 ## `tusq strictness index`
 
 Emit a deterministic, per-strictness capability index from manifest evidence. Groups capabilities by whether their `output_schema.additionalProperties` boolean is `false` (closed-key contract) or `true` (unspecified-field-tolerant) for object-typed responses, in closed-enum order (`strict → permissive → not_applicable → unknown`). Non-object responses bucket as `not_applicable` (no warning). Malformed or missing `output_schema` or non-boolean `additionalProperties` buckets as `unknown` with a warning. This is a **planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier**.

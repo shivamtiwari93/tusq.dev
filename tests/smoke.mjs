@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 33) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 33 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 34) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 34 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 33) {
-    throw new Error(`M46(x): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 34) {
+    throw new Error(`M46(x): tusq help must enumerate 34 commands (M50 adds 'obligation'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 33) {
-    throw new Error(`M47(x): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 34) {
+    throw new Error(`M47(x): tusq help must enumerate 34 commands (M50 adds 'obligation'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 33) {
-    throw new Error(`M48(x3): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 34) {
+    throw new Error(`M48(x3): tusq help must enumerate 34 commands (M50 adds 'obligation'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5567,7 +5567,7 @@ async function run() {
   }
 
   // M49(x): malformed input_schema capabilities produce all 5 warning reason codes in warnings[] and in stderr (human mode)
-  // Also verifies: not_applicable bucket (zero-property object) emits NO warning; unknown-bucket absent-filter exits 1; help enumerates 33 commands
+  // Also verifies: not_applicable bucket (zero-property object) emits NO warning; unknown-bucket absent-filter exits 1; help enumerates 34 commands
   const m49AllWarningsManifest = {
     schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
     capabilities: [
@@ -5636,11 +5636,11 @@ async function run() {
     throw new Error(`M49(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m49NAagg)}`);
   }
 
-  // M49(x3): help enumerates 33 commands and includes 'signature' between 'shape' and 'strictness'
+  // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 33) {
-    throw new Error(`M49(x3): tusq help must enumerate 33 commands (M49 adds 'signature'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 34) {
+    throw new Error(`M49(x3): tusq help must enumerate 34 commands (M50 adds 'obligation'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -5658,6 +5658,404 @@ async function run() {
   }
 
   await fs.rm(m49TmpDir, { recursive: true, force: true });
+
+  // ── M50: Static Capability Input Schema First Property Required Status Index Export ──────────────
+  const m50TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m50-smoke-'));
+
+  // M50 fixture manifest: capabilities across required/optional/not_applicable buckets using canonical express fixture.
+  // get_users_api_v1_users_id → required (firstKey='id' ∈ required=['id'])
+  // post_users_users → optional (firstKey='body' ∉ required=[])
+  // get_users_users → not_applicable (input_schema.properties={}, zero-property object, no warning)
+  const m50ExpressManifestPath = path.resolve(process.cwd(), 'tests/fixtures/express-sample/tusq.manifest.json');
+
+  // M50(a): default tusq obligation index on canonical express fixture produces correct buckets in closed-enum order
+  const m50DefaultResult = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--json'], { cwd: m50TmpDir });
+  if (m50DefaultResult.status !== 0) {
+    throw new Error(`M50(a): obligation index must exit 0:\nstderr=${m50DefaultResult.stderr}`);
+  }
+  const m50DefaultJson = JSON.parse(m50DefaultResult.stdout);
+  if (!Array.isArray(m50DefaultJson.required_statuses)) {
+    throw new Error(`M50(a): JSON output must have required_statuses[] array:\n${m50DefaultResult.stdout}`);
+  }
+  if (m50DefaultJson.tiers !== undefined || m50DefaultJson.first_property_types !== undefined || m50DefaultJson.strictnesses !== undefined) {
+    throw new Error(`M50(a): JSON output must NOT have tiers/first_property_types/strictnesses fields; field name must be required_statuses[]:\n${m50DefaultResult.stdout}`);
+  }
+  const m50RequiredEntry = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'required');
+  if (!m50RequiredEntry || !m50RequiredEntry.capabilities.includes('get_users_api_v1_users_id')) {
+    throw new Error(`M50(a): required bucket must include get_users_api_v1_users_id:\n${JSON.stringify(m50DefaultJson.required_statuses)}`);
+  }
+  const m50OptionalEntry = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!m50OptionalEntry || !m50OptionalEntry.capabilities.includes('post_users_users')) {
+    throw new Error(`M50(a): optional bucket must include post_users_users:\n${JSON.stringify(m50DefaultJson.required_statuses)}`);
+  }
+  const m50NotApplicableEntry = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'not_applicable');
+  if (!m50NotApplicableEntry || !m50NotApplicableEntry.capabilities.includes('get_users_users')) {
+    throw new Error(`M50(a): not_applicable bucket must include get_users_users (zero-property object):\n${JSON.stringify(m50DefaultJson.required_statuses)}`);
+  }
+  if (m50DefaultJson.warnings.length !== 0) {
+    throw new Error(`M50(a): canonical express fixture must produce zero warnings:\n${JSON.stringify(m50DefaultJson.warnings)}`);
+  }
+  // Bucket order: required < optional < not_applicable
+  const m50RequiredPos = m50DefaultJson.required_statuses.findIndex((e) => e.input_schema_first_property_required_status === 'required');
+  const m50OptionalPos = m50DefaultJson.required_statuses.findIndex((e) => e.input_schema_first_property_required_status === 'optional');
+  const m50NotApplicablePos = m50DefaultJson.required_statuses.findIndex((e) => e.input_schema_first_property_required_status === 'not_applicable');
+  if (!(m50RequiredPos < m50OptionalPos && m50OptionalPos < m50NotApplicablePos)) {
+    throw new Error(`M50(a): bucket order must be required < optional < not_applicable; got required=${m50RequiredPos} optional=${m50OptionalPos} not_applicable=${m50NotApplicablePos}`);
+  }
+  const m50DefaultHuman = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath], { cwd: m50TmpDir });
+  if (!m50DefaultHuman.stdout.includes('[required]') || !m50DefaultHuman.stdout.includes('[optional]') || !m50DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M50(a): human mode must include [required], [optional], [not_applicable] sections:\n${m50DefaultHuman.stdout}`);
+  }
+  if (!m50DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M50(a): human mode must include planning-aid framing:\n${m50DefaultHuman.stdout}`);
+  }
+
+  // M50(b): --status required filter
+  const m50FilterRequired = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'required', '--json'], { cwd: m50TmpDir });
+  if (m50FilterRequired.status !== 0) {
+    throw new Error(`M50(b): --status required must exit 0:\nstderr=${m50FilterRequired.stderr}`);
+  }
+  if (JSON.parse(m50FilterRequired.stdout).required_statuses.length !== 1 || JSON.parse(m50FilterRequired.stdout).required_statuses[0].input_schema_first_property_required_status !== 'required') {
+    throw new Error(`M50(b): --status required must return exactly one required bucket:\n${m50FilterRequired.stdout}`);
+  }
+
+  // M50(c): --status optional filter
+  const m50FilterOptional = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'optional', '--json'], { cwd: m50TmpDir });
+  if (m50FilterOptional.status !== 0) {
+    throw new Error(`M50(c): --status optional must exit 0:\nstderr=${m50FilterOptional.stderr}`);
+  }
+  if (JSON.parse(m50FilterOptional.stdout).required_statuses.length !== 1 || JSON.parse(m50FilterOptional.stdout).required_statuses[0].input_schema_first_property_required_status !== 'optional') {
+    throw new Error(`M50(c): --status optional must return exactly one optional bucket:\n${m50FilterOptional.stdout}`);
+  }
+
+  // M50(d): --status not_applicable filter
+  const m50FilterNotApplicable = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'not_applicable', '--json'], { cwd: m50TmpDir });
+  if (m50FilterNotApplicable.status !== 0) {
+    throw new Error(`M50(d): --status not_applicable must exit 0:\nstderr=${m50FilterNotApplicable.stderr}`);
+  }
+  if (JSON.parse(m50FilterNotApplicable.stdout).required_statuses.length !== 1 || JSON.parse(m50FilterNotApplicable.stdout).required_statuses[0].input_schema_first_property_required_status !== 'not_applicable') {
+    throw new Error(`M50(d): --status not_applicable must return exactly one not_applicable bucket:\n${m50FilterNotApplicable.stdout}`);
+  }
+
+  // M50(e): --status unknown filter on synthetic manifest with malformed required[]
+  const m50UnknownManifestPath = path.join(m50TmpDir, 'unknown-required.json');
+  await fs.writeFile(m50UnknownManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{
+      name: 'bad_required_cap', method: 'POST', path: '/api/v1/bad', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: false,
+      input_schema: { type: 'object', properties: { body: { type: 'object' } }, required: 'not-an-array' }
+    }]
+  }), 'utf8');
+  const m50FilterUnknown = runCli(['obligation', 'index', '--manifest', m50UnknownManifestPath, '--status', 'unknown', '--json'], { cwd: m50TmpDir });
+  if (m50FilterUnknown.status !== 0) {
+    throw new Error(`M50(e): --status unknown must exit 0 when unknown bucket exists:\nstderr=${m50FilterUnknown.stderr}`);
+  }
+  if (JSON.parse(m50FilterUnknown.stdout).required_statuses.length !== 1 || JSON.parse(m50FilterUnknown.stdout).required_statuses[0].input_schema_first_property_required_status !== 'unknown') {
+    throw new Error(`M50(e): --status unknown must return exactly one unknown bucket:\n${m50FilterUnknown.stdout}`);
+  }
+
+  // M50(f): --status REQUIRED (exit 1, case-sensitive)
+  const m50CaseRequired = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'REQUIRED'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50CaseRequired.stderr.includes('Unknown input schema first property required status: REQUIRED') || m50CaseRequired.stdout !== '') {
+    throw new Error(`M50(f): --status REQUIRED must exit 1 with case-sensitive error:\nstdout=${m50CaseRequired.stdout}\nstderr=${m50CaseRequired.stderr}`);
+  }
+
+  // M50(g): --status Optional (exit 1)
+  const m50CaseOptional = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'Optional'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50CaseOptional.stderr.includes('Unknown input schema first property required status: Optional') || m50CaseOptional.stdout !== '') {
+    throw new Error(`M50(g): --status Optional must exit 1:\nstdout=${m50CaseOptional.stdout}\nstderr=${m50CaseOptional.stderr}`);
+  }
+
+  // M50(h): --status xyz (exit 1, unknown)
+  const m50CaseXyz = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--status', 'xyz'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50CaseXyz.stderr.includes('Unknown input schema first property required status: xyz') || m50CaseXyz.stdout !== '') {
+    throw new Error(`M50(h): --status xyz must exit 1:\nstdout=${m50CaseXyz.stdout}\nstderr=${m50CaseXyz.stderr}`);
+  }
+
+  // M50(i): --manifest <missing> (exit 1)
+  const m50MissingManifest = runCli(['obligation', 'index', '--manifest', path.join(m50TmpDir, 'nonexistent.json')], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50MissingManifest.stderr.includes('Manifest not found') || m50MissingManifest.stdout !== '') {
+    throw new Error(`M50(i): missing manifest must exit 1:\nstdout=${m50MissingManifest.stdout}\nstderr=${m50MissingManifest.stderr}`);
+  }
+
+  // M50(j): --manifest <malformed.json> (exit 1)
+  const m50MalformedPath = path.join(m50TmpDir, 'malformed.json');
+  await fs.writeFile(m50MalformedPath, 'not valid json', 'utf8');
+  const m50Malformed = runCli(['obligation', 'index', '--manifest', m50MalformedPath], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50Malformed.stderr.includes('Invalid manifest JSON') || m50Malformed.stdout !== '') {
+    throw new Error(`M50(j): malformed JSON must exit 1:\nstdout=${m50Malformed.stdout}\nstderr=${m50Malformed.stderr}`);
+  }
+
+  // M50(k): --manifest <no-capabilities> (exit 1)
+  const m50NoCapsPath = path.join(m50TmpDir, 'no-caps.json');
+  await fs.writeFile(m50NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m50NoCaps = runCli(['obligation', 'index', '--manifest', m50NoCapsPath], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m50NoCaps.stdout !== '') {
+    throw new Error(`M50(k): missing capabilities array must exit 1:\nstdout=${m50NoCaps.stdout}\nstderr=${m50NoCaps.stderr}`);
+  }
+
+  // M50(l): --unknown-flag (exit 1)
+  const m50UnknownFlag = runCli(['obligation', 'index', '--unknown-flag'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50UnknownFlag.stderr.includes('Unknown flag: --unknown-flag') || m50UnknownFlag.stdout !== '') {
+    throw new Error(`M50(l): unknown flag must exit 1:\nstdout=${m50UnknownFlag.stdout}\nstderr=${m50UnknownFlag.stderr}`);
+  }
+
+  // M50(m): --status with no value (exit 1)
+  const m50NoStatusValue = runCli(['obligation', 'index', '--status'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50NoStatusValue.stderr.includes('Missing value for --status') || m50NoStatusValue.stdout !== '') {
+    throw new Error(`M50(m): --status with no value must exit 1:\nstdout=${m50NoStatusValue.stdout}\nstderr=${m50NoStatusValue.stderr}`);
+  }
+
+  // M50(n): --out <valid path> writes correctly and stdout is empty
+  const m50OutPath = path.join(m50TmpDir, 'obligation-out.json');
+  const m50OutResult = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--out', m50OutPath], { cwd: m50TmpDir });
+  if (m50OutResult.status !== 0) {
+    throw new Error(`M50(n): --out must exit 0:\nstderr=${m50OutResult.stderr}`);
+  }
+  if (m50OutResult.stdout !== '') {
+    throw new Error(`M50(n): --out must produce empty stdout:\nstdout=${m50OutResult.stdout}`);
+  }
+  const m50OutFile = JSON.parse(await fs.readFile(m50OutPath, 'utf8'));
+  if (!Array.isArray(m50OutFile.required_statuses)) {
+    throw new Error(`M50(n): --out file must have required_statuses[]:\n${JSON.stringify(m50OutFile)}`);
+  }
+
+  // M50(o): --out .tusq/foo.json (exit 1)
+  const m50OutTusq = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--out', '.tusq/foo.json'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50OutTusq.stderr.includes('--out path must not be inside .tusq/') || m50OutTusq.stdout !== '') {
+    throw new Error(`M50(o): --out .tusq/ must exit 1:\nstdout=${m50OutTusq.stdout}\nstderr=${m50OutTusq.stderr}`);
+  }
+
+  // M50(p): --out <unwritable parent> (exit 1)
+  const m50OutUnwritable = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--out', '/nonexistent/deep/dir/out.json'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (m50OutUnwritable.status !== 1) {
+    throw new Error(`M50(p): --out unwritable parent must exit 1:\nstdout=${m50OutUnwritable.stdout}\nstderr=${m50OutUnwritable.stderr}`);
+  }
+
+  // M50(q): --json outputs valid JSON with required_statuses[] and warnings: []
+  const m50JsonResult = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--json'], { cwd: m50TmpDir });
+  if (m50JsonResult.status !== 0) {
+    throw new Error(`M50(q): --json must exit 0:\nstderr=${m50JsonResult.stderr}`);
+  }
+  const m50JsonParsed = JSON.parse(m50JsonResult.stdout);
+  if (!Array.isArray(m50JsonParsed.required_statuses)) {
+    throw new Error(`M50(q): --json must have required_statuses[]:\n${m50JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m50JsonParsed.warnings) || m50JsonParsed.warnings.length !== 0) {
+    throw new Error(`M50(q): --json must have warnings: [] for canonical fixture:\n${m50JsonResult.stdout}`);
+  }
+
+  // M50(r): determinism — three consecutive runs produce byte-identical stdout AND read-only invariants
+  const m50Run1 = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--json'], { cwd: m50TmpDir });
+  const m50Run2 = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--json'], { cwd: m50TmpDir });
+  const m50Run3 = runCli(['obligation', 'index', '--manifest', m50ExpressManifestPath, '--json'], { cwd: m50TmpDir });
+  if (m50Run1.stdout !== m50Run2.stdout || m50Run2.stdout !== m50Run3.stdout) {
+    throw new Error(`M50(r): obligation index must produce byte-identical stdout across three runs`);
+  }
+  // input_schema_first_property_required_status MUST NOT appear in manifest
+  const m50ManifestAfter = JSON.parse(await fs.readFile(m50ExpressManifestPath, 'utf8'));
+  for (const cap of m50ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_required_status')) {
+      throw new Error(`M50(r): input_schema_first_property_required_status must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M50(s): malformed input_schema capabilities produce all 5 warning reason codes in warnings[] and in stderr (human mode)
+  // Also: empty-capabilities exit 0 with documented human line and required_statuses: [] in JSON
+  const m50AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      // input_schema_field_missing: no input_schema field
+      { name: 'no_schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: false },
+      // input_schema_field_not_object: input_schema is a string
+      { name: 'not_obj_schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: false, input_schema: 'a string' },
+      // input_schema_type_missing_or_invalid: type is a number
+      { name: 'bad_type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: false, input_schema: { type: 42 } },
+      // input_schema_properties_field_missing_when_type_is_object: type=object, no properties
+      { name: 'no_props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: false, input_schema: { type: 'object' } },
+      // input_schema_required_field_invalid_when_type_is_object: required is not-an-array
+      { name: 'bad_required', method: 'POST', path: '/e', domain: 'd', side_effect_class: 'write', sensitivity_class: 'public', approved: false, input_schema: { type: 'object', properties: { body: { type: 'object' } }, required: 'not-an-array' } },
+      // not_applicable: zero-property object — must NOT produce warning
+      { name: 'zero_props', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: {} } }
+    ]
+  };
+  const m50AllWarningsPath = path.join(m50TmpDir, 'all-warnings.json');
+  await fs.writeFile(m50AllWarningsPath, JSON.stringify(m50AllWarningsManifest), 'utf8');
+  const m50AllWarningsJson = runCli(['obligation', 'index', '--manifest', m50AllWarningsPath, '--json'], { cwd: m50TmpDir });
+  if (m50AllWarningsJson.status !== 0) {
+    throw new Error(`M50(s): obligation index with malformed caps must exit 0:\nstderr=${m50AllWarningsJson.stderr}`);
+  }
+  const m50AllWarningsParsed = JSON.parse(m50AllWarningsJson.stdout);
+  const m50ExpectedWarningReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_required_field_invalid_when_type_is_object'
+  ];
+  for (const reason of m50ExpectedWarningReasons) {
+    if (!m50AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M50(s): warnings[] must include reason '${reason}':\n${JSON.stringify(m50AllWarningsParsed.warnings)}`);
+    }
+  }
+  if (m50AllWarningsParsed.warnings.some((w) => w.capability === 'zero_props')) {
+    throw new Error(`M50(s): zero_props (not_applicable bucket, zero-property object) must NOT produce a warning:\n${JSON.stringify(m50AllWarningsParsed.warnings)}`);
+  }
+  const m50HumanWarnings = runCli(['obligation', 'index', '--manifest', m50AllWarningsPath], { cwd: m50TmpDir });
+  if (!m50HumanWarnings.stderr.includes('Warning: capability ')) {
+    throw new Error(`M50(s): human mode must emit warning to stderr:\nstderr=${m50HumanWarnings.stderr}`);
+  }
+  // Empty capabilities
+  const m50EmptyManifestPath = path.join(m50TmpDir, 'empty.json');
+  await fs.writeFile(m50EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m50EmptyHuman = runCli(['obligation', 'index', '--manifest', m50EmptyManifestPath], { cwd: m50TmpDir });
+  if (!m50EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M50(s): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m50EmptyHuman.stdout}`);
+  }
+  const m50EmptyJson = runCli(['obligation', 'index', '--manifest', m50EmptyManifestPath, '--json'], { cwd: m50TmpDir });
+  const m50EmptyParsed = JSON.parse(m50EmptyJson.stdout);
+  if (!Array.isArray(m50EmptyParsed.required_statuses) || m50EmptyParsed.required_statuses.length !== 0) {
+    throw new Error(`M50(s): empty capabilities (JSON) must have required_statuses: []:\n${m50EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(m50EmptyParsed.warnings) || m50EmptyParsed.warnings.length !== 0) {
+    throw new Error(`M50(s): empty capabilities (JSON) must have warnings: []:\n${m50EmptyJson.stdout}`);
+  }
+
+  // M50(t): synthetic fixture with input_schema.required missing entirely → first property buckets as optional with no warning
+  const m50NoRequiredPath = path.join(m50TmpDir, 'no-required.json');
+  await fs.writeFile(m50NoRequiredPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'no_req_cap', method: 'POST', path: '/api/v1/items', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', properties: { body: { type: 'object' } } } }]
+  }), 'utf8');
+  const m50NoRequired = runCli(['obligation', 'index', '--manifest', m50NoRequiredPath, '--json'], { cwd: m50TmpDir });
+  const m50NoRequiredParsed = JSON.parse(m50NoRequired.stdout);
+  const m50NoReqEntry = m50NoRequiredParsed.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!m50NoReqEntry || !m50NoReqEntry.capabilities.includes('no_req_cap')) {
+    throw new Error(`M50(t): missing input_schema.required must bucket as optional:\n${m50NoRequired.stdout}`);
+  }
+  if (m50NoRequiredParsed.warnings.length !== 0) {
+    throw new Error(`M50(t): missing input_schema.required must NOT produce a warning:\n${JSON.stringify(m50NoRequiredParsed.warnings)}`);
+  }
+
+  // M50(u): synthetic fixture with input_schema.required = [] → first property buckets as optional with no warning
+  const m50EmptyRequiredPath = path.join(m50TmpDir, 'empty-required.json');
+  await fs.writeFile(m50EmptyRequiredPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_req_cap', method: 'POST', path: '/api/v1/items', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', properties: { body: { type: 'string' } }, required: [] } }]
+  }), 'utf8');
+  const m50EmptyRequired = runCli(['obligation', 'index', '--manifest', m50EmptyRequiredPath, '--json'], { cwd: m50TmpDir });
+  const m50EmptyRequiredParsed = JSON.parse(m50EmptyRequired.stdout);
+  const m50EmptyReqEntry = m50EmptyRequiredParsed.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!m50EmptyReqEntry || !m50EmptyReqEntry.capabilities.includes('empty_req_cap')) {
+    throw new Error(`M50(u): input_schema.required=[] must bucket as optional:\n${m50EmptyRequired.stdout}`);
+  }
+  if (m50EmptyRequiredParsed.warnings.length !== 0) {
+    throw new Error(`M50(u): input_schema.required=[] must NOT produce a warning:\n${JSON.stringify(m50EmptyRequiredParsed.warnings)}`);
+  }
+
+  // M50(v): synthetic fixture with input_schema.required = ['someOtherKey'] → first property (body) buckets as optional with no warning
+  const m50OtherRequiredPath = path.join(m50TmpDir, 'other-required.json');
+  await fs.writeFile(m50OtherRequiredPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'other_req_cap', method: 'POST', path: '/api/v1/items', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', properties: { body: { type: 'string' } }, required: ['someOtherKey'] } }]
+  }), 'utf8');
+  const m50OtherRequired = runCli(['obligation', 'index', '--manifest', m50OtherRequiredPath, '--json'], { cwd: m50TmpDir });
+  const m50OtherRequiredParsed = JSON.parse(m50OtherRequired.stdout);
+  const m50OtherReqEntry = m50OtherRequiredParsed.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!m50OtherReqEntry || !m50OtherReqEntry.capabilities.includes('other_req_cap')) {
+    throw new Error(`M50(v): firstKey not in required[] must bucket as optional:\n${m50OtherRequired.stdout}`);
+  }
+  if (m50OtherRequiredParsed.warnings.length !== 0) {
+    throw new Error(`M50(v): firstKey not in required[] must NOT produce a warning:\n${JSON.stringify(m50OtherRequiredParsed.warnings)}`);
+  }
+
+  // M50(w): synthetic fixture with input_schema.required = 'not-an-array' → bucket unknown with warning input_schema_required_field_invalid_when_type_is_object
+  const m50BadRequiredPath = path.join(m50TmpDir, 'bad-required-str.json');
+  await fs.writeFile(m50BadRequiredPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'bad_req_str', method: 'POST', path: '/api/v1/items', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: false,
+      input_schema: { type: 'object', properties: { body: { type: 'string' } }, required: 'not-an-array' } }]
+  }), 'utf8');
+  const m50BadRequired = runCli(['obligation', 'index', '--manifest', m50BadRequiredPath, '--json'], { cwd: m50TmpDir });
+  const m50BadRequiredParsed = JSON.parse(m50BadRequired.stdout);
+  const m50BadReqEntry = m50BadRequiredParsed.required_statuses.find((e) => e.input_schema_first_property_required_status === 'unknown');
+  if (!m50BadReqEntry || !m50BadReqEntry.capabilities.includes('bad_req_str')) {
+    throw new Error(`M50(w): required='not-an-array' must bucket as unknown:\n${m50BadRequired.stdout}`);
+  }
+  if (!m50BadRequiredParsed.warnings.some((w) => w.reason === 'input_schema_required_field_invalid_when_type_is_object')) {
+    throw new Error(`M50(w): required='not-an-array' must produce warning reason input_schema_required_field_invalid_when_type_is_object:\n${JSON.stringify(m50BadRequiredParsed.warnings)}`);
+  }
+
+  // M50(x): synthetic fixture with input_schema.required = [123, 'foo'] (non-string element) → bucket unknown with warning
+  const m50BadRequiredArrPath = path.join(m50TmpDir, 'bad-required-arr.json');
+  await fs.writeFile(m50BadRequiredArrPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'bad_req_arr', method: 'POST', path: '/api/v1/items', domain: 'test',
+      side_effect_class: 'write', sensitivity_class: 'public', approved: false,
+      input_schema: { type: 'object', properties: { body: { type: 'string' } }, required: [123, 'foo'] } }]
+  }), 'utf8');
+  const m50BadRequiredArr = runCli(['obligation', 'index', '--manifest', m50BadRequiredArrPath, '--json'], { cwd: m50TmpDir });
+  const m50BadRequiredArrParsed = JSON.parse(m50BadRequiredArr.stdout);
+  const m50BadReqArrEntry = m50BadRequiredArrParsed.required_statuses.find((e) => e.input_schema_first_property_required_status === 'unknown');
+  if (!m50BadReqArrEntry || !m50BadReqArrEntry.capabilities.includes('bad_req_arr')) {
+    throw new Error(`M50(x): required=[123,'foo'] must bucket as unknown:\n${m50BadRequiredArr.stdout}`);
+  }
+  if (!m50BadRequiredArrParsed.warnings.some((w) => w.reason === 'input_schema_required_field_invalid_when_type_is_object')) {
+    throw new Error(`M50(x): required=[123,'foo'] must produce warning reason input_schema_required_field_invalid_when_type_is_object:\n${JSON.stringify(m50BadRequiredArrParsed.warnings)}`);
+  }
+
+  // M50(x2): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'required_status', 'not_applicable', 'unknown'}
+  const m50AggKeyResult = runCli(['obligation', 'index', '--manifest', m50AllWarningsPath, '--json'], { cwd: m50TmpDir });
+  const m50AggKeyParsed = JSON.parse(m50AggKeyResult.stdout);
+  for (const entry of m50AggKeyParsed.required_statuses) {
+    if (!['required_status', 'not_applicable', 'unknown'].includes(entry.aggregation_key)) {
+      throw new Error(`M50(x2): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  // Also check on canonical fixture aggregation keys
+  const m50AggRequired = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'required');
+  if (!m50AggRequired || m50AggRequired.aggregation_key !== 'required_status') {
+    throw new Error(`M50(x2): required bucket must have aggregation_key 'required_status':\n${JSON.stringify(m50AggRequired)}`);
+  }
+  const m50AggOptional = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!m50AggOptional || m50AggOptional.aggregation_key !== 'required_status') {
+    throw new Error(`M50(x2): optional bucket must have aggregation_key 'required_status':\n${JSON.stringify(m50AggOptional)}`);
+  }
+  const m50AggNA = m50DefaultJson.required_statuses.find((e) => e.input_schema_first_property_required_status === 'not_applicable');
+  if (!m50AggNA || m50AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M50(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m50AggNA)}`);
+  }
+
+  // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
+  const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
+  const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
+  if (m50HelpCommandCount !== 34) {
+    throw new Error(`M50(x3): tusq help must enumerate 34 commands (M50 adds 'obligation'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  }
+  if (!m50HelpResult.stdout.includes('  obligation')) {
+    throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
+  }
+
+  // obligation index help includes planning-aid framing
+  const m50IndexHelpResult = runCli(['obligation', 'index', '--help'], { cwd: m50TmpDir });
+  if (!m50IndexHelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M50(x3): obligation index help must include planning-aid framing:\n${m50IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m50UnknownSubCmd = runCli(['obligation', 'bogusub'], { cwd: m50TmpDir, expectedStatus: 1 });
+  if (!m50UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m50UnknownSubCmd.stdout !== '') {
+    throw new Error(`M50(x3): unknown subcommand must exit 1:\nstdout=${m50UnknownSubCmd.stdout}\nstderr=${m50UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m50TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -6126,8 +6524,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 33) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 33 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 34) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 34 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -6664,8 +7062,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 33) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 33 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 34) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 34 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -7213,8 +7611,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 33) {
-    throw new Error(`M42: tusq help must enumerate exactly 33 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 34) {
+    throw new Error(`M42: tusq help must enumerate exactly 34 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -7759,8 +8157,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 33) {
-    throw new Error(`M41: tusq help must enumerate exactly 33 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 34) {
+    throw new Error(`M41: tusq help must enumerate exactly 34 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -8314,8 +8712,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 33) {
-    throw new Error(`M40: tusq help must enumerate exactly 33 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 34) {
+    throw new Error(`M40: tusq help must enumerate exactly 34 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -8786,8 +9184,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 33) {
-    throw new Error(`M39: tusq help must enumerate exactly 33 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 34) {
+    throw new Error(`M39: tusq help must enumerate exactly 34 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -9257,8 +9655,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 33) {
-    throw new Error(`M38: tusq help must enumerate exactly 33 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 34) {
+    throw new Error(`M38: tusq help must enumerate exactly 34 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -9740,8 +10138,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 33) {
-    throw new Error(`M37: tusq help must enumerate exactly 33 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 34) {
+    throw new Error(`M37: tusq help must enumerate exactly 34 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -10198,8 +10596,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 33) {
-    throw new Error(`M36: tusq help must enumerate exactly 33 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 34) {
+    throw new Error(`M36: tusq help must enumerate exactly 34 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -10591,8 +10989,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 33) {
-    throw new Error(`M35: tusq help must enumerate exactly 33 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 34) {
+    throw new Error(`M35: tusq help must enumerate exactly 34 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

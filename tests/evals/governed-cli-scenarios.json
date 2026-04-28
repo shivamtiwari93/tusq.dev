@@ -1902,6 +1902,102 @@
         "unknown"
       ],
       "expected_bucket_order": "string,object,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-required-status-index-determinism",
+      "scenario_type": "input_schema_first_property_required_status_index_determinism",
+      "description": "Verifies that tusq obligation index produces byte-identical output across three runs on a synthetic manifest with required, optional, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (required/optional/not_applicable/unknown), closed three-value aggregation_key enum (required_status/not_applicable/unknown), bucket order determinism (required → optional → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_required_status non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys. The determinism fixture uses {c, a, b} key order with required=['a'] to verify firstKey selected is 'c' (optional, not sorted 'a' which would be required).",
+      "synthetic_capabilities": [
+        {
+          "name": "required_cap",
+          "description": "Accepts object with required first parameter",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "optional_cap",
+          "description": "Accepts object with optional first parameter",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": { "type": "object" }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "description": "Insertion-order test: keys={c,a,b}, required=['a']; firstKey='c' must be optional (not sorted 'a')",
+          "domain": "ops",
+          "method": "PUT",
+          "path": "/api/v1/items",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "c": { "type": "string" },
+              "a": { "type": "string" },
+              "b": { "type": "string" }
+            },
+            "required": ["a"]
+          }
+        },
+        {
+          "name": "array_input_cap",
+          "description": "Non-object input (array type) — not_applicable, no warning",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No input schema — unknown bucket",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_required_statuses": [
+        "required",
+        "optional",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "required_status",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "required,optional,not_applicable,unknown"
     }
   ]
 }

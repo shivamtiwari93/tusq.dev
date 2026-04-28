@@ -2051,6 +2051,8 @@ async function run() {
       await runOutputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_type_index_determinism') {
       await runInputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_required_status_index_determinism') {
+      await runInputSchemaFirstPropertyRequiredStatusIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -2638,6 +2640,115 @@ async function runInputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, 
   }
   if (index.warnings.some((w) => w.capability === 'array_input_cap')) {
     fail(`${scenario.id}: array_input_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+}
+
+async function runInputSchemaFirstPropertyRequiredStatusIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-required-status-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq obligation index --json three times and assert byte-identical output
+  const run1 = runCli(['obligation', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['obligation', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['obligation', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: obligation index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_required_status bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validStatuses = new Set(scenario.expected_valid_required_statuses);
+  for (const entry of index.required_statuses) {
+    if (!validStatuses.has(entry.input_schema_first_property_required_status)) {
+      fail(`${scenario.id}: input_schema_first_property_required_status '${entry.input_schema_first_property_required_status}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.required_statuses) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_required_status}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (required → optional → not_applicable → unknown)
+  const bucketOrder = index.required_statuses.map((e) => e.input_schema_first_property_required_status).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_required_status must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by obligation index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_required_status')) {
+      fail(`${scenario.id}: input_schema_first_property_required_status must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.required_statuses.find((e) => e.input_schema_first_property_required_status === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert array_input_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.required_statuses.find((e) => e.input_schema_first_property_required_status === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert insertion_order_cap uses Object.keys insertion order: keys={c,a,b}, required=['a'] → firstKey='c' → optional
+  const optionalEntry = index.required_statuses.find((e) => e.input_schema_first_property_required_status === 'optional');
+  if (!optionalEntry || !optionalEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap must be in optional bucket (firstKey='c' not in required=['a']); Object.keys insertion-order must be preserved, not sorted`);
+  }
+
+  // Assert required_cap is in required bucket
+  const requiredEntry = index.required_statuses.find((e) => e.input_schema_first_property_required_status === 'required');
+  if (!requiredEntry || !requiredEntry.capabilities.includes('required_cap')) {
+    fail(`${scenario.id}: required_cap (firstKey='id' ∈ required=['id']) must be in required bucket`);
   }
 }
 

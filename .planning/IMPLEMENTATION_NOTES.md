@@ -2,6 +2,42 @@
 
 ---
 
+## M50 (run_6e53e7b50cd2c457, turn_99050f1349379e99, dev)
+
+**Challenge to PM turn:** PM (turn_644dcda246f21bc1) correctly bound M50: Static Capability Input Schema First Property Required Status Index Export from Manifest Evidence (~0.5 day) — V1.31 (PROPOSED) under intake charter `intent_1777355212963_c5d6` (vision_scan, category `roadmap_exhausted_vision_open`). git diff 061a227..2d191b6 confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified VISION § Action Execution Policy (lines 409–422) as primary aggregation source (first milestone to use this section as primary source). All five PM decisions upheld: (1) new noun `obligation` inserted alphabetically between `method` and `output` (m=109 < o=111; o=o, b(98) < u(117)); (2) four-value bucket-key enum `required|optional|not_applicable|unknown`; (3) aggregation_key enum `required_status|not_applicable|unknown` three-value; (4) bucket iteration order `required→optional→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable and optional emit NO warning (only unknown triggers warnings); result array field name `required_statuses`. Challenge resolved: no objections.
+
+**Implementation:**
+- Added `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_ENUM` (frozen Set: required/optional/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_AGGREGATION_KEY_ENUM` (frozen Set: required_status/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_BUCKET_ORDER` (frozen array: required/optional/not_applicable) constants in `src/cli.js` after M49 `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER`.
+- Added `_guardInputSchemaFirstPropertyRequiredStatusBucketKey` and `_guardInputSchemaFirstPropertyRequiredStatusAggregationKey` guard functions.
+- Added `classifyInputSchemaFirstPropertyRequiredStatus(inputSchema)` pure function: returns `'unknown'` for null/undefined/non-object/array inputSchema; returns `'unknown'` for missing/non-string type; returns `'not_applicable'` for non-'object' type string (no warning); when type==='object': returns `'unknown'` for missing/null/non-object properties; returns `'not_applicable'` for zero-property object (no warning); validates `required` field (if present, must be array of strings; else returns `'unknown'` with reason `input_schema_required_field_invalid_when_type_is_object`); reads `firstKey = Object.keys(properties)[0]`; treats `requiredArr = Array.isArray(required) ? required : []`; returns `'required'` if `requiredArr.includes(firstKey)`, else `'optional'`. Object.keys insertion-order preserved — NOT sorted.
+- Added `buildInputSchemaFirstPropertyRequiredStatusIndex(manifest, manifestPath)` with closed-enum bucket ordering (`required→optional→not_applicable→unknown`) and warnings[] collection.
+- Added `formatInputSchemaFirstPropertyRequiredStatusIndex(index)` with planning-aid callout.
+- Added `cmdObligation` dispatcher and `cmdObligationIndex(args)` command handler, `parseObligationIndexArgs` (4-flag parser: status/manifest/out/json).
+- Wired `obligation` case into dispatch table between `method` and `output`.
+- Updated `printHelp()` to emit 34-command surface with `obligation` between `method` and `output`.
+- Updated `printCommandHelp()` with `obligation` and `obligation index` help entries.
+- Added 24-case M50 smoke matrix (a–x) to `tests/smoke.mjs`.
+- Updated all M35–M49 help-count assertions from 33 to 34.
+- Added `input-schema-first-property-required-status-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json`.
+- Added `runInputSchemaFirstPropertyRequiredStatusIndexDeterminismScenario` handler to `tests/eval-regression.mjs`.
+- Updated `.planning/ROADMAP.md` (all 16 M50 checkboxes flipped to [x]), `.planning/SYSTEM_SPEC.md` (M50 detail block + Constraint 43), `.planning/command-surface.md` (M50 CLI surface block), `website/docs/cli-reference.md` (M50 documentation).
+
+**Verification evidence:**
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — Smoke tests passed + Eval regression harness passed (41 scenarios) |
+| `node bin/tusq.js help \| grep -c '^  [a-z]'` | 34 (obligation between method and output) |
+| `node bin/tusq.js obligation index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` | Exit 0 — required: get_users_api_v1_users_id (firstKey='id' ∈ required=['id']), optional: post_users_users (firstKey='body' ∉ []), not_applicable: get_users_users (properties={}), warnings: [] |
+| `node bin/tusq.js obligation index --status REQUIRED` | Exit 1 — Unknown input schema first property required status: REQUIRED |
+| `node bin/tusq.js obligation index --status unknown` | Exit 1 — No capabilities found for input schema first property required status: unknown |
+| `node -e "require('./src/cli.js')"` | Exit 0 — module loads cleanly |
+| `git diff --quiet HEAD -- package.json package-lock.json` | Exit 0 — zero package drift |
+
+**Zero new dependencies added.** 34-command CLI surface confirmed. All M50 invariants verified: input_schema_first_property_required_status non-persistence, manifest mtime invariant, five warning reason codes all triggered, not_applicable and optional buckets produce no warning, optional bucket correctly produced for missing/empty required[].
+
+---
+
 ## M49 (run_9a2f6448e2199cda, turn_a71ef526db35c329, dev)
 
 **Challenge to PM turn:** PM (turn_fd31ac8cace8aa10) correctly bound M49: Static Capability Input Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.30 (PROPOSED) under intake charter `intent_1777349577378_e2a7` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified VISION § The Promise (lines 19–32) as primary aggregation source (first milestone to use this section as primary source). All five PM decisions upheld: (1) new noun `signature` inserted alphabetically between `shape` and `strictness` (s/h < s/i; s/i < s/t); (2) nine-value bucket-key enum `string|number|integer|boolean|null|object|array|not_applicable|unknown` matching M48 verbatim; (3) aggregation_key enum `first_property_type|not_applicable|unknown` three-value matching M48; (4) bucket iteration order `string→number→integer→boolean→null→object→array→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable emits NO warning; result array field name `first_property_types`. Challenge resolved: no objections.
