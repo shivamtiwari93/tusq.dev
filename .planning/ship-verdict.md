@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_e89ca8b44e8699d2 (role=qa, run_95643a76d3091ffd, M61 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_31d6f8498c2b8b0b, role=dev, HEAD 47d68d9) for run_95643a76d3091ffd independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M61 does not modify manifest format — `input_schema_first_property_write_only` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_c7ec0d02a286e887 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_WRITE_ONLY_ENUM` (frozen Set: write_only/not_write_only/not_applicable/unknown) at `src/cli.js:594`; `INPUT_SCHEMA_FIRST_PROPERTY_WRITE_ONLY_AGGREGATION_KEY_ENUM` (frozen Set: output_visibility/not_applicable/unknown) at `src/cli.js:598`; `INPUT_SCHEMA_FIRST_PROPERTY_WRITE_ONLY_BUCKET_ORDER` (frozen array: write_only/not_write_only/not_applicable) at `src/cli.js:605`. Guards `_guardInputSchemaFirstPropertyWriteOnlyBucketKey` at `src/cli.js:9975`, `_guardInputSchemaFirstPropertyWriteOnlyAggregationKey` at `src/cli.js:9982`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyWriteOnly` at `src/cli.js:10011–10054` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57/M58/M59/M60); writeOnly absent/!hasOwnProperty/null/undefined → not_write_only (null-as-absent, no warning — mirrors M55/M56/M57/M58/M59/M60 null-as-absent; `Object.prototype.hasOwnProperty.call(firstVal, 'writeOnly')` idiom used); writeOnly===false → not_write_only (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY, no warning — mirrors M60 EXPLICIT-FALSE-IS-MUTABLE precedent); writeOnly===true → write_only; typeof firstVal.writeOnly !== 'boolean' → unknown WITH `input_schema_properties_first_property_write_only_invalid_when_present` (SIXTH FROZEN CODE at `src/cli.js:10117` — covers ALL non-boolean malformations: string 'true', number 1/0, empty string, array, plain object under one consolidated code; strict === checks — NO truthy/falsy coercion). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 45. `secret` between `seal` and `sensitivity` confirmed (seal(s=115,e=101,a=97) < secret(s=115,e=101,c=99) at pos 2 (a(97)<c(99)); secret(s=115,e=101,c=99) < sensitivity(s=115,e=101,n=110) at pos 2 (c(99)<n(110))). `cmdSecret` at `src/cli.js:10231`; `cmdSecretIndex` at `src/cli.js:10248`; `parseSecretIndexArgs` at `src/cli.js:10339`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js secret index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_write_only_states[]` with `not_write_only` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"output_visibility"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `write_only` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: not_write_only < not_applicable (write_only→not_write_only→not_applicable→unknown convention with write_only absent). PASS.
+
+**7. Case-sensitive filter enforcement:** `--secret WRITE_ONLY` → exit 1, `Unknown input schema first property writeOnly state: WRITE_ONLY` (case-sensitive enforcement confirmed). `--secret write_only` → exit 1, `No capabilities found for input schema first property writeOnly state: write_only` (absent-bucket enforcement confirmed). `--secret not_write_only` → exit 0 with not_write_only bucket (present bucket confirmed). PASS.
+
+**8. M61-specific rules:** NULL-AS-ABSENT: writeOnly `null` → `not_write_only` (no warning; mirrors M55/M56/M57/M58/M59/M60 null-as-absent). EXPLICIT-FALSE-IS-NOT-WRITE-ONLY: writeOnly `false` → `not_write_only` (no warning; mirrors M60's EXPLICIT-FALSE-IS-MUTABLE precedent — explicit false and absent/null carry identical semantics: "output is not suppressed"). NO-TRUTHY-COERCION: `writeOnly: 'true'` (string), `writeOnly: 1` (number), `writeOnly: 0` (number), `writeOnly: []` (array), `writeOnly: {}` (object) ALL → `unknown` WITH 6th frozen code (strict === checks — absolutely NO truthy/falsy coercion). PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_write_only_invalid_when_present` at `src/cli.js:10117`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 52 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (52 scenarios)`). Scenario 52 (`input-schema-first-property-write-only-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP checkboxes:** All 18 M61 ROADMAP items confirmed [x] (zero unchecked items in M61 block). PASS.
+
+**13. Acceptance criteria:** REQ-890–REQ-914 added (25 new REQs). Total: 914 acceptance criteria (REQ-001–REQ-914). All pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_9fedaab704cf8812 (role=qa, run_139647ed3258809b, M60 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_76d6180219f49289, role=dev, HEAD c4d9626) for run_139647ed3258809b independently rather than rubber-stamping it.
