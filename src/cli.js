@@ -455,6 +455,25 @@ const INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_AGGREGATION_KEY_ENUM = Object.free
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER = Object.freeze(['hinted', 'unhinted', 'not_applicable']);
 
+// M54: frozen four-value bucket-key enum. Immutable once M54 ships.
+// enumerated = firstKey.enum is an Array with length >= 1 (JSON-Schema enum keyword present and valid).
+// unenumerated = firstKey.enum is missing/null/undefined (semantically absent — no choice constraint declared).
+// not_applicable = non-object input or zero-property object; unknown = malformed input_schema or firstKey.enum present
+//   but non-array OR present Array with length === 0 (empty enum is malformed JSON-Schema — requires >=1 allowed value).
+// Deliberate divergence from M52/M53 empty-counts-as-absent precedent: empty enum array is malformed, not absent.
+const INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_ENUM = Object.freeze(new Set(['enumerated', 'unenumerated', 'not_applicable', 'unknown']));
+
+// M54: frozen three-value aggregation_key enum. Immutable once M54 ships.
+// enumerated/unenumerated buckets carry 'enum_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['enum_constraint', 'not_applicable', 'unknown']));
+
+// M54: closed-enum bucket iteration order (enumerated → unenumerated → not_applicable). Unknown appended last.
+// NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked,
+// NOT chat-affordance-readiness-ranked, NOT command-palette-readiness-ranked, NOT action-widget-readiness-ranked,
+// NOT closed-vocabulary-coverage-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_BUCKET_ORDER = Object.freeze(['enumerated', 'unenumerated', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -569,6 +588,9 @@ function dispatch(argv) {
       return;
     case 'binding':
       cmdBinding(args);
+      return;
+    case 'choice':
+      cmdChoice(args);
       return;
     case 'confidence':
       cmdConfidence(args);
@@ -7598,6 +7620,406 @@ function formatInputSchemaFirstPropertyFormatHintIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M54: tusq choice — top-level noun dispatcher
+function cmdChoice(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('choice');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdChoiceIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M54: tusq choice index — handler
+function cmdChoiceIndex(args) {
+  const { opts, positionals } = parseChoiceIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('choice index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyEnumConstraintIndex(manifest, manifestPath);
+
+  const choiceFilter = opts['choice'] || null;
+  let outputIndex;
+  if (choiceFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_first_property_enum_constraint values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_ENUM.has(choiceFilter)) {
+      throw new CliError(`Unknown input schema first property enum constraint: ${choiceFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === choiceFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property enum constraint: ${choiceFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_enum_constraints: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property enum constraint (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property enum constraint (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyEnumConstraintIndex(outputIndex));
+}
+
+function parseChoiceIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['choice', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaFirstPropertyEnumConstraintBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_enum_constraint outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyEnumConstraintAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M54: classifyInputSchemaFirstPropertyEnumConstraint(inputSchema) → 'enumerated'|'unenumerated'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid)
+//              if firstVal.enum is PRESENT (has own property, value !== null && !== undefined):
+//                if !Array.isArray(firstVal.enum) → 'unknown' (reason: input_schema_properties_first_property_enum_invalid_when_present)
+//                if Array.isArray(firstVal.enum) && firstVal.enum.length === 0 → 'unknown' (reason: input_schema_properties_first_property_enum_invalid_when_present)
+//                if Array.isArray(firstVal.enum) && firstVal.enum.length >= 1 → 'enumerated' (no warning; single-value is valid degenerate)
+//              if firstVal.enum is missing/null/undefined → 'unenumerated' (no warning)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property enum beyond the FIRST is NOT walked (reserved for M-Choice-All-Properties).
+// Nested-object property enum NOT walked (reserved for M-Choice-Nested).
+// output_schema first-property enum is NOT classified (reserved for M-Choice-Output).
+// input_schema_first_property_enum_constraint MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyEnumConstraint(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // Check if enum is present (has own property with non-null, non-undefined value)
+  if (Object.prototype.hasOwnProperty.call(firstVal, 'enum') && firstVal.enum !== undefined && firstVal.enum !== null) {
+    if (!Array.isArray(firstVal.enum)) {
+      // Present, non-null, non-undefined but non-array (string/number/boolean/object) → unknown (strict-typing rule)
+      return 'unknown';
+    }
+    if (firstVal.enum.length === 0) {
+      // Empty array → unknown (malformed JSON-Schema; requires >=1 allowed value; deliberate divergence from M52/M53)
+      return 'unknown';
+    }
+    // Array with length >= 1 → enumerated (no warning; single-value is degenerate but structurally valid)
+    return 'enumerated';
+  }
+  // enum missing/null/undefined → unenumerated (no warning — semantically absent)
+  return 'unenumerated';
+}
+
+// M54: buildInputSchemaFirstPropertyEnumConstraintIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property enum constraint index from the manifest's capabilities[].
+// Bucket iteration order: enumerated → unenumerated → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_enum_constraint MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyEnumConstraintIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_enum_constraints: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_enum_constraint.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property enum is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (
+            Object.prototype.hasOwnProperty.call(firstVal, 'enum') &&
+            firstVal.enum !== undefined &&
+            firstVal.enum !== null &&
+            (!Array.isArray(firstVal.enum) || firstVal.enum.length === 0)
+          ) {
+            warningReason = 'input_schema_properties_first_property_enum_invalid_when_present';
+          }
+          // else: valid enum (array with length>=1) or missing/null → no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const enumClass = classifyInputSchemaFirstPropertyEnumConstraint(inputSchema);
+    const isNamedBucket = namedBuckets.has(enumClass);
+    const bucketKey = isNamedBucket ? enumClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: enumerated → unenumerated → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_ENUM_CONSTRAINT_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyEnumConstraints = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const enumConstraintKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyEnumConstraintBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyEnumConstraintBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyEnumConstraintAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyEnumConstraintAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyEnumConstraintAggregationKey('enum_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_enum_constraint: enumConstraintKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_enum_constraints: firstPropertyEnumConstraints,
+    warnings
+  };
+}
+
+// M54: format input schema first property enum constraint index as human-readable text
+function formatInputSchemaFirstPropertyEnumConstraintIndex(index) {
+  if (index.first_property_enum_constraints.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Enum Constraint Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Planning aid: this index reports per-capability input_schema.properties[firstKey].enum JSON-Schema-enum-constraint presence classification; it does NOT execute capability invocations, validate enum values against a value registry, cross-reference manifest first-property enum vs allowed value sets, generate missing enum constraints, infer enum from field names, or auto-flip tusq serve filtering. Bucket order is deterministic stable-output ordering only (NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT chat-affordance-readiness-ranked, NOT command-palette-readiness-ranked, NOT action-widget-readiness-ranked, NOT closed-vocabulary-coverage-ranked).',
+    ''
+  ];
+
+  for (const entry of index.first_property_enum_constraints) {
+    lines.push(`[${entry.input_schema_first_property_enum_constraint}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: enumerated (firstKey.enum is an Array with length >= 1) | unenumerated (firstKey.enum missing/null/undefined) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or firstKey not a plain object or firstKey.enum present but non-array or empty array).");
+  lines.push('Bucket order: enumerated → unenumerated → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M41: tusq path — top-level noun dispatcher
 function cmdPath(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -10849,6 +11271,7 @@ function printHelp() {
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  auth               Index capabilities by auth scheme for planning review\n');
   process.stdout.write('  binding            Index capabilities by input schema first property source for planning review\n');
+  process.stdout.write('  choice             Index capabilities by input schema first property enum constraint presence for planning review\n');
   process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
   process.stdout.write('  description        Index capabilities by description word count tier for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
@@ -10947,6 +11370,51 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown source value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime request validator, request-conformance detector, SDK call-site generator, or widget-render-control deriver; first-property source is deterministic stable-output ordering only (NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked).'
+    ].join('\n'),
+    choice: 'Usage: tusq choice <subcommand>\n  Subcommands: index',
+    'choice index': [
+      'Usage: tusq choice index [--choice <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --choice <value>    Filter to a single input schema first property enum constraint bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>   Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>        Write index to file (no stdout on success)',
+      '  --json              Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid firstKey.enum)',
+      '',
+      'Classifier rule (applied to input_schema.properties[firstKey].enum when input_schema.type === "object"):',
+      '  enumerated     if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].enum is an Array with length >= 1',
+      '  unenumerated   if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].enum is missing/null/undefined',
+      '  not_applicable if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown        if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or properties[firstKey] is not a plain object;',
+      '               or properties[firstKey].enum is PRESENT and non-null/non-undefined but NOT an Array (strict-typing: string/number/boolean are malformed);',
+      '               or properties[firstKey].enum is an Array with length === 0 (empty enum is malformed JSON-Schema — requires >=1 allowed value).',
+      '               Deliberate divergence from M52/M53: empty-array enum is unknown (malformed), not unenumerated (absent).',
+      '               Single-value enum (length === 1) is enumerated — degenerate but structurally valid JSON-Schema.',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property enum beyond the FIRST is NOT walked (reserved for M-Choice-All-Properties).',
+      '               Nested-property enum under input_schema.properties[key].properties NOT walked (reserved for M-Choice-Nested).',
+      '               output_schema first-property enum NOT classified here (reserved for M-Choice-Output).',
+      '               Distinct from M44 (capability-level description word-count tier via tusq description index),',
+      '               M47 (input_schema.properties count cardinality via tusq parameter index),',
+      '               M49 (input-side first-property primitive type via tusq signature index),',
+      '               M50 (input-side first-property required-status via tusq obligation index),',
+      '               M51 (input-side first-property HTTP-source locus via tusq binding index),',
+      '               M52 (input-side first-property description presence via tusq gloss index),',
+      '               M53 (input-side first-property format hint via tusq hint index),',
+      '               M48 (output-side first-property type via tusq shape index).',
+      '',
+      'Bucket iteration order: enumerated → unenumerated → not_applicable → unknown',
+      '  (deterministic stable-output convention only — NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT chat-affordance-readiness-ranked, NOT command-palette-readiness-ranked, NOT action-widget-readiness-ranked, NOT closed-vocabulary-coverage-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown choice value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime enum validator, enum-value distributor, enum-cardinality analyzer, LLM enum inferrer, or SDK picker generator; per-FIRST-property enum constraint presence is deterministic stable-output ordering only (NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked).'
     ].join('\n'),
     confidence: 'Usage: tusq confidence <subcommand>\n  Subcommands: index',
     'confidence index': [

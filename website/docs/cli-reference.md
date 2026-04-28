@@ -1143,6 +1143,74 @@ tusq hint index --hint unhinted --json
 tusq hint index --out hint-index.json
 ```
 
+## `tusq choice index`
+
+Emit a deterministic, per-first-input-property-enum-constraint-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].enum` is a non-empty array (`enumerated`), missing/null/undefined (`unenumerated`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`enumerated → unenumerated → not_applicable → unknown`). This is a **planning aid, not a runtime enum validator, enum-value distributor, enum-cardinality analyzer, LLM enum inferrer, or SDK picker generator**.
+
+**M54 vs M53 distinction:** `tusq hint index` (M53) reads `input_schema.properties[firstKey].format` (the **FIRST input property's** JSON-Schema format keyword) and buckets on its presence. `tusq choice index` (M54) reads `input_schema.properties[firstKey].enum` (the **FIRST input property's** JSON-Schema enum constraint) and buckets on its presence. These two axes share the first-property-index family but operate on different fields and have different malformation semantics: M53 treats empty/whitespace-only format as `unhinted` (absent signal), while M54 treats empty-array enum as `unknown` (malformed — JSON-Schema requires enum to declare ≥1 allowed value).
+
+```bash
+tusq choice index [--choice <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--choice <enumerated\|unenumerated\|not_applicable\|unknown>` | all buckets | Filter to a single enum-constraint bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent choice value, `--out` path error, or unknown subcommand
+
+**Classifier rules** (applied to `input_schema.properties[firstKey].enum` when `input_schema.type === "object"`):
+
+| Condition | Bucket |
+|-----------|--------|
+| `input_schema` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type` missing or non-string | `unknown` |
+| `input_schema.type` is a string but not `"object"` | `not_applicable` (no warning) |
+| `input_schema.type === "object"`, `properties` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type === "object"`, `Object.keys(properties).length === 0` | `not_applicable` (no warning) |
+| `properties[firstKey]` is not a plain non-null object | `unknown` |
+| `properties[firstKey].enum` is present but not an Array (string/number/boolean/object) | `unknown` (strict-typing rule — malformed) |
+| `properties[firstKey].enum` is present, is an Array, but `length === 0` | `unknown` (malformed — JSON-Schema requires `enum` to declare ≥1 allowed value; **deliberate divergence from M52/M53 empty-counts-as-absent precedent**) |
+| `properties[firstKey].enum` is missing/`null`/`undefined` | `unenumerated` (no warning — semantically absent) |
+| `properties[firstKey].enum` is an Array with `length >= 1` | `enumerated` (no warning; single-value is degenerate but structurally valid) |
+
+Object.keys insertion-order is used; key sequence is NOT sorted or reordered.
+
+**Bucket iteration order:** `enumerated → unenumerated → not_applicable → unknown` (deterministic stable-output convention only — NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT chat-affordance-readiness-ranked, NOT command-palette-readiness-ranked, NOT action-widget-readiness-ranked, NOT closed-vocabulary-coverage-ranked). Empty buckets do not appear.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains `{ capability, reason }` objects for each capability landing in the `unknown` bucket. Five frozen warning reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_enum_invalid_when_present` (spans both non-array and empty-array malformations). The `not_applicable`, `enumerated`, and `unenumerated` buckets emit NO warnings — they are valid named outcomes. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `input_schema_first_property_enum_constraint` is NOT written into the manifest — it is derived at read-time only (non-persistence rule).
+- The four-value `input_schema_first_property_enum_constraint` enum, the three-value `aggregation_key` enum, and the five-value warning reason-code enum are frozen; any addition is a material governance event.
+- Per-property enum beyond the FIRST is NOT walked (reserved for `M-Choice-All-Properties`).
+- Nested-property enum under `input_schema.properties[key].properties` is NOT walked (reserved for `M-Choice-Nested`).
+- `output_schema` first-property enum is NOT classified (reserved for `M-Choice-Output`).
+- `tusq choice index` does NOT validate enum values against a value registry, cross-reference enum vs OpenAPI/SDK docs, infer missing enum vocabularies, analyze enum-cardinality tiers, or generate SDK/embeddable-widget picker stubs.
+
+```bash
+# All enum constraint buckets (human-readable)
+tusq choice index
+
+# All enum constraint buckets (JSON)
+tusq choice index --json
+
+# Single enum constraint bucket
+tusq choice index --choice enumerated --json
+
+# Unenumerated capabilities (no JSON-Schema enum constraint on first property)
+tusq choice index --choice unenumerated --json
+
+# Write to file
+tusq choice index --out choice-index.json
+```
+
 ## `tusq method index`
 
 Emit a deterministic, per-HTTP-method capability index from manifest evidence. Groups capabilities by their verbatim `method` field value in closed-enum order (`GET → POST → PUT → PATCH → DELETE → unknown`), with a special `unknown` bucket for capabilities whose `method` is `null`, missing, empty-string, or any non-canonical value (HEAD, OPTIONS, etc.). This is a **planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier**.

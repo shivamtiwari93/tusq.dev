@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 37) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 37 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 38) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 38 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 37) {
-    throw new Error(`M46(x): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 38) {
+    throw new Error(`M46(x): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 37) {
-    throw new Error(`M47(x): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 38) {
+    throw new Error(`M47(x): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 37) {
-    throw new Error(`M48(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 38) {
+    throw new Error(`M48(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 37) {
-    throw new Error(`M49(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 38) {
+    throw new Error(`M49(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 37) {
-    throw new Error(`M50(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 38) {
+    throw new Error(`M50(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 37) {
-    throw new Error(`M51(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 38) {
+    throw new Error(`M51(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 37) {
-    throw new Error(`M52(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 38) {
+    throw new Error(`M52(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 37 commands and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 38 commands and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 37) {
-    throw new Error(`M53(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 38) {
+    throw new Error(`M53(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7262,6 +7262,454 @@ async function run() {
   }
 
   await fs.rm(m53TmpDir, { recursive: true, force: true });
+
+  // ── M54: Static Capability Input Schema First Property Enum Constraint Index Export ──────────────
+  const m54TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m54-smoke-'));
+
+  // M54 fixture manifest: synthetic capabilities across enumerated/unenumerated/not_applicable buckets.
+  // enumerated_cap → firstKey.enum=['red','green','blue'] (Array length >= 1 → enumerated)
+  // unenumerated_cap → firstKey has no enum field (missing → unenumerated)
+  // not_applicable_cap → input_schema.type='array' (non-object → not_applicable, no warning)
+  const m54SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'enumerated_cap',
+        description: 'Capability with enum-constrained first property',
+        method: 'POST',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { status: { type: 'string', enum: ['active', 'inactive', 'pending'] } },
+          required: ['status']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'unenumerated_cap',
+        description: 'Capability with no enum on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m54SyntheticManifestPath = path.join(m54TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m54SyntheticManifestPath, JSON.stringify(m54SyntheticManifest, null, 2), 'utf8');
+
+  // M54(a): default tusq choice index on synthetic fixture produces correct buckets in closed-enum order
+  const m54DefaultResult = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+  if (m54DefaultResult.status !== 0) {
+    throw new Error(`M54(a): choice index must exit 0:\nstderr=${m54DefaultResult.stderr}`);
+  }
+  const m54DefaultJson = JSON.parse(m54DefaultResult.stdout);
+  if (!Array.isArray(m54DefaultJson.first_property_enum_constraints)) {
+    throw new Error(`M54(a): JSON output must have first_property_enum_constraints[] array:\n${m54DefaultResult.stdout}`);
+  }
+  if (m54DefaultJson.tiers !== undefined || m54DefaultJson.first_property_format_hints !== undefined || m54DefaultJson.first_property_description_presences !== undefined) {
+    throw new Error(`M54(a): JSON output must NOT have tiers/first_property_format_hints/first_property_description_presences; field name must be first_property_enum_constraints[]:\n${m54DefaultResult.stdout}`);
+  }
+  const m54EnumeratedEntry = m54DefaultJson.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'enumerated');
+  if (!m54EnumeratedEntry || !m54EnumeratedEntry.capabilities.includes('enumerated_cap')) {
+    throw new Error(`M54(a): enumerated bucket must include enumerated_cap:\n${JSON.stringify(m54DefaultJson.first_property_enum_constraints)}`);
+  }
+  const m54UnenumeratedEntry = m54DefaultJson.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'unenumerated');
+  if (!m54UnenumeratedEntry || !m54UnenumeratedEntry.capabilities.includes('unenumerated_cap')) {
+    throw new Error(`M54(a): unenumerated bucket must include unenumerated_cap:\n${JSON.stringify(m54DefaultJson.first_property_enum_constraints)}`);
+  }
+  const m54NotApplicableEntry = m54DefaultJson.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'not_applicable');
+  if (!m54NotApplicableEntry || !m54NotApplicableEntry.capabilities.includes('not_applicable_cap')) {
+    throw new Error(`M54(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m54DefaultJson.first_property_enum_constraints)}`);
+  }
+  if (m54DefaultJson.warnings.length !== 0) {
+    throw new Error(`M54(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m54DefaultJson.warnings)}`);
+  }
+  // Bucket order: enumerated < unenumerated < not_applicable
+  const m54EnumeratedPos = m54DefaultJson.first_property_enum_constraints.findIndex((e) => e.input_schema_first_property_enum_constraint === 'enumerated');
+  const m54UnenumeratedPos = m54DefaultJson.first_property_enum_constraints.findIndex((e) => e.input_schema_first_property_enum_constraint === 'unenumerated');
+  const m54NotApplicablePos = m54DefaultJson.first_property_enum_constraints.findIndex((e) => e.input_schema_first_property_enum_constraint === 'not_applicable');
+  if (!(m54EnumeratedPos < m54UnenumeratedPos && m54UnenumeratedPos < m54NotApplicablePos)) {
+    throw new Error(`M54(a): bucket order must be enumerated < unenumerated < not_applicable; got enumerated=${m54EnumeratedPos} unenumerated=${m54UnenumeratedPos} not_applicable=${m54NotApplicablePos}`);
+  }
+  const m54DefaultHuman = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath], { cwd: m54TmpDir });
+  if (!m54DefaultHuman.stdout.includes('[enumerated]') || !m54DefaultHuman.stdout.includes('[unenumerated]') || !m54DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M54(a): human mode must include [enumerated], [unenumerated], [not_applicable] sections:\n${m54DefaultHuman.stdout}`);
+  }
+  if (!m54DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M54(a): human mode must include planning-aid framing:\n${m54DefaultHuman.stdout}`);
+  }
+
+  // M54(b): --choice enumerated filter
+  const m54FilterEnumerated = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'enumerated', '--json'], { cwd: m54TmpDir });
+  if (m54FilterEnumerated.status !== 0) {
+    throw new Error(`M54(b): --choice enumerated must exit 0:\nstderr=${m54FilterEnumerated.stderr}`);
+  }
+  if (JSON.parse(m54FilterEnumerated.stdout).first_property_enum_constraints.length !== 1 || JSON.parse(m54FilterEnumerated.stdout).first_property_enum_constraints[0].input_schema_first_property_enum_constraint !== 'enumerated') {
+    throw new Error(`M54(b): --choice enumerated must return exactly one enumerated bucket:\n${m54FilterEnumerated.stdout}`);
+  }
+
+  // M54(c): --choice unenumerated filter
+  const m54FilterUnenumerated = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'unenumerated', '--json'], { cwd: m54TmpDir });
+  if (m54FilterUnenumerated.status !== 0) {
+    throw new Error(`M54(c): --choice unenumerated must exit 0:\nstderr=${m54FilterUnenumerated.stderr}`);
+  }
+  if (JSON.parse(m54FilterUnenumerated.stdout).first_property_enum_constraints.length !== 1 || JSON.parse(m54FilterUnenumerated.stdout).first_property_enum_constraints[0].input_schema_first_property_enum_constraint !== 'unenumerated') {
+    throw new Error(`M54(c): --choice unenumerated must return exactly one unenumerated bucket:\n${m54FilterUnenumerated.stdout}`);
+  }
+
+  // M54(d): --choice not_applicable filter
+  const m54FilterNotApplicable = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'not_applicable', '--json'], { cwd: m54TmpDir });
+  if (m54FilterNotApplicable.status !== 0) {
+    throw new Error(`M54(d): --choice not_applicable must exit 0:\nstderr=${m54FilterNotApplicable.stderr}`);
+  }
+  if (JSON.parse(m54FilterNotApplicable.stdout).first_property_enum_constraints.length !== 1 || JSON.parse(m54FilterNotApplicable.stdout).first_property_enum_constraints[0].input_schema_first_property_enum_constraint !== 'not_applicable') {
+    throw new Error(`M54(d): --choice not_applicable must return exactly one not_applicable bucket:\n${m54FilterNotApplicable.stdout}`);
+  }
+
+  // M54(e): --choice unknown filter on synthetic fixture with malformed input_schema.properties.first.enum=42
+  const m54UnknownManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{
+      name: 'unknown_cap', description: 'bad enum', method: 'GET', path: '/x', domain: 'x',
+      side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'xxx',
+      auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+      redaction: { pii_fields: [], pii_categories: [] },
+      input_schema: { type: 'object', properties: { x: { type: 'string', enum: 42 } }, required: [] },
+      output_schema: { type: 'object', properties: {}, additionalProperties: true }
+    }]
+  };
+  const m54UnknownManifestPath = path.join(m54TmpDir, 'unknown.manifest.json');
+  await fs.writeFile(m54UnknownManifestPath, JSON.stringify(m54UnknownManifest, null, 2), 'utf8');
+  const m54FilterUnknown = runCli(['choice', 'index', '--manifest', m54UnknownManifestPath, '--choice', 'unknown', '--json'], { cwd: m54TmpDir });
+  if (m54FilterUnknown.status !== 0) {
+    throw new Error(`M54(e): --choice unknown (malformed enum=42) must exit 0:\nstderr=${m54FilterUnknown.stderr}`);
+  }
+  if (JSON.parse(m54FilterUnknown.stdout).first_property_enum_constraints.length !== 1 || JSON.parse(m54FilterUnknown.stdout).first_property_enum_constraints[0].input_schema_first_property_enum_constraint !== 'unknown') {
+    throw new Error(`M54(e): --choice unknown must return exactly one unknown bucket:\n${m54FilterUnknown.stdout}`);
+  }
+
+  // M54(f): --choice ENUMERATED (uppercase) → exit 1 (case-sensitive)
+  const m54CaseEnumerated = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'ENUMERATED'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54CaseEnumerated.stderr.includes('Unknown input schema first property enum constraint: ENUMERATED') || m54CaseEnumerated.stdout !== '') {
+    throw new Error(`M54(f): --choice ENUMERATED must exit 1 with case-sensitive error:\nstdout=${m54CaseEnumerated.stdout}\nstderr=${m54CaseEnumerated.stderr}`);
+  }
+
+  // M54(g): --choice Unenumerated (mixed-case) → exit 1
+  const m54CaseUnenumerated = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'Unenumerated'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54CaseUnenumerated.stderr.includes('Unknown input schema first property enum constraint: Unenumerated') || m54CaseUnenumerated.stdout !== '') {
+    throw new Error(`M54(g): --choice Unenumerated must exit 1 with case-sensitive error:\nstdout=${m54CaseUnenumerated.stdout}\nstderr=${m54CaseUnenumerated.stderr}`);
+  }
+
+  // M54(h): --choice xyz (unknown value) → exit 1
+  const m54CaseXyz = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice', 'xyz'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54CaseXyz.stderr.includes('Unknown input schema first property enum constraint: xyz') || m54CaseXyz.stdout !== '') {
+    throw new Error(`M54(h): --choice xyz must exit 1:\nstdout=${m54CaseXyz.stdout}\nstderr=${m54CaseXyz.stderr}`);
+  }
+
+  // M54(i): --manifest <missing> → exit 1
+  const m54MissingManifest = runCli(['choice', 'index', '--manifest', path.join(m54TmpDir, 'nonexistent.json')], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54MissingManifest.stderr.includes('Manifest not found') || m54MissingManifest.stdout !== '') {
+    throw new Error(`M54(i): missing manifest must exit 1:\nstdout=${m54MissingManifest.stdout}\nstderr=${m54MissingManifest.stderr}`);
+  }
+
+  // M54(j): malformed JSON manifest → exit 1
+  const m54BadJsonPath = path.join(m54TmpDir, 'bad.json');
+  await fs.writeFile(m54BadJsonPath, '{ invalid json }', 'utf8');
+  const m54BadJson = runCli(['choice', 'index', '--manifest', m54BadJsonPath], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54BadJson.stderr.includes('Invalid manifest JSON') || m54BadJson.stdout !== '') {
+    throw new Error(`M54(j): malformed JSON must exit 1:\nstdout=${m54BadJson.stdout}\nstderr=${m54BadJson.stderr}`);
+  }
+
+  // M54(k): missing capabilities array → exit 1
+  const m54NoCapsPath = path.join(m54TmpDir, 'nocaps.json');
+  await fs.writeFile(m54NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m54NoCaps = runCli(['choice', 'index', '--manifest', m54NoCapsPath], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54NoCaps.stderr.includes('missing capabilities array') || m54NoCaps.stdout !== '') {
+    throw new Error(`M54(k): missing capabilities array must exit 1:\nstdout=${m54NoCaps.stdout}\nstderr=${m54NoCaps.stderr}`);
+  }
+
+  // M54(l): unknown flag → exit 1
+  const m54UnknownFlag = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--bogus'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54UnknownFlag.stderr.includes('Unknown flag: --bogus') || m54UnknownFlag.stdout !== '') {
+    throw new Error(`M54(l): unknown flag must exit 1:\nstdout=${m54UnknownFlag.stdout}\nstderr=${m54UnknownFlag.stderr}`);
+  }
+
+  // M54(m): --choice with no value → exit 1
+  const m54NoChoiceValue = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--choice'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54NoChoiceValue.stderr.includes('Missing value for --choice') || m54NoChoiceValue.stdout !== '') {
+    throw new Error(`M54(m): --choice with no value must exit 1:\nstdout=${m54NoChoiceValue.stdout}\nstderr=${m54NoChoiceValue.stderr}`);
+  }
+
+  // M54(n): --out valid path writes file and produces no stdout
+  const m54OutPath = path.join(m54TmpDir, 'm54-out.json');
+  const m54OutResult = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--out', m54OutPath], { cwd: m54TmpDir });
+  if (m54OutResult.status !== 0) {
+    throw new Error(`M54(n): --out valid path must exit 0:\nstderr=${m54OutResult.stderr}`);
+  }
+  if (m54OutResult.stdout !== '') {
+    throw new Error(`M54(n): --out valid path must produce no stdout:\nstdout=${m54OutResult.stdout}`);
+  }
+  const m54OutContent = JSON.parse(await fs.readFile(m54OutPath, 'utf8'));
+  if (!Array.isArray(m54OutContent.first_property_enum_constraints)) {
+    throw new Error(`M54(n): --out file must have first_property_enum_constraints[]:\n${JSON.stringify(m54OutContent)}`);
+  }
+
+  // M54(o): --out .tusq/ rejection → exit 1
+  const m54OutTusq = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--out', path.join(m54TmpDir, '.tusq', 'out.json')], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54OutTusq.stderr.includes('--out path must not be inside .tusq/') || m54OutTusq.stdout !== '') {
+    throw new Error(`M54(o): --out .tusq/ must exit 1:\nstdout=${m54OutTusq.stdout}\nstderr=${m54OutTusq.stderr}`);
+  }
+
+  // M54(p): --out unwritable parent → exit 1
+  const m54OutUnwritable = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--out', '/nonexistent_path_abc/m54.json'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (m54OutUnwritable.stdout !== '') {
+    throw new Error(`M54(p): --out unwritable parent must produce empty stdout:\nstdout=${m54OutUnwritable.stdout}`);
+  }
+
+  // M54(q): --json outputs valid JSON with first_property_enum_constraints[] and warnings: []
+  const m54JsonResult = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+  if (m54JsonResult.status !== 0) {
+    throw new Error(`M54(q): --json must exit 0:\nstderr=${m54JsonResult.stderr}`);
+  }
+  const m54JsonParsed = JSON.parse(m54JsonResult.stdout);
+  if (!Array.isArray(m54JsonParsed.first_property_enum_constraints)) {
+    throw new Error(`M54(q): --json output must have first_property_enum_constraints[]:\n${m54JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m54JsonParsed.warnings)) {
+    throw new Error(`M54(q): --json output must have warnings[]:\n${m54JsonResult.stdout}`);
+  }
+
+  // M54(r): determinism — three consecutive runs produce byte-identical stdout
+  {
+    const m54Det1 = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+    const m54Det2 = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+    const m54Det3 = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+    if (m54Det1.stdout !== m54Det2.stdout || m54Det2.stdout !== m54Det3.stdout) {
+      throw new Error(`M54(r): choice index --json output must be byte-identical across three runs`);
+    }
+    // Non-persistence: manifest must not be mutated
+    const m54ManifestAfter = JSON.parse(await fs.readFile(m54SyntheticManifestPath, 'utf8'));
+    for (const cap of m54ManifestAfter.capabilities) {
+      if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_enum_constraint')) {
+        throw new Error(`M54(r): input_schema_first_property_enum_constraint must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+      }
+    }
+  }
+
+  // M54(s): malformed capabilities produce warnings covering all five frozen reason codes
+  const m54AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      // input_schema_field_missing
+      { name: 'no_schema_cap', description: 'x', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aaa', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_field_not_object
+      { name: 'non_object_schema_cap', description: 'x', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'bbb', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: 'bad', output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_type_missing_or_invalid
+      { name: 'no_type_cap', description: 'x', method: 'GET', path: '/c', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ccc', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { properties: { x: { type: 'string' } } }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_field_missing_when_type_is_object
+      { name: 'no_props_cap', description: 'x', method: 'GET', path: '/d', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ddd', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object' }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_first_property_enum_invalid_when_present (enum=42, non-array)
+      { name: 'bad_enum_cap', description: 'x', method: 'GET', path: '/e', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'eee', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: 42 } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // valid enumerated cap (no warning)
+      { name: 'enumerated_valid_cap', description: 'x', method: 'POST', path: '/f', domain: 'x', side_effect_class: 'write', sensitivity_class: 'public', approved: true, capability_digest: 'fff', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['active', 'inactive'] } }, required: ['status'] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }
+    ]
+  };
+  const m54AllWarningsManifestPath = path.join(m54TmpDir, 'all-warnings.manifest.json');
+  await fs.writeFile(m54AllWarningsManifestPath, JSON.stringify(m54AllWarningsManifest, null, 2), 'utf8');
+  const m54AllWarningsJson = runCli(['choice', 'index', '--manifest', m54AllWarningsManifestPath, '--json'], { cwd: m54TmpDir });
+  const m54AllWarningsParsed = JSON.parse(m54AllWarningsJson.stdout);
+  const m54ExpectedReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_properties_first_property_enum_invalid_when_present'
+  ];
+  for (const reason of m54ExpectedReasons) {
+    if (!m54AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M54(s): all five frozen warning reason codes must be present; missing ${reason}:\n${JSON.stringify(m54AllWarningsParsed.warnings)}`);
+    }
+  }
+  const m54AllWarningsHuman = runCli(['choice', 'index', '--manifest', m54AllWarningsManifestPath], { cwd: m54TmpDir });
+  if (!m54AllWarningsHuman.stderr.includes('Warning:')) {
+    throw new Error(`M54(s): human mode must emit warning to stderr:\nstderr=${m54AllWarningsHuman.stderr}`);
+  }
+  // enumerated/unenumerated/not_applicable buckets must not emit warnings on synthetic fixture
+  const m54EnumeratedOnly = runCli(['choice', 'index', '--manifest', m54SyntheticManifestPath, '--json'], { cwd: m54TmpDir });
+  if (JSON.parse(m54EnumeratedOnly.stdout).warnings.length !== 0) {
+    throw new Error(`M54(s): enumerated/unenumerated/not_applicable buckets must not emit warnings on synthetic fixture`);
+  }
+  // empty capabilities
+  const m54EmptyManifestPath = path.join(m54TmpDir, 'empty.manifest.json');
+  await fs.writeFile(m54EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m54EmptyHuman = runCli(['choice', 'index', '--manifest', m54EmptyManifestPath], { cwd: m54TmpDir });
+  if (!m54EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M54(s): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m54EmptyHuman.stdout}`);
+  }
+  const m54EmptyJson = runCli(['choice', 'index', '--manifest', m54EmptyManifestPath, '--json'], { cwd: m54TmpDir });
+  if (JSON.parse(m54EmptyJson.stdout).first_property_enum_constraints.length !== 0) {
+    throw new Error(`M54(s): empty capabilities (JSON) must have first_property_enum_constraints: []:\n${m54EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(JSON.parse(m54EmptyJson.stdout).warnings) || JSON.parse(m54EmptyJson.stdout).warnings.length !== 0) {
+    throw new Error(`M54(s): empty capabilities (JSON) must have warnings: []:\n${m54EmptyJson.stdout}`);
+  }
+
+  // M54(t): empty-array enum → bucket unknown with warning (deliberate divergence from M52/M53 empty-counts-as-absent)
+  const m54EmptyEnumManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_enum_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'zzz', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: [] } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m54EmptyEnumPath = path.join(m54TmpDir, 'empty-enum.json');
+  await fs.writeFile(m54EmptyEnumPath, JSON.stringify(m54EmptyEnumManifest, null, 2), 'utf8');
+  const m54EmptyEnumResult = runCli(['choice', 'index', '--manifest', m54EmptyEnumPath, '--json'], { cwd: m54TmpDir });
+  const m54EmptyEnumParsed = JSON.parse(m54EmptyEnumResult.stdout);
+  if (!m54EmptyEnumParsed.first_property_enum_constraints.some((e) => e.input_schema_first_property_enum_constraint === 'unknown' && e.capabilities.includes('empty_enum_cap'))) {
+    throw new Error(`M54(t): empty-array enum must bucket as unknown (malformed JSON-Schema):\n${m54EmptyEnumResult.stdout}`);
+  }
+  if (!m54EmptyEnumParsed.warnings.some((w) => w.capability === 'empty_enum_cap' && w.reason === 'input_schema_properties_first_property_enum_invalid_when_present')) {
+    throw new Error(`M54(t): empty-array enum must produce warning input_schema_properties_first_property_enum_invalid_when_present:\n${JSON.stringify(m54EmptyEnumParsed.warnings)}`);
+  }
+
+  // M54(u): single-value enum → bucket enumerated (no warning — degenerate but structurally valid)
+  const m54SingleEnumManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'single_enum_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'yyy', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: ['only'] } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m54SingleEnumPath = path.join(m54TmpDir, 'single-enum.json');
+  await fs.writeFile(m54SingleEnumPath, JSON.stringify(m54SingleEnumManifest, null, 2), 'utf8');
+  const m54SingleEnumResult = runCli(['choice', 'index', '--manifest', m54SingleEnumPath, '--json'], { cwd: m54TmpDir });
+  const m54SingleEnumParsed = JSON.parse(m54SingleEnumResult.stdout);
+  if (!m54SingleEnumParsed.first_property_enum_constraints.some((e) => e.input_schema_first_property_enum_constraint === 'enumerated' && e.capabilities.includes('single_enum_cap'))) {
+    throw new Error(`M54(u): single-value enum must bucket as enumerated:\n${m54SingleEnumResult.stdout}`);
+  }
+  if (m54SingleEnumParsed.warnings.length !== 0) {
+    throw new Error(`M54(u): single-value enum must produce NO warning:\n${JSON.stringify(m54SingleEnumParsed.warnings)}`);
+  }
+
+  // M54(v): enum=string → bucket unknown with warning input_schema_properties_first_property_enum_invalid_when_present
+  const m54StringEnumManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'str_enum_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'vvv', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: 'not-an-array' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m54StringEnumPath = path.join(m54TmpDir, 'string-enum.json');
+  await fs.writeFile(m54StringEnumPath, JSON.stringify(m54StringEnumManifest, null, 2), 'utf8');
+  const m54StrEnumResult = runCli(['choice', 'index', '--manifest', m54StringEnumPath, '--json'], { cwd: m54TmpDir });
+  const m54StrEnumParsed = JSON.parse(m54StrEnumResult.stdout);
+  if (!m54StrEnumParsed.first_property_enum_constraints.some((e) => e.input_schema_first_property_enum_constraint === 'unknown' && e.capabilities.includes('str_enum_cap'))) {
+    throw new Error(`M54(v): string enum must bucket as unknown:\n${m54StrEnumResult.stdout}`);
+  }
+  if (!m54StrEnumParsed.warnings.some((w) => w.capability === 'str_enum_cap' && w.reason === 'input_schema_properties_first_property_enum_invalid_when_present')) {
+    throw new Error(`M54(v): string enum must produce warning input_schema_properties_first_property_enum_invalid_when_present:\n${JSON.stringify(m54StrEnumParsed.warnings)}`);
+  }
+
+  // M54(w): enum=object → bucket unknown with warning input_schema_properties_first_property_enum_invalid_when_present
+  const m54ObjEnumManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'obj_enum_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'www', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: { bad: true } } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m54ObjEnumPath = path.join(m54TmpDir, 'obj-enum.json');
+  await fs.writeFile(m54ObjEnumPath, JSON.stringify(m54ObjEnumManifest, null, 2), 'utf8');
+  const m54ObjEnumResult = runCli(['choice', 'index', '--manifest', m54ObjEnumPath, '--json'], { cwd: m54TmpDir });
+  const m54ObjEnumParsed = JSON.parse(m54ObjEnumResult.stdout);
+  if (!m54ObjEnumParsed.first_property_enum_constraints.some((e) => e.input_schema_first_property_enum_constraint === 'unknown' && e.capabilities.includes('obj_enum_cap'))) {
+    throw new Error(`M54(w): object enum must bucket as unknown:\n${m54ObjEnumResult.stdout}`);
+  }
+  if (!m54ObjEnumParsed.warnings.some((w) => w.capability === 'obj_enum_cap' && w.reason === 'input_schema_properties_first_property_enum_invalid_when_present')) {
+    throw new Error(`M54(w): object enum must produce warning input_schema_properties_first_property_enum_invalid_when_present:\n${JSON.stringify(m54ObjEnumParsed.warnings)}`);
+  }
+
+  // M54(x): enum=null → bucket unenumerated (no warning)
+  const m54NullEnumManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_enum_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'nnn', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', enum: null } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m54NullEnumPath = path.join(m54TmpDir, 'null-enum.json');
+  await fs.writeFile(m54NullEnumPath, JSON.stringify(m54NullEnumManifest, null, 2), 'utf8');
+  const m54NullEnumResult = runCli(['choice', 'index', '--manifest', m54NullEnumPath, '--json'], { cwd: m54TmpDir });
+  const m54NullEnumParsed = JSON.parse(m54NullEnumResult.stdout);
+  if (!m54NullEnumParsed.first_property_enum_constraints.some((e) => e.input_schema_first_property_enum_constraint === 'unenumerated' && e.capabilities.includes('null_enum_cap'))) {
+    throw new Error(`M54(x): null enum must bucket as unenumerated:\n${m54NullEnumResult.stdout}`);
+  }
+  if (m54NullEnumParsed.warnings.length !== 0) {
+    throw new Error(`M54(x): null enum must produce NO warning:\n${JSON.stringify(m54NullEnumParsed.warnings)}`);
+  }
+
+  // M54(x2): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'enum_constraint', 'not_applicable', 'unknown'}
+  const m54AggKeyResult = runCli(['choice', 'index', '--manifest', m54AllWarningsManifestPath, '--json'], { cwd: m54TmpDir });
+  const m54AggKeyParsed = JSON.parse(m54AggKeyResult.stdout);
+  for (const entry of m54AggKeyParsed.first_property_enum_constraints) {
+    if (!new Set(['enum_constraint', 'not_applicable', 'unknown']).has(entry.aggregation_key)) {
+      throw new Error(`M54(x2): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m54AggEnumerated = m54DefaultJson.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'enumerated');
+  if (!m54AggEnumerated || m54AggEnumerated.aggregation_key !== 'enum_constraint') {
+    throw new Error(`M54(x2): enumerated bucket must have aggregation_key 'enum_constraint':\n${JSON.stringify(m54AggEnumerated)}`);
+  }
+  const m54AggNA = m54DefaultJson.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'not_applicable');
+  if (!m54AggNA || m54AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
+  }
+
+  // M54(x3): help enumerates 38 commands and includes 'choice' between 'binding' and 'confidence'
+  const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
+  const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m54HelpCommandCount !== 38) {
+    throw new Error(`M54(x3): tusq help must enumerate 38 commands (M54 adds 'choice'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  }
+  if (!m54HelpResult.stdout.includes('  choice')) {
+    throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
+  }
+
+  // help includes 'choice' between 'binding' and 'confidence'
+  const m54IndexHelpResult = runCli(['choice', 'index', '--help'], { cwd: m54TmpDir });
+  if (!m54IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M54(x3): choice index help must include planning-aid framing:\n${m54IndexHelpResult.stdout}`);
+  }
+
+  // Unknown subcommand exits 1
+  const m54UnknownSubCmd = runCli(['choice', 'bogusub'], { cwd: m54TmpDir, expectedStatus: 1 });
+  if (!m54UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m54UnknownSubCmd.stdout !== '') {
+    throw new Error(`M54(x3): unknown subcommand must exit 1:\nstdout=${m54UnknownSubCmd.stdout}\nstderr=${m54UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m54TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -7730,8 +8178,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 37) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 37 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 38) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 38 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -8268,8 +8716,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 37) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 37 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 38) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 38 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -8817,8 +9265,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 37) {
-    throw new Error(`M42: tusq help must enumerate exactly 37 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 38) {
+    throw new Error(`M42: tusq help must enumerate exactly 38 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -9363,8 +9811,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 37) {
-    throw new Error(`M41: tusq help must enumerate exactly 37 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 38) {
+    throw new Error(`M41: tusq help must enumerate exactly 38 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -9918,8 +10366,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 37) {
-    throw new Error(`M40: tusq help must enumerate exactly 37 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 38) {
+    throw new Error(`M40: tusq help must enumerate exactly 38 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -10390,8 +10838,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 37) {
-    throw new Error(`M39: tusq help must enumerate exactly 37 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 38) {
+    throw new Error(`M39: tusq help must enumerate exactly 38 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -10861,8 +11309,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 37) {
-    throw new Error(`M38: tusq help must enumerate exactly 37 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 38) {
+    throw new Error(`M38: tusq help must enumerate exactly 38 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -11344,8 +11792,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 37) {
-    throw new Error(`M37: tusq help must enumerate exactly 37 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 38) {
+    throw new Error(`M37: tusq help must enumerate exactly 38 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -11802,8 +12250,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 37) {
-    throw new Error(`M36: tusq help must enumerate exactly 37 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 38) {
+    throw new Error(`M36: tusq help must enumerate exactly 38 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -12195,8 +12643,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 37) {
-    throw new Error(`M35: tusq help must enumerate exactly 37 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 38) {
+    throw new Error(`M35: tusq help must enumerate exactly 38 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

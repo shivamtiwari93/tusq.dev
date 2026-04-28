@@ -2059,6 +2059,8 @@ async function run() {
       await runInputSchemaFirstPropertyDescriptionPresenceIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_format_hint_index_determinism') {
       await runInputSchemaFirstPropertyFormatHintIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_enum_constraint_index_determinism') {
+      await runInputSchemaFirstPropertyEnumConstraintIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -3110,6 +3112,123 @@ async function runInputSchemaFirstPropertyFormatHintIndexDeterminismScenario(tmp
   }
   if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
     fail(`${scenario.id}: insertion_order_cap (hinted bucket) must NOT produce a warning`);
+  }
+}
+
+async function runInputSchemaFirstPropertyEnumConstraintIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-enum-constraint-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq choice index --json three times and assert byte-identical output
+  const run1 = runCli(['choice', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['choice', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['choice', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: choice index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_enum_constraint bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validEnumConstraints = new Set(scenario.expected_valid_enum_constraints);
+  for (const entry of index.first_property_enum_constraints) {
+    if (!validEnumConstraints.has(entry.input_schema_first_property_enum_constraint)) {
+      fail(`${scenario.id}: input_schema_first_property_enum_constraint '${entry.input_schema_first_property_enum_constraint}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_enum_constraints) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_enum_constraint}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (enumerated → unenumerated → not_applicable → unknown)
+  const bucketOrder = index.first_property_enum_constraints.map((e) => e.input_schema_first_property_enum_constraint).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_enum_constraint must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by choice index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_enum_constraint')) {
+      fail(`${scenario.id}: input_schema_first_property_enum_constraint must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert enumerated_cap is in enumerated bucket
+  const enumeratedEntry = index.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'enumerated');
+  if (!enumeratedEntry || !enumeratedEntry.capabilities.includes('enumerated_cap')) {
+    fail(`${scenario.id}: enumerated_cap (firstKey.enum=['active','inactive','pending']) must be in enumerated bucket`);
+  }
+
+  // Assert unenumerated_cap is in unenumerated bucket
+  const unenumeratedEntry = index.first_property_enum_constraints.find((e) => e.input_schema_first_property_enum_constraint === 'unenumerated');
+  if (!unenumeratedEntry || !unenumeratedEntry.capabilities.includes('unenumerated_cap')) {
+    fail(`${scenario.id}: unenumerated_cap (firstKey.enum missing) must be in unenumerated bucket`);
+  }
+
+  // Assert insertion_order_cap is in enumerated bucket (firstKey='z', enum=['x','y']) NOT unenumerated (sorted 'a' would be unenumerated)
+  if (!enumeratedEntry || !enumeratedEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has enum=['x','y']) must be in enumerated bucket (insertion-order, NOT sorted)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (enumerated bucket) must NOT produce a warning`);
   }
 }
 

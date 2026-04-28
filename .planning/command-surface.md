@@ -1,8 +1,57 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-### M54 Charter Sketch Reservation — Input Schema First Property Enum Constraint Presence Index Product CLI Surface
+### M54: Input Schema First Property Enum Constraint Presence Index — Product CLI Surface
 
-> **M54 Charter Sketch Reservation — 2026-04-28, run_ca31318ae2693a36, turn_61989ef8c7d5bad7, PM attempt 1, HEAD `530ce1a`.** Reserves the M54 surface materialization slot for the dev attempt that follows. CLI surface growth 37 → 38 with new top-level noun `choice` (single subcommand `index`) inserted alphabetically between `binding` and `confidence` in the post-`docs` block (`binding` (b=98) < `choice` (c=99) at position 0; `choice` (c-h, 99-104) < `confidence` (c-o, 99-111) at position 1). Command shape: `tusq choice index [--choice <value>] [--manifest <path>] [--out <path>] [--json]`. Closed four-value bucket-key enum `enumerated | unenumerated | not_applicable | unknown`; closed three-value `aggregation_key` enum `enum_constraint | not_applicable | unknown`; bucket iteration order `enumerated → unenumerated → not_applicable → unknown` (deterministic stable-output convention only, NOT widget-composition-readiness-ranked, NOT closed-vocabulary-coverage-ranked); five frozen warning reason codes; case-sensitive lowercase-only `--choice` filter; non-persistence rule; result-array field `first_property_enum_constraints`; per-bucket field `input_schema_first_property_enum_constraint`. Empty-array `enum: []` is `unknown` (deliberate divergence from M52/M53). All 37 prior commands (init, scan, manifest, compile, serve, review, docs, approve, auth, binding, confidence, description, diff, domain, effect, examples, gloss, hint, input, items, method, obligation, output, parameter, path, pii, policy, redaction, request, response, sensitivity, shape, signature, strictness, surface, version, help) carry forward byte-identically. See ROADMAP.md § M54 for full PM-frozen scope. Dev materialization will replace this reservation with a full `### M54` Product CLI Surface block (two-row command table, four-flag table, bucket-key enum table, aggregation_key enum table, classifier-function rules table, per-bucket entry shape table, bucket iteration order table, default-preservation table, failure UX table, local-only invariants table).
+**Status:** Shipped in `run_ca31318ae2693a36` / `turn_bb0592709e7268f5` (dev implementation). V1.35.
+
+**Commands (2 rows):**
+
+| Command | Description |
+|---------|-------------|
+| `tusq choice` | Top-level noun; no subcommand prints help |
+| `tusq choice index` | Emit deterministic per-first-property-enum-constraint capability index |
+
+**Flags (4 flags):**
+
+| Flag | Default | Type | Effect |
+|------|---------|------|--------|
+| `--choice <value>` | all buckets | string | Filter to single enum-constraint bucket; case-sensitive lowercase only |
+| `--manifest <path>` | `tusq.manifest.json` | path | Manifest file to read |
+| `--out <path>` | stdout | path | Write index to file; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | boolean | Emit machine-readable JSON |
+
+**Bucket-key enum (4 values):** `enumerated | unenumerated | not_applicable | unknown`
+
+**Aggregation_key enum (3 values):** `enum_constraint | not_applicable | unknown`
+
+**Classifier rules (frozen):**
+- `enumerated`: `firstKey.enum` is a non-empty Array (length ≥ 1)
+- `unenumerated`: `firstKey.enum` is missing/null/undefined
+- `not_applicable`: `input_schema.type` is string but not `"object"`, OR zero-property `properties`
+- `unknown`: `input_schema` malformed, `firstKey` not plain object, `enum` present but non-array, OR `enum` present empty-array (deliberate divergence from M52/M53 — empty enum is malformed JSON-Schema)
+
+**Bucket iteration order:** `enumerated → unenumerated → not_applicable → unknown` (deterministic stable-output convention only — NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT closed-vocabulary-coverage-ranked)
+
+**Per-bucket entry shape (8 fields):** `input_schema_first_property_enum_constraint`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`
+
+**Failure UX:**
+
+| Error condition | Exit | Stdout | Stderr |
+|----------------|------|--------|--------|
+| Missing manifest | 1 | empty | `Manifest not found: <path>` |
+| Malformed JSON | 1 | empty | `Invalid manifest JSON: <path>` |
+| Missing capabilities array | 1 | empty | `Invalid manifest: missing capabilities array` |
+| Unknown `--choice` value | 1 | empty | `Unknown input schema first property enum constraint: <value>` |
+| Absent bucket | 1 | empty | `No capabilities found for input schema first property enum constraint: <value>` |
+| Unknown flag | 1 | empty | `Unknown flag: --<flag>` |
+| `--out` inside `.tusq/` | 1 | empty | `--out path must not be inside .tusq/` |
+| `--out` unwritable | 1 | empty | `Cannot write to --out path: <path>` |
+
+**Local-only invariants:**
+- `tusq.manifest.json` never modified by `tusq choice index`
+- `input_schema_first_property_enum_constraint` NOT written into manifest (non-persistence)
+- CLI surface: 37 → 38 (`choice` between `binding` and `confidence`)
+- All 37 prior commands carry forward byte-identically
 
 ### M53: Input Schema First Property Format Hint Presence Index — Product CLI Surface
 

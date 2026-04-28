@@ -1,6 +1,39 @@
 # System Spec — tusq.dev Docs & Website Platform
 
-> **M54 Charter Sketch Reservation — 2026-04-28, run_ca31318ae2693a36, turn_61989ef8c7d5bad7, PM attempt 1, HEAD `530ce1a`.** Reserves the M54 spec materialization slot for the dev attempt that follows. M54 charter: introduce `tusq choice index` (input-side first-property `enum`-constraint presence axis) — closed four-value bucket-key enum `enumerated | unenumerated | not_applicable | unknown`; closed three-value `aggregation_key` enum `enum_constraint | not_applicable | unknown`; five frozen warning reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_enum_invalid_when_present`); bucket iteration order `enumerated → unenumerated → not_applicable → unknown` (deterministic stable-output convention only, NOT widget-composition-readiness-ranked); CLI surface 37 → 38 with `choice` inserted between `binding` and `confidence`; result-array field `first_property_enum_constraints`; per-bucket field `input_schema_first_property_enum_constraint`; non-persistence rule; reserved Constraint 47. Empty-array `enum: []` is `unknown` (deliberate divergence from M52/M53's empty-counts-as-absent precedent — empty enum is malformed JSON-Schema). See ROADMAP.md § M54 for the full PM-frozen scope and `.planning/PM_SIGNOFF.md` § M54 Charter Bound for the binding decision. Dev materialization will replace this reservation with a full `### M54` detail block.
+> **M54 Materialized — 2026-04-28, run_ca31318ae2693a36, turn_bb0592709e7268f5, dev attempt 1.** All PM-frozen scope carried forward verbatim. Implementation: `classifyInputSchemaFirstPropertyEnumConstraint` (pure function), `buildInputSchemaFirstPropertyEnumConstraintIndex`, `formatInputSchemaFirstPropertyEnumConstraintIndex`, `cmdChoice`/`cmdChoiceIndex`/`parseChoiceIndexArgs` in `src/cli.js`; CLI surface 37→38 (`choice` between `binding` and `confidence`); 24-case smoke matrix; eval scenario `input-schema-first-property-enum-constraint-index-determinism` (44→45 scenarios); `tusq choice index` documented in `website/docs/cli-reference.md`. npm test exits 0. See IMPLEMENTATION_NOTES.md § M54 for full detail.
+
+### M54: Static Capability Input Schema First Property Enum Constraint Presence Index Export from Manifest Evidence (~0.5 day) — V1.35
+
+**Purpose:** Emit a deterministic, per-first-input-property-enum-constraint-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].enum` is a non-empty array (`enumerated`), missing/null/undefined (`unenumerated`), non-applicable (`not_applicable`), or malformed (`unknown`). Planning aid only — does NOT validate runtime payload conformance against the declared enum vocabulary, does NOT cross-reference manifest enum vs published OpenAPI/SDK docs, does NOT infer missing enum vocabularies, does NOT generate SDK/embeddable-widget picker stubs.
+
+**Command shape:** `tusq choice index [--choice <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**Frozen four-value `input_schema_first_property_enum_constraint` bucket-key enum:** `enumerated | unenumerated | not_applicable | unknown`
+
+**Frozen three-value `aggregation_key` enum:** `enum_constraint | not_applicable | unknown`
+
+**Frozen classifier function (M54-specific rules):**
+- `inputSchema` null/undefined/missing → `unknown` (reason: `input_schema_field_missing`)
+- `inputSchema` not plain object → `unknown` (reason: `input_schema_field_not_object`)
+- `inputSchema.type` missing or non-string → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+- `inputSchema.type` is string but not `"object"` → `not_applicable` (no warning)
+- `inputSchema.type === "object"`, `properties` missing/null/not-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+- `inputSchema.type === "object"`, `Object.keys(properties).length === 0` → `not_applicable` (no warning)
+- `firstVal` not plain object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid`)
+- `firstVal.enum` present, non-null, non-undefined, not an Array → `unknown` (reason: `input_schema_properties_first_property_enum_invalid_when_present`)
+- `firstVal.enum` present, is an Array, `length === 0` → `unknown` (reason: `input_schema_properties_first_property_enum_invalid_when_present` — **deliberate divergence from M52/M53 empty-counts-as-absent: empty enum is malformed JSON-Schema**)
+- `firstVal.enum` missing/null/undefined → `unenumerated` (no warning)
+- `firstVal.enum` is Array with `length >= 1` → `enumerated` (no warning; single-value is degenerate but structurally valid)
+
+**Frozen warning reason codes (five values):** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_enum_invalid_when_present` (fifth code spans BOTH non-array AND empty-array malformations).
+
+**Frozen 8-field per-bucket entry shape:** `input_schema_first_property_enum_constraint`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`
+
+**Closed-enum bucket iteration order:** `enumerated → unenumerated → not_applicable → unknown` (deterministic stable-output convention only — NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT chat-affordance-readiness-ranked, NOT command-palette-readiness-ranked, NOT action-widget-readiness-ranked, NOT closed-vocabulary-coverage-ranked). Empty buckets MUST NOT appear.
+
+**Read-only invariants:** manifest never modified; `input_schema_first_property_enum_constraint` NOT persisted into `tusq.manifest.json`; per-property enum beyond the FIRST NOT walked; nested-property enum NOT walked; output_schema enum NOT classified; CLI surface 37→38.
+
+**Deferred successor milestones:** M-Choice-All-Properties / M-Choice-Nested / M-Choice-Output / M-Choice-Cardinality-Distribution / M-Choice-Enum-Value-Type / M-Choice-Enum-Validator-Crossref / M-Choice-Persistence / M-Choice-Doc-Contradiction / M-Choice-LLM-Enum-Inferrer / M-Choice-SDK-Picker-Generator.
 
 > **M53 Materialized — 2026-04-28, run_e05bf49856cd2880, turn_3bd0b034cb7c2180, dev attempt 1.** All PM-frozen scope carried forward verbatim. Implementation: `classifyInputSchemaFirstPropertyFormatHint` (pure function), `buildInputSchemaFirstPropertyFormatHintIndex`, `formatInputSchemaFirstPropertyFormatHintIndex`, `cmdHint`/`cmdHintIndex`/`parseHintIndexArgs` in `src/cli.js`; CLI surface 36→37 (`hint` between `gloss` and `input`); 24-case smoke matrix; eval scenario `input-schema-first-property-format-hint-index-determinism` (43→44 scenarios); `tusq hint index` documented in `website/docs/cli-reference.md`. npm test exits 0. See IMPLEMENTATION_NOTES.md § M53 for full detail.
 
