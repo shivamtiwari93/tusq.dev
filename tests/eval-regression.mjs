@@ -2073,6 +2073,8 @@ async function run() {
       await runInputSchemaFirstPropertyPatternIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_read_only_index_determinism') {
       await runInputSchemaFirstPropertyReadOnlyIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_write_only_index_determinism') {
+      await runInputSchemaFirstPropertyWriteOnlyIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -4061,6 +4063,159 @@ async function runInputSchemaFirstPropertyReadOnlyIndexDeterminismScenario(tmpRo
   // Assert mutable bucket has aggregation_key 'mutability_state'
   if (mutableEntry.aggregation_key !== 'mutability_state') {
     fail(`${scenario.id}: mutable bucket must have aggregation_key 'mutability_state'; got '${mutableEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyWriteOnlyIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-write-only-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq secret index --json three times and assert byte-identical output
+  const run1 = runCli(['secret', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['secret', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['secret', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: secret index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_write_only bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validWriteOnlyValues = new Set(scenario.expected_valid_write_only_values);
+  for (const entry of index.first_property_write_only_states) {
+    if (!validWriteOnlyValues.has(entry.input_schema_first_property_write_only)) {
+      fail(`${scenario.id}: input_schema_first_property_write_only '${entry.input_schema_first_property_write_only}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_write_only_states) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_write_only}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (write_only → not_write_only → not_applicable → unknown)
+  const bucketOrder = index.first_property_write_only_states.map((e) => e.input_schema_first_property_write_only).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_write_only must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by secret index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_write_only')) {
+      fail(`${scenario.id}: input_schema_first_property_write_only must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert write_only_cap is in write_only bucket
+  const writeOnlyEntry = index.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'write_only');
+  if (!writeOnlyEntry || !writeOnlyEntry.capabilities.includes('write_only_cap')) {
+    fail(`${scenario.id}: write_only_cap (firstKey.writeOnly=true) must be in write_only bucket`);
+  }
+
+  // Assert not_write_only_cap is in not_write_only bucket
+  const notWriteOnlyEntry = index.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'not_write_only');
+  if (!notWriteOnlyEntry || !notWriteOnlyEntry.capabilities.includes('not_write_only_cap')) {
+    fail(`${scenario.id}: not_write_only_cap (firstKey.writeOnly absent) must be in not_write_only bucket`);
+  }
+
+  // Assert null_write_only_cap is in not_write_only bucket (NULL-AS-ABSENT)
+  if (!notWriteOnlyEntry || !notWriteOnlyEntry.capabilities.includes('null_write_only_cap')) {
+    fail(`${scenario.id}: null_write_only_cap (firstKey.writeOnly=null) must be in not_write_only bucket (null-as-absent)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_write_only_cap')) {
+    fail(`${scenario.id}: null_write_only_cap (null-as-absent → not_write_only) must NOT produce a warning`);
+  }
+
+  // Assert false_write_only_cap is in not_write_only bucket (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY)
+  if (!notWriteOnlyEntry || !notWriteOnlyEntry.capabilities.includes('false_write_only_cap')) {
+    fail(`${scenario.id}: false_write_only_cap (firstKey.writeOnly=false) must be in not_write_only bucket (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'false_write_only_cap')) {
+    fail(`${scenario.id}: false_write_only_cap (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY → not_write_only) must NOT produce a warning`);
+  }
+
+  // Assert insertion_order_cap is in write_only bucket (firstKey='z', writeOnly=true) NOT not_write_only (sorted 'a' has no writeOnly)
+  if (!writeOnlyEntry || !writeOnlyEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has writeOnly=true) must be in write_only bucket (insertion-order, NOT sorted)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (write_only bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert write_only bucket has aggregation_key 'output_visibility'
+  if (writeOnlyEntry.aggregation_key !== 'output_visibility') {
+    fail(`${scenario.id}: write_only bucket must have aggregation_key 'output_visibility'; got '${writeOnlyEntry.aggregation_key}'`);
+  }
+
+  // Assert not_write_only bucket has aggregation_key 'output_visibility'
+  if (notWriteOnlyEntry.aggregation_key !== 'output_visibility') {
+    fail(`${scenario.id}: not_write_only bucket must have aggregation_key 'output_visibility'; got '${notWriteOnlyEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

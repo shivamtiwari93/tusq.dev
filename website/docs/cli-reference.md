@@ -1577,6 +1577,62 @@ tusq sample index --sample unexampled --json
 tusq sample index --out sample-index.json
 ```
 
+## `tusq secret index`
+
+Emit a deterministic, per-first-input-property-writeOnly-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].writeOnly` is boolean `true` (`write_only`), boolean `false` or absent or `null` (`not_write_only`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime writeOnly enforcer, credential-secrecy assessor, chat-mask-priority ranker, transcript-redaction-priority ranker, audit-log-redaction-tier ranker, surface-generator-output-suppression enforcer, one-time-vs-persistent-credential classifier, brand-safety checker, or widget-output-elicitability assessor**.
+
+**M61-vs-M60 distinctness:** `tusq seal index` (M60) reads `input_schema.properties[firstKey].readOnly` (JSON-Schema Draft 7+'s per-property mutability boolean signaling server-set / not user-elicited). `tusq secret index` (M61) reads `input_schema.properties[firstKey].writeOnly` (JSON-Schema Draft 2019-09+'s per-property output-suppression boolean signaling that this value SHOULD NOT appear in API responses). These two commands are read-only-invariant peers reading two distinct JSON-Schema boolean keywords under two distinct nouns; neither alters the other's output bytes. An operator may set both, either, or neither on the same property — they are orthogonal annotations.
+
+```bash
+tusq secret index [--secret <write_only|not_write_only|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--secret <write_only\|not_write_only\|not_applicable\|unknown>` | all buckets | Filter to a single writeOnly annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].writeOnly` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `write_only` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].writeOnly === true` (strict boolean `true` only — NO truthy/falsy coercion; string `'true'`/number `1` → `unknown`) |
+| `not_write_only` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].writeOnly === false` (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY — no warning) OR `properties[firstKey].writeOnly` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57/M58/M59/M60 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].writeOnly` present non-null but NOT a boolean (string `'true'`, number `1`/`0`, empty string, array, plain object) |
+
+**Bucket iteration order:** `write_only → not_write_only → not_applicable → unknown` (deterministic stable-output convention — NOT a credential-secrecy ranking, NOT a chat-mask-priority ranking, NOT a transcript-redaction-priority ranking).
+
+**Six frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_write_only_invalid_when_present`). The sixth code covers ALL non-boolean `writeOnly` malformations under a single consolidated code.
+
+**Exit codes:**
+
+| Code | Condition |
+|------|-----------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown `--secret` value, `--secret` value with absent bucket, `--out` path error, or unknown subcommand |
+
+**Examples:**
+
+```bash
+# Human-readable output
+tusq secret index
+
+# JSON output
+tusq secret index --json
+
+# Filter to write_only bucket
+tusq secret index --secret write_only --json
+
+# Filter to not_write_only bucket
+tusq secret index --secret not_write_only --json
+
+# Write to file
+tusq secret index --out secret-index.json
+```
+
 ## `tusq seal index`
 
 Emit a deterministic, per-first-input-property-readOnly-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].readOnly` is boolean `true` (`readonly`), boolean `false` or absent or `null` (`mutable`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime readOnly enforcer, IAM-requirement-strength evaluator, server-set-vs-user-set classifier, parameter-mutability-tier distributor, end-user-prompt-eligibility enforcer, path-parameter-binding-tier ranker, schema-extraction-completeness assessor, writeOnly-crossref tool, or doc-contradiction detector**.

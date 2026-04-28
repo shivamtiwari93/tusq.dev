@@ -3246,6 +3246,159 @@
         "unknown"
       ],
       "expected_bucket_order": "readonly,mutable,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-write-only-index-determinism",
+      "scenario_type": "input_schema_first_property_write_only_index_determinism",
+      "description": "Verifies that tusq secret index produces byte-identical output across three runs on a synthetic manifest with write_only, not_write_only, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (write_only/not_write_only/not_applicable/unknown), closed three-value aggregation_key enum (output_visibility/not_applicable/unknown), bucket order determinism (write_only \u2192 not_write_only \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_write_only non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has writeOnly=true (write_only), a has no writeOnly (not_write_only), b has writeOnly=\"true\" (string \u2014 unknown+warning input_schema_properties_first_property_write_only_invalid_when_present) \u2014 firstKey=z \u2192 write_only (insertion-order, NOT sorted). NULL-AS-ABSENT: writeOnly:null \u2192 not_write_only (no warning, mirroring M55/M56/M57/M58/M59/M60 null-as-absent). EXPLICIT-FALSE-IS-NOT-WRITE-ONLY: writeOnly:false \u2192 not_write_only (no warning, mirroring M60 EXPLICIT-FALSE-IS-MUTABLE). STRICT-BOOLEAN: writeOnly must be exactly === true or === false; NO truthy/falsy coercion. Sixth frozen warning reason code: input_schema_properties_first_property_write_only_invalid_when_present (single consolidated code covers ALL non-boolean malformations: string, number, empty string, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "write_only_cap",
+          "method": "POST",
+          "path": "/write-only",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "confidential",
+          "approved": true,
+          "description": "First property has writeOnly=true (boolean) \u2014 lands in write_only bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "api_key": {
+                "type": "string",
+                "writeOnly": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "not_write_only_cap",
+          "method": "PUT",
+          "path": "/not-write-only",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no writeOnly field \u2014 lands in not_write_only bucket (absent \u2192 not_write_only)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "setting_id": {
+                "type": "string",
+                "description": "Setting identifier"
+              }
+            },
+            "required": [
+              "setting_id"
+            ]
+          }
+        },
+        {
+          "name": "null_write_only_cap",
+          "method": "GET",
+          "path": "/null-write-only",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has writeOnly=null \u2014 lands in not_write_only bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "writeOnly": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "false_write_only_cap",
+          "method": "GET",
+          "path": "/false-write-only",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has writeOnly=false \u2014 lands in not_write_only bucket (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "writeOnly": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has writeOnly=true (write_only), a has no writeOnly (not_write_only), b has writeOnly=\"true\" (string \u2014 unknown+warning). firstKey=z \u2192 write_only (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "writeOnly": "true"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_write_only_values": [
+        "write_only",
+        "not_write_only",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "output_visibility",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "write_only,not_write_only,not_applicable,unknown"
     }
   ]
 }

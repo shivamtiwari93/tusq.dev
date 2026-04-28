@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 44) {
+  if (m45CommandCount !== 45) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 44) {
-    throw new Error(`M46(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 45) {
+    throw new Error(`M46(x): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 44) {
-    throw new Error(`M47(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 45) {
+    throw new Error(`M47(x): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 44) {
-    throw new Error(`M48(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 45) {
+    throw new Error(`M48(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 44) {
-    throw new Error(`M49(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 45) {
+    throw new Error(`M49(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 44) {
-    throw new Error(`M50(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 45) {
+    throw new Error(`M50(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 44) {
-    throw new Error(`M51(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 45) {
+    throw new Error(`M51(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 44) {
-    throw new Error(`M52(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 45) {
+    throw new Error(`M52(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 44 commands (M61 adds 'secret') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 44) {
-    throw new Error(`M53(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 45) {
+    throw new Error(`M53(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 44 commands (M61 adds 'secret') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 44) {
-    throw new Error(`M54(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 45) {
+    throw new Error(`M54(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 44 commands (M61 adds 'secret') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 44) {
-    throw new Error(`M55(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 45) {
+    throw new Error(`M55(x3): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8506,8 +8506,8 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 44) {
-    throw new Error(`M56(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  if (m56HelpCommandCount !== 45) {
+    throw new Error(`M56(x): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
     throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
@@ -8906,11 +8906,11 @@ async function run() {
     }
   }
 
-  // M57(x2): help enumerates 43 commands (M60 adds 'seal') and includes 'caption' between 'binding' and 'choice'
+  // M57(x2): help enumerates 44 commands (M61 adds 'secret') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 44) {
-    throw new Error(`M57(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
+  if (m57HelpCommandCount !== 45) {
+    throw new Error(`M57(x2): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
     throw new Error(`M57(x2): tusq help must include 'caption' command:\n${m57HelpResult.stdout}`);
@@ -9335,8 +9335,8 @@ async function run() {
   // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
   const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
   const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m58HelpCommandCount !== 44) {
-    throw new Error(`M58(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
+  if (m58HelpCommandCount !== 45) {
+    throw new Error(`M58(x2): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
   }
   if (!m58HelpResult.stdout.includes('  legacy')) {
     throw new Error(`M58(x2): tusq help must include 'legacy' command:\n${m58HelpResult.stdout}`);
@@ -9735,11 +9735,11 @@ async function run() {
     }
   }
 
-  // M59(x2): help enumerates 43 commands (M60 adds 'seal') and includes 'regex' between 'redaction' and 'request'
+  // M59(x2): help enumerates 44 commands (M61 adds 'secret') and includes 'regex' between 'redaction' and 'request'
   const m59HelpResult = runCli(['help'], { cwd: m59TmpDir });
   const m59HelpCommandCount = (m59HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m59HelpCommandCount !== 44) {
-    throw new Error(`M59(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
+  if (m59HelpCommandCount !== 45) {
+    throw new Error(`M59(x2): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
   }
   if (!m59HelpResult.stdout.includes('  regex')) {
     throw new Error(`M59(x2): tusq help must include 'regex' command:\n${m59HelpResult.stdout}`);
@@ -10138,11 +10138,11 @@ async function run() {
     }
   }
 
-  // M60(x2): help enumerates 44 commands (M60 adds 'seal') and includes 'seal' between 'sample' and 'sensitivity'
+  // M60(x2): help enumerates 44 commands (M61 adds 'secret') and includes 'seal' between 'sample' and 'sensitivity'
   const m60HelpResult = runCli(['help'], { cwd: m60TmpDir });
   const m60HelpCommandCount = (m60HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m60HelpCommandCount !== 44) {
-    throw new Error(`M60(x2): tusq help must enumerate 44 commands (M60 adds 'seal'); got ${m60HelpCommandCount}:\n${m60HelpResult.stdout}`);
+  if (m60HelpCommandCount !== 45) {
+    throw new Error(`M60(x2): tusq help must enumerate 44 commands (M61 adds 'secret'); got ${m60HelpCommandCount}:\n${m60HelpResult.stdout}`);
   }
   if (!m60HelpResult.stdout.includes('  seal')) {
     throw new Error(`M60(x2): tusq help must include 'seal' command:\n${m60HelpResult.stdout}`);
@@ -10169,6 +10169,409 @@ async function run() {
   }
 
   await fs.rm(m60TmpDir, { recursive: true, force: true });
+
+  // ── M61: Static Capability Input Schema First Property WriteOnly Annotation Presence Index ──
+  const m61TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m61-smoke-'));
+
+  // M61 fixture manifest: synthetic capabilities across write_only/not_write_only/not_applicable buckets.
+  // write_only_cap → firstKey.writeOnly = true (boolean true → write_only)
+  // not_write_only_cap → firstKey has no writeOnly field (absent → not_write_only)
+  // not_applicable_cap → input_schema.type = 'array' (non-object → not_applicable, no warning)
+  const m61SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'write_only_cap',
+        description: 'Capability with writeOnly true on first property',
+        method: 'POST',
+        path: '/api/v1/credentials',
+        domain: 'credentials',
+        side_effect_class: 'write',
+        sensitivity_class: 'confidential',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { api_key: { type: 'string', writeOnly: true } },
+          required: ['api_key']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_write_only_cap',
+        description: 'Capability with no writeOnly on first property',
+        method: 'PUT',
+        path: '/api/v1/settings/:id',
+        domain: 'settings',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { setting_id: { type: 'string', description: 'Setting identifier' } },
+          required: ['setting_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m61SyntheticManifestPath = path.join(m61TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m61SyntheticManifestPath, JSON.stringify(m61SyntheticManifest, null, 2), 'utf8');
+
+  // M61(a): default tusq secret index on synthetic fixture produces correct buckets in closed-enum order
+  const m61DefaultResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--json'], { cwd: m61TmpDir });
+  if (m61DefaultResult.status !== 0) {
+    throw new Error(`M61(a): secret index must exit 0:\nstderr=${m61DefaultResult.stderr}`);
+  }
+  const m61DefaultJson = JSON.parse(m61DefaultResult.stdout);
+  if (!Array.isArray(m61DefaultJson.first_property_write_only_states)) {
+    throw new Error(`M61(a): JSON output must have first_property_write_only_states[] array:\n${m61DefaultResult.stdout}`);
+  }
+  if (m61DefaultJson.tiers !== undefined || m61DefaultJson.first_property_read_only_states !== undefined || m61DefaultJson.first_property_pattern_constraints !== undefined) {
+    throw new Error(`M61(a): JSON output must NOT have tiers/first_property_read_only_states/first_property_pattern_constraints; field name must be first_property_write_only_states[]:\n${m61DefaultResult.stdout}`);
+  }
+  if (!m61DefaultJson.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'write_only' && e.capabilities.includes('write_only_cap'))) {
+    throw new Error(`M61(a): write_only bucket must include write_only_cap:\n${JSON.stringify(m61DefaultJson.first_property_write_only_states)}`);
+  }
+  if (!m61DefaultJson.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'not_write_only' && e.capabilities.includes('not_write_only_cap'))) {
+    throw new Error(`M61(a): not_write_only bucket must include not_write_only_cap:\n${JSON.stringify(m61DefaultJson.first_property_write_only_states)}`);
+  }
+  if (!m61DefaultJson.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M61(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m61DefaultJson.first_property_write_only_states)}`);
+  }
+  if (m61DefaultJson.warnings.length !== 0) {
+    throw new Error(`M61(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m61DefaultJson.warnings)}`);
+  }
+
+  // M61(b): bucket order is write_only → not_write_only → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m61BucketOrder = m61DefaultJson.first_property_write_only_states.map((e) => e.input_schema_first_property_write_only);
+  if (m61BucketOrder[0] !== 'write_only' || m61BucketOrder[1] !== 'not_write_only' || m61BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M61(b): bucket order must be write_only→not_write_only→not_applicable; got ${m61BucketOrder}`);
+  }
+
+  // M61(c): --secret write_only filter returns only write_only bucket
+  const m61WriteOnlyResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret', 'write_only', '--json'], { cwd: m61TmpDir });
+  if (m61WriteOnlyResult.status !== 0) {
+    throw new Error(`M61(c): --secret write_only must exit 0:\nstderr=${m61WriteOnlyResult.stderr}`);
+  }
+  const m61WriteOnlyJson = JSON.parse(m61WriteOnlyResult.stdout);
+  if (m61WriteOnlyJson.first_property_write_only_states.length !== 1 || m61WriteOnlyJson.first_property_write_only_states[0].input_schema_first_property_write_only !== 'write_only') {
+    throw new Error(`M61(c): --secret write_only must return exactly one write_only entry:\n${m61WriteOnlyResult.stdout}`);
+  }
+
+  // M61(d): --secret not_write_only filter returns only not_write_only bucket
+  const m61NotWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret', 'not_write_only', '--json'], { cwd: m61TmpDir });
+  if (m61NotWriteOnlyResult.status !== 0) {
+    throw new Error(`M61(d): --secret not_write_only must exit 0:\nstderr=${m61NotWriteOnlyResult.stderr}`);
+  }
+  const m61NotWriteOnlyJson = JSON.parse(m61NotWriteOnlyResult.stdout);
+  if (m61NotWriteOnlyJson.first_property_write_only_states.length !== 1 || m61NotWriteOnlyJson.first_property_write_only_states[0].input_schema_first_property_write_only !== 'not_write_only') {
+    throw new Error(`M61(d): --secret not_write_only must return exactly one not_write_only entry:\n${m61NotWriteOnlyResult.stdout}`);
+  }
+
+  // M61(e): --secret not_applicable filter returns only not_applicable bucket
+  const m61NaResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret', 'not_applicable', '--json'], { cwd: m61TmpDir });
+  if (m61NaResult.status !== 0) {
+    throw new Error(`M61(e): --secret not_applicable must exit 0:\nstderr=${m61NaResult.stderr}`);
+  }
+  const m61NaJson = JSON.parse(m61NaResult.stdout);
+  if (m61NaJson.first_property_write_only_states.length !== 1 || m61NaJson.first_property_write_only_states[0].input_schema_first_property_write_only !== 'not_applicable') {
+    throw new Error(`M61(e): --secret not_applicable must return exactly one not_applicable entry:\n${m61NaResult.stdout}`);
+  }
+
+  // M61(f): --secret unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m61UnknownAbsentResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret', 'unknown'], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61UnknownAbsentResult.status !== 1 || !m61UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M61(f): --secret unknown on a manifest with no unknown caps must exit 1:\nstdout=${m61UnknownAbsentResult.stdout}\nstderr=${m61UnknownAbsentResult.stderr}`);
+  }
+
+  // M61(g): --secret WRITE_ONLY exits 1 (case-sensitive enforcement)
+  const m61CaseResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret', 'WRITE_ONLY'], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61CaseResult.status !== 1) {
+    throw new Error(`M61(g): --secret WRITE_ONLY uppercase must exit 1 (case-sensitive):\nstdout=${m61CaseResult.stdout}\nstderr=${m61CaseResult.stderr}`);
+  }
+
+  // M61(h): unknown flag exits 1
+  const m61UnknownFlagResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--bogus'], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61UnknownFlagResult.status !== 1) {
+    throw new Error(`M61(h): unknown flag must exit 1:\nstdout=${m61UnknownFlagResult.stdout}\nstderr=${m61UnknownFlagResult.stderr}`);
+  }
+
+  // M61(i): missing manifest exits 1
+  const m61MissingManifestResult = runCli(['secret', 'index', '--manifest', path.join(m61TmpDir, 'nonexistent.json')], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61MissingManifestResult.status !== 1) {
+    throw new Error(`M61(i): missing manifest must exit 1:\nstdout=${m61MissingManifestResult.stdout}\nstderr=${m61MissingManifestResult.stderr}`);
+  }
+
+  // M61(j): malformed JSON exits 1
+  const m61BadJsonPath = path.join(m61TmpDir, 'bad.json');
+  await fs.writeFile(m61BadJsonPath, 'not json', 'utf8');
+  const m61BadJsonResult = runCli(['secret', 'index', '--manifest', m61BadJsonPath], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61BadJsonResult.status !== 1) {
+    throw new Error(`M61(j): malformed JSON manifest must exit 1:\nstdout=${m61BadJsonResult.stdout}\nstderr=${m61BadJsonResult.stderr}`);
+  }
+
+  // M61(k): missing capabilities array exits 1
+  const m61NoCapPath = path.join(m61TmpDir, 'nocap.json');
+  await fs.writeFile(m61NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m61NoCapResult = runCli(['secret', 'index', '--manifest', m61NoCapPath], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61NoCapResult.status !== 1) {
+    throw new Error(`M61(k): missing capabilities array must exit 1:\nstdout=${m61NoCapResult.stdout}\nstderr=${m61NoCapResult.stderr}`);
+  }
+
+  // M61(l): --secret with no value exits 1
+  const m61NoValueResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--secret'], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61NoValueResult.status !== 1) {
+    throw new Error(`M61(l): --secret with no value must exit 1:\nstdout=${m61NoValueResult.stdout}\nstderr=${m61NoValueResult.stderr}`);
+  }
+
+  // M61(m): --out writes to a file (no stdout)
+  const m61OutPath = path.join(m61TmpDir, 'out', 'secret-index.json');
+  const m61OutResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--out', m61OutPath], { cwd: m61TmpDir });
+  if (m61OutResult.status !== 0) {
+    throw new Error(`M61(m): --out must exit 0:\nstderr=${m61OutResult.stderr}`);
+  }
+  if (m61OutResult.stdout !== '') {
+    throw new Error(`M61(m): --out must produce no stdout:\nstdout=${m61OutResult.stdout}`);
+  }
+  const m61OutContent = JSON.parse(await fs.readFile(m61OutPath, 'utf8'));
+  if (!Array.isArray(m61OutContent.first_property_write_only_states)) {
+    throw new Error(`M61(m): --out file must contain first_property_write_only_states[]:\n${JSON.stringify(m61OutContent)}`);
+  }
+
+  // M61(n): --out inside .tusq/ exits 1
+  const m61TusqOutResult = runCli(['secret', 'index', '--manifest', m61SyntheticManifestPath, '--out', path.join(m61TmpDir, '.tusq', 'secret.json')], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (m61TusqOutResult.status !== 1) {
+    throw new Error(`M61(n): --out inside .tusq/ must exit 1:\nstdout=${m61TusqOutResult.stdout}\nstderr=${m61TusqOutResult.stderr}`);
+  }
+
+  // M61(o): empty capabilities → exit 0, first_property_write_only_states: []
+  const m61EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m61EmptyCapPath = path.join(m61TmpDir, 'empty-cap.json');
+  await fs.writeFile(m61EmptyCapPath, JSON.stringify(m61EmptyCapManifest, null, 2), 'utf8');
+  const m61EmptyCapResult = runCli(['secret', 'index', '--manifest', m61EmptyCapPath, '--json'], { cwd: m61TmpDir });
+  if (m61EmptyCapResult.status !== 0) {
+    throw new Error(`M61(o): empty capabilities must exit 0:\nstderr=${m61EmptyCapResult.stderr}`);
+  }
+  const m61EmptyCapJson = JSON.parse(m61EmptyCapResult.stdout);
+  if (!Array.isArray(m61EmptyCapJson.first_property_write_only_states) || m61EmptyCapJson.first_property_write_only_states.length !== 0) {
+    throw new Error(`M61(o): empty capabilities must produce first_property_write_only_states: []:\n${m61EmptyCapResult.stdout}`);
+  }
+
+  // M61(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m61AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'string_write_only', description: 'writeOnly:"true" (string)', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: 'true' } } } }
+    ]
+  };
+  const m61AllWarningsPath = path.join(m61TmpDir, 'all-warnings.json');
+  await fs.writeFile(m61AllWarningsPath, JSON.stringify(m61AllWarningsManifest, null, 2), 'utf8');
+  const m61WarningsResult = runCli(['secret', 'index', '--manifest', m61AllWarningsPath, '--json'], { cwd: m61TmpDir });
+  if (m61WarningsResult.status !== 0) {
+    throw new Error(`M61(p): malformed schemas must exit 0 (not crash):\nstderr=${m61WarningsResult.stderr}`);
+  }
+  const m61WarningsJson = JSON.parse(m61WarningsResult.stdout);
+  if (!Array.isArray(m61WarningsJson.warnings) || m61WarningsJson.warnings.length !== 6) {
+    throw new Error(`M61(p): must produce exactly 6 warnings:\n${JSON.stringify(m61WarningsJson.warnings)}`);
+  }
+  const m61WarningReasons = m61WarningsJson.warnings.map((w) => w.reason);
+  if (!m61WarningReasons.includes('input_schema_field_missing')) throw new Error('M61(p): missing input_schema_field_missing reason');
+  if (!m61WarningReasons.includes('input_schema_field_not_object')) throw new Error('M61(p): missing input_schema_field_not_object reason');
+  if (!m61WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M61(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m61WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M61(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m61WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M61(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m61WarningReasons.includes('input_schema_properties_first_property_write_only_invalid_when_present')) throw new Error('M61(p): missing input_schema_properties_first_property_write_only_invalid_when_present reason');
+  if (!m61WarningsJson.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'unknown')) {
+    throw new Error(`M61(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m61WarningsJson.first_property_write_only_states)}`);
+  }
+
+  // M61(q): null writeOnly → not_write_only (null-as-absent precedent from M55/M56/M57/M58/M59/M60, no warning)
+  const m61NullWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_write_only_cap', description: 'writeOnly:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: null } } } }]
+  };
+  const m61NullWriteOnlyPath = path.join(m61TmpDir, 'null-writeonly.json');
+  await fs.writeFile(m61NullWriteOnlyPath, JSON.stringify(m61NullWriteOnlyManifest, null, 2), 'utf8');
+  const m61NullWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61NullWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61NullWriteOnlyParsed = JSON.parse(m61NullWriteOnlyResult.stdout);
+  if (!m61NullWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'not_write_only' && e.capabilities.includes('null_write_only_cap'))) {
+    throw new Error(`M61(q): writeOnly:null must bucket as not_write_only (null-as-absent):\n${m61NullWriteOnlyResult.stdout}`);
+  }
+  if (m61NullWriteOnlyParsed.warnings.length !== 0) {
+    throw new Error(`M61(q): writeOnly:null must produce NO warning:\n${JSON.stringify(m61NullWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(r): writeOnly === false → not_write_only (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY, no warning)
+  const m61FalseWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'false_write_only_cap', description: 'writeOnly:false', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: false } } } }]
+  };
+  const m61FalseWriteOnlyPath = path.join(m61TmpDir, 'false-writeonly.json');
+  await fs.writeFile(m61FalseWriteOnlyPath, JSON.stringify(m61FalseWriteOnlyManifest, null, 2), 'utf8');
+  const m61FalseWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61FalseWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61FalseWriteOnlyParsed = JSON.parse(m61FalseWriteOnlyResult.stdout);
+  if (!m61FalseWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'not_write_only' && e.capabilities.includes('false_write_only_cap'))) {
+    throw new Error(`M61(r): writeOnly:false must bucket as not_write_only (EXPLICIT-FALSE-IS-NOT-WRITE-ONLY):\n${m61FalseWriteOnlyResult.stdout}`);
+  }
+  if (m61FalseWriteOnlyParsed.warnings.length !== 0) {
+    throw new Error(`M61(r): writeOnly:false must produce NO warning:\n${JSON.stringify(m61FalseWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(s): string writeOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m61StringWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'string_wo_cap', description: 'writeOnly:"true"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: 'true' } } } }]
+  };
+  const m61StringWriteOnlyPath = path.join(m61TmpDir, 'string-writeonly.json');
+  await fs.writeFile(m61StringWriteOnlyPath, JSON.stringify(m61StringWriteOnlyManifest, null, 2), 'utf8');
+  const m61StringWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61StringWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61StringWriteOnlyParsed = JSON.parse(m61StringWriteOnlyResult.stdout);
+  if (!m61StringWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'unknown' && e.capabilities.includes('string_wo_cap'))) {
+    throw new Error(`M61(s): writeOnly:'true' (string) must bucket as unknown WITH 6th warning code:\n${m61StringWriteOnlyResult.stdout}`);
+  }
+  if (!m61StringWriteOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_write_only_invalid_when_present')) {
+    throw new Error(`M61(s): writeOnly:'true' must produce warning input_schema_properties_first_property_write_only_invalid_when_present:\n${JSON.stringify(m61StringWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(t): number writeOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m61NumberWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'number_wo_cap', description: 'writeOnly:1', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: 1 } } } }]
+  };
+  const m61NumberWriteOnlyPath = path.join(m61TmpDir, 'number-writeonly.json');
+  await fs.writeFile(m61NumberWriteOnlyPath, JSON.stringify(m61NumberWriteOnlyManifest, null, 2), 'utf8');
+  const m61NumberWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61NumberWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61NumberWriteOnlyParsed = JSON.parse(m61NumberWriteOnlyResult.stdout);
+  if (!m61NumberWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'unknown' && e.capabilities.includes('number_wo_cap'))) {
+    throw new Error(`M61(t): writeOnly:1 (number) must bucket as unknown:\n${m61NumberWriteOnlyResult.stdout}`);
+  }
+  if (!m61NumberWriteOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_write_only_invalid_when_present')) {
+    throw new Error(`M61(t): writeOnly:1 must produce warning:\n${JSON.stringify(m61NumberWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(u): array writeOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m61ArrayWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'array_wo_cap', description: 'writeOnly:[true]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: [true] } } } }]
+  };
+  const m61ArrayWriteOnlyPath = path.join(m61TmpDir, 'array-writeonly.json');
+  await fs.writeFile(m61ArrayWriteOnlyPath, JSON.stringify(m61ArrayWriteOnlyManifest, null, 2), 'utf8');
+  const m61ArrayWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61ArrayWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61ArrayWriteOnlyParsed = JSON.parse(m61ArrayWriteOnlyResult.stdout);
+  if (!m61ArrayWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'unknown' && e.capabilities.includes('array_wo_cap'))) {
+    throw new Error(`M61(u): writeOnly:[true] (array) must bucket as unknown:\n${m61ArrayWriteOnlyResult.stdout}`);
+  }
+  if (!m61ArrayWriteOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_write_only_invalid_when_present')) {
+    throw new Error(`M61(u): writeOnly:[true] must produce warning:\n${JSON.stringify(m61ArrayWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(v): plain-object writeOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m61ObjWriteOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'obj_wo_cap', description: 'writeOnly:{}', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', writeOnly: {} } } } }]
+  };
+  const m61ObjWriteOnlyPath = path.join(m61TmpDir, 'obj-writeonly.json');
+  await fs.writeFile(m61ObjWriteOnlyPath, JSON.stringify(m61ObjWriteOnlyManifest, null, 2), 'utf8');
+  const m61ObjWriteOnlyResult = runCli(['secret', 'index', '--manifest', m61ObjWriteOnlyPath, '--json'], { cwd: m61TmpDir });
+  const m61ObjWriteOnlyParsed = JSON.parse(m61ObjWriteOnlyResult.stdout);
+  if (!m61ObjWriteOnlyParsed.first_property_write_only_states.some((e) => e.input_schema_first_property_write_only === 'unknown' && e.capabilities.includes('obj_wo_cap'))) {
+    throw new Error(`M61(v): writeOnly:{} (object) must bucket as unknown:\n${m61ObjWriteOnlyResult.stdout}`);
+  }
+  if (!m61ObjWriteOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_write_only_invalid_when_present')) {
+    throw new Error(`M61(v): writeOnly:{} must produce warning:\n${JSON.stringify(m61ObjWriteOnlyParsed.warnings)}`);
+  }
+
+  // M61(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'output_visibility','not_applicable','unknown'}
+  const m61AggKeyResult = runCli(['secret', 'index', '--manifest', m61AllWarningsPath, '--json'], { cwd: m61TmpDir });
+  const m61AggKeyParsed = JSON.parse(m61AggKeyResult.stdout);
+  const m61ValidAggKeys = new Set(['output_visibility', 'not_applicable', 'unknown']);
+  for (const entry of m61AggKeyParsed.first_property_write_only_states) {
+    if (!m61ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M61(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m61AggWriteOnly = m61DefaultJson.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'write_only');
+  if (!m61AggWriteOnly || m61AggWriteOnly.aggregation_key !== 'output_visibility') {
+    throw new Error(`M61(w): write_only bucket must have aggregation_key 'output_visibility':\n${JSON.stringify(m61AggWriteOnly)}`);
+  }
+  const m61AggNotWriteOnly = m61DefaultJson.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'not_write_only');
+  if (!m61AggNotWriteOnly || m61AggNotWriteOnly.aggregation_key !== 'output_visibility') {
+    throw new Error(`M61(w): not_write_only bucket must have aggregation_key 'output_visibility':\n${JSON.stringify(m61AggNotWriteOnly)}`);
+  }
+  const m61AggNA = m61DefaultJson.first_property_write_only_states.find((e) => e.input_schema_first_property_write_only === 'not_applicable');
+  if (!m61AggNA || m61AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M61(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m61AggNA)}`);
+  }
+
+  // M61(x): non-persistence — manifest file not mutated
+  const m61ManifestAfter = JSON.parse(await fs.readFile(m61SyntheticManifestPath, 'utf8'));
+  for (const cap of m61ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_write_only')) {
+      throw new Error(`M61(x): input_schema_first_property_write_only must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M61(x2): help enumerates 45 commands (M61 adds 'secret') and includes 'secret' between 'seal' and 'sensitivity'
+  const m61HelpResult = runCli(['help'], { cwd: m61TmpDir });
+  const m61HelpCommandCount = (m61HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m61HelpCommandCount !== 45) {
+    throw new Error(`M61(x2): tusq help must enumerate 45 commands (M61 adds 'secret'); got ${m61HelpCommandCount}:\n${m61HelpResult.stdout}`);
+  }
+  if (!m61HelpResult.stdout.includes('  secret')) {
+    throw new Error(`M61(x2): tusq help must include 'secret' command:\n${m61HelpResult.stdout}`);
+  }
+  // Verify ordering: seal before secret before sensitivity
+  const m61HelpLines = m61HelpResult.stdout.split('\n');
+  const m61SealIdx = m61HelpLines.findIndex((l) => l.startsWith('  seal'));
+  const m61SecretIdx = m61HelpLines.findIndex((l) => l.startsWith('  secret'));
+  const m61SensitivityIdx = m61HelpLines.findIndex((l) => l.startsWith('  sensitivity'));
+  if (!(m61SealIdx < m61SecretIdx && m61SecretIdx < m61SensitivityIdx)) {
+    throw new Error(`M61(x2): 'secret' must appear between 'seal' and 'sensitivity' in help:\n${m61HelpResult.stdout}`);
+  }
+
+  // M61(x3): secret index --help includes planning-aid framing
+  const m61IndexHelpResult = runCli(['secret', 'index', '--help'], { cwd: m61TmpDir });
+  if (!m61IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M61(x3): secret index help must include planning-aid framing:\n${m61IndexHelpResult.stdout}`);
+  }
+
+  // M61(x4): unknown subcommand exits 1
+  const m61UnknownSubCmd = runCli(['secret', 'bogusub'], { cwd: m61TmpDir, expectedStatus: 1 });
+  if (!m61UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m61UnknownSubCmd.stdout !== '') {
+    throw new Error(`M61(x4): unknown subcommand must exit 1:\nstdout=${m61UnknownSubCmd.stdout}\nstderr=${m61UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m61TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -10637,7 +11040,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 44) {
+  if (m44CommandCount !== 45) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -11175,7 +11578,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 44) {
+  if (m43CommandCount !== 45) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -11724,7 +12127,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 44) {
+  if (m42CommandCount !== 45) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -12270,7 +12673,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 44) {
+  if (m41CommandCount !== 45) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -12825,7 +13228,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 44) {
+  if (m40CommandCount !== 45) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -13297,7 +13700,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 44) {
+  if (m39CommandCount !== 45) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -13768,7 +14171,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 44) {
+  if (m38CommandCount !== 45) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -14251,7 +14654,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 44) {
+  if (m37CommandCount !== 45) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -14709,7 +15112,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 44) {
+  if (m36CommandCount !== 45) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -15102,7 +15505,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 44) {
+  if (m35CommandCount !== 45) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
