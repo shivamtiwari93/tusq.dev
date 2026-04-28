@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M45 (turn_3fb041fa0224ce63, run_79db9c1f34791188, 2026-04-27, HEAD cb9d730)
+
+**Milestone:** M45 — Static Capability Output Schema Items Type Index Export from Manifest Evidence (~0.5 day) — V1.26
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_beac02a98d4b562d, role=dev). HEAD cb9d730 = M45 implementation checkpoint. All M45 implementation (src/cli.js, tests/smoke.mjs, 36 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (36 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardOutputSchemaItemsTypeBucketKey` and `_guardOutputSchemaItemsTypeAggregationKey` pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 29. `node bin/tusq.js items index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `items_types[]` with `object` bucket (get_users_users; aggregation_key `"items_type"`) and `not_applicable` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js items index --items-type OBJECT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js items index --items-type array --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-bucket (no array-typed items in express fixture). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift).
+
+**Acceptance criteria:** 514 total (REQ-001–REQ-514). Added REQ-490–REQ-514 (25 new M45 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_beac02a98d4b562d upheld — 10 dev-owned files correctly modified (git diff 87e60d9..cb9d730), all 5 dev decisions sound, M45 implementation complete and correct.
+
+**Key M45 features:** `tusq items index` command added (29th CLI command); `items_types[]` result field; nine-value bucket-key enum (object/array/string/number/integer/boolean/null/not_applicable/unknown); three-value aggregation_key enum (items_type/not_applicable/unknown); integer NOT collapsed to number (first-class bucket); not_applicable bucket emits NO warning; five frozen warning reason codes for malformed output_schema.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Re-verification — M44 (turn_57eb341ae6421d17, run_d309bfeea0f99431, 2026-04-27, HEAD f365674)
 
 **Milestone:** M44 — Static Capability Description Word Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.25

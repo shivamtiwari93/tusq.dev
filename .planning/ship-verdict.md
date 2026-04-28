@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_3fb041fa0224ce63 (role=qa, run_79db9c1f34791188, M45 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_beac02a98d4b562d, role=dev, HEAD cb9d730) for run_79db9c1f34791188 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff 87e60d9..cb9d730 --name-only` → exactly 10 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of the auto_retry_productive_timeout placeholder is sound, M45 artifacts verified present and correct, items_types[] field name is correct, non-persistence of output_schema_items_type confirmed, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (36 scenarios)`. Independently re-run; 36 scenarios confirmed (35 prior + 1 M45 output-schema-items-type-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardOutputSchemaItemsTypeBucketKey` and `_guardOutputSchemaItemsTypeAggregationKey` guards pass synchronously.
+
+**4. CLI surface 29 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 29. `items` correctly positioned between `input` and `method`.
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js items index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `items_types[]` (NOT `tiers[]`, NOT `types[]`, NOT `sources[]`) with `object` bucket (get_users_users; capability_count 1; aggregation_key `"items_type"`) and `not_applicable` bucket (get_users_api_v1_users_id, post_users_users; capability_count 2; aggregation_key `"not_applicable"`); `warnings: []`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js items index --items-type OBJECT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown output schema items type: OBJECT`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js items index --items-type array --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, `No capabilities found for output schema items type: array` (no array-typed items in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. M45 ROADMAP checkboxes:** All 18 M45 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M45 block).
+
+**10. classifyOutputSchemaItemsType rules (code inspection):** null/undefined output_schema → unknown; non-object/array → unknown; type not-string → unknown (no warning); type string but not 'array' → not_applicable (no warning); type 'array' + items missing → unknown; items null/non-object/array → unknown; items.type not in `OUTPUT_SCHEMA_ITEMS_TYPE_PRIMITIVE_VALUE_SET` (frozen Set at `src/cli.js:304`) → unknown; items.type in set → that literal value. integer NOT collapsed to number — first-class bucket.
+
+**11. Aggregation key tri-value enum:** `OUTPUT_SCHEMA_ITEMS_TYPE_AGGREGATION_KEY_ENUM` frozen Set `{items_type, not_applicable, unknown}` at `src/cli.js:290`. NOT two-value; NOT `tier`; NOT `type`; NOT `source`.
+
+**12. Five frozen warning reason codes:** `output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_items_field_missing_when_type_is_array`, `output_schema_items_field_not_object_when_type_is_array`, `output_schema_items_type_field_missing_or_invalid_when_type_is_array`. not_applicable bucket does NOT generate warnings.
+
+**13. Acceptance criteria count:** 514 (REQ-001–REQ-514). Added REQ-490–REQ-514 (25 new M45 criteria) this turn. All 514 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_57eb341ae6421d17 (role=qa, run_d309bfeea0f99431, M44 re-verification, 2026-04-27)
 
 This QA turn challenges the prior accepted QA turn (turn_c640f6d66166bb52, role=qa, HEAD f365674) for run_d309bfeea0f99431 independently rather than rubber-stamping it.
