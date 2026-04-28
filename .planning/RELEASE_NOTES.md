@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M48 (turn_3795b2905fff720e, run_f61946531dda2fe6, 2026-04-28, HEAD c5eef25)
+
+**Milestone:** M48 — Static Capability Output Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.29
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_7aca0e4acba46509, role=dev). HEAD c5eef25 = M48 implementation checkpoint. All M48 implementation (src/cli.js, tests/smoke.mjs, 39 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (39 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardOutputSchemaFirstPropertyTypeBucketKey` at src/cli.js:5310 and `_guardOutputSchemaFirstPropertyTypeAggregationKey` at src/cli.js:5317 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 32. `node bin/tusq.js shape index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_types[]` with `string` bucket (get_users_api_v1_users_id; aggregation_key `"first_property_type"`), `boolean` bucket (post_users_users; aggregation_key `"first_property_type"`), and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js shape index --first-type STRING --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js shape index --first-type number --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-bucket (no number-typed first properties in express fixture). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift).
+
+**Acceptance criteria:** 589 total (REQ-001–REQ-589). Added REQ-565–REQ-589 (25 new M48 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_7aca0e4acba46509 upheld — 9 dev-owned files correctly modified (`git diff a381730..HEAD --name-only`; no manifest-format.md change because M48 is non-persistent), all 5 dev decisions sound, M48 implementation complete and correct.
+
+**Key M48 features:** `tusq shape index` command added (32nd CLI command); `first_property_types[]` result field (matches M42 `types`, M45 `items_types` plural-categorical precedent); nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown); three-value aggregation_key enum (first_property_type/not_applicable/unknown) matching M46 precedent; `not_applicable` bucket covers both non-object responses (output_schema.type !== 'object') and zero-property object responses — emits NO warning; five frozen warning reason codes including `output_schema_properties_first_property_descriptor_invalid` (distinct from M46's additionalProperties codes); bucket order string→number→integer→boolean→null→object→array→not_applicable→unknown (scalar-primitives-first convention); eval count 38→39; `OUTPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER` frozen array excludes `unknown` (always appended last dynamically).
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Verification — M47 (turn_c84e2118f26b5b7c, run_240679669ee78f0b, 2026-04-27, HEAD a0dc519)
 
 **Milestone:** M47 — Static Capability Input Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.28

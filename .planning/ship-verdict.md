@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_3795b2905fff720e (role=qa, run_f61946531dda2fe6, M48 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_7aca0e4acba46509, role=dev, HEAD c5eef25) for run_f61946531dda2fe6 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff a381730..HEAD --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M48 does not modify the manifest format schema — output_schema_first_property_type is intentionally non-persistent). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound, M48 artifacts verified present and correct, `first_property_types` field name is correct (matches M42/M45 plural-categorical precedent), `shape` noun inserted between `sensitivity` and `strictness`, non-persistence of `output_schema_first_property_type` confirmed, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (39 scenarios)`. Independently re-run; 39 scenarios confirmed (38 prior + 1 M48 output-schema-first-property-type-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardOutputSchemaFirstPropertyTypeBucketKey` (src/cli.js:5310) and `_guardOutputSchemaFirstPropertyTypeAggregationKey` (src/cli.js:5317) guards pass synchronously.
+
+**4. CLI surface 32 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 32. `shape` correctly positioned between `sensitivity` and `strictness` (s=s at pos 0; e(101)<h(104) at pos 1).
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js shape index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_types[]` (NOT `tiers[]`, NOT `strictnesses[]`, NOT `types[]`, NOT `items_types[]`) with `string` bucket (get_users_api_v1_users_id; capability_count 1; aggregation_key `"first_property_type"`), `boolean` bucket (post_users_users; capability_count 1; aggregation_key `"first_property_type"`), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"`); `warnings: []`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js shape index --first-type STRING --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown output schema first property type: STRING`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js shape index --first-type number --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, `No capabilities found for output schema first property type: number` (no number-typed first properties in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. M48 ROADMAP checkboxes:** All 18 M48 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M48 block). 14 unchecked items in ROADMAP are in future deferred milestone stubs, not M48.
+
+**10. classifyOutputSchemaFirstPropertyType rules (code inspection at src/cli.js:5339–5382):** null/undefined outputSchema → unknown; non-object/Array outputSchema → unknown; outputSchema.type not-string → unknown (output_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning — distinct from M46 which warned on missing/non-string type; M48 returns not_applicable for valid non-object types like 'array'); type === 'object' + properties null/undefined/non-object/Array → unknown (output_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); firstDescriptor null/primitive/Array/undefined → unknown; firstDescriptor.type missing/non-string/not in seven-primitive set → unknown; else → firstDescriptor.type. No all-properties walking; no nested-property recursion; no input-side classification; no items.type consultation; no runtime validation.
+
+**11. Aggregation key three-value enum:** `OUTPUT_SCHEMA_FIRST_PROPERTY_TYPE_AGGREGATION_KEY_ENUM` frozen Set `{first_property_type, not_applicable, unknown}` at `src/cli.js:358`. Matches M46 precedent (three-value). NOT two-value; NOT `tier`; NOT `strictness`; NOT `type`; NOT `source`; NOT `items_type`.
+
+**12. Five frozen warning reason codes:** `output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_type_missing_or_invalid`, `output_schema_properties_field_missing_when_type_is_object`, `output_schema_properties_first_property_descriptor_invalid`. `not_applicable` bucket does NOT generate warnings (valid named bucket — semantically valid for non-object responses and zero-property object responses). Only `unknown` triggers warnings.
+
+**13. Acceptance criteria count:** 589 (REQ-001–REQ-589). Added REQ-565–REQ-589 (25 new M48 criteria) this turn. All 589 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_c84e2118f26b5b7c (role=qa, run_240679669ee78f0b, M47 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_cc1f4a9f48f528e8, role=dev, HEAD a0dc519) for run_240679669ee78f0b independently rather than rubber-stamping it.
