@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 36) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 36 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 37) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 37 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 36) {
-    throw new Error(`M46(x): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 37) {
+    throw new Error(`M46(x): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 36) {
-    throw new Error(`M47(x): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 37) {
+    throw new Error(`M47(x): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 36) {
-    throw new Error(`M48(x3): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 37) {
+    throw new Error(`M48(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 36) {
-    throw new Error(`M49(x3): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 37) {
+    throw new Error(`M49(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 36) {
-    throw new Error(`M50(x3): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 37) {
+    throw new Error(`M50(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 36) {
-    throw new Error(`M51(x3): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 37) {
+    throw new Error(`M51(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 36) {
-    throw new Error(`M52(x3): tusq help must enumerate 36 commands (M52 adds 'gloss'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 37) {
+    throw new Error(`M52(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -6815,6 +6815,453 @@ async function run() {
   }
 
   await fs.rm(m52TmpDir, { recursive: true, force: true });
+
+  // ── M53: Static Capability Input Schema First Property Format Hint Index Export ──────────────
+  const m53TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m53-smoke-'));
+
+  // M53 fixture manifest: synthetic capabilities across hinted/unhinted/not_applicable buckets.
+  // hinted_cap → firstKey.format='email' (non-empty string → hinted)
+  // unhinted_cap → firstKey has no format field (missing → unhinted)
+  // not_applicable_cap → input_schema.type='array' (non-object → not_applicable, no warning)
+  const m53SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'hinted_cap',
+        description: 'Capability with format-hinted first property',
+        method: 'POST',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { email: { type: 'string', format: 'email' } },
+          required: ['email']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'unhinted_cap',
+        description: 'Capability with no format on first property',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', description: 'User identifier' } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m53SyntheticManifestPath = path.join(m53TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m53SyntheticManifestPath, JSON.stringify(m53SyntheticManifest, null, 2), 'utf8');
+
+  // M53(a): default tusq hint index on synthetic fixture produces correct buckets in closed-enum order
+  const m53DefaultResult = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+  if (m53DefaultResult.status !== 0) {
+    throw new Error(`M53(a): hint index must exit 0:\nstderr=${m53DefaultResult.stderr}`);
+  }
+  const m53DefaultJson = JSON.parse(m53DefaultResult.stdout);
+  if (!Array.isArray(m53DefaultJson.first_property_format_hints)) {
+    throw new Error(`M53(a): JSON output must have first_property_format_hints[] array:\n${m53DefaultResult.stdout}`);
+  }
+  if (m53DefaultJson.tiers !== undefined || m53DefaultJson.required_statuses !== undefined || m53DefaultJson.first_property_description_presences !== undefined) {
+    throw new Error(`M53(a): JSON output must NOT have tiers/required_statuses/first_property_description_presences; field name must be first_property_format_hints[]:\n${m53DefaultResult.stdout}`);
+  }
+  const m53HintedEntry = m53DefaultJson.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === 'hinted');
+  if (!m53HintedEntry || !m53HintedEntry.capabilities.includes('hinted_cap')) {
+    throw new Error(`M53(a): hinted bucket must include hinted_cap:\n${JSON.stringify(m53DefaultJson.first_property_format_hints)}`);
+  }
+  const m53UnhintedEntry = m53DefaultJson.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === 'unhinted');
+  if (!m53UnhintedEntry || !m53UnhintedEntry.capabilities.includes('unhinted_cap')) {
+    throw new Error(`M53(a): unhinted bucket must include unhinted_cap:\n${JSON.stringify(m53DefaultJson.first_property_format_hints)}`);
+  }
+  const m53NotApplicableEntry = m53DefaultJson.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === 'not_applicable');
+  if (!m53NotApplicableEntry || !m53NotApplicableEntry.capabilities.includes('not_applicable_cap')) {
+    throw new Error(`M53(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m53DefaultJson.first_property_format_hints)}`);
+  }
+  if (m53DefaultJson.warnings.length !== 0) {
+    throw new Error(`M53(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m53DefaultJson.warnings)}`);
+  }
+  // Bucket order: hinted < unhinted < not_applicable
+  const m53HintedPos = m53DefaultJson.first_property_format_hints.findIndex((e) => e.input_schema_first_property_format_hint === 'hinted');
+  const m53UnhintedPos = m53DefaultJson.first_property_format_hints.findIndex((e) => e.input_schema_first_property_format_hint === 'unhinted');
+  const m53NotApplicablePos = m53DefaultJson.first_property_format_hints.findIndex((e) => e.input_schema_first_property_format_hint === 'not_applicable');
+  if (!(m53HintedPos < m53UnhintedPos && m53UnhintedPos < m53NotApplicablePos)) {
+    throw new Error(`M53(a): bucket order must be hinted < unhinted < not_applicable; got hinted=${m53HintedPos} unhinted=${m53UnhintedPos} not_applicable=${m53NotApplicablePos}`);
+  }
+  const m53DefaultHuman = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath], { cwd: m53TmpDir });
+  if (!m53DefaultHuman.stdout.includes('[hinted]') || !m53DefaultHuman.stdout.includes('[unhinted]') || !m53DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M53(a): human mode must include [hinted], [unhinted], [not_applicable] sections:\n${m53DefaultHuman.stdout}`);
+  }
+  if (!m53DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M53(a): human mode must include planning-aid framing:\n${m53DefaultHuman.stdout}`);
+  }
+
+  // M53(b): --hint hinted filter
+  const m53FilterHinted = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'hinted', '--json'], { cwd: m53TmpDir });
+  if (m53FilterHinted.status !== 0) {
+    throw new Error(`M53(b): --hint hinted must exit 0:\nstderr=${m53FilterHinted.stderr}`);
+  }
+  if (JSON.parse(m53FilterHinted.stdout).first_property_format_hints.length !== 1 || JSON.parse(m53FilterHinted.stdout).first_property_format_hints[0].input_schema_first_property_format_hint !== 'hinted') {
+    throw new Error(`M53(b): --hint hinted must return exactly one hinted bucket:\n${m53FilterHinted.stdout}`);
+  }
+
+  // M53(c): --hint unhinted filter
+  const m53FilterUnhinted = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'unhinted', '--json'], { cwd: m53TmpDir });
+  if (m53FilterUnhinted.status !== 0) {
+    throw new Error(`M53(c): --hint unhinted must exit 0:\nstderr=${m53FilterUnhinted.stderr}`);
+  }
+  if (JSON.parse(m53FilterUnhinted.stdout).first_property_format_hints.length !== 1 || JSON.parse(m53FilterUnhinted.stdout).first_property_format_hints[0].input_schema_first_property_format_hint !== 'unhinted') {
+    throw new Error(`M53(c): --hint unhinted must return exactly one unhinted bucket:\n${m53FilterUnhinted.stdout}`);
+  }
+
+  // M53(d): --hint not_applicable filter
+  const m53FilterNotApplicable = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'not_applicable', '--json'], { cwd: m53TmpDir });
+  if (m53FilterNotApplicable.status !== 0) {
+    throw new Error(`M53(d): --hint not_applicable must exit 0:\nstderr=${m53FilterNotApplicable.stderr}`);
+  }
+  if (JSON.parse(m53FilterNotApplicable.stdout).first_property_format_hints.length !== 1 || JSON.parse(m53FilterNotApplicable.stdout).first_property_format_hints[0].input_schema_first_property_format_hint !== 'not_applicable') {
+    throw new Error(`M53(d): --hint not_applicable must return exactly one not_applicable bucket:\n${m53FilterNotApplicable.stdout}`);
+  }
+
+  // M53(e): --hint unknown filter on synthetic fixture with malformed input_schema.properties.first.format=42
+  const m53UnknownManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{
+      name: 'unknown_cap', description: 'bad format', method: 'GET', path: '/x', domain: 'x',
+      side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'xxx',
+      auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+      redaction: { pii_fields: [], pii_categories: [] },
+      input_schema: { type: 'object', properties: { x: { type: 'string', format: 42 } }, required: [] },
+      output_schema: { type: 'object', properties: {}, additionalProperties: true }
+    }]
+  };
+  const m53UnknownManifestPath = path.join(m53TmpDir, 'unknown.manifest.json');
+  await fs.writeFile(m53UnknownManifestPath, JSON.stringify(m53UnknownManifest, null, 2), 'utf8');
+  const m53FilterUnknown = runCli(['hint', 'index', '--manifest', m53UnknownManifestPath, '--hint', 'unknown', '--json'], { cwd: m53TmpDir });
+  if (m53FilterUnknown.status !== 0) {
+    throw new Error(`M53(e): --hint unknown (malformed format=42) must exit 0:\nstderr=${m53FilterUnknown.stderr}`);
+  }
+  if (JSON.parse(m53FilterUnknown.stdout).first_property_format_hints.length !== 1 || JSON.parse(m53FilterUnknown.stdout).first_property_format_hints[0].input_schema_first_property_format_hint !== 'unknown') {
+    throw new Error(`M53(e): --hint unknown must return exactly one unknown bucket:\n${m53FilterUnknown.stdout}`);
+  }
+
+  // M53(f): --hint HINTED (uppercase) → exit 1 (case-sensitive)
+  const m53CaseHinted = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'HINTED'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53CaseHinted.stderr.includes('Unknown input schema first property format hint: HINTED') || m53CaseHinted.stdout !== '') {
+    throw new Error(`M53(f): --hint HINTED must exit 1 with case-sensitive error:\nstdout=${m53CaseHinted.stdout}\nstderr=${m53CaseHinted.stderr}`);
+  }
+
+  // M53(g): --hint Unhinted (mixed-case) → exit 1
+  const m53CaseUnhinted = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'Unhinted'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53CaseUnhinted.stderr.includes('Unknown input schema first property format hint: Unhinted') || m53CaseUnhinted.stdout !== '') {
+    throw new Error(`M53(g): --hint Unhinted must exit 1 with case-sensitive error:\nstdout=${m53CaseUnhinted.stdout}\nstderr=${m53CaseUnhinted.stderr}`);
+  }
+
+  // M53(h): --hint xyz (unknown value) → exit 1
+  const m53CaseXyz = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint', 'xyz'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53CaseXyz.stderr.includes('Unknown input schema first property format hint: xyz') || m53CaseXyz.stdout !== '') {
+    throw new Error(`M53(h): --hint xyz must exit 1:\nstdout=${m53CaseXyz.stdout}\nstderr=${m53CaseXyz.stderr}`);
+  }
+
+  // M53(i): --manifest <missing> → exit 1
+  const m53MissingManifest = runCli(['hint', 'index', '--manifest', path.join(m53TmpDir, 'nonexistent.json')], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53MissingManifest.stderr.includes('Manifest not found') || m53MissingManifest.stdout !== '') {
+    throw new Error(`M53(i): missing manifest must exit 1:\nstdout=${m53MissingManifest.stdout}\nstderr=${m53MissingManifest.stderr}`);
+  }
+
+  // M53(j): malformed JSON manifest → exit 1
+  const m53BadJsonPath = path.join(m53TmpDir, 'bad.json');
+  await fs.writeFile(m53BadJsonPath, '{ invalid json }', 'utf8');
+  const m53BadJson = runCli(['hint', 'index', '--manifest', m53BadJsonPath], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53BadJson.stderr.includes('Invalid manifest JSON') || m53BadJson.stdout !== '') {
+    throw new Error(`M53(j): malformed JSON must exit 1:\nstdout=${m53BadJson.stdout}\nstderr=${m53BadJson.stderr}`);
+  }
+
+  // M53(k): missing capabilities array → exit 1
+  const m53NoCapsPath = path.join(m53TmpDir, 'nocaps.json');
+  await fs.writeFile(m53NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m53NoCaps = runCli(['hint', 'index', '--manifest', m53NoCapsPath], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53NoCaps.stderr.includes('missing capabilities array') || m53NoCaps.stdout !== '') {
+    throw new Error(`M53(k): missing capabilities array must exit 1:\nstdout=${m53NoCaps.stdout}\nstderr=${m53NoCaps.stderr}`);
+  }
+
+  // M53(l): unknown flag → exit 1
+  const m53UnknownFlag = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--bogus'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53UnknownFlag.stderr.includes('Unknown flag: --bogus') || m53UnknownFlag.stdout !== '') {
+    throw new Error(`M53(l): unknown flag must exit 1:\nstdout=${m53UnknownFlag.stdout}\nstderr=${m53UnknownFlag.stderr}`);
+  }
+
+  // M53(m): --hint with no value → exit 1
+  const m53NoHintValue = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--hint'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53NoHintValue.stderr.includes('Missing value for --hint') || m53NoHintValue.stdout !== '') {
+    throw new Error(`M53(m): --hint with no value must exit 1:\nstdout=${m53NoHintValue.stdout}\nstderr=${m53NoHintValue.stderr}`);
+  }
+
+  // M53(n): --out valid path writes file and produces no stdout
+  const m53OutPath = path.join(m53TmpDir, 'm53-out.json');
+  const m53OutResult = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--out', m53OutPath], { cwd: m53TmpDir });
+  if (m53OutResult.status !== 0) {
+    throw new Error(`M53(n): --out valid path must exit 0:\nstderr=${m53OutResult.stderr}`);
+  }
+  if (m53OutResult.stdout !== '') {
+    throw new Error(`M53(n): --out valid path must produce no stdout:\nstdout=${m53OutResult.stdout}`);
+  }
+  const m53OutContent = JSON.parse(await fs.readFile(m53OutPath, 'utf8'));
+  if (!Array.isArray(m53OutContent.first_property_format_hints)) {
+    throw new Error(`M53(n): --out file must have first_property_format_hints[]:\n${JSON.stringify(m53OutContent)}`);
+  }
+
+  // M53(o): --out .tusq/ rejection → exit 1
+  const m53OutTusq = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--out', path.join(m53TmpDir, '.tusq', 'out.json')], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53OutTusq.stderr.includes('--out path must not be inside .tusq/') || m53OutTusq.stdout !== '') {
+    throw new Error(`M53(o): --out .tusq/ must exit 1:\nstdout=${m53OutTusq.stdout}\nstderr=${m53OutTusq.stderr}`);
+  }
+
+  // M53(p): --out unwritable parent → exit 1
+  const m53OutUnwritable = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--out', '/nonexistent_path_abc/m53.json'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (m53OutUnwritable.stdout !== '') {
+    throw new Error(`M53(p): --out unwritable parent must produce empty stdout:\nstdout=${m53OutUnwritable.stdout}`);
+  }
+
+  // M53(q): --json outputs valid JSON with first_property_format_hints[] and warnings: []
+  const m53JsonResult = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+  if (m53JsonResult.status !== 0) {
+    throw new Error(`M53(q): --json must exit 0:\nstderr=${m53JsonResult.stderr}`);
+  }
+  const m53JsonParsed = JSON.parse(m53JsonResult.stdout);
+  if (!Array.isArray(m53JsonParsed.first_property_format_hints)) {
+    throw new Error(`M53(q): --json output must have first_property_format_hints[]:\n${m53JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m53JsonParsed.warnings)) {
+    throw new Error(`M53(q): --json output must have warnings[]:\n${m53JsonResult.stdout}`);
+  }
+
+  // M53(r): determinism — three consecutive runs produce byte-identical stdout
+  {
+    const m53Det1 = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+    const m53Det2 = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+    const m53Det3 = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+    if (m53Det1.stdout !== m53Det2.stdout || m53Det2.stdout !== m53Det3.stdout) {
+      throw new Error(`M53(r): hint index --json output must be byte-identical across three runs`);
+    }
+    // Non-persistence: manifest must not be mutated
+    const m53ManifestAfter = JSON.parse(await fs.readFile(m53SyntheticManifestPath, 'utf8'));
+    for (const cap of m53ManifestAfter.capabilities) {
+      if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_format_hint')) {
+        throw new Error(`M53(r): input_schema_first_property_format_hint must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+      }
+    }
+  }
+
+  // M53(s): malformed capabilities produce warnings covering all five frozen reason codes
+  const m53AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      // input_schema_field_missing
+      { name: 'no_schema_cap', description: 'x', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'aaa', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_field_not_object
+      { name: 'non_object_schema_cap', description: 'x', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'bbb', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: 'bad', output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_type_missing_or_invalid
+      { name: 'no_type_cap', description: 'x', method: 'GET', path: '/c', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ccc', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { properties: { x: { type: 'string' } } }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_field_missing_when_type_is_object
+      { name: 'no_props_cap', description: 'x', method: 'GET', path: '/d', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'ddd', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object' }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // input_schema_properties_first_property_format_invalid_when_present (format=42)
+      { name: 'bad_format_cap', description: 'x', method: 'GET', path: '/e', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'eee', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: 42 } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } },
+      // valid hinted cap (no warning)
+      { name: 'hinted_valid_cap', description: 'x', method: 'POST', path: '/f', domain: 'x', side_effect_class: 'write', sensitivity_class: 'public', approved: true, capability_digest: 'fff', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { email: { type: 'string', format: 'email' } }, required: ['email'] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }
+    ]
+  };
+  const m53AllWarningsManifestPath = path.join(m53TmpDir, 'all-warnings.manifest.json');
+  await fs.writeFile(m53AllWarningsManifestPath, JSON.stringify(m53AllWarningsManifest, null, 2), 'utf8');
+  const m53AllWarningsJson = runCli(['hint', 'index', '--manifest', m53AllWarningsManifestPath, '--json'], { cwd: m53TmpDir });
+  const m53AllWarningsParsed = JSON.parse(m53AllWarningsJson.stdout);
+  const m53ExpectedReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_properties_first_property_format_invalid_when_present'
+  ];
+  for (const reason of m53ExpectedReasons) {
+    if (!m53AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M53(s): all five frozen warning reason codes must be present; missing ${reason}:\n${JSON.stringify(m53AllWarningsParsed.warnings)}`);
+    }
+  }
+  const m53AllWarningsHuman = runCli(['hint', 'index', '--manifest', m53AllWarningsManifestPath], { cwd: m53TmpDir });
+  if (!m53AllWarningsHuman.stderr.includes('Warning:')) {
+    throw new Error(`M53(s): human mode must emit warning to stderr:\nstderr=${m53AllWarningsHuman.stderr}`);
+  }
+  // hinted/unhinted/not_applicable buckets must not emit warnings on synthetic fixture
+  const m53HintedOnly = runCli(['hint', 'index', '--manifest', m53SyntheticManifestPath, '--json'], { cwd: m53TmpDir });
+  if (JSON.parse(m53HintedOnly.stdout).warnings.length !== 0) {
+    throw new Error(`M53(s): hinted/unhinted/not_applicable buckets must not emit warnings on synthetic fixture`);
+  }
+  // empty capabilities
+  const m53EmptyManifestPath = path.join(m53TmpDir, 'empty.manifest.json');
+  await fs.writeFile(m53EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m53EmptyHuman = runCli(['hint', 'index', '--manifest', m53EmptyManifestPath], { cwd: m53TmpDir });
+  if (!m53EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M53(s): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m53EmptyHuman.stdout}`);
+  }
+  const m53EmptyJson = runCli(['hint', 'index', '--manifest', m53EmptyManifestPath, '--json'], { cwd: m53TmpDir });
+  if (JSON.parse(m53EmptyJson.stdout).first_property_format_hints.length !== 0) {
+    throw new Error(`M53(s): empty capabilities (JSON) must have first_property_format_hints: []:\n${m53EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(JSON.parse(m53EmptyJson.stdout).warnings) || JSON.parse(m53EmptyJson.stdout).warnings.length !== 0) {
+    throw new Error(`M53(s): empty capabilities (JSON) must have warnings: []:\n${m53EmptyJson.stdout}`);
+  }
+
+  // M53(t): empty-string format → bucket unhinted (no warning)
+  const m53EmptyFormatManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'empty_fmt_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'zzz', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: '' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m53EmptyFormatPath = path.join(m53TmpDir, 'empty-format.json');
+  await fs.writeFile(m53EmptyFormatPath, JSON.stringify(m53EmptyFormatManifest, null, 2), 'utf8');
+  const m53EmptyFmtResult = runCli(['hint', 'index', '--manifest', m53EmptyFormatPath, '--json'], { cwd: m53TmpDir });
+  const m53EmptyFmtParsed = JSON.parse(m53EmptyFmtResult.stdout);
+  if (!m53EmptyFmtParsed.first_property_format_hints.some((e) => e.input_schema_first_property_format_hint === 'unhinted' && e.capabilities.includes('empty_fmt_cap'))) {
+    throw new Error(`M53(t): empty-string format must bucket as unhinted:\n${m53EmptyFmtResult.stdout}`);
+  }
+  if (m53EmptyFmtParsed.warnings.length !== 0) {
+    throw new Error(`M53(t): empty-string format must produce NO warning:\n${JSON.stringify(m53EmptyFmtParsed.warnings)}`);
+  }
+
+  // M53(u): whitespace-only format → bucket unhinted (no warning, trim semantics)
+  const m53WhitespaceManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'ws_fmt_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'yyy', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: '   ' } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m53WhitespacePath = path.join(m53TmpDir, 'ws-format.json');
+  await fs.writeFile(m53WhitespacePath, JSON.stringify(m53WhitespaceManifest, null, 2), 'utf8');
+  const m53WsResult = runCli(['hint', 'index', '--manifest', m53WhitespacePath, '--json'], { cwd: m53TmpDir });
+  const m53WsParsed = JSON.parse(m53WsResult.stdout);
+  if (!m53WsParsed.first_property_format_hints.some((e) => e.input_schema_first_property_format_hint === 'unhinted' && e.capabilities.includes('ws_fmt_cap'))) {
+    throw new Error(`M53(u): whitespace-only format must bucket as unhinted:\n${m53WsResult.stdout}`);
+  }
+  if (m53WsParsed.warnings.length !== 0) {
+    throw new Error(`M53(u): whitespace-only format must produce NO warning:\n${JSON.stringify(m53WsParsed.warnings)}`);
+  }
+
+  // M53(v): format=array → bucket unknown with warning input_schema_properties_first_property_format_invalid_when_present
+  const m53ArrayFmtManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'arr_fmt_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'vvv', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: ['email'] } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m53ArrayFmtPath = path.join(m53TmpDir, 'array-format.json');
+  await fs.writeFile(m53ArrayFmtPath, JSON.stringify(m53ArrayFmtManifest, null, 2), 'utf8');
+  const m53ArrFmtResult = runCli(['hint', 'index', '--manifest', m53ArrayFmtPath, '--json'], { cwd: m53TmpDir });
+  const m53ArrFmtParsed = JSON.parse(m53ArrFmtResult.stdout);
+  if (!m53ArrFmtParsed.first_property_format_hints.some((e) => e.input_schema_first_property_format_hint === 'unknown' && e.capabilities.includes('arr_fmt_cap'))) {
+    throw new Error(`M53(v): array format must bucket as unknown:\n${m53ArrFmtResult.stdout}`);
+  }
+  if (!m53ArrFmtParsed.warnings.some((w) => w.capability === 'arr_fmt_cap' && w.reason === 'input_schema_properties_first_property_format_invalid_when_present')) {
+    throw new Error(`M53(v): array format must produce warning input_schema_properties_first_property_format_invalid_when_present:\n${JSON.stringify(m53ArrFmtParsed.warnings)}`);
+  }
+
+  // M53(w): format=plain object → bucket unknown with warning input_schema_properties_first_property_format_invalid_when_present
+  const m53ObjFmtManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'obj_fmt_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'www', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: { bad: true } } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m53ObjFmtPath = path.join(m53TmpDir, 'obj-format.json');
+  await fs.writeFile(m53ObjFmtPath, JSON.stringify(m53ObjFmtManifest, null, 2), 'utf8');
+  const m53ObjFmtResult = runCli(['hint', 'index', '--manifest', m53ObjFmtPath, '--json'], { cwd: m53TmpDir });
+  const m53ObjFmtParsed = JSON.parse(m53ObjFmtResult.stdout);
+  if (!m53ObjFmtParsed.first_property_format_hints.some((e) => e.input_schema_first_property_format_hint === 'unknown' && e.capabilities.includes('obj_fmt_cap'))) {
+    throw new Error(`M53(w): object format must bucket as unknown:\n${m53ObjFmtResult.stdout}`);
+  }
+  if (!m53ObjFmtParsed.warnings.some((w) => w.capability === 'obj_fmt_cap' && w.reason === 'input_schema_properties_first_property_format_invalid_when_present')) {
+    throw new Error(`M53(w): object format must produce warning input_schema_properties_first_property_format_invalid_when_present:\n${JSON.stringify(m53ObjFmtParsed.warnings)}`);
+  }
+
+  // M53(x): format=null → bucket unhinted (no warning)
+  const m53NullFmtManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_fmt_cap', description: 'x', method: 'GET', path: '/x', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, capability_digest: 'nnn', auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' }, redaction: { pii_fields: [], pii_categories: [] }, input_schema: { type: 'object', properties: { x: { type: 'string', format: null } }, required: [] }, output_schema: { type: 'object', properties: {}, additionalProperties: true } }]
+  };
+  const m53NullFmtPath = path.join(m53TmpDir, 'null-format.json');
+  await fs.writeFile(m53NullFmtPath, JSON.stringify(m53NullFmtManifest, null, 2), 'utf8');
+  const m53NullFmtResult = runCli(['hint', 'index', '--manifest', m53NullFmtPath, '--json'], { cwd: m53TmpDir });
+  const m53NullFmtParsed = JSON.parse(m53NullFmtResult.stdout);
+  if (!m53NullFmtParsed.first_property_format_hints.some((e) => e.input_schema_first_property_format_hint === 'unhinted' && e.capabilities.includes('null_fmt_cap'))) {
+    throw new Error(`M53(x): null format must bucket as unhinted:\n${m53NullFmtResult.stdout}`);
+  }
+  if (m53NullFmtParsed.warnings.length !== 0) {
+    throw new Error(`M53(x): null format must produce NO warning:\n${JSON.stringify(m53NullFmtParsed.warnings)}`);
+  }
+
+  // M53(x2): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'format_hint', 'not_applicable', 'unknown'}
+  const m53AggKeyResult = runCli(['hint', 'index', '--manifest', m53AllWarningsManifestPath, '--json'], { cwd: m53TmpDir });
+  const m53AggKeyParsed = JSON.parse(m53AggKeyResult.stdout);
+  for (const entry of m53AggKeyParsed.first_property_format_hints) {
+    if (!['format_hint', 'not_applicable', 'unknown'].includes(entry.aggregation_key)) {
+      throw new Error(`M53(x2): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  // Check hinted bucket aggregation_key on synthetic fixture
+  const m53AggHinted = m53DefaultJson.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === 'hinted');
+  if (!m53AggHinted || m53AggHinted.aggregation_key !== 'format_hint') {
+    throw new Error(`M53(x2): hinted bucket must have aggregation_key 'format_hint':\n${JSON.stringify(m53AggHinted)}`);
+  }
+  const m53AggNA = m53DefaultJson.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === 'not_applicable');
+  if (!m53AggNA || m53AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
+  }
+
+  // M53(x3): help enumerates 37 commands and includes 'hint' between 'gloss' and 'input'
+  const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
+  const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m53HelpCommandCount !== 37) {
+    throw new Error(`M53(x3): tusq help must enumerate 37 commands (M53 adds 'hint'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  }
+  if (!m53HelpResult.stdout.includes('  hint')) {
+    throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
+  }
+  // hint index help includes planning-aid framing
+  const m53IndexHelpResult = runCli(['hint', 'index', '--help'], { cwd: m53TmpDir });
+  if (!m53IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M53(x3): hint index help must include planning-aid framing:\n${m53IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m53UnknownSubCmd = runCli(['hint', 'bogusub'], { cwd: m53TmpDir, expectedStatus: 1 });
+  if (!m53UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m53UnknownSubCmd.stdout !== '') {
+    throw new Error(`M53(x3): unknown subcommand must exit 1:\nstdout=${m53UnknownSubCmd.stdout}\nstderr=${m53UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m53TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -7283,8 +7730,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 36) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 36 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 37) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 37 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -7821,8 +8268,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 36) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 36 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 37) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 37 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -8370,8 +8817,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 36) {
-    throw new Error(`M42: tusq help must enumerate exactly 36 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 37) {
+    throw new Error(`M42: tusq help must enumerate exactly 37 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -8916,8 +9363,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 36) {
-    throw new Error(`M41: tusq help must enumerate exactly 36 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 37) {
+    throw new Error(`M41: tusq help must enumerate exactly 37 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -9471,8 +9918,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 36) {
-    throw new Error(`M40: tusq help must enumerate exactly 36 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 37) {
+    throw new Error(`M40: tusq help must enumerate exactly 37 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -9943,8 +10390,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 36) {
-    throw new Error(`M39: tusq help must enumerate exactly 36 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 37) {
+    throw new Error(`M39: tusq help must enumerate exactly 37 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -10414,8 +10861,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 36) {
-    throw new Error(`M38: tusq help must enumerate exactly 36 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 37) {
+    throw new Error(`M38: tusq help must enumerate exactly 37 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -10897,8 +11344,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 36) {
-    throw new Error(`M37: tusq help must enumerate exactly 36 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 37) {
+    throw new Error(`M37: tusq help must enumerate exactly 37 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -11355,8 +11802,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 36) {
-    throw new Error(`M36: tusq help must enumerate exactly 36 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 37) {
+    throw new Error(`M36: tusq help must enumerate exactly 37 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -11748,8 +12195,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 36) {
-    throw new Error(`M35: tusq help must enumerate exactly 36 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 37) {
+    throw new Error(`M35: tusq help must enumerate exactly 37 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

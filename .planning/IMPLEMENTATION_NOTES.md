@@ -2,6 +2,25 @@
 
 ---
 
+## M53 (run_e05bf49856cd2880, turn_3bd0b034cb7c2180, dev)
+
+**Challenge to PM turn:** PM (turn_6ad1bae70240d47c) correctly bound M53: Static Capability Input Schema First Property Format Hint Presence Index Export from Manifest Evidence (~0.5 day) — V1.34 (PROPOSED) under intake charter `intent_1777373633777_96d2` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld: (1) new noun `hint` inserted between `gloss` and `input` (g=103 < h=104 at pos 0; h=104 < i=105 at pos 0); (2) four-value bucket-key enum `hinted|unhinted|not_applicable|unknown`; (3) aggregation_key enum `format_hint|not_applicable|unknown` three-value; (4) bucket iteration order `hinted→unhinted→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable/hinted/unhinted emit NO warning (only unknown triggers warnings); result array field name `first_property_format_hints`. Challenge resolved: no new objections.
+
+**Implementation:**
+- Added `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_ENUM` (frozen Set: hinted/unhinted/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_AGGREGATION_KEY_ENUM` (frozen Set: format_hint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER` (frozen array: hinted/unhinted/not_applicable) constants in `src/cli.js` after M52 description-presence constants.
+- Added guard functions `_guardInputSchemaFirstPropertyFormatHintBucketKey` and `_guardInputSchemaFirstPropertyFormatHintAggregationKey` mirroring M35–M52 precedent.
+- Added `classifyInputSchemaFirstPropertyFormatHint(inputSchema)` pure function: returns `not_applicable` for non-'object' type string or zero-property object (no warning); returns `unknown` with `input_schema_properties_first_property_format_invalid_when_present` when `format` is present AND non-null AND non-undefined AND not a string; returns `unhinted` (no warning) when format is missing/null/undefined OR is a string with `trim().length === 0`; returns `hinted` (no warning) when format is a string with `trim().length > 0`.
+- Added `buildInputSchemaFirstPropertyFormatHintIndex(manifest, manifestPath)`, `formatInputSchemaFirstPropertyFormatHintIndex(index)`, `cmdHint(args)`, `cmdHintIndex(args)`, `parseHintIndexArgs(args)`.
+- Added `case 'hint'` dispatch between `gloss` and `input`; added `hint` between `gloss` and `input` in `printHelp()`; added `hint` and `hint index` entries in `printCommandHelp()`. CLI surface: 36→37.
+- Updated all M35–M52 help-count assertions in `tests/smoke.mjs` from `!== 36` to `!== 37`.
+- Added 24-case M53 smoke matrix (a–x) with synthetic fixture providing hinted/unhinted/not_applicable discrimination.
+- Added `input-schema-first-property-format-hint-index-determinism` eval scenario (43→44 scenarios) with `runInputSchemaFirstPropertyFormatHintIndexDeterminismScenario` handler.
+- Added `tusq hint index` section to `website/docs/cli-reference.md`.
+
+**Verification:** `npm test` exits 0. Smoke tests passed. Eval regression harness passed (44 scenarios). Module loads cleanly. `node bin/tusq.js help | grep -c '^  [a-z]'` → 37 (hint between gloss and input: g(103)<h(104)<i(105)). Zero package drift. Zero fixture mutation. All 16 M53 ROADMAP checkboxes [x].
+
+---
+
 ## M52 (run_3f128359168988b4, turn_09c7bb9f6448bf1a, dev)
 
 **Challenge to PM turn:** PM (turn_09cba7c7ad415bd0) correctly bound M52: Static Capability Input Schema First Property Description Presence Index Export from Manifest Evidence (~0.5 day) — V1.33 (PROPOSED) under intake charter `intent_1777370751746_c43c` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld: (1) new noun `gloss` inserted between `examples` and `input` (e=101 < g=103 at pos 0; g=103 < i=105 at pos 0); (2) four-value bucket-key enum `described|undescribed|not_applicable|unknown`; (3) aggregation_key enum `description_presence|not_applicable|unknown` three-value; (4) bucket iteration order `described→undescribed→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable/described/undescribed emit NO warning (only unknown triggers warnings); result array field name `first_property_description_presences`. Challenge resolved: no new objections. Key implementation decision: `description: null` is treated as semantically absent (→ `undescribed`, no warning), consistent with the bucket spec that lists null as one of the absent cases; only non-null, non-undefined, non-string values (arrays, objects, numbers, booleans) trigger the strict-typing `unknown` bucket.

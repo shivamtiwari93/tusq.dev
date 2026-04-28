@@ -438,6 +438,23 @@ const INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_AGGREGATION_KEY_ENUM = Ob
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER = Object.freeze(['described', 'undescribed', 'not_applicable']);
 
+// M53: frozen four-value bucket-key enum. Immutable once M53 ships.
+// hinted = firstKey.format is a string with trim().length > 0 (JSON-Schema format keyword present and non-empty).
+// unhinted = firstKey.format is missing/null/undefined OR is a string with trim().length === 0 (empty or whitespace-only).
+// not_applicable = non-object input or zero-property object; unknown = malformed input_schema or firstKey.format present but non-string.
+const INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_ENUM = Object.freeze(new Set(['hinted', 'unhinted', 'not_applicable', 'unknown']));
+
+// M53: frozen three-value aggregation_key enum. Immutable once M53 ships.
+// hinted/unhinted buckets carry 'format_hint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['format_hint', 'not_applicable', 'unknown']));
+
+// M53: closed-enum bucket iteration order (hinted → unhinted → not_applicable). Unknown appended last.
+// NOT knowledge-artifact-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked,
+// NOT help-flow-readiness-ranked, NOT SDK-validator-readiness-ranked, NOT onboarding-clarity-ranked, NOT OpenAPI-conformance-ranked.
+// Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER = Object.freeze(['hinted', 'unhinted', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -573,6 +590,9 @@ function dispatch(argv) {
       return;
     case 'gloss':
       cmdGloss(args);
+      return;
+    case 'hint':
+      cmdHint(args);
       return;
     case 'input':
       cmdInput(args);
@@ -7180,6 +7200,404 @@ function formatInputSchemaFirstPropertyDescriptionPresenceIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M53: tusq hint — top-level noun dispatcher
+function cmdHint(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('hint');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdHintIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M53: tusq hint index — handler
+function cmdHintIndex(args) {
+  const { opts, positionals } = parseHintIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('hint index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyFormatHintIndex(manifest, manifestPath);
+
+  const hintFilter = opts['hint'] || null;
+  let outputIndex;
+  if (hintFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_first_property_format_hint values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_ENUM.has(hintFilter)) {
+      throw new CliError(`Unknown input schema first property format hint: ${hintFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_format_hints.find((e) => e.input_schema_first_property_format_hint === hintFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property format hint: ${hintFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_format_hints: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property format hint (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property format hint (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyFormatHintIndex(outputIndex));
+}
+
+function parseHintIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['hint', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaFirstPropertyFormatHintBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_format_hint outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyFormatHintAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M53: classifyInputSchemaFirstPropertyFormatHint(inputSchema) → 'hinted'|'unhinted'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid)
+//              if firstVal.format is PRESENT (key exists with non-undefined value) AND typeof !== 'string' → 'unknown' (reason: input_schema_properties_first_property_format_invalid_when_present)
+//              if firstVal.format is missing/null/undefined OR is string with trim().length === 0 → 'unhinted' (no warning)
+//              else (typeof === 'string' && trim().length > 0) → 'hinted' (no warning)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property format beyond the FIRST is NOT walked (reserved for M-Hint-All-Properties).
+// Nested-object property format NOT walked (reserved for M-Hint-Nested).
+// output_schema first-property format is NOT classified (reserved for M-Hint-Output).
+// input_schema_first_property_format_hint MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyFormatHint(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // Check if format is present and not null/undefined (strict-typing rule applies to non-null, non-undefined values only)
+  if (Object.prototype.hasOwnProperty.call(firstVal, 'format') && firstVal.format !== undefined && firstVal.format !== null) {
+    if (typeof firstVal.format !== 'string') {
+      // Present, non-null, non-undefined but non-string (array/object/number/boolean) → unknown (strict-typing rule)
+      return 'unknown';
+    }
+    // String value: check if non-empty after trim
+    if (firstVal.format.trim().length > 0) {
+      return 'hinted';
+    }
+    // Empty or whitespace-only string → unhinted (no warning — absence signal, mirrors M52 precedent)
+    return 'unhinted';
+  }
+  // format missing/null/undefined → unhinted (no warning — semantically absent)
+  return 'unhinted';
+}
+
+// M53: buildInputSchemaFirstPropertyFormatHintIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property format hint index from the manifest's capabilities[].
+// Bucket iteration order: hinted → unhinted → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_format_hint MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyFormatHintIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_format_hints: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_format_hint.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property format is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (
+            Object.prototype.hasOwnProperty.call(firstVal, 'format') &&
+            firstVal.format !== undefined &&
+            firstVal.format !== null &&
+            typeof firstVal.format !== 'string'
+          ) {
+            warningReason = 'input_schema_properties_first_property_format_invalid_when_present';
+          }
+          // else: valid format (string or missing/null) — no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const hintClass = classifyInputSchemaFirstPropertyFormatHint(inputSchema);
+    const isNamedBucket = namedBuckets.has(hintClass);
+    const bucketKey = isNamedBucket ? hintClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: hinted → unhinted → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_FORMAT_HINT_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyFormatHints = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const hintKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyFormatHintBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyFormatHintBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyFormatHintAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyFormatHintAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyFormatHintAggregationKey('format_hint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_format_hint: hintKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_format_hints: firstPropertyFormatHints,
+    warnings
+  };
+}
+
+// M53: format input schema first property format hint index as human-readable text
+function formatInputSchemaFirstPropertyFormatHintIndex(index) {
+  if (index.first_property_format_hints.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Format Hint Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Planning aid: this index reports per-capability input_schema.properties[firstKey].format JSON-Schema-format-hint presence classification; it does NOT execute capability invocations, validate format values against a format registry, cross-reference manifest first-property format vs OpenAPI/JSON-Schema spec format enums, generate missing format hints, infer format from field names, or auto-flip tusq serve filtering. Bucket order is deterministic stable-output ordering only (NOT knowledge-artifact-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT help-flow-readiness-ranked, NOT SDK-validator-readiness-ranked, NOT onboarding-clarity-ranked, NOT OpenAPI-conformance-ranked).',
+    ''
+  ];
+
+  for (const entry of index.first_property_format_hints) {
+    lines.push(`[${entry.input_schema_first_property_format_hint}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: hinted (firstKey.format is a non-empty trimmed string) | unhinted (firstKey.format missing/null/undefined or empty trimmed string) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or firstKey not a plain object or firstKey.format present but non-string).");
+  lines.push('Bucket order: hinted → unhinted → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M41: tusq path — top-level noun dispatcher
 function cmdPath(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -10438,6 +10856,7 @@ function printHelp() {
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  examples           Index capabilities by examples count tier for planning review\n');
   process.stdout.write('  gloss              Index capabilities by input schema first property description presence for planning review\n');
+  process.stdout.write('  hint               Index capabilities by input schema first property format hint presence for planning review\n');
   process.stdout.write('  input              Index capabilities by required input field count tier for planning review\n');
   process.stdout.write('  items              Index capabilities by output schema items type for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
@@ -10676,6 +11095,41 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown presence value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime documentation validator, doc-contradiction detector, quality scorer, LLM synthesizer, or SDK help-text generator; per-FIRST-property description presence is deterministic stable-output ordering only (NOT documentation-completeness-ranked, NOT reviewer-priority-ranked).'
+    ].join('\n'),
+    hint: 'Usage: tusq hint <subcommand>\n  Subcommands: index',
+    'hint index': [
+      'Usage: tusq hint index [--hint <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --hint <value>      Filter to a single input schema first property format hint bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>   Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>        Write index to file (no stdout on success)',
+      '  --json              Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid firstKey.format)',
+      '',
+      'Classifier rule (applied to input_schema.properties[firstKey].format when input_schema.type === "object"):',
+      '  hinted         if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].format is a string with trim().length > 0',
+      '  unhinted       if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].format is missing/null/undefined or a string with trim().length === 0',
+      '  not_applicable if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown        if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or properties[firstKey] is not a plain object;',
+      '               or properties[firstKey].format is PRESENT but not a string (strict-typing: array/object/number/boolean are malformed).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property format beyond the FIRST is NOT walked (reserved for M-Hint-All-Properties).',
+      '               Nested-property format under input_schema.properties[key].properties NOT walked (reserved for M-Hint-Nested).',
+      '               output_schema first-property format NOT classified here (reserved for M-Hint-Output).',
+      '               A present-but-empty (or whitespace-only) format string is unhinted, NOT unknown — empty format hint is an absence signal, not a typing failure.',
+      '',
+      'Bucket iteration order: hinted → unhinted → not_applicable → unknown',
+      '  (conventional "hinted-first, unhinted-second, irrelevant-third, malformed-last" reading order — NOT knowledge-artifact-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT help-flow-readiness-ranked, NOT SDK-validator-readiness-ranked, NOT onboarding-clarity-ranked, NOT OpenAPI-conformance-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown hint value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime format validator, format-value distributor, format-contradiction detector, LLM inferrer, or SDK validator generator; per-FIRST-property format hint presence is deterministic stable-output ordering only (NOT knowledge-artifact-readiness-ranked, NOT reviewer-priority-ranked).'
     ].join('\n'),
     input: 'Usage: tusq input <subcommand>\n  Subcommands: index',
     'input index': [

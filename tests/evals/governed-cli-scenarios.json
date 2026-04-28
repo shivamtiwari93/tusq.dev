@@ -2200,6 +2200,101 @@
         "unknown"
       ],
       "expected_bucket_order": "described,undescribed,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-format-hint-index-determinism",
+      "scenario_type": "input_schema_first_property_format_hint_index_determinism",
+      "description": "Verifies that tusq hint index produces byte-identical output across three runs on a synthetic manifest with hinted, unhinted, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (hinted/unhinted/not_applicable/unknown), closed three-value aggregation_key enum (format_hint/not_applicable/unknown), bucket order determinism (hinted → unhinted → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_format_hint non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z is hinted (format='email'), a is unhinted (no format), b is hinted — firstKey=z → hinted (NOT sorted 'a' which would be unhinted).",
+      "synthetic_capabilities": [
+        {
+          "name": "hinted_cap",
+          "description": "First property has a non-empty format hint",
+          "domain": "users",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "email": { "type": "string", "format": "email" }
+            },
+            "required": ["email"]
+          }
+        },
+        {
+          "name": "unhinted_cap",
+          "description": "First property has no format field",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "not_applicable_cap",
+          "description": "Non-object input schema (array type)",
+          "domain": "items",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "Missing input_schema field",
+          "domain": "misc",
+          "method": "GET",
+          "path": "/api/v1/misc",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        },
+        {
+          "name": "insertion_order_cap",
+          "description": "Keys={z,a,b}: z is hinted (format='email'), a is unhinted, b is hinted — firstKey=z → hinted (NOT sorted 'a')",
+          "domain": "misc",
+          "method": "POST",
+          "path": "/api/v1/test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": { "type": "string", "format": "email" },
+              "a": { "type": "string" },
+              "b": { "type": "string", "format": "date" }
+            }
+          }
+        }
+      ],
+      "expected_valid_hints": [
+        "hinted",
+        "unhinted",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "format_hint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "hinted,unhinted,not_applicable,unknown"
     }
   ]
 }

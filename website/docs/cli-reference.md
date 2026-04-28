@@ -1076,6 +1076,73 @@ tusq gloss index --presence undescribed --json
 tusq gloss index --out gloss-index.json
 ```
 
+## `tusq hint index`
+
+Emit a deterministic, per-first-input-property-format-hint-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].format` is a non-empty trimmed string (`hinted`), missing/null/empty/whitespace-only (`unhinted`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`hinted → unhinted → not_applicable → unknown`). This is a **planning aid, not a runtime format validator, format-value distributor, format-contradiction detector, LLM inferrer, or SDK validator generator**.
+
+**M53 vs M52 distinction:** `tusq gloss index` (M52) reads `input_schema.properties[firstKey].description` (the **FIRST input property's** docstring) and buckets on its presence. `tusq hint index` (M53) reads `input_schema.properties[firstKey].format` (the **FIRST input property's** JSON-Schema format keyword) and buckets on its presence. These two axes share the first-property-index family but operate on different fields.
+
+```bash
+tusq hint index [--hint <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--hint <hinted\|unhinted\|not_applicable\|unknown>` | all buckets | Filter to a single format-hint bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent hint value, `--out` path error, or unknown subcommand
+
+**Classifier rules** (applied to `input_schema.properties[firstKey].format` when `input_schema.type === "object"`):
+
+| Condition | Bucket |
+|-----------|--------|
+| `input_schema` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type` missing or non-string | `unknown` |
+| `input_schema.type` is a string but not `"object"` | `not_applicable` (no warning) |
+| `input_schema.type === "object"`, `properties` missing/null/not-a-plain-object | `unknown` |
+| `input_schema.type === "object"`, `Object.keys(properties).length === 0` | `not_applicable` (no warning) |
+| `properties[firstKey]` is not a plain non-null object | `unknown` |
+| `properties[firstKey].format` is present but `typeof !== "string"` (array/object/number/boolean) | `unknown` (strict-typing rule — malformed) |
+| `properties[firstKey].format` is missing/`null`/`undefined` OR is a string with `trim().length === 0` | `unhinted` (no warning — absence signal, not malformation) |
+| `properties[firstKey].format` is a string with `trim().length > 0` | `hinted` (no warning) |
+
+Object.keys insertion-order is used; key sequence is NOT sorted or reordered.
+
+**Bucket iteration order:** `hinted → unhinted → not_applicable → unknown` (conventional "hinted-first, unhinted-second, irrelevant-third, malformed-last" reading order — NOT knowledge-artifact-readiness-ranked, NOT reviewer-priority-ranked, NOT UX-affordance-completeness-ranked, NOT help-flow-readiness-ranked, NOT SDK-validator-readiness-ranked, NOT onboarding-clarity-ranked, NOT OpenAPI-conformance-ranked). Empty buckets do not appear.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty). Contains `{ capability, reason }` objects for each capability landing in the `unknown` bucket. Five frozen warning reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_format_invalid_when_present`. The `not_applicable`, `hinted`, and `unhinted` buckets emit NO warnings — they are valid named outcomes. In human mode, warnings are emitted to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `input_schema_first_property_format_hint` is NOT written into the manifest — it is derived at read-time only (non-persistence rule).
+- The four-value `input_schema_first_property_format_hint` enum, the three-value `aggregation_key` enum, and the five-value warning reason-code enum are frozen; any addition is a material governance event.
+- Per-property format beyond the FIRST is NOT walked (reserved for `M-Hint-All-Properties`).
+- Nested-property format under `input_schema.properties[key].properties` is NOT walked (reserved for `M-Hint-Nested`).
+- `output_schema` first-property format is NOT classified (reserved for `M-Hint-Output`).
+- `tusq hint index` does NOT validate format values against a format registry, cross-reference format vs OpenAPI/JSON-Schema spec enums, infer format from field names, or generate format hints.
+
+```bash
+# All format hint buckets (human-readable)
+tusq hint index
+
+# All format hint buckets (JSON)
+tusq hint index --json
+
+# Single format hint bucket
+tusq hint index --hint hinted --json
+
+# Unhinted capabilities (missing JSON-Schema format keyword)
+tusq hint index --hint unhinted --json
+
+# Write to file
+tusq hint index --out hint-index.json
+```
+
 ## `tusq method index`
 
 Emit a deterministic, per-HTTP-method capability index from manifest evidence. Groups capabilities by their verbatim `method` field value in closed-enum order (`GET → POST → PUT → PATCH → DELETE → unknown`), with a special `unknown` bucket for capabilities whose `method` is `null`, missing, empty-string, or any non-canonical value (HEAD, OPTIONS, etc.). This is a **planning aid, not a runtime HTTP-method router, REST-convention validator, or idempotency classifier**.

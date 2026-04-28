@@ -1,6 +1,64 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-> **M53 Charter Sketch Reservation — 2026-04-28, run_e05bf49856cd2880, turn_6ad1bae70240d47c, PM attempt 1, HEAD `78a5bd4`.** Reserves the `### M53: Input Schema First Property Format Hint Presence Index — Product CLI Surface` detail block for the dev materialization turn. PM-frozen scope (dev MUST carry forward verbatim): new top-level noun `hint` with single subcommand `index`; CLI surface growth 36 → 37; `hint` inserted alphabetically between `gloss` and `input` in the post-`docs` block (`gloss` (g=103) < `hint` (h=104) at position 0; `hint` < `input` (h=104 < i=105) at position 0); insertion sequence `..., gloss, hint, input, items, method, ...`; command shape `tusq hint index [--hint <value>] [--manifest <path>] [--out <path>] [--json]`; four flags (case-sensitive lowercase-only `--hint` filter against the closed four-value bucket-key enum `hinted | unhinted | not_applicable | unknown`); closed three-value `aggregation_key` enum `format_hint | not_applicable | unknown`; eight-field per-bucket entry shape (`input_schema_first_property_format_hint`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); five-value warning reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_format_invalid_when_present`); top-level `warnings[]` array always present in `--json` (empty `[]` when no malformed capabilities); `not_applicable`, `hinted`, and `unhinted` emit NO warning (only `unknown` triggers warnings); empty-string and whitespace-only `format` bucket as `unhinted` (NOT as malformed); bucket iteration order `hinted → unhinted → not_applicable → unknown` (deterministic stable-output convention only); within-bucket manifest declared order; empty buckets MUST NOT appear; result-array field name `first_property_format_hints` (matching M48/M51/M52 plural-categorical convention verbatim); default-preservation table for the 36 unchanged commands; failure UX table; local-only invariants table including `tusq gloss index` byte-identity guard (23 commands now); non-persistence rule (`input_schema_first_property_format_hint` MUST NOT be written into `tusq.manifest.json`); explicit non-runtime-validator / non-doc-contradiction-detector / non-format-value-distributor / non-format-validator-crossref / non-LLM-inferrer / non-SDK-validator-generator / non-statistical-aggregator boundary callout; explicit M44-vs-M53 distinction (M44 capability-level top-level `description` word-count tier via `tusq description index`; M53 first-property format-hint presence via `tusq hint index` — entirely different fields); explicit M48-vs-M53 distinction (M48 output-side first-property type via `tusq shape index`); explicit M49-vs-M53 distinction (M49 firstKey `.type` JSON-Schema primitive type via `tusq signature index`; M53 firstKey `.format` annotation atop `.type`); explicit M50-vs-M53 distinction (M50 firstKey ∈ required[] membership via `tusq obligation index`; M53 firstKey `.format`); explicit M51-vs-M53 distinction (M51 firstKey `.source` HTTP-locus via `tusq binding index`; M53 firstKey `.format`); explicit M52-vs-M53 distinction (M52 firstKey `.description` docstring presence via `tusq gloss index`; M53 firstKey `.format`); the per-FIRST-property format-string-value distribution (`email` vs `date` vs `uri` vs `uuid`) is reserved for `M-Hint-Format-Value-Distribution-Index-1`; runtime payload conformance crosscheck is reserved for `M-Hint-Format-Validator-Crossref-1`; LLM inference is reserved for `M-Hint-LLM-Format-Inferrer-1`; SDK validator-stub generation is reserved for `M-Hint-SDK-Validator-Generator-1`. VISION sources cited: `.planning/VISION.md` lines 268–283 (`### Knowledge Artifacts`) primary; `.planning/VISION.md` lines 99–106 (`### Internal Docs And Company Operating Knowledge`) structural anchor only (M52 already used as primary). Full M53 surface block lands in dev attempt 1 of this run alongside the source-code implementation; this PM block reserves the structure only.
+### M53: Input Schema First Property Format Hint Presence Index — Product CLI Surface
+
+**Status:** Shipped in `run_e05bf49856cd2880` / `turn_3bd0b034cb7c2180` (dev implementation). V1.34.
+
+**Commands (2 rows):**
+
+| Command | Description |
+|---------|-------------|
+| `tusq hint` | Top-level noun; no subcommand prints help |
+| `tusq hint index` | Emit per-first-property-format-hint capability index from manifest |
+
+**Flags:**
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--hint <hinted\|unhinted\|not_applicable\|unknown>` | all hints | Filter to single bucket; case-sensitive lowercase only |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Bucket-key enum:** `hinted | unhinted | not_applicable | unknown` (closed four-value; immutable post-ship).
+
+**Aggregation-key enum:** `format_hint | not_applicable | unknown` (closed three-value).
+
+**Bucket iteration order:** `hinted → unhinted → not_applicable → unknown` (deterministic stable-output convention only — NOT format-quality-ranked).
+
+**Per-bucket entry shape (8 fields):** `input_schema_first_property_format_hint`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Result-array field name:** `first_property_format_hints`.
+
+**Classifier rules:**
+
+| Condition | Bucket |
+|-----------|--------|
+| `input_schema` null/undefined or not plain object | `unknown` |
+| `input_schema.type` missing/non-string | `unknown` |
+| `input_schema.type !== 'object'` | `not_applicable` |
+| `input_schema.properties` missing/null/not-object | `unknown` |
+| zero-property `properties` object | `not_applicable` |
+| firstVal not plain object | `unknown` |
+| `format` present AND not null/undefined AND not string | `unknown` (warning emitted) |
+| `format` missing/null/undefined OR `format.trim().length === 0` | `unhinted` |
+| `format.trim().length > 0` | `hinted` |
+
+**Warning reason codes (5, frozen):**
+
+| Code | Trigger |
+|------|---------|
+| `input_schema_field_missing` | `input_schema` absent from capability |
+| `input_schema_field_not_object` | `input_schema` present but not plain object |
+| `input_schema_type_missing_or_invalid` | `type` field missing or non-string |
+| `input_schema_properties_field_missing_when_type_is_object` | `type=object` but no `properties` field |
+| `input_schema_properties_first_property_format_invalid_when_present` | `format` present but not a string (and not null/undefined) |
+
+**Failure UX:** Missing manifest → exit 1 `Manifest not found:`; malformed JSON → exit 1 `Invalid manifest JSON:`; missing capabilities → exit 1 `Invalid manifest: missing capabilities array`; unknown flag → exit 1 `Unknown flag:`; unknown hint → exit 1 `Unknown input schema first property format hint:`; absent bucket → exit 1 `No capabilities found for input schema first property format hint:`; `--out .tusq/` → exit 1 `--out path must not be inside .tusq/`.
+
+**Local-only invariants:** `tusq.manifest.json` never mutated; `input_schema_first_property_format_hint` NOT written into manifest (non-persistence rule); all 23 prior peer index commands byte-identical pre/post (`tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`, `tusq examples index`, `tusq input index`, `tusq output index`, `tusq path index`, `tusq response index`, `tusq request index`, `tusq description index`, `tusq items index`, `tusq strictness index`, `tusq parameter index`, `tusq shape index`, `tusq signature index`, `tusq obligation index`, `tusq binding index`, `tusq gloss index`). CLI surface 36 → 37. M53 is NOT a runtime format validator, NOT a doc-contradiction detector, NOT a format-value distributor, NOT a format-validator crossref, NOT an LLM-inferrer, NOT an SDK-validator-generator, NOT a statistical aggregator.
+
+---
 
 > **M52 Charter Sketch Reservation — 2026-04-28, run_3f128359168988b4, turn_09cba7c7ad415bd0, PM attempt 1, HEAD `15424bc`.** Reserves the `### M52: Input Schema First Property Description Presence Index — Product CLI Surface` detail block for the dev materialization turn. PM-frozen scope (dev MUST carry forward verbatim): new top-level noun `gloss` with single subcommand `index`; CLI surface growth 35 → 36; `gloss` inserted alphabetically between `examples` and `input` in the post-`docs` block (`examples` (e=101) < `gloss` (g=103) at position 0; `gloss` < `input` (g=103 < i=105) at position 0); insertion sequence `..., examples, gloss, input, items, method, ...`; command shape `tusq gloss index [--presence <value>] [--manifest <path>] [--out <path>] [--json]`; four flags (case-sensitive lowercase-only `--presence` filter against the closed four-value bucket-key enum `described | undescribed | not_applicable | unknown`); closed three-value `aggregation_key` enum `description_presence | not_applicable | unknown`; eight-field per-bucket entry shape (`input_schema_first_property_description_presence`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); five-value warning reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_description_invalid_when_present`); top-level `warnings[]` array always present in `--json` (empty `[]` when no malformed capabilities); `not_applicable`, `described`, and `undescribed` emit NO warning (only `unknown` triggers warnings); empty-string and whitespace-only `description` bucket as `undescribed` (NOT as malformed); bucket iteration order `described → undescribed → not_applicable → unknown` (deterministic stable-output convention only); within-bucket manifest declared order; empty buckets MUST NOT appear; result-array field name `first_property_description_presences` (matching M48/M51 plural-categorical convention verbatim); default-preservation table for the 35 unchanged commands; failure UX table; local-only invariants table including `tusq binding index` byte-identity guard (22 commands now); non-persistence rule (`input_schema_first_property_description_presence` MUST NOT be written into `tusq.manifest.json`); explicit non-runtime-validator / non-doc-contradiction-detector / non-quality-scorer / non-LLM-synthesizer / non-language-detector / non-SDK-help-generator / non-statistical-aggregator boundary callout; explicit M44-vs-M52 distinction (M44 capability-level top-level `description` word-count tier via `tusq description index`; M52 first-property docstring-presence via `tusq gloss index` — entirely different fields); explicit M48-vs-M52 distinction (M48 output-side first-property type via `tusq shape index`); explicit M49-vs-M52 distinction (M49 firstKey `.type` via `tusq signature index`; M52 firstKey `.description`); explicit M50-vs-M52 distinction (M50 firstKey ∈ required[] membership via `tusq obligation index`; M52 firstKey `.description`); explicit M51-vs-M52 distinction (M51 firstKey `.source` via `tusq binding index`; M52 firstKey `.description`); the per-FIRST-property word-count tier is reserved for `M-Gloss-Description-Word-Count-Tier-1`; quality scoring is reserved for `M-Gloss-Description-Quality-Score-1`; LLM synthesis is reserved for `M-Gloss-LLM-Description-Synthesizer-1`. VISION sources cited: `.planning/VISION.md` lines 99–106 (`### Internal Docs And Company Operating Knowledge`) primary; `.planning/VISION.md` lines 268–283 (`### Knowledge Artifacts`) structural anchor only. Full M52 surface block lands in dev attempt 1 of this run alongside the source-code implementation; this PM block reserves the structure only.
 
