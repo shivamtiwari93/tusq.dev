@@ -3852,6 +3852,177 @@
         "unknown"
       ],
       "expected_bucket_order": "multiple_constrained,multiple_unconstrained,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-minimum-index-determinism",
+      "scenario_type": "input_schema_first_property_minimum_index_determinism",
+      "description": "Verifies that tusq lower index produces byte-identical output across three runs on a synthetic manifest with lower_bounded, lower_unbounded, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (lower_bounded/lower_unbounded/not_applicable/unknown), closed three-value aggregation_key enum (numeric_lower_bound_constraint/not_applicable/unknown), bucket order determinism (lower_bounded → lower_unbounded → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_minimum non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has minimum=5 (lower_bounded), a has no minimum (lower_unbounded), b has minimum='invalid' (unknown+warning input_schema_properties_first_property_minimum_invalid_when_present) — firstKey=z → lower_bounded (insertion-order, NOT sorted). NULL-AS-ABSENT: minimum:null → lower_unbounded (no warning, mirroring M55-M64 null-as-absent). ZERO-IS-VALID-LOWER-BOUND (M65-SPECIFIC): minimum:0 → lower_bounded (JSON-Schema permits zero; diverges from M64 EXPLICIT-ZERO-IS-INVALID). NEGATIVE-IS-VALID-LOWER-BOUND (M65-SPECIFIC): minimum:-273.15 → lower_bounded. FRACTIONAL-IS-VALID-LOWER-BOUND (M65-SPECIFIC): minimum:0.5 → lower_bounded. STRICT: typeof===number&&Number.isFinite(); NO Number()/parseFloat()/truthy coercion; string '0', boolean true, array [0] ALL bucket as unknown. Sixth frozen warning reason code: input_schema_properties_first_property_minimum_invalid_when_present (single consolidated code covers ALL non-finite-number malformations: NaN, Infinity, -Infinity, string, boolean, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "lower_bounded_cap",
+          "method": "POST",
+          "path": "/lower-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has minimum=1 (finite number) — lands in lower_bounded bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "page_size": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "zero_bounded_cap",
+          "method": "PUT",
+          "path": "/zero-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has minimum=0 (ZERO-IS-VALID-LOWER-BOUND) — lands in lower_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "neg_bounded_cap",
+          "method": "PUT",
+          "path": "/neg-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has minimum=-273.15 (NEGATIVE-IS-VALID-LOWER-BOUND) — lands in lower_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "temp": {
+                "type": "number",
+                "minimum": -273.15
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unbounded_cap",
+          "method": "GET",
+          "path": "/unbounded",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no minimum field — lands in lower_unbounded bucket (absent → lower_unbounded)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_minimum_cap",
+          "method": "GET",
+          "path": "/null-minimum",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has minimum=null — lands in lower_unbounded bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "integer",
+                "minimum": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has minimum=5 (lower_bounded), a has no minimum (lower_unbounded), b has minimum='invalid' (string → unknown+warning). firstKey=z → lower_bounded (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "integer",
+                "minimum": 5
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "integer",
+                "minimum": "invalid"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_minimum_values": [
+        "lower_bounded",
+        "lower_unbounded",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "numeric_lower_bound_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "lower_bounded,lower_unbounded,not_applicable,unknown"
     }
   ]
 }

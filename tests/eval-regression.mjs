@@ -2081,6 +2081,8 @@ async function run() {
       await runInputSchemaFirstPropertyMaxLengthIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_multiple_of_index_determinism') {
       await runInputSchemaFirstPropertyMultipleOfIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_minimum_index_determinism') {
+      await runInputSchemaFirstPropertyMinimumIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -4681,6 +4683,167 @@ async function runInputSchemaFirstPropertyMultipleOfIndexDeterminismScenario(tmp
   // Assert multiple_unconstrained bucket has aggregation_key 'numeric_divisibility_constraint'
   if (unconstrainedEntry.aggregation_key !== 'numeric_divisibility_constraint') {
     fail(`${scenario.id}: multiple_unconstrained bucket must have aggregation_key 'numeric_divisibility_constraint'; got '${unconstrainedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyMinimumIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-minimum-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq lower index --json three times and assert byte-identical output
+  const run1 = runCli(['lower', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['lower', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['lower', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: lower index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_minimum bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validMinimumValues = new Set(scenario.expected_valid_minimum_values);
+  for (const entry of index.first_property_minimum_states) {
+    if (!validMinimumValues.has(entry.input_schema_first_property_minimum)) {
+      fail(`${scenario.id}: input_schema_first_property_minimum '${entry.input_schema_first_property_minimum}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_minimum_states) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_minimum}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (lower_bounded → lower_unbounded → not_applicable → unknown)
+  const bucketOrder = index.first_property_minimum_states.map((e) => e.input_schema_first_property_minimum).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_minimum must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by lower index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_minimum')) {
+      fail(`${scenario.id}: input_schema_first_property_minimum must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_minimum_states.find((e) => e.input_schema_first_property_minimum === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_minimum_states.find((e) => e.input_schema_first_property_minimum === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert lower_bounded_cap is in lower_bounded bucket
+  const lowerBoundedEntry = index.first_property_minimum_states.find((e) => e.input_schema_first_property_minimum === 'lower_bounded');
+  if (!lowerBoundedEntry || !lowerBoundedEntry.capabilities.includes('lower_bounded_cap')) {
+    fail(`${scenario.id}: lower_bounded_cap (firstKey.minimum=1) must be in lower_bounded bucket`);
+  }
+
+  // Assert zero_bounded_cap is in lower_bounded bucket (ZERO-IS-VALID-LOWER-BOUND)
+  if (!lowerBoundedEntry || !lowerBoundedEntry.capabilities.includes('zero_bounded_cap')) {
+    fail(`${scenario.id}: zero_bounded_cap (firstKey.minimum=0) must be in lower_bounded bucket (ZERO-IS-VALID-LOWER-BOUND)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'zero_bounded_cap')) {
+    fail(`${scenario.id}: zero_bounded_cap (ZERO-IS-VALID-LOWER-BOUND → lower_bounded) must NOT produce a warning`);
+  }
+
+  // Assert neg_bounded_cap is in lower_bounded bucket (NEGATIVE-IS-VALID-LOWER-BOUND)
+  if (!lowerBoundedEntry || !lowerBoundedEntry.capabilities.includes('neg_bounded_cap')) {
+    fail(`${scenario.id}: neg_bounded_cap (firstKey.minimum=-273.15) must be in lower_bounded bucket (NEGATIVE-IS-VALID-LOWER-BOUND)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'neg_bounded_cap')) {
+    fail(`${scenario.id}: neg_bounded_cap (NEGATIVE-IS-VALID-LOWER-BOUND → lower_bounded) must NOT produce a warning`);
+  }
+
+  // Assert unbounded_cap is in lower_unbounded bucket
+  const lowerUnboundedEntry = index.first_property_minimum_states.find((e) => e.input_schema_first_property_minimum === 'lower_unbounded');
+  if (!lowerUnboundedEntry || !lowerUnboundedEntry.capabilities.includes('unbounded_cap')) {
+    fail(`${scenario.id}: unbounded_cap (firstKey.minimum absent) must be in lower_unbounded bucket`);
+  }
+
+  // Assert null_minimum_cap is in lower_unbounded bucket (NULL-AS-ABSENT)
+  if (!lowerUnboundedEntry || !lowerUnboundedEntry.capabilities.includes('null_minimum_cap')) {
+    fail(`${scenario.id}: null_minimum_cap (firstKey.minimum=null) must be in lower_unbounded bucket (null-as-absent)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_minimum_cap')) {
+    fail(`${scenario.id}: null_minimum_cap (null-as-absent → lower_unbounded) must NOT produce a warning`);
+  }
+
+  // Assert insertion_order_cap is in lower_bounded bucket (firstKey='z', minimum=5) NOT lower_unbounded (sorted 'a' has no minimum)
+  if (!lowerBoundedEntry || !lowerBoundedEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has minimum=5) must be in lower_bounded bucket (insertion-order, NOT sorted)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (lower_bounded bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert lower_bounded bucket has aggregation_key 'numeric_lower_bound_constraint'
+  if (lowerBoundedEntry.aggregation_key !== 'numeric_lower_bound_constraint') {
+    fail(`${scenario.id}: lower_bounded bucket must have aggregation_key 'numeric_lower_bound_constraint'; got '${lowerBoundedEntry.aggregation_key}'`);
+  }
+
+  // Assert lower_unbounded bucket has aggregation_key 'numeric_lower_bound_constraint'
+  if (lowerUnboundedEntry.aggregation_key !== 'numeric_lower_bound_constraint') {
+    fail(`${scenario.id}: lower_unbounded bucket must have aggregation_key 'numeric_lower_bound_constraint'; got '${lowerUnboundedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'
