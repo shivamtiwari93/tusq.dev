@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 31) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 31 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 32) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 32 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 31) {
-    throw new Error(`M46(x): tusq help must enumerate 31 commands (M47 adds 'parameter'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 32) {
+    throw new Error(`M46(x): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4802,7 +4802,7 @@ async function run() {
   }
 
   // M47(x): explicit boundary test at property counts 0/1/2/3/5/6 verifying bucket assignments none/low/low/medium/medium/high
-  // + tusq help enumerates 31 commands + planning-aid framing + unknown subcommand exits 1
+  // + tusq help enumerates 32 commands + planning-aid framing + unknown subcommand exits 1
   const m47BoundaryManifest = {
     schema_version: '1.0',
     manifest_version: 1,
@@ -4836,11 +4836,11 @@ async function run() {
   if (!m47Cap6Entry || !m47Cap6Entry.capabilities.includes('cap_6_props')) {
     throw new Error(`M47(x): 6-property cap must be in high bucket:\n${JSON.stringify(m47BoundaryJson.tiers)}`);
   }
-  // Help text enumerates 31 commands
+  // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 31) {
-    throw new Error(`M47(x): tusq help must enumerate 31 commands (M47 adds 'parameter'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 32) {
+    throw new Error(`M47(x): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -4854,6 +4854,408 @@ async function run() {
   }
 
   await fs.rm(m47TmpDir, { recursive: true, force: true });
+
+  // ── M48: Static Capability Output Schema First Property Type Index Export ─────
+  const m48TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m48-smoke-'));
+
+  // M48 fixture manifest: capabilities across string/boolean/not_applicable/unknown buckets using canonical express fixture.
+  // Also synthetic fixtures for number/integer/null/object/array/unknown buckets.
+  // Canonical express fixture:
+  //   get_users_api_v1_users_id → output_schema.properties.id.type='string' → string bucket
+  //   post_users_users → output_schema.properties.ok.type='boolean' → boolean bucket
+  //   get_users_users → output_schema.type='array' (non-object) → not_applicable bucket
+  const m48ExpressManifestPath = path.resolve(process.cwd(), 'tests/fixtures/express-sample/tusq.manifest.json');
+
+  // M48(a): default tusq shape index on canonical express fixture produces correct buckets in closed-enum order
+  const m48DefaultResult = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  if (m48DefaultResult.status !== 0) {
+    throw new Error(`M48(a): shape index must exit 0:\nstderr=${m48DefaultResult.stderr}`);
+  }
+  const m48DefaultJson = JSON.parse(m48DefaultResult.stdout);
+  if (!Array.isArray(m48DefaultJson.first_property_types)) {
+    throw new Error(`M48(a): JSON output must have first_property_types[] array:\n${m48DefaultResult.stdout}`);
+  }
+  if (m48DefaultJson.first_property_types.some((e) => e.tiers !== undefined)) {
+    throw new Error(`M48(a): JSON output must NOT have a tiers[] field (that is M47); field name must be first_property_types[]:\n${m48DefaultResult.stdout}`);
+  }
+  // string bucket: get_users_api_v1_users_id
+  const m48StringEntry = m48DefaultJson.first_property_types.find((e) => e.output_schema_first_property_type === 'string');
+  if (!m48StringEntry || !m48StringEntry.capabilities.includes('get_users_api_v1_users_id')) {
+    throw new Error(`M48(a): string bucket must include get_users_api_v1_users_id:\n${JSON.stringify(m48DefaultJson.first_property_types)}`);
+  }
+  // boolean bucket: post_users_users
+  const m48BooleanEntry = m48DefaultJson.first_property_types.find((e) => e.output_schema_first_property_type === 'boolean');
+  if (!m48BooleanEntry || !m48BooleanEntry.capabilities.includes('post_users_users')) {
+    throw new Error(`M48(a): boolean bucket must include post_users_users:\n${JSON.stringify(m48DefaultJson.first_property_types)}`);
+  }
+  // not_applicable bucket: get_users_users (array-typed output → no first property)
+  const m48NotApplicableEntry = m48DefaultJson.first_property_types.find((e) => e.output_schema_first_property_type === 'not_applicable');
+  if (!m48NotApplicableEntry || !m48NotApplicableEntry.capabilities.includes('get_users_users')) {
+    throw new Error(`M48(a): not_applicable bucket must include get_users_users (array type):\n${JSON.stringify(m48DefaultJson.first_property_types)}`);
+  }
+  // no warnings (all three caps have valid output_schema)
+  if (!Array.isArray(m48DefaultJson.warnings) || m48DefaultJson.warnings.length !== 0) {
+    throw new Error(`M48(a): canonical express fixture must produce zero warnings:\n${JSON.stringify(m48DefaultJson.warnings)}`);
+  }
+  // bucket order: string comes before boolean comes before not_applicable
+  const m48StringPos = m48DefaultJson.first_property_types.findIndex((e) => e.output_schema_first_property_type === 'string');
+  const m48BoolPos = m48DefaultJson.first_property_types.findIndex((e) => e.output_schema_first_property_type === 'boolean');
+  const m48NotApplicablePos = m48DefaultJson.first_property_types.findIndex((e) => e.output_schema_first_property_type === 'not_applicable');
+  if (!(m48StringPos < m48BoolPos && m48BoolPos < m48NotApplicablePos)) {
+    throw new Error(`M48(a): bucket order must be string < boolean < not_applicable; got string=${m48StringPos} boolean=${m48BoolPos} not_applicable=${m48NotApplicablePos}`);
+  }
+  // human mode works
+  const m48DefaultHuman = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath], { cwd: m48TmpDir });
+  if (!m48DefaultHuman.stdout.includes('[string]') || !m48DefaultHuman.stdout.includes('[boolean]') || !m48DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M48(a): human mode must include [string], [boolean], [not_applicable] sections:\n${m48DefaultHuman.stdout}`);
+  }
+  if (!m48DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M48(a): human mode must include planning-aid framing:\n${m48DefaultHuman.stdout}`);
+  }
+
+  // M48(b): --first-type string filter
+  const m48FilterString = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'string', '--json'], { cwd: m48TmpDir });
+  if (m48FilterString.status !== 0) {
+    throw new Error(`M48(b): --first-type string must exit 0:\nstderr=${m48FilterString.stderr}`);
+  }
+  const m48FilterStringJson = JSON.parse(m48FilterString.stdout);
+  if (m48FilterStringJson.first_property_types.length !== 1 || m48FilterStringJson.first_property_types[0].output_schema_first_property_type !== 'string') {
+    throw new Error(`M48(b): --first-type string must return exactly one string bucket:\n${m48FilterString.stdout}`);
+  }
+
+  // M48(c): --first-type boolean filter
+  const m48FilterBoolean = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'boolean', '--json'], { cwd: m48TmpDir });
+  if (m48FilterBoolean.status !== 0) {
+    throw new Error(`M48(c): --first-type boolean must exit 0:\nstderr=${m48FilterBoolean.stderr}`);
+  }
+  const m48FilterBooleanJson = JSON.parse(m48FilterBoolean.stdout);
+  if (m48FilterBooleanJson.first_property_types.length !== 1 || m48FilterBooleanJson.first_property_types[0].output_schema_first_property_type !== 'boolean') {
+    throw new Error(`M48(c): --first-type boolean must return exactly one boolean bucket:\n${m48FilterBoolean.stdout}`);
+  }
+
+  // M48(d): --first-type not_applicable filter
+  const m48FilterNotApplicable = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'not_applicable', '--json'], { cwd: m48TmpDir });
+  if (m48FilterNotApplicable.status !== 0) {
+    throw new Error(`M48(d): --first-type not_applicable must exit 0:\nstderr=${m48FilterNotApplicable.stderr}`);
+  }
+  const m48FilterNAJson = JSON.parse(m48FilterNotApplicable.stdout);
+  if (m48FilterNAJson.first_property_types.length !== 1 || m48FilterNAJson.first_property_types[0].output_schema_first_property_type !== 'not_applicable') {
+    throw new Error(`M48(d): --first-type not_applicable must return exactly one not_applicable bucket:\n${m48FilterNotApplicable.stdout}`);
+  }
+
+  // M48(e)-(i): synthetic fixtures for number/integer/null/object/array buckets
+  const m48SyntheticManifestBase = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: []
+  };
+
+  // e: number bucket
+  const m48NumberManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_number', description: 'Returns a count', method: 'GET', path: '/api/v1/count',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      output_schema: { type: 'object', additionalProperties: false, properties: { count: { type: 'number' } } }
+    }]
+  });
+  const m48NumberPath = path.join(m48TmpDir, 'number-manifest.json');
+  await fs.writeFile(m48NumberPath, JSON.stringify(m48NumberManifest), 'utf8');
+  const m48NumberResult = runCli(['shape', 'index', '--manifest', m48NumberPath, '--first-type', 'number', '--json'], { cwd: m48TmpDir });
+  if (m48NumberResult.status !== 0 || JSON.parse(m48NumberResult.stdout).first_property_types[0].output_schema_first_property_type !== 'number') {
+    throw new Error(`M48(e): number bucket must be produced for properties.count.type='number':\n${m48NumberResult.stdout}\n${m48NumberResult.stderr}`);
+  }
+
+  // f: integer bucket
+  const m48IntegerManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_integer', description: 'Returns an integer id', method: 'GET', path: '/api/v1/id',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      output_schema: { type: 'object', additionalProperties: false, properties: { id: { type: 'integer' } } }
+    }]
+  });
+  const m48IntegerPath = path.join(m48TmpDir, 'integer-manifest.json');
+  await fs.writeFile(m48IntegerPath, JSON.stringify(m48IntegerManifest), 'utf8');
+  const m48IntegerResult = runCli(['shape', 'index', '--manifest', m48IntegerPath, '--first-type', 'integer', '--json'], { cwd: m48TmpDir });
+  if (m48IntegerResult.status !== 0 || JSON.parse(m48IntegerResult.stdout).first_property_types[0].output_schema_first_property_type !== 'integer') {
+    throw new Error(`M48(f): integer bucket must be produced for properties.id.type='integer':\n${m48IntegerResult.stdout}\n${m48IntegerResult.stderr}`);
+  }
+
+  // g: null bucket
+  const m48NullManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_null', description: 'Returns null', method: 'DELETE', path: '/api/v1/item/:id',
+      domain: 'ops', side_effect_class: 'destructive', sensitivity_class: 'internal', approved: true,
+      output_schema: { type: 'object', additionalProperties: false, properties: { result: { type: 'null' } } }
+    }]
+  });
+  const m48NullPath = path.join(m48TmpDir, 'null-manifest.json');
+  await fs.writeFile(m48NullPath, JSON.stringify(m48NullManifest), 'utf8');
+  const m48NullResult = runCli(['shape', 'index', '--manifest', m48NullPath, '--first-type', 'null', '--json'], { cwd: m48TmpDir });
+  if (m48NullResult.status !== 0 || JSON.parse(m48NullResult.stdout).first_property_types[0].output_schema_first_property_type !== 'null') {
+    throw new Error(`M48(g): null bucket must be produced for properties.result.type='null':\n${m48NullResult.stdout}\n${m48NullResult.stderr}`);
+  }
+
+  // h: object bucket (nested structural shape)
+  const m48ObjectManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_nested', description: 'Returns nested object', method: 'GET', path: '/api/v1/nested',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      output_schema: { type: 'object', additionalProperties: true, properties: { nested: { type: 'object' } } }
+    }]
+  });
+  const m48ObjectPath = path.join(m48TmpDir, 'object-manifest.json');
+  await fs.writeFile(m48ObjectPath, JSON.stringify(m48ObjectManifest), 'utf8');
+  const m48ObjectResult = runCli(['shape', 'index', '--manifest', m48ObjectPath, '--first-type', 'object', '--json'], { cwd: m48TmpDir });
+  if (m48ObjectResult.status !== 0 || JSON.parse(m48ObjectResult.stdout).first_property_types[0].output_schema_first_property_type !== 'object') {
+    throw new Error(`M48(h): object bucket must be produced for properties.nested.type='object':\n${m48ObjectResult.stdout}\n${m48ObjectResult.stderr}`);
+  }
+
+  // i: array bucket (first property is array type)
+  const m48ArrayManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_list', description: 'Returns list as first property', method: 'GET', path: '/api/v1/list',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      output_schema: { type: 'object', additionalProperties: true, properties: { list: { type: 'array' } } }
+    }]
+  });
+  const m48ArrayPath = path.join(m48TmpDir, 'array-manifest.json');
+  await fs.writeFile(m48ArrayPath, JSON.stringify(m48ArrayManifest), 'utf8');
+  const m48ArrayResult = runCli(['shape', 'index', '--manifest', m48ArrayPath, '--first-type', 'array', '--json'], { cwd: m48TmpDir });
+  if (m48ArrayResult.status !== 0 || JSON.parse(m48ArrayResult.stdout).first_property_types[0].output_schema_first_property_type !== 'array') {
+    throw new Error(`M48(i): array bucket must be produced for properties.list.type='array':\n${m48ArrayResult.stdout}\n${m48ArrayResult.stderr}`);
+  }
+
+  // j: unknown bucket (malformed first-property descriptor — descriptor has no 'type' field)
+  const m48UnknownManifest = Object.assign({}, m48SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_bad_descriptor', description: 'Malformed first property', method: 'GET', path: '/api/v1/bad',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      output_schema: { type: 'object', additionalProperties: true, properties: { value: { description: 'no type here' } } }
+    }]
+  });
+  const m48UnknownPath = path.join(m48TmpDir, 'unknown-manifest.json');
+  await fs.writeFile(m48UnknownPath, JSON.stringify(m48UnknownManifest), 'utf8');
+  const m48UnknownResult = runCli(['shape', 'index', '--manifest', m48UnknownPath, '--first-type', 'unknown', '--json'], { cwd: m48TmpDir });
+  if (m48UnknownResult.status !== 0 || JSON.parse(m48UnknownResult.stdout).first_property_types[0].output_schema_first_property_type !== 'unknown') {
+    throw new Error(`M48(j): unknown bucket must be produced for malformed first-property descriptor:\n${m48UnknownResult.stdout}\n${m48UnknownResult.stderr}`);
+  }
+
+  // M48(k): --first-type STRING (uppercase) exits 1 — case-sensitive enforcement
+  const m48UpperCase = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'STRING'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48UpperCase.stderr.includes('Unknown output schema first property type: STRING') || m48UpperCase.stdout !== '') {
+    throw new Error(`M48(k): --first-type STRING must exit 1 with error on stderr and empty stdout:\nstdout=${m48UpperCase.stdout}\nstderr=${m48UpperCase.stderr}`);
+  }
+
+  // M48(l): --first-type Boolean (mixed-case) exits 1 — case-sensitive enforcement
+  const m48MixedCase = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'Boolean'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48MixedCase.stderr.includes('Unknown output schema first property type: Boolean') || m48MixedCase.stdout !== '') {
+    throw new Error(`M48(l): --first-type Boolean must exit 1 with error on stderr and empty stdout:\nstdout=${m48MixedCase.stdout}\nstderr=${m48MixedCase.stderr}`);
+  }
+
+  // M48(m): --first-type xyz (unknown) exits 1
+  const m48UnknownFilter = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--first-type', 'xyz'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48UnknownFilter.stderr.includes('Unknown output schema first property type: xyz') || m48UnknownFilter.stdout !== '') {
+    throw new Error(`M48(m): --first-type xyz must exit 1 with error:\nstdout=${m48UnknownFilter.stdout}\nstderr=${m48UnknownFilter.stderr}`);
+  }
+
+  // M48(n): missing --manifest path exits 1
+  const m48MissingManifest = runCli(['shape', 'index', '--manifest', '/nonexistent/tusq.manifest.json'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48MissingManifest.stderr.includes('Manifest not found:') || m48MissingManifest.stdout !== '') {
+    throw new Error(`M48(n): missing manifest must exit 1:\nstdout=${m48MissingManifest.stdout}\nstderr=${m48MissingManifest.stderr}`);
+  }
+
+  // M48(o): malformed JSON manifest exits 1
+  const m48BadJsonPath = path.join(m48TmpDir, 'bad.json');
+  await fs.writeFile(m48BadJsonPath, 'NOT VALID JSON', 'utf8');
+  const m48BadJson = runCli(['shape', 'index', '--manifest', m48BadJsonPath], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48BadJson.stderr.includes('Invalid manifest JSON:') || m48BadJson.stdout !== '') {
+    throw new Error(`M48(o): malformed JSON must exit 1:\nstdout=${m48BadJson.stdout}\nstderr=${m48BadJson.stderr}`);
+  }
+
+  // M48(p): missing capabilities array exits 1
+  const m48NoCapsPath = path.join(m48TmpDir, 'no-caps.json');
+  await fs.writeFile(m48NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m48NoCaps = runCli(['shape', 'index', '--manifest', m48NoCapsPath], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m48NoCaps.stdout !== '') {
+    throw new Error(`M48(p): missing capabilities array must exit 1:\nstdout=${m48NoCaps.stdout}\nstderr=${m48NoCaps.stderr}`);
+  }
+
+  // M48(q): unknown flag exits 1
+  const m48UnknownFlag = runCli(['shape', 'index', '--unknown-flag'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48UnknownFlag.stderr.includes('Unknown flag: --unknown-flag') || m48UnknownFlag.stdout !== '') {
+    throw new Error(`M48(q): unknown flag must exit 1:\nstdout=${m48UnknownFlag.stdout}\nstderr=${m48UnknownFlag.stderr}`);
+  }
+
+  // M48(r): --first-type with no value exits 1
+  const m48NoValue = runCli(['shape', 'index', '--first-type'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48NoValue.stderr.includes('Missing value for --first-type') || m48NoValue.stdout !== '') {
+    throw new Error(`M48(r): --first-type with no value must exit 1:\nstdout=${m48NoValue.stdout}\nstderr=${m48NoValue.stderr}`);
+  }
+
+  // M48(s): --out <valid path> writes file and emits no stdout on success
+  const m48OutPath = path.join(m48TmpDir, 'shape-out.json');
+  const m48OutResult = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--out', m48OutPath], { cwd: m48TmpDir });
+  if (m48OutResult.status !== 0 || m48OutResult.stdout !== '') {
+    throw new Error(`M48(s): --out must exit 0 with empty stdout:\nstdout=${m48OutResult.stdout}\nstderr=${m48OutResult.stderr}`);
+  }
+  const m48OutContent = JSON.parse(await fs.readFile(m48OutPath, 'utf8'));
+  if (!Array.isArray(m48OutContent.first_property_types)) {
+    throw new Error(`M48(s): --out file must contain valid JSON with first_property_types[] array:\n${JSON.stringify(m48OutContent)}`);
+  }
+
+  // M48(t): --out .tusq/ path rejected
+  const m48TusqOutResult = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--out', '.tusq/shape.json'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m48TusqOutResult.stdout !== '') {
+    throw new Error(`M48(t): --out .tusq/ must exit 1 with correct message:\nstdout=${m48TusqOutResult.stdout}\nstderr=${m48TusqOutResult.stderr}`);
+  }
+
+  // M48(u): --json outputs valid JSON with first_property_types[] and warnings[] present
+  const m48JsonResult = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  if (m48JsonResult.status !== 0) {
+    throw new Error(`M48(u): --json must exit 0:\nstderr=${m48JsonResult.stderr}`);
+  }
+  const m48JsonParsed = JSON.parse(m48JsonResult.stdout);
+  if (!Array.isArray(m48JsonParsed.first_property_types) || m48JsonParsed.first_property_types.length === 0) {
+    throw new Error(`M48(u): express fixture JSON must have first_property_types[] array:\n${m48JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m48JsonParsed.warnings)) {
+    throw new Error(`M48(u): express fixture JSON must have warnings[] array:\n${m48JsonResult.stdout}`);
+  }
+  if (m48JsonParsed.warnings.length !== 0) {
+    throw new Error(`M48(u): express fixture must produce zero warnings (all caps have valid output_schema):\n${JSON.stringify(m48JsonParsed.warnings)}`);
+  }
+
+  // M48(v): determinism — three consecutive runs produce byte-identical stdout
+  const m48Det1 = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  const m48Det2 = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  const m48Det3 = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  if (m48Det1.stdout !== m48Det2.stdout || m48Det2.stdout !== m48Det3.stdout) {
+    throw new Error(`M48(v): shape index --json must be byte-identical across three consecutive runs`);
+  }
+
+  // M48(v2): manifest mtime + content invariant pre/post index run + non-persistence (output_schema_first_property_type not written)
+  const m48ManifestStatBefore = await fs.stat(m48ExpressManifestPath);
+  runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  const m48ManifestStatAfter = await fs.stat(m48ExpressManifestPath);
+  const m48ManifestAfterContent = JSON.parse(await fs.readFile(m48ExpressManifestPath, 'utf8'));
+  if (m48ManifestStatBefore.mtimeMs !== m48ManifestStatAfter.mtimeMs) {
+    throw new Error(`M48(v2): manifest mtime must not change after shape index run`);
+  }
+  for (const cap of m48ManifestAfterContent.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_first_property_type')) {
+      throw new Error(`M48(v2): output_schema_first_property_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M48(w): empty-capabilities manifest emits documented human line and first_property_types: [] in JSON, warnings: [] in JSON
+  const m48EmptyManifestPath = path.join(m48TmpDir, 'empty.json');
+  await fs.writeFile(m48EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m48EmptyHuman = runCli(['shape', 'index', '--manifest', m48EmptyManifestPath], { cwd: m48TmpDir });
+  if (!m48EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M48(w): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m48EmptyHuman.stdout}`);
+  }
+  const m48EmptyJson = runCli(['shape', 'index', '--manifest', m48EmptyManifestPath, '--json'], { cwd: m48TmpDir });
+  const m48EmptyJsonParsed = JSON.parse(m48EmptyJson.stdout);
+  if (!Array.isArray(m48EmptyJsonParsed.first_property_types) || m48EmptyJsonParsed.first_property_types.length !== 0) {
+    throw new Error(`M48(w): empty capabilities (JSON) must have first_property_types: []:\n${m48EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(m48EmptyJsonParsed.warnings) || m48EmptyJsonParsed.warnings.length !== 0) {
+    throw new Error(`M48(w): empty capabilities (JSON) must have warnings: []:\n${m48EmptyJson.stdout}`);
+  }
+
+  // M48(x): malformed output_schema capabilities produce all 5 warning reason codes in warnings[] and in stderr (human mode)
+  // Also verifies: not_applicable bucket (zero-property object) emits NO warning; unknown-bucket absent-filter exits 1; help enumerates 32 commands
+  const m48AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      // output_schema_field_missing
+      { name: 'no_schema', description: 'No output_schema field', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      // output_schema_field_not_object
+      { name: 'bad_schema', description: 'Non-object output_schema', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, output_schema: 'not_an_object' },
+      // output_schema_type_missing_or_invalid
+      { name: 'no_type', description: 'Missing type field', method: 'GET', path: '/c', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, output_schema: { properties: { x: { type: 'string' } } } },
+      // output_schema_properties_field_missing_when_type_is_object
+      { name: 'no_props', description: 'Object type but no properties', method: 'GET', path: '/d', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, output_schema: { type: 'object' } },
+      // output_schema_properties_first_property_descriptor_invalid
+      { name: 'bad_desc', description: 'First property missing type', method: 'GET', path: '/e', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, output_schema: { type: 'object', properties: { x: { description: 'no type' } } } },
+      // not_applicable: zero-property object → NO warning
+      { name: 'zero_props', description: 'Object with zero properties', method: 'GET', path: '/f', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, output_schema: { type: 'object', properties: {} } }
+    ]
+  };
+  const m48AllWarningsPath = path.join(m48TmpDir, 'all-warnings.json');
+  await fs.writeFile(m48AllWarningsPath, JSON.stringify(m48AllWarningsManifest), 'utf8');
+  const m48AllWarningsJson = runCli(['shape', 'index', '--manifest', m48AllWarningsPath, '--json'], { cwd: m48TmpDir });
+  if (m48AllWarningsJson.status !== 0) {
+    throw new Error(`M48(x): shape index with malformed caps must exit 0:\nstderr=${m48AllWarningsJson.stderr}`);
+  }
+  const m48AllWarningsParsed = JSON.parse(m48AllWarningsJson.stdout);
+  const expectedReasons = [
+    'output_schema_field_missing',
+    'output_schema_field_not_object',
+    'output_schema_type_missing_or_invalid',
+    'output_schema_properties_field_missing_when_type_is_object',
+    'output_schema_properties_first_property_descriptor_invalid'
+  ];
+  for (const reason of expectedReasons) {
+    if (!m48AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M48(x): warnings[] must include reason '${reason}':\n${JSON.stringify(m48AllWarningsParsed.warnings)}`);
+    }
+  }
+  // zero_props (not_applicable) must NOT produce a warning
+  if (m48AllWarningsParsed.warnings.some((w) => w.capability === 'zero_props')) {
+    throw new Error(`M48(x): zero_props (not_applicable bucket, zero-property object) must NOT produce a warning:\n${JSON.stringify(m48AllWarningsParsed.warnings)}`);
+  }
+  // human mode emits warnings to stderr
+  const m48HumanWarnings = runCli(['shape', 'index', '--manifest', m48AllWarningsPath], { cwd: m48TmpDir });
+  if (!m48HumanWarnings.stderr.includes('Warning: capability ')) {
+    throw new Error(`M48(x): human mode must emit warning to stderr:\nstderr=${m48HumanWarnings.stderr}`);
+  }
+
+  // M48(x2): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'first_property_type', 'not_applicable', 'unknown'}
+  const m48AggKeyResult = runCli(['shape', 'index', '--manifest', m48ExpressManifestPath, '--json'], { cwd: m48TmpDir });
+  const m48AggKeyJson = JSON.parse(m48AggKeyResult.stdout);
+  const validAggKeys = new Set(['first_property_type', 'not_applicable', 'unknown']);
+  for (const entry of m48AggKeyJson.first_property_types) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M48(x2): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m48StringAgg = m48AggKeyJson.first_property_types.find((e) => e.output_schema_first_property_type === 'string');
+  const m48BoolAgg = m48AggKeyJson.first_property_types.find((e) => e.output_schema_first_property_type === 'boolean');
+  const m48NAagg = m48AggKeyJson.first_property_types.find((e) => e.output_schema_first_property_type === 'not_applicable');
+  if (!m48StringAgg || m48StringAgg.aggregation_key !== 'first_property_type') {
+    throw new Error(`M48(x2): string bucket must have aggregation_key 'first_property_type':\n${JSON.stringify(m48StringAgg)}`);
+  }
+  if (!m48BoolAgg || m48BoolAgg.aggregation_key !== 'first_property_type') {
+    throw new Error(`M48(x2): boolean bucket must have aggregation_key 'first_property_type':\n${JSON.stringify(m48BoolAgg)}`);
+  }
+  if (!m48NAagg || m48NAagg.aggregation_key !== 'not_applicable') {
+    throw new Error(`M48(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m48NAagg)}`);
+  }
+
+  // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
+  const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
+  const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
+  if (m48HelpCommandCount !== 32) {
+    throw new Error(`M48(x3): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  }
+  if (!m48HelpResult.stdout.includes('  shape')) {
+    throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
+  }
+
+  // shape index help includes planning-aid framing
+  const m48IndexHelpResult = runCli(['shape', 'index', '--help'], { cwd: m48TmpDir });
+  if (!m48IndexHelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M48(x3): shape index help must include planning-aid framing:\n${m48IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m48UnknownSubCmd = runCli(['shape', 'bogusub'], { cwd: m48TmpDir, expectedStatus: 1 });
+  if (!m48UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m48UnknownSubCmd.stdout !== '') {
+    throw new Error(`M48(x3): unknown subcommand must exit 1:\nstdout=${m48UnknownSubCmd.stdout}\nstderr=${m48UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m48TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -5322,8 +5724,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 31) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 31 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 32) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 32 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -5860,8 +6262,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 31) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 31 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 32) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 32 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -6409,8 +6811,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 31) {
-    throw new Error(`M42: tusq help must enumerate exactly 31 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 32) {
+    throw new Error(`M42: tusq help must enumerate exactly 32 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -6955,8 +7357,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 31) {
-    throw new Error(`M41: tusq help must enumerate exactly 31 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 32) {
+    throw new Error(`M41: tusq help must enumerate exactly 32 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -7510,8 +7912,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 31) {
-    throw new Error(`M40: tusq help must enumerate exactly 31 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 32) {
+    throw new Error(`M40: tusq help must enumerate exactly 32 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -7982,8 +8384,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 31) {
-    throw new Error(`M39: tusq help must enumerate exactly 31 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 32) {
+    throw new Error(`M39: tusq help must enumerate exactly 32 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -8453,8 +8855,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 31) {
-    throw new Error(`M38: tusq help must enumerate exactly 31 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 32) {
+    throw new Error(`M38: tusq help must enumerate exactly 32 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -8936,8 +9338,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 31) {
-    throw new Error(`M37: tusq help must enumerate exactly 31 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 32) {
+    throw new Error(`M37: tusq help must enumerate exactly 32 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -9394,8 +9796,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 31) {
-    throw new Error(`M36: tusq help must enumerate exactly 31 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 32) {
+    throw new Error(`M36: tusq help must enumerate exactly 32 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -9787,8 +10189,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 31) {
-    throw new Error(`M35: tusq help must enumerate exactly 31 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 32) {
+    throw new Error(`M35: tusq help must enumerate exactly 32 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

@@ -246,16 +246,37 @@
         {
           "method": "POST",
           "path": "/auth",
-          "expected_pii_fields": ["email", "password"],
-          "expected_pii_categories": ["email", "secrets"],
-          "expected_advisory_order": ["email", "secrets"]
+          "expected_pii_fields": [
+            "email",
+            "password"
+          ],
+          "expected_pii_categories": [
+            "email",
+            "secrets"
+          ],
+          "expected_advisory_order": [
+            "email",
+            "secrets"
+          ]
         },
         {
           "method": "POST",
           "path": "/profile",
-          "expected_pii_fields": ["user_email", "ssn", "credit_card"],
-          "expected_pii_categories": ["email", "government_id", "payment"],
-          "expected_advisory_order": ["email", "government_id", "payment"]
+          "expected_pii_fields": [
+            "user_email",
+            "ssn",
+            "credit_card"
+          ],
+          "expected_pii_categories": [
+            "email",
+            "government_id",
+            "payment"
+          ],
+          "expected_advisory_order": [
+            "email",
+            "government_id",
+            "payment"
+          ]
         },
         {
           "method": "GET",
@@ -268,7 +289,7 @@
     },
     {
       "id": "sensitivity-class-r4-financial-inference",
-      "description": "M28 AC-8: R4 rule — POST to financial-context route produces confidential without any PII category evidence",
+      "description": "M28 AC-8: R4 rule \u2014 POST to financial-context route produces confidential without any PII category evidence",
       "scenario_type": "sensitivity_class_synthetic",
       "synthetic_routes": [
         {
@@ -287,7 +308,7 @@
     },
     {
       "id": "sensitivity-class-r1-preserve-precedence",
-      "description": "M28 AC-8: R1 rule beats R3 — preserve=true capability with PII produces restricted, not confidential",
+      "description": "M28 AC-8: R1 rule beats R3 \u2014 preserve=true capability with PII produces restricted, not confidential",
       "scenario_type": "sensitivity_class_preserve",
       "route": {
         "method": "POST",
@@ -300,7 +321,7 @@
     },
     {
       "id": "sensitivity-class-zero-evidence-unknown",
-      "description": "M28 AC-8: zero-evidence guard — capability with no method, path, PII, auth, or preserve produces unknown",
+      "description": "M28 AC-8: zero-evidence guard \u2014 capability with no method, path, PII, auth, or preserve produces unknown",
       "scenario_type": "sensitivity_class_synthetic",
       "synthetic_routes": [
         {
@@ -313,14 +334,16 @@
     },
     {
       "id": "auth-scheme-bearer-r1-precedence",
-      "description": "M29 AC-8: R1 rule — middleware matching bearer/jwt pattern produces auth_scheme=bearer with evidence_source=middleware_name",
+      "description": "M29 AC-8: R1 rule \u2014 middleware matching bearer/jwt pattern produces auth_scheme=bearer with evidence_source=middleware_name",
       "scenario_type": "auth_requirements_synthetic",
       "synthetic_routes": [
         {
           "method": "GET",
           "path": "/me",
           "handler": "getMe",
-          "middleware": ["requireBearerToken"],
+          "middleware": [
+            "requireBearerToken"
+          ],
           "expected_auth_scheme": "bearer",
           "expected_evidence_source": "middleware_name"
         },
@@ -336,7 +359,7 @@
     },
     {
       "id": "auth-scheme-zero-evidence-unknown-bucket",
-      "description": "M29 AC-4: zero-evidence guard — capability with no middleware, no path, no sensitivity signal produces auth_scheme=unknown (NOT none) with empty arrays",
+      "description": "M29 AC-4: zero-evidence guard \u2014 capability with no middleware, no path, no sensitivity signal produces auth_scheme=unknown (NOT none) with empty arrays",
       "scenario_type": "auth_requirements_synthetic",
       "synthetic_routes": [
         {
@@ -360,7 +383,9 @@
           "method": "GET",
           "path": "/users",
           "handler": "listUsers",
-          "middleware": ["requireBearerToken"],
+          "middleware": [
+            "requireBearerToken"
+          ],
           "expected_auth_scheme": "bearer",
           "expected_evidence_source": "middleware_name",
           "expected_auth_scopes": [],
@@ -377,7 +402,9 @@
           "method": "POST",
           "path": "/data",
           "handler": "postData",
-          "middleware": ["apiKeyAuth"],
+          "middleware": [
+            "apiKeyAuth"
+          ],
           "expected_auth_scheme": "api_key",
           "expected_evidence_source": "middleware_name"
         }
@@ -392,7 +419,9 @@
           "method": "GET",
           "path": "/profile",
           "handler": "getProfile",
-          "middleware": ["sessionGuard"],
+          "middleware": [
+            "sessionGuard"
+          ],
           "expected_auth_scheme": "session",
           "expected_evidence_source": "middleware_name"
         }
@@ -407,7 +436,9 @@
           "method": "GET",
           "path": "/admin/stats",
           "handler": "getStats",
-          "middleware": ["basicAuth"],
+          "middleware": [
+            "basicAuth"
+          ],
           "expected_auth_scheme": "basic",
           "expected_evidence_source": "middleware_name"
         }
@@ -422,7 +453,9 @@
           "method": "GET",
           "path": "/resources",
           "handler": "getResources",
-          "middleware": ["oauthGuard"],
+          "middleware": [
+            "oauthGuard"
+          ],
           "expected_auth_scheme": "oauth",
           "expected_evidence_source": "middleware_name"
         }
@@ -539,12 +572,15 @@
           "auth_scheme": "unknown"
         }
       ],
-      "expected_valid_aggregation_keys": ["domain", "unknown"],
+      "expected_valid_aggregation_keys": [
+        "domain",
+        "unknown"
+      ],
       "expected_domain_order": "users,billing,unknown"
     },
     {
       "id": "effect-index-determinism",
-      "description": "M32: tusq effect index --json produces byte-identical output across three runs on the same manifest; side_effect_class bucket-key enum is closed (four values); aggregation_key enum is closed (two values); bucket iteration order is the frozen closed-enum order (read → write → destructive → unknown)",
+      "description": "M32: tusq effect index --json produces byte-identical output across three runs on the same manifest; side_effect_class bucket-key enum is closed (four values); aggregation_key enum is closed (two values); bucket iteration order is the frozen closed-enum order (read \u2192 write \u2192 destructive \u2192 unknown)",
       "scenario_type": "effect_index_determinism",
       "synthetic_capabilities": [
         {
@@ -588,13 +624,21 @@
           "auth_scheme": "unknown"
         }
       ],
-      "expected_valid_side_effect_classes": ["read", "write", "destructive", "unknown"],
-      "expected_valid_aggregation_keys": ["class", "unknown"],
+      "expected_valid_side_effect_classes": [
+        "read",
+        "write",
+        "destructive",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "class",
+        "unknown"
+      ],
       "expected_effect_order": "read,write,destructive,unknown"
     },
     {
       "id": "sensitivity-index-determinism",
-      "description": "M33: tusq sensitivity index --json produces byte-identical output across three runs on the same manifest; sensitivity_class bucket-key enum is closed (five values); aggregation_key enum is closed (two values); bucket iteration order is the frozen closed-enum order (public → internal → confidential → restricted → unknown)",
+      "description": "M33: tusq sensitivity index --json produces byte-identical output across three runs on the same manifest; sensitivity_class bucket-key enum is closed (five values); aggregation_key enum is closed (two values); bucket iteration order is the frozen closed-enum order (public \u2192 internal \u2192 confidential \u2192 restricted \u2192 unknown)",
       "scenario_type": "sensitivity_index_determinism",
       "synthetic_capabilities": [
         {
@@ -648,13 +692,22 @@
           "auth_scheme": "unknown"
         }
       ],
-      "expected_valid_sensitivity_classes": ["public", "internal", "confidential", "restricted", "unknown"],
-      "expected_valid_aggregation_keys": ["class", "unknown"],
+      "expected_valid_sensitivity_classes": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "class",
+        "unknown"
+      ],
       "expected_sensitivity_order": "public,internal,confidential,restricted,unknown"
     },
     {
       "id": "method-index-determinism",
-      "description": "M34: tusq method index --json produces byte-identical output across three runs on the same manifest; http_method bucket-key enum is closed (six values: GET/POST/PUT/PATCH/DELETE/unknown); aggregation_key enum is closed (two values: method/unknown); bucket iteration order is the frozen closed-enum order (GET → POST → PUT → PATCH → DELETE, then unknown last)",
+      "description": "M34: tusq method index --json produces byte-identical output across three runs on the same manifest; http_method bucket-key enum is closed (six values: GET/POST/PUT/PATCH/DELETE/unknown); aggregation_key enum is closed (two values: method/unknown); bucket iteration order is the frozen closed-enum order (GET \u2192 POST \u2192 PUT \u2192 PATCH \u2192 DELETE, then unknown last)",
       "scenario_type": "method_index_determinism",
       "synthetic_capabilities": [
         {
@@ -718,13 +771,23 @@
           "auth_scheme": "unknown"
         }
       ],
-      "expected_valid_http_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "unknown"],
-      "expected_valid_aggregation_keys": ["method", "unknown"],
+      "expected_valid_http_methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "method",
+        "unknown"
+      ],
       "expected_method_order": "GET,POST,PATCH,DELETE,unknown"
     },
     {
       "id": "auth-scheme-index-determinism",
-      "description": "M35: tusq auth index --json produces byte-identical output across three runs on the same manifest; auth_scheme bucket-key enum is closed (seven values: bearer/api_key/session/basic/oauth/none/unknown); aggregation_key enum is closed (two values: scheme/unknown); bucket iteration order is the frozen closed-enum order (bearer → api_key → session → basic → oauth → none, then unknown last)",
+      "description": "M35: tusq auth index --json produces byte-identical output across three runs on the same manifest; auth_scheme bucket-key enum is closed (seven values: bearer/api_key/session/basic/oauth/none/unknown); aggregation_key enum is closed (two values: scheme/unknown); bucket iteration order is the frozen closed-enum order (bearer \u2192 api_key \u2192 session \u2192 basic \u2192 oauth \u2192 none, then unknown last)",
       "scenario_type": "auth_scheme_index_determinism",
       "synthetic_capabilities": [
         {
@@ -778,13 +841,24 @@
           "auth_scheme": "unknown"
         }
       ],
-      "expected_valid_auth_schemes": ["bearer", "api_key", "session", "basic", "oauth", "none", "unknown"],
-      "expected_valid_aggregation_keys": ["scheme", "unknown"],
+      "expected_valid_auth_schemes": [
+        "bearer",
+        "api_key",
+        "session",
+        "basic",
+        "oauth",
+        "none",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "scheme",
+        "unknown"
+      ],
       "expected_scheme_order": "bearer,api_key,none,unknown"
     },
     {
       "id": "confidence-tier-index-determinism",
-      "description": "M36: tusq confidence index --json produces byte-identical output across three runs on the same manifest; confidence_tier bucket-key enum is closed (four values: high/medium/low/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (high → medium → low, then unknown last); null/missing confidence → unknown (no warning); out-of-range confidence → unknown with warning entry in warnings[]",
+      "description": "M36: tusq confidence index --json produces byte-identical output across three runs on the same manifest; confidence_tier bucket-key enum is closed (four values: high/medium/low/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (high \u2192 medium \u2192 low, then unknown last); null/missing confidence \u2192 unknown (no warning); out-of-range confidence \u2192 unknown with warning entry in warnings[]",
       "scenario_type": "confidence_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -828,13 +902,21 @@
           "confidence": null
         }
       ],
-      "expected_valid_confidence_tiers": ["high", "medium", "low", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_confidence_tiers": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "high,medium,low,unknown"
     },
     {
       "id": "pii-field-count-tier-index-determinism",
-      "description": "M37: tusq pii index --json produces byte-identical output across three runs on the same manifest; pii_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/non-array pii_fields → unknown (with warning); non-string element in pii_fields → unknown with warning",
+      "description": "M37: tusq pii index --json produces byte-identical output across three runs on the same manifest; pii_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none \u2192 low \u2192 medium \u2192 high, then unknown last); null/missing/non-array pii_fields \u2192 unknown (with warning); non-string element in pii_fields \u2192 unknown with warning",
       "scenario_type": "pii_field_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -846,7 +928,14 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.9,
-          "pii_fields": ["email", "ssn", "phone", "dob", "address", "credit_card"]
+          "pii_fields": [
+            "email",
+            "ssn",
+            "phone",
+            "dob",
+            "address",
+            "credit_card"
+          ]
         },
         {
           "name": "health_check",
@@ -868,7 +957,10 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.75,
-          "pii_fields": ["email", "phone"]
+          "pii_fields": [
+            "email",
+            "phone"
+          ]
         },
         {
           "name": "legacy_sync",
@@ -882,13 +974,22 @@
           "pii_fields": null
         }
       ],
-      "expected_valid_pii_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_pii_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "none,low,high,unknown"
     },
     {
       "id": "examples-count-tier-index-determinism",
-      "description": "M38: tusq examples index --json produces byte-identical output across three runs on the same manifest; examples_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/not-array examples → unknown (with warning); null or array element in examples → unknown with warning",
+      "description": "M38: tusq examples index --json produces byte-identical output across three runs on the same manifest; examples_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none \u2192 low \u2192 medium \u2192 high, then unknown last); null/missing/not-array examples \u2192 unknown (with warning); null or array element in examples \u2192 unknown with warning",
       "scenario_type": "examples_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -900,7 +1001,14 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.9,
-          "examples": [{}, {}, {}, {}, {}, {}]
+          "examples": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
         },
         {
           "name": "health_check",
@@ -922,7 +1030,9 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.75,
-          "examples": [{}]
+          "examples": [
+            {}
+          ]
         },
         {
           "name": "legacy_sync",
@@ -935,13 +1045,22 @@
           "confidence": 0.4
         }
       ],
-      "expected_valid_examples_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_examples_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "none,low,high,unknown"
     },
     {
       "id": "required-input-field-count-tier-index-determinism",
-      "description": "M39: tusq input index --json produces byte-identical output across three runs on the same manifest; required_input_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/non-object input_schema → unknown (with warning); non-array or malformed required → unknown with warning; required[] containing non-string or empty-string element → unknown with warning",
+      "description": "M39: tusq input index --json produces byte-identical output across three runs on the same manifest; required_input_field_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none \u2192 low \u2192 medium \u2192 high, then unknown last); null/missing/non-object input_schema \u2192 unknown (with warning); non-array or malformed required \u2192 unknown with warning; required[] containing non-string or empty-string element \u2192 unknown with warning",
       "scenario_type": "required_input_field_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -953,7 +1072,18 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.9,
-          "input_schema": { "type": "object", "properties": {}, "required": ["startDate", "endDate", "format", "destination", "compress", "encrypt"] }
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [
+              "startDate",
+              "endDate",
+              "format",
+              "destination",
+              "compress",
+              "encrypt"
+            ]
+          }
         },
         {
           "name": "health_check",
@@ -964,7 +1094,11 @@
           "sensitivity_class": "public",
           "approved": true,
           "confidence": 0.95,
-          "input_schema": { "type": "object", "properties": {}, "required": [] }
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
         },
         {
           "name": "get_profile",
@@ -975,7 +1109,13 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.75,
-          "input_schema": { "type": "object", "properties": {}, "required": ["userId"] }
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [
+              "userId"
+            ]
+          }
         },
         {
           "name": "legacy_sync",
@@ -988,13 +1128,22 @@
           "confidence": 0.4
         }
       ],
-      "expected_valid_required_input_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_required_input_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "none,low,high,unknown"
     },
     {
       "id": "output-schema-property-count-tier-index-determinism",
-      "description": "M40: tusq output index --json produces byte-identical output across three runs on the same manifest; output_schema_property_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing/non-object output_schema → unknown (with warning); null/non-object output_schema.properties → unknown with warning; properties containing non-object descriptor → unknown with warning; type:array schemas (no properties key) → unknown with reason output_schema_properties_field_missing (informative, not a defect)",
+      "description": "M40: tusq output index --json produces byte-identical output across three runs on the same manifest; output_schema_property_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none \u2192 low \u2192 medium \u2192 high, then unknown last); null/missing/non-object output_schema \u2192 unknown (with warning); null/non-object output_schema.properties \u2192 unknown with warning; properties containing non-object descriptor \u2192 unknown with warning; type:array schemas (no properties key) \u2192 unknown with reason output_schema_properties_field_missing (informative, not a defect)",
       "scenario_type": "output_schema_property_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1006,7 +1155,17 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.9,
-          "output_schema": { "type": "object", "properties": { "id": {}, "status": {}, "startDate": {}, "endDate": {}, "format": {}, "destination": {} } }
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "id": {},
+              "status": {},
+              "startDate": {},
+              "endDate": {},
+              "format": {},
+              "destination": {}
+            }
+          }
         },
         {
           "name": "health_check",
@@ -1017,7 +1176,10 @@
           "sensitivity_class": "public",
           "approved": true,
           "confidence": 0.95,
-          "output_schema": { "type": "object", "properties": {} }
+          "output_schema": {
+            "type": "object",
+            "properties": {}
+          }
         },
         {
           "name": "get_profile",
@@ -1028,7 +1190,14 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.75,
-          "output_schema": { "type": "object", "properties": { "id": { "type": "string" } } }
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          }
         },
         {
           "name": "legacy_sync",
@@ -1041,13 +1210,22 @@
           "confidence": 0.4
         }
       ],
-      "expected_valid_output_schema_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_output_schema_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "none,low,high,unknown"
     },
     {
       "id": "path-segment-count-tier-index-determinism",
-      "description": "M41: tusq path index --json produces byte-identical output across three runs on the same manifest; path_segment_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none → low → medium → high, then unknown last); null/missing path → unknown (with warning); non-string path → unknown with warning; empty-string path → unknown with warning; path without leading '/' → unknown with warning; path with empty interior segment (double slash or trailing slash other than '/') → unknown with warning; path='/' → none (0 segments); path parameters (:id, :orgId) count as one segment each — not unwrapped",
+      "description": "M41: tusq path index --json produces byte-identical output across three runs on the same manifest; path_segment_count_tier bucket-key enum is closed (five values: none/low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (none \u2192 low \u2192 medium \u2192 high, then unknown last); null/missing path \u2192 unknown (with warning); non-string path \u2192 unknown with warning; empty-string path \u2192 unknown with warning; path without leading '/' \u2192 unknown with warning; path with empty interior segment (double slash or trailing slash other than '/') \u2192 unknown with warning; path='/' \u2192 none (0 segments); path parameters (:id, :orgId) count as one segment each \u2014 not unwrapped",
       "scenario_type": "path_segment_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1090,13 +1268,22 @@
           "confidence": 0.4
         }
       ],
-      "expected_valid_path_segment_count_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_path_segment_count_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "low,medium,high,unknown"
     },
     {
       "id": "output-schema-top-level-type-index-determinism",
-      "description": "M42: tusq response index --json produces byte-identical output across three runs on the same manifest; output_schema_top_level_type bucket-key enum is closed (seven values: object/array/string/number/boolean/null/unknown); aggregation_key enum is closed (two values: type/unknown); bucket iteration order is the frozen closed-enum order (object → array → string → number → boolean → null, then unknown last); null/missing/non-object output_schema → unknown (with warning); non-object/null output_schema → unknown with warning; missing/non-string output_schema.type → unknown with warning; type string not in closed six-value set → unknown with warning; 'integer' → unknown (not coerced to number); array-of-types (type: ['object', 'null']) → unknown (type is array not string); compositional schemas without top-level type → unknown with output_schema_type_field_missing reason",
+      "description": "M42: tusq response index --json produces byte-identical output across three runs on the same manifest; output_schema_top_level_type bucket-key enum is closed (seven values: object/array/string/number/boolean/null/unknown); aggregation_key enum is closed (two values: type/unknown); bucket iteration order is the frozen closed-enum order (object \u2192 array \u2192 string \u2192 number \u2192 boolean \u2192 null, then unknown last); null/missing/non-object output_schema \u2192 unknown (with warning); non-object/null output_schema \u2192 unknown with warning; missing/non-string output_schema.type \u2192 unknown with warning; type string not in closed six-value set \u2192 unknown with warning; 'integer' \u2192 unknown (not coerced to number); array-of-types (type: ['object', 'null']) \u2192 unknown (type is array not string); compositional schemas without top-level type \u2192 unknown with output_schema_type_field_missing reason",
       "scenario_type": "output_schema_top_level_type_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1108,7 +1295,12 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.9,
-          "output_schema": { "type": "array", "items": { "type": "object" } }
+          "output_schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
         },
         {
           "name": "get_record",
@@ -1119,7 +1311,13 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.85,
-          "output_schema": { "type": "object", "properties": { "id": {}, "name": {} } }
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "id": {},
+              "name": {}
+            }
+          }
         },
         {
           "name": "no_schema_cap",
@@ -1132,13 +1330,24 @@
           "confidence": 0.7
         }
       ],
-      "expected_valid_output_schema_top_level_types": ["object", "array", "string", "number", "boolean", "null", "unknown"],
-      "expected_valid_aggregation_keys": ["type", "unknown"],
+      "expected_valid_output_schema_top_level_types": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "boolean",
+        "null",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "type",
+        "unknown"
+      ],
       "expected_type_order": "object,array,unknown"
     },
     {
       "id": "input-schema-primary-parameter-source-index-determinism",
-      "description": "M43: tusq request index --json produces byte-identical output across three runs on the same manifest; input_schema_primary_parameter_source bucket-key enum is closed (seven values: path/request_body/query/header/mixed/none/unknown); aggregation_key enum is closed (two values: source/unknown); bucket iteration order is the frozen closed-enum order (path → request_body → query → header → mixed → none, then unknown last); null/missing/non-object input_schema → unknown (with warning); non-object/null input_schema → unknown with warning; missing/non-object input_schema.properties → unknown with warning; any property source outside closed four-value set → unknown with warning; cookie/file/multipart/form-data source values → unknown (not in closed set); array-of-sources → unknown (source is array not string); mixed bucket = two or more distinct closed-set source values; none bucket = properties has 0 keys",
+      "description": "M43: tusq request index --json produces byte-identical output across three runs on the same manifest; input_schema_primary_parameter_source bucket-key enum is closed (seven values: path/request_body/query/header/mixed/none/unknown); aggregation_key enum is closed (two values: source/unknown); bucket iteration order is the frozen closed-enum order (path \u2192 request_body \u2192 query \u2192 header \u2192 mixed \u2192 none, then unknown last); null/missing/non-object input_schema \u2192 unknown (with warning); non-object/null input_schema \u2192 unknown with warning; missing/non-object input_schema.properties \u2192 unknown with warning; any property source outside closed four-value set \u2192 unknown with warning; cookie/file/multipart/form-data source values \u2192 unknown (not in closed set); array-of-sources \u2192 unknown (source is array not string); mixed bucket = two or more distinct closed-set source values; none bucket = properties has 0 keys",
       "scenario_type": "input_schema_primary_parameter_source_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1150,7 +1359,18 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.9,
-          "input_schema": { "type": "object", "properties": { "id": { "type": "string", "source": "path" } }, "required": ["id"] }
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "source": "path"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
         },
         {
           "name": "create_item",
@@ -1161,7 +1381,16 @@
           "sensitivity_class": "restricted",
           "approved": true,
           "confidence": 0.85,
-          "input_schema": { "type": "object", "properties": { "body": { "type": "object", "source": "request_body" } }, "required": [] }
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "source": "request_body"
+              }
+            },
+            "required": []
+          }
         },
         {
           "name": "no_schema_cap",
@@ -1174,13 +1403,24 @@
           "confidence": 0.7
         }
       ],
-      "expected_valid_input_schema_primary_parameter_sources": ["path", "request_body", "query", "header", "mixed", "none", "unknown"],
-      "expected_valid_aggregation_keys": ["source", "unknown"],
+      "expected_valid_input_schema_primary_parameter_sources": [
+        "path",
+        "request_body",
+        "query",
+        "header",
+        "mixed",
+        "none",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "source",
+        "unknown"
+      ],
       "expected_source_order": "path,request_body,unknown"
     },
     {
       "id": "description-word-count-tier-index-determinism",
-      "description": "M44: tusq description index --json produces byte-identical output across three runs on the same manifest; description_word_count_tier bucket-key enum is closed (four values: low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (low → medium → high, then unknown last); null/missing description → unknown (with warning); non-string description → unknown (with warning); empty-after-trim description → unknown (with warning); tier function = description.trim().split(/\\s+/u).length; low <= 7; medium 8-14; high >= 15",
+      "description": "M44: tusq description index --json produces byte-identical output across three runs on the same manifest; description_word_count_tier bucket-key enum is closed (four values: low/medium/high/unknown); aggregation_key enum is closed (two values: tier/unknown); bucket iteration order is the frozen closed-enum order (low \u2192 medium \u2192 high, then unknown last); null/missing description \u2192 unknown (with warning); non-string description \u2192 unknown (with warning); empty-after-trim description \u2192 unknown (with warning); tier function = description.trim().split(/\\s+/u).length; low <= 7; medium 8-14; high >= 15",
       "scenario_type": "description_word_count_tier_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1216,13 +1456,21 @@
           "confidence": 0.7
         }
       ],
-      "expected_valid_description_word_count_tiers": ["low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_description_word_count_tiers": [
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "low,medium,unknown"
     },
     {
       "id": "output-schema-items-type-index-determinism",
-      "description": "M45: tusq items index --json produces byte-identical output across three runs on the same manifest; output_schema_items_type bucket-key enum is closed (nine values: object/array/string/number/integer/boolean/null/not_applicable/unknown); aggregation_key enum is closed (three values: items_type/not_applicable/unknown); bucket iteration order is the frozen closed-enum order (object → array → string → number → integer → boolean → null → not_applicable → unknown); integer is NOT collapsed to number (both are first-class buckets); not_applicable is a valid named bucket for non-array output_schema.type (emits no warning); unknown is emitted for malformed/missing output_schema or items; warnings[] always present in JSON output",
+      "description": "M45: tusq items index --json produces byte-identical output across three runs on the same manifest; output_schema_items_type bucket-key enum is closed (nine values: object/array/string/number/integer/boolean/null/not_applicable/unknown); aggregation_key enum is closed (three values: items_type/not_applicable/unknown); bucket iteration order is the frozen closed-enum order (object \u2192 array \u2192 string \u2192 number \u2192 integer \u2192 boolean \u2192 null \u2192 not_applicable \u2192 unknown); integer is NOT collapsed to number (both are first-class buckets); not_applicable is a valid named bucket for non-array output_schema.type (emits no warning); unknown is emitted for malformed/missing output_schema or items; warnings[] always present in JSON output",
       "scenario_type": "output_schema_items_type_index_determinism",
       "synthetic_capabilities": [
         {
@@ -1235,7 +1483,12 @@
           "sensitivity_class": "public",
           "approved": true,
           "confidence": 0.95,
-          "output_schema": { "type": "array", "items": { "type": "object" } }
+          "output_schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
         },
         {
           "name": "list_ids",
@@ -1247,7 +1500,12 @@
           "sensitivity_class": "public",
           "approved": true,
           "confidence": 0.9,
-          "output_schema": { "type": "array", "items": { "type": "integer" } }
+          "output_schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
         },
         {
           "name": "get_user",
@@ -1259,7 +1517,13 @@
           "sensitivity_class": "confidential",
           "approved": false,
           "confidence": 0.9,
-          "output_schema": { "type": "object", "properties": { "id": {}, "name": {} } }
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "id": {},
+              "name": {}
+            }
+          }
         },
         {
           "name": "no_schema_cap",
@@ -1273,8 +1537,22 @@
           "confidence": 0.7
         }
       ],
-      "expected_valid_output_schema_items_types": ["object", "array", "string", "number", "integer", "boolean", "null", "not_applicable", "unknown"],
-      "expected_valid_aggregation_keys": ["items_type", "not_applicable", "unknown"],
+      "expected_valid_output_schema_items_types": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "items_type",
+        "not_applicable",
+        "unknown"
+      ],
       "expected_items_type_order": "object,integer,not_applicable,unknown"
     },
     {
@@ -1291,7 +1569,10 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "output_schema": { "type": "object", "additionalProperties": false }
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": false
+          }
         },
         {
           "name": "permissive_cap",
@@ -1302,7 +1583,10 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "output_schema": { "type": "object", "additionalProperties": true }
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         {
           "name": "array_cap",
@@ -1313,7 +1597,12 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "output_schema": { "type": "array", "items": { "type": "object" } }
+          "output_schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
         },
         {
           "name": "no_schema_cap",
@@ -1326,14 +1615,23 @@
           "approved": true
         }
       ],
-      "expected_valid_output_schema_strictnesses": ["strict", "permissive", "not_applicable", "unknown"],
-      "expected_valid_aggregation_keys": ["strictness", "not_applicable", "unknown"],
+      "expected_valid_output_schema_strictnesses": [
+        "strict",
+        "permissive",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "strictness",
+        "not_applicable",
+        "unknown"
+      ],
       "expected_strictness_order": "strict,permissive,not_applicable,unknown"
     },
     {
       "id": "input-schema-property-count-tier-index-determinism",
       "scenario_type": "input_schema_property_count_tier_index_determinism",
-      "description": "Verifies that tusq parameter index produces byte-identical output across three runs on a synthetic manifest with none, low, high, and unknown buckets (medium deliberately absent — empty buckets must not appear). Also validates closed five-value bucket-key enum (none/low/medium/high/unknown), closed two-value aggregation_key enum (tier/unknown), bucket order determinism (none → low → high → unknown ascending-numeric-tier convention), warnings[] always present, manifest non-mutation, and input_schema_property_count_tier non-persistence. Boundary thresholds 0/2/5/6 match M40 verbatim and are immutable.",
+      "description": "Verifies that tusq parameter index produces byte-identical output across three runs on a synthetic manifest with none, low, high, and unknown buckets (medium deliberately absent \u2014 empty buckets must not appear). Also validates closed five-value bucket-key enum (none/low/medium/high/unknown), closed two-value aggregation_key enum (tier/unknown), bucket order determinism (none \u2192 low \u2192 high \u2192 unknown ascending-numeric-tier convention), warnings[] always present, manifest non-mutation, and input_schema_property_count_tier non-persistence. Boundary thresholds 0/2/5/6 match M40 verbatim and are immutable.",
       "synthetic_capabilities": [
         {
           "name": "zero_props_cap",
@@ -1344,7 +1642,11 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "input_schema": { "type": "object", "properties": {}, "required": [] }
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
         },
         {
           "name": "one_prop_cap",
@@ -1355,18 +1657,51 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "input_schema": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] }
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
         },
         {
           "name": "six_props_cap",
-          "description": "Six input properties — high bucket boundary",
+          "description": "Six input properties \u2014 high bucket boundary",
           "domain": "items",
           "method": "POST",
           "path": "/api/v1/items",
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "input_schema": { "type": "object", "properties": { "a": { "type": "string" }, "b": { "type": "string" }, "c": { "type": "string" }, "d": { "type": "string" }, "e": { "type": "string" }, "f": { "type": "string" } }, "required": [] }
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string"
+              },
+              "c": {
+                "type": "string"
+              },
+              "d": {
+                "type": "string"
+              },
+              "e": {
+                "type": "string"
+              },
+              "f": {
+                "type": "string"
+              }
+            },
+            "required": []
+          }
         },
         {
           "name": "no_schema_cap",
@@ -1379,9 +1714,106 @@
           "approved": true
         }
       ],
-      "expected_valid_input_schema_property_count_tiers": ["none", "low", "medium", "high", "unknown"],
-      "expected_valid_aggregation_keys": ["tier", "unknown"],
+      "expected_valid_input_schema_property_count_tiers": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "tier",
+        "unknown"
+      ],
       "expected_tier_order": "none,low,high,unknown"
+    },
+    {
+      "id": "output-schema-first-property-type-index-determinism",
+      "scenario_type": "output_schema_first_property_type_index_determinism",
+      "description": "Verifies that tusq shape index produces byte-identical output across three runs on a synthetic manifest with string, boolean, not_applicable, and unknown buckets (number/integer/null/object/array deliberately absent \u2014 empty buckets must not appear). Also validates closed nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown), closed three-value aggregation_key enum (first_property_type/not_applicable/unknown), bucket order determinism (string \u2192 number \u2192 integer \u2192 boolean \u2192 null \u2192 object \u2192 array \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and output_schema_first_property_type non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys.",
+      "synthetic_capabilities": [
+        {
+          "name": "string_cap",
+          "description": "Returns object with string first property",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "name": "bool_cap",
+          "description": "Returns object with boolean first property",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "ok": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "name": "array_type_cap",
+          "description": "Non-object response \u2014 not_applicable, no warning",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "output_schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No output schema \u2014 unknown bucket",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_output_schema_first_property_types": [
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null",
+        "object",
+        "array",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "first_property_type",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "string,boolean,not_applicable,unknown"
     }
   ]
 }

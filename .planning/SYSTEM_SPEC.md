@@ -1,8 +1,43 @@
 # System Spec — tusq.dev Docs & Website Platform
 
-### M48: Static Capability Output Schema First Property Type Index — Charter Sketch Reservation
+### M48: Static Capability Output Schema First Property Type Index
 
-**Status:** Charter bound 2026-04-27 in `run_f61946531dda2fe6` / `turn_2b52784e96159e79` (PM attempt 1) at HEAD `1abac5e`. **Not yet shipped.** The full SYSTEM_SPEC § M48 detail block (purpose statement, command shape, frozen nine-value `output_schema_first_property_type` bucket-key enum `string | number | integer | boolean | null | object | array | not_applicable | unknown`, frozen three-value `aggregation_key` enum `first_property_type | not_applicable | unknown`, frozen classifier-function rules with the closed seven-primitive set match on `output_schema.properties[Object.keys[0]].type` when output_schema.type === 'object', the `not_applicable` semantics for non-object responses and zero-property objects, the five frozen warning reason codes `output_schema_field_missing | output_schema_field_not_object | output_schema_type_missing_or_invalid | output_schema_properties_field_missing_when_type_is_object | output_schema_properties_first_property_descriptor_invalid`, the bucket iteration order `string → number → integer → boolean → null → object → array → not_applicable → unknown`, the case-sensitive lowercase-only `--first-type` filter rule, the non-persistence-of-`output_schema_first_property_type` rule, the no-all-properties-walking rule, the no-nested-property-recursion rule, the no-input-side rule, the no-array-element-property-type rule, and the explicit non-runtime-validator / non-SDK-generator / non-JSON-Schema-emitter boundary statement) plus Constraint 41 (the M48 boundary-statement freeze) will be authored in the dev materialization turn before any source code lands. The PM scope decisions are frozen verbatim in the M48 Charter Bound block of `.planning/PM_SIGNOFF.md` and the M48 milestone block of `.planning/ROADMAP.md` § M48; dev MUST carry these forward without drift.
+**Status:** Shipped in `run_f61946531dda2fe6` / `turn_7aca0e4acba46509` (dev implementation). V1.29.
+
+**Purpose:** Export a per-bucket breakdown of capabilities by the primitive `type` of the FIRST property declared under `output_schema.properties` (Object.keys insertion-order index 0) when `output_schema.type === 'object'`. Directly answers: "for the object-typed responses my capabilities return, what is the primitive type of the first property of each — string, number, integer, boolean, null, object (nested), array (nested), not-applicable (non-object response or empty-property object), or unknown (malformed)?" Operationalizes VISION § Developer Artifacts (lines 342–356) — "SDK type definitions, API/tool schemas, …" — as the primary aggregation source; the first shipped milestone to use this section. Distinct from M40 (output_schema.properties cardinality count — count not type); M42 (output_schema.type top-level — top-level not per-property); M45 (output_schema.items.type for arrays — element-shape not first-property-shape); M46 (output_schema.additionalProperties boolean — boolean closure not primitive-type axis); M47 (input_schema.properties cardinality — input side not output per-property type).
+
+**Command:** `tusq shape index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**Classifier function** (applied to `output_schema` of each capability; Object.keys insertion-order preserved):
+
+| Result | Condition |
+|--------|-----------|
+| `unknown` | `output_schema` is `null`/`undefined`/missing/not-a-plain-object/array (reason: `output_schema_field_missing` or `output_schema_field_not_object`) |
+| `unknown` | `output_schema.type` is missing or non-string (reason: `output_schema_type_missing_or_invalid`) |
+| `not_applicable` | `output_schema.type` is a string but not literal `'object'` (non-object response has no first property; NO warning) |
+| `unknown` | `output_schema.type === 'object'` but `output_schema.properties` is missing/null/not-plain-object (reason: `output_schema_properties_field_missing_when_type_is_object`) |
+| `not_applicable` | `output_schema.type === 'object'` and `Object.keys(output_schema.properties).length === 0` (zero-property object; NO warning) |
+| `unknown` | `firstDescriptor` is not a plain non-null object, or `firstDescriptor.type` is missing/non-string/outside closed seven-primitive set (reason: `output_schema_properties_first_property_descriptor_invalid`) |
+| one of `string\|number\|integer\|boolean\|null\|object\|array` | `firstDescriptor.type` is a literal lower-case string in the closed seven-primitive set |
+
+**Frozen invariants:**
+- Closed nine-value bucket-key enum: `string | number | integer | boolean | null | object | array | not_applicable | unknown`. Immutable once M48 ships.
+- Closed three-value aggregation_key enum: `first_property_type | not_applicable | unknown`. Seven primitive buckets → `first_property_type`; `not_applicable` → `not_applicable`; `unknown` → `unknown`. Immutable once M48 ships.
+- Closed seven-primitive set matched as literal lower-case strings: `string | number | integer | boolean | null | object | array`. Any string outside this set returns `unknown`.
+- Closed five-value warning reason-code enum: `output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_type_missing_or_invalid`, `output_schema_properties_field_missing_when_type_is_object`, `output_schema_properties_first_property_descriptor_invalid`. The `not_applicable` bucket emits NO warning; only `unknown` triggers warnings.
+- Closed-enum bucket iteration order: `string → number → integer → boolean → null → object → array → not_applicable → unknown` (scalar-primitives-first → null → structural-primitives → exits — NOT SDK-complexity-ranked, NOT tool-generation-difficulty-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT serialization-cost-ranked).
+- Frozen 8-field per-bucket entry: `output_schema_first_property_type`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+- Result array field name: `first_property_types` (matches M42 `types`, M45 `items_types` plural-categorical precedent).
+- `warnings[]` top-level array: always present in `--json` mode (even when empty `[]`) for shape stability.
+- Object.keys insertion-order semantics: the classifier MUST NOT sort, re-order, or otherwise mutate the property-key sequence.
+- `--first-type` filter: case-sensitive lowercase-only; uppercase/mixed-case values exit 1 with `Unknown output schema first property type: <value>`. Absent-bucket filter exits 1 with `No capabilities found for output schema first property type: <value>`.
+- Read-only invariants: manifest mtime + content unchanged pre/post; `output_schema_first_property_type` MUST NOT be written into `tusq.manifest.json`; all 18 peer index commands byte-identical pre/post.
+- No-all-properties-walking: only the FIRST property is classified (reserved for `M-Shape-All-Properties-Type-Index-1`).
+- No-nested-property-recursion: `output_schema.properties[key].properties` NOT walked (reserved for `M-Shape-Nested-Property-Type-Index-1`).
+- No-input-side-classification: `input_schema.properties[firstKey].type` NOT classified (reserved for `M-Shape-Input-First-Property-Type-Index-1`).
+- No-array-element-property-type: `output_schema.items.properties[firstKey].type` NOT classified (reserved for `M-Shape-Items-Property-Type-Index-1`).
+
+**Constraint 41:** `tusq shape index` is a planning aid that surfaces the per-capability `output_schema.properties[<firstKey>].type` primitive classification and the cross-axis side-effect/sensitivity exposure of each primitive bucket. It does NOT execute capability invocations at runtime, does NOT validate runtime response payloads against the declared first-property type, does NOT generate SDK type definitions, does NOT emit JSON-Schema files, does NOT certify response-shape correctness, does NOT alter M40/M42/M45/M46 bucketing rules, does NOT walk per-property types beyond the FIRST property, does NOT inspect nested-object property types, does NOT bucket on input-schema properties, does NOT bucket on per-array-element property types, does NOT generate downstream SDK type definitions, does NOT persist `output_schema_first_property_type` into `tusq.manifest.json`, and does NOT compute statistical aggregates. The nine-value bucket-key enum, three-value aggregation_key enum, seven-primitive set, and five-value warning reason-code enum are frozen. The `--first-type` filter is case-sensitive lowercase-only.
 
 ### M47: Static Capability Input Schema Property Count Tier Index
 

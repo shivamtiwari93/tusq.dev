@@ -1,8 +1,48 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-### M48: Output Schema First Property Type Index — Product CLI Surface — Charter Sketch Reservation
+### M48: Output Schema First Property Type Index — Product CLI Surface
 
-**Status:** Charter bound 2026-04-27 in `run_f61946531dda2fe6` / `turn_2b52784e96159e79` (PM attempt 1) at HEAD `1abac5e`. **Not yet shipped.** The full M48 Product CLI Surface block (two-row command table for `tusq shape` and `tusq shape index`, the four-flag table for `--first-type | --manifest | --out | --json`, the closed nine-value bucket-key enum table, the closed three-value aggregation_key enum table, the classifier-function rules table, the per-bucket entry shape table, the bucket iteration order table `string → number → integer → boolean → null → object → array → not_applicable → unknown`, the default-preservation table for the 31 unchanged commands, the failure UX table, and the local-only invariants table including non-persistence and 18-command byte-identity guard) will be authored in the dev materialization turn before any source code lands. The CLI surface grows from 31 → 32 commands; `shape` is inserted alphabetically between `sensitivity` and `strictness` in `printHelp()` (`s` = `s` at position 0; `e` (101) < `h` (104) < `t` (116) at position 1).
+**Status:** Shipped in `run_f61946531dda2fe6` / `turn_7aca0e4acba46509` (dev implementation). V1.29.
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `tusq shape` | Top-level noun dispatcher — prints subcommand help |
+| `tusq shape index` | Emit a per-bucket capability index from `output_schema.properties[Object.keys[0]].type` when `output_schema.type === 'object'` |
+
+**Flags:**
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--first-type <value>` | (all buckets) | Filter output to a single first-property-type bucket; case-sensitive lowercase-only; exits 1 if value not in closed nine-value enum or if bucket is absent |
+| `--manifest <path>` | `tusq.manifest.json` | Path to the manifest file |
+| `--out <path>` | (stdout) | Write index to file; stdout is empty on success; `.tusq/` paths rejected |
+| `--json` | (human text) | Emit machine-readable JSON including `first_property_types[]` and `warnings[]` |
+
+**Bucket-key enum (closed nine-value):**
+
+| Key | Meaning |
+|-----|---------|
+| `string` | `properties[firstKey].type === 'string'` |
+| `number` | `properties[firstKey].type === 'number'` |
+| `integer` | `properties[firstKey].type === 'integer'` |
+| `boolean` | `properties[firstKey].type === 'boolean'` |
+| `null` | `properties[firstKey].type === 'null'` |
+| `object` | `properties[firstKey].type === 'object'` (nested structural) |
+| `array` | `properties[firstKey].type === 'array'` (nested list) |
+| `not_applicable` | `output_schema.type !== 'object'` OR zero-property object (NO warning) |
+| `unknown` | Malformed `output_schema` or invalid first-property descriptor (warning emitted) |
+
+**Aggregation-key enum (closed three-value):** `first_property_type` (seven primitive buckets) | `not_applicable` | `unknown`
+
+**Bucket iteration order:** `string → number → integer → boolean → null → object → array → not_applicable → unknown` (scalar-primitives-first → null → structural-primitives → exits; NOT SDK-complexity-ranked)
+
+**Per-bucket entry shape (frozen 8 fields):** `output_schema_first_property_type`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`
+
+**CLI surface growth:** 31 → 32 commands. `shape` inserted alphabetically between `sensitivity` and `strictness` (`s`=`s`, `e`(101)<`h`(104)<`t`(116) at position 1).
+
+**Local-only invariants:** Non-persistence (`output_schema_first_property_type` never written to manifest); all 18 peer index commands byte-identical pre/post; manifest mtime unchanged.
 
 ### M47: Input Schema Property Count Tier Index — Product CLI Surface
 
