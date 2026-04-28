@@ -3701,6 +3701,157 @@
         "unknown"
       ],
       "expected_bucket_order": "length_capped,length_uncapped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-multiple-of-index-determinism",
+      "scenario_type": "input_schema_first_property_multiple_of_index_determinism",
+      "description": "Verifies that tusq divisor index produces byte-identical output across three runs on a synthetic manifest with multiple_constrained, multiple_unconstrained, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (multiple_constrained/multiple_unconstrained/not_applicable/unknown), closed three-value aggregation_key enum (numeric_divisibility_constraint/not_applicable/unknown), bucket order determinism (multiple_constrained → multiple_unconstrained → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_multiple_of non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has multipleOf=5 (multiple_constrained), a has no multipleOf (multiple_unconstrained), b has multipleOf=0 (zero — unknown+warning input_schema_properties_first_property_multiple_of_invalid_when_present via EXPLICIT-ZERO-IS-INVALID) — firstKey=z → multiple_constrained (insertion-order, NOT sorted). NULL-AS-ABSENT: multipleOf:null → multiple_unconstrained (no warning, mirroring M55/M56/M57/M58/M59/M60/M61/M62/M63 null-as-absent). FRACTIONAL-DIVISORS-ARE-VALID (M64-SPECIFIC): multipleOf:0.5 → multiple_constrained (predicate is typeof==='number'&&Number.isFinite()&&>0, NOT Number.isInteger()&&>=0). EXPLICIT-ZERO-IS-INVALID (M64-SPECIFIC): multipleOf:0 → unknown (NOT multiple_constrained — JSON-Schema strictly rejects multipleOf:0). STRICT: typeof===number&&Number.isFinite()&&>0; NO Number()/parseFloat()/truthy coercion; string '5', boolean true, array [5] ALL bucket as unknown. Sixth frozen warning reason code: input_schema_properties_first_property_multiple_of_invalid_when_present (single consolidated code covers ALL non-strictly-positive-finite malformations: zero, negative, NaN, Infinity, -Infinity, string, boolean, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "constrained_cap",
+          "method": "POST",
+          "path": "/constrained",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has multipleOf=5 (strictly-positive finite number) — lands in multiple_constrained bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "page_size": {
+                "type": "integer",
+                "multipleOf": 5
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "frac_constrained_cap",
+          "method": "PUT",
+          "path": "/frac-constrained",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has multipleOf=0.5 (FRACTIONAL-DIVISORS-ARE-VALID) — lands in multiple_constrained bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "score_delta": {
+                "type": "number",
+                "multipleOf": 0.5
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unconstrained_cap",
+          "method": "GET",
+          "path": "/unconstrained",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no multipleOf field — lands in multiple_unconstrained bucket (absent → multiple_unconstrained)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_multiple_of_cap",
+          "method": "GET",
+          "path": "/null-multiple-of",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has multipleOf=null — lands in multiple_unconstrained bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "integer",
+                "multipleOf": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has multipleOf=5 (multiple_constrained), a has no multipleOf (multiple_unconstrained), b has multipleOf=0 (EXPLICIT-ZERO-IS-INVALID — unknown+warning). firstKey=z → multiple_constrained (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "integer",
+                "multipleOf": 5
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "integer",
+                "multipleOf": 0
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_multiple_of_values": [
+        "multiple_constrained",
+        "multiple_unconstrained",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "numeric_divisibility_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "multiple_constrained,multiple_unconstrained,not_applicable,unknown"
     }
   ]
 }

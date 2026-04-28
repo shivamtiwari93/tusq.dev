@@ -2079,6 +2079,8 @@ async function run() {
       await runInputSchemaFirstPropertyMinLengthIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_max_length_index_determinism') {
       await runInputSchemaFirstPropertyMaxLengthIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_multiple_of_index_determinism') {
+      await runInputSchemaFirstPropertyMultipleOfIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -4526,6 +4528,159 @@ async function runInputSchemaFirstPropertyMaxLengthIndexDeterminismScenario(tmpR
   // Assert length_uncapped bucket has aggregation_key 'string_length_ceiling_constraint'
   if (uncappedEntry.aggregation_key !== 'string_length_ceiling_constraint') {
     fail(`${scenario.id}: length_uncapped bucket must have aggregation_key 'string_length_ceiling_constraint'; got '${uncappedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyMultipleOfIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-multiple-of-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq divisor index --json three times and assert byte-identical output
+  const run1 = runCli(['divisor', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['divisor', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['divisor', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: divisor index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_multiple_of bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validMultipleOfValues = new Set(scenario.expected_valid_multiple_of_values);
+  for (const entry of index.first_property_multiple_of_states) {
+    if (!validMultipleOfValues.has(entry.input_schema_first_property_multiple_of)) {
+      fail(`${scenario.id}: input_schema_first_property_multiple_of '${entry.input_schema_first_property_multiple_of}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_multiple_of_states) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_multiple_of}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (multiple_constrained → multiple_unconstrained → not_applicable → unknown)
+  const bucketOrder = index.first_property_multiple_of_states.map((e) => e.input_schema_first_property_multiple_of).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_multiple_of must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by divisor index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_multiple_of')) {
+      fail(`${scenario.id}: input_schema_first_property_multiple_of must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert constrained_cap is in multiple_constrained bucket
+  const constrainedEntry = index.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'multiple_constrained');
+  if (!constrainedEntry || !constrainedEntry.capabilities.includes('constrained_cap')) {
+    fail(`${scenario.id}: constrained_cap (firstKey.multipleOf=5) must be in multiple_constrained bucket`);
+  }
+
+  // Assert frac_constrained_cap is in multiple_constrained bucket (FRACTIONAL-DIVISORS-ARE-VALID)
+  if (!constrainedEntry || !constrainedEntry.capabilities.includes('frac_constrained_cap')) {
+    fail(`${scenario.id}: frac_constrained_cap (firstKey.multipleOf=0.5) must be in multiple_constrained bucket (FRACTIONAL-DIVISORS-ARE-VALID)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'frac_constrained_cap')) {
+    fail(`${scenario.id}: frac_constrained_cap (FRACTIONAL-DIVISORS-ARE-VALID → multiple_constrained) must NOT produce a warning`);
+  }
+
+  // Assert unconstrained_cap is in multiple_unconstrained bucket
+  const unconstrainedEntry = index.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'multiple_unconstrained');
+  if (!unconstrainedEntry || !unconstrainedEntry.capabilities.includes('unconstrained_cap')) {
+    fail(`${scenario.id}: unconstrained_cap (firstKey.multipleOf absent) must be in multiple_unconstrained bucket`);
+  }
+
+  // Assert null_multiple_of_cap is in multiple_unconstrained bucket (NULL-AS-ABSENT)
+  if (!unconstrainedEntry || !unconstrainedEntry.capabilities.includes('null_multiple_of_cap')) {
+    fail(`${scenario.id}: null_multiple_of_cap (firstKey.multipleOf=null) must be in multiple_unconstrained bucket (null-as-absent)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_multiple_of_cap')) {
+    fail(`${scenario.id}: null_multiple_of_cap (null-as-absent → multiple_unconstrained) must NOT produce a warning`);
+  }
+
+  // Assert insertion_order_cap is in multiple_constrained bucket (firstKey='z', multipleOf=5) NOT multiple_unconstrained (sorted 'a' has no multipleOf)
+  if (!constrainedEntry || !constrainedEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has multipleOf=5) must be in multiple_constrained bucket (insertion-order, NOT sorted)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (multiple_constrained bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert multiple_constrained bucket has aggregation_key 'numeric_divisibility_constraint'
+  if (constrainedEntry.aggregation_key !== 'numeric_divisibility_constraint') {
+    fail(`${scenario.id}: multiple_constrained bucket must have aggregation_key 'numeric_divisibility_constraint'; got '${constrainedEntry.aggregation_key}'`);
+  }
+
+  // Assert multiple_unconstrained bucket has aggregation_key 'numeric_divisibility_constraint'
+  if (unconstrainedEntry.aggregation_key !== 'numeric_divisibility_constraint') {
+    fail(`${scenario.id}: multiple_unconstrained bucket must have aggregation_key 'numeric_divisibility_constraint'; got '${unconstrainedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

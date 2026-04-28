@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 47) {
+  if (m45CommandCount !== 48) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,7 +4322,7 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 47) {
+  if (m46HelpCommandCount !== 48) {
     throw new Error(`M46(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
@@ -4839,7 +4839,7 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 47) {
+  if (m47HelpCommandCount !== 48) {
     throw new Error(`M47(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
@@ -5237,7 +5237,7 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 47) {
+  if (m48HelpCommandCount !== 48) {
     throw new Error(`M48(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
@@ -5639,7 +5639,7 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 47) {
+  if (m49HelpCommandCount !== 48) {
     throw new Error(`M49(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
@@ -6037,7 +6037,7 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 47) {
+  if (m50HelpCommandCount !== 48) {
     throw new Error(`M50(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
@@ -6419,7 +6419,7 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 47) {
+  if (m51HelpCommandCount !== 48) {
     throw new Error(`M51(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
@@ -6797,7 +6797,7 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 47) {
+  if (m52HelpCommandCount !== 48) {
     throw new Error(`M52(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
@@ -7244,7 +7244,7 @@ async function run() {
   // M53(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 47) {
+  if (m53HelpCommandCount !== 48) {
     throw new Error(`M53(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
@@ -7690,7 +7690,7 @@ async function run() {
   // M54(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 47) {
+  if (m54HelpCommandCount !== 48) {
     throw new Error(`M54(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
@@ -8130,7 +8130,7 @@ async function run() {
   // M55(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 47) {
+  if (m55HelpCommandCount !== 48) {
     throw new Error(`M55(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
@@ -8506,7 +8506,7 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 47) {
+  if (m56HelpCommandCount !== 48) {
     throw new Error(`M56(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
@@ -8909,7 +8909,7 @@ async function run() {
   // M57(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 47) {
+  if (m57HelpCommandCount !== 48) {
     throw new Error(`M57(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
@@ -9335,7 +9335,7 @@ async function run() {
   // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
   const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
   const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m58HelpCommandCount !== 47) {
+  if (m58HelpCommandCount !== 48) {
     throw new Error(`M58(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
   }
   if (!m58HelpResult.stdout.includes('  legacy')) {
@@ -9738,7 +9738,7 @@ async function run() {
   // M59(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'regex' between 'redaction' and 'request'
   const m59HelpResult = runCli(['help'], { cwd: m59TmpDir });
   const m59HelpCommandCount = (m59HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m59HelpCommandCount !== 47) {
+  if (m59HelpCommandCount !== 48) {
     throw new Error(`M59(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
   }
   if (!m59HelpResult.stdout.includes('  regex')) {
@@ -10141,7 +10141,7 @@ async function run() {
   // M60(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'seal' between 'sample' and 'sensitivity'
   const m60HelpResult = runCli(['help'], { cwd: m60TmpDir });
   const m60HelpCommandCount = (m60HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m60HelpCommandCount !== 47) {
+  if (m60HelpCommandCount !== 48) {
     throw new Error(`M60(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m60HelpCommandCount}:\n${m60HelpResult.stdout}`);
   }
   if (!m60HelpResult.stdout.includes('  seal')) {
@@ -10544,7 +10544,7 @@ async function run() {
   // M61(x2): help enumerates 45 commands (M61 adds 'secret') and includes 'secret' between 'seal' and 'sensitivity'
   const m61HelpResult = runCli(['help'], { cwd: m61TmpDir });
   const m61HelpCommandCount = (m61HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m61HelpCommandCount !== 47) {
+  if (m61HelpCommandCount !== 48) {
     throw new Error(`M61(x2): tusq help must enumerate 45 commands (M61 adds 'secret'); got ${m61HelpCommandCount}:\n${m61HelpResult.stdout}`);
   }
   if (!m61HelpResult.stdout.includes('  secret')) {
@@ -10957,7 +10957,7 @@ async function run() {
   // M62(x2): help enumerates 46 commands (M62 adds 'floor') and includes 'floor' between 'examples' and 'gloss'
   const m62HelpResult = runCli(['help'], { cwd: m62TmpDir });
   const m62HelpCommandCount = (m62HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m62HelpCommandCount !== 47) {
+  if (m62HelpCommandCount !== 48) {
     throw new Error(`M62(x2): tusq help must enumerate 46 commands (M62 adds 'floor'); got ${m62HelpCommandCount}:\n${m62HelpResult.stdout}`);
   }
   if (!m62HelpResult.stdout.includes('  floor')) {
@@ -11370,7 +11370,7 @@ async function run() {
   // M63(x2): help enumerates 47 commands (M63 adds 'ceiling') and includes 'ceiling' between 'caption' and 'choice'
   const m63HelpResult = runCli(['help'], { cwd: m63TmpDir });
   const m63HelpCommandCount = (m63HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m63HelpCommandCount !== 47) {
+  if (m63HelpCommandCount !== 48) {
     throw new Error(`M63(x2): tusq help must enumerate 47 commands (M63 adds 'ceiling'); got ${m63HelpCommandCount}:\n${m63HelpResult.stdout}`);
   }
   if (!m63HelpResult.stdout.includes('  ceiling')) {
@@ -11398,6 +11398,413 @@ async function run() {
   }
 
   await fs.rm(m63TmpDir, { recursive: true, force: true });
+
+  // ── M64: Static Capability Input Schema First Property MultipleOf Numeric-Divisibility Annotation Presence Index ──
+  const m64TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m64-smoke-'));
+
+  // M64 fixture manifest: synthetic capabilities across multiple_constrained/multiple_unconstrained/not_applicable buckets.
+  // constrained_cap → firstKey.multipleOf = 5 (positive finite number → multiple_constrained)
+  // frac_constrained_cap → firstKey.multipleOf = 0.5 (FRACTIONAL-DIVISORS-ARE-VALID → multiple_constrained)
+  // unconstrained_cap → firstKey has no multipleOf field (absent → multiple_unconstrained)
+  // not_applicable_cap → input_schema.type = 'array' (non-object → not_applicable, no warning)
+  const m64SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'constrained_cap',
+        description: 'Capability with multipleOf:5 on first property',
+        method: 'POST',
+        path: '/api/v1/pages',
+        domain: 'content',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        input_schema: {
+          type: 'object',
+          properties: { page_size: { type: 'integer', multipleOf: 5 } },
+          required: ['page_size']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'frac_constrained_cap',
+        description: 'Capability with multipleOf:0.5 on first property (FRACTIONAL-DIVISORS-ARE-VALID)',
+        method: 'PUT',
+        path: '/api/v1/score',
+        domain: 'scores',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        input_schema: {
+          type: 'object',
+          properties: { score_delta: { type: 'number', multipleOf: 0.5 } },
+          required: ['score_delta']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'unconstrained_cap',
+        description: 'Capability with no multipleOf on first property',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: false,
+        input_schema: {
+          type: 'object',
+          properties: { item_id: { type: 'string' } }
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/list',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m64SyntheticManifestPath = path.join(m64TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m64SyntheticManifestPath, JSON.stringify(m64SyntheticManifest, null, 2), 'utf8');
+
+  // M64(a): default tusq divisor index on synthetic fixture produces correct buckets in closed-enum order
+  const m64DefaultResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--json'], { cwd: m64TmpDir });
+  if (m64DefaultResult.status !== 0) {
+    throw new Error(`M64(a): divisor index must exit 0:\nstderr=${m64DefaultResult.stderr}`);
+  }
+  const m64DefaultJson = JSON.parse(m64DefaultResult.stdout);
+  if (!Array.isArray(m64DefaultJson.first_property_multiple_of_states)) {
+    throw new Error(`M64(a): JSON output must have first_property_multiple_of_states[] array:\n${m64DefaultResult.stdout}`);
+  }
+  if (m64DefaultJson.tiers !== undefined || m64DefaultJson.first_property_max_length_states !== undefined || m64DefaultJson.first_property_min_length_states !== undefined) {
+    throw new Error(`M64(a): JSON output must NOT have tiers/first_property_max_length_states/first_property_min_length_states; field name must be first_property_multiple_of_states[]:\n${m64DefaultResult.stdout}`);
+  }
+  if (!m64DefaultJson.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'multiple_constrained' && e.capabilities.includes('constrained_cap'))) {
+    throw new Error(`M64(a): multiple_constrained bucket must include constrained_cap:\n${JSON.stringify(m64DefaultJson.first_property_multiple_of_states)}`);
+  }
+  if (!m64DefaultJson.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'multiple_constrained' && e.capabilities.includes('frac_constrained_cap'))) {
+    throw new Error(`M64(a): multiple_constrained bucket must include frac_constrained_cap (FRACTIONAL-DIVISORS-ARE-VALID):\n${JSON.stringify(m64DefaultJson.first_property_multiple_of_states)}`);
+  }
+  if (!m64DefaultJson.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'multiple_unconstrained' && e.capabilities.includes('unconstrained_cap'))) {
+    throw new Error(`M64(a): multiple_unconstrained bucket must include unconstrained_cap:\n${JSON.stringify(m64DefaultJson.first_property_multiple_of_states)}`);
+  }
+  if (!m64DefaultJson.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M64(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m64DefaultJson.first_property_multiple_of_states)}`);
+  }
+  if (m64DefaultJson.warnings.length !== 0) {
+    throw new Error(`M64(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m64DefaultJson.warnings)}`);
+  }
+
+  // M64(b): bucket order is multiple_constrained → multiple_unconstrained → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m64BucketOrder = m64DefaultJson.first_property_multiple_of_states.map((e) => e.input_schema_first_property_multiple_of);
+  if (m64BucketOrder[0] !== 'multiple_constrained' || m64BucketOrder[1] !== 'multiple_unconstrained' || m64BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M64(b): bucket order must be multiple_constrained→multiple_unconstrained→not_applicable; got ${m64BucketOrder}`);
+  }
+
+  // M64(c): --divisor multiple_constrained filter returns only multiple_constrained bucket
+  const m64ConstrainedResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor', 'multiple_constrained', '--json'], { cwd: m64TmpDir });
+  if (m64ConstrainedResult.status !== 0) {
+    throw new Error(`M64(c): --divisor multiple_constrained must exit 0:\nstderr=${m64ConstrainedResult.stderr}`);
+  }
+  const m64ConstrainedJson = JSON.parse(m64ConstrainedResult.stdout);
+  if (m64ConstrainedJson.first_property_multiple_of_states.length !== 1 || m64ConstrainedJson.first_property_multiple_of_states[0].input_schema_first_property_multiple_of !== 'multiple_constrained') {
+    throw new Error(`M64(c): --divisor multiple_constrained must return exactly one multiple_constrained entry:\n${m64ConstrainedResult.stdout}`);
+  }
+
+  // M64(d): --divisor multiple_unconstrained filter returns only multiple_unconstrained bucket
+  const m64UnconstrainedResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor', 'multiple_unconstrained', '--json'], { cwd: m64TmpDir });
+  if (m64UnconstrainedResult.status !== 0) {
+    throw new Error(`M64(d): --divisor multiple_unconstrained must exit 0:\nstderr=${m64UnconstrainedResult.stderr}`);
+  }
+  const m64UnconstrainedJson = JSON.parse(m64UnconstrainedResult.stdout);
+  if (m64UnconstrainedJson.first_property_multiple_of_states.length !== 1 || m64UnconstrainedJson.first_property_multiple_of_states[0].input_schema_first_property_multiple_of !== 'multiple_unconstrained') {
+    throw new Error(`M64(d): --divisor multiple_unconstrained must return exactly one multiple_unconstrained entry:\n${m64UnconstrainedResult.stdout}`);
+  }
+
+  // M64(e): --divisor not_applicable filter returns only not_applicable bucket
+  const m64NaResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor', 'not_applicable', '--json'], { cwd: m64TmpDir });
+  if (m64NaResult.status !== 0) {
+    throw new Error(`M64(e): --divisor not_applicable must exit 0:\nstderr=${m64NaResult.stderr}`);
+  }
+  const m64NaJson = JSON.parse(m64NaResult.stdout);
+  if (m64NaJson.first_property_multiple_of_states.length !== 1 || m64NaJson.first_property_multiple_of_states[0].input_schema_first_property_multiple_of !== 'not_applicable') {
+    throw new Error(`M64(e): --divisor not_applicable must return exactly one not_applicable entry:\n${m64NaResult.stdout}`);
+  }
+
+  // M64(f): --divisor unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m64UnknownAbsentResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor', 'unknown'], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64UnknownAbsentResult.status !== 1) {
+    throw new Error(`M64(f): --divisor unknown must exit 1 when unknown bucket absent:\nstdout=${m64UnknownAbsentResult.stdout}`);
+  }
+
+  // M64(g): --divisor MULTIPLE_CONSTRAINED (uppercase) exits 1 (case-sensitive enforcement)
+  const m64CaseResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor', 'MULTIPLE_CONSTRAINED'], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64CaseResult.status !== 1) {
+    throw new Error(`M64(g): --divisor MULTIPLE_CONSTRAINED (uppercase) must exit 1 (case-sensitive):\nstdout=${m64CaseResult.stdout}`);
+  }
+
+  // M64(h): unknown flag exits 1
+  const m64UnknownFlagResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--bogus'], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64UnknownFlagResult.status !== 1) {
+    throw new Error(`M64(h): unknown flag must exit 1:\nstdout=${m64UnknownFlagResult.stdout}`);
+  }
+
+  // M64(i): missing manifest exits 1
+  const m64MissingManifestResult = runCli(['divisor', 'index', '--manifest', path.join(m64TmpDir, 'nonexistent.json')], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64MissingManifestResult.status !== 1) {
+    throw new Error(`M64(i): missing manifest must exit 1:\nstdout=${m64MissingManifestResult.stdout}`);
+  }
+
+  // M64(j): malformed JSON manifest exits 1
+  const m64BadJsonPath = path.join(m64TmpDir, 'bad.json');
+  await fs.writeFile(m64BadJsonPath, '{not valid json', 'utf8');
+  const m64BadJsonResult = runCli(['divisor', 'index', '--manifest', m64BadJsonPath], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64BadJsonResult.status !== 1) {
+    throw new Error(`M64(j): malformed JSON must exit 1:\nstdout=${m64BadJsonResult.stdout}`);
+  }
+
+  // M64(k): missing capabilities array exits 1
+  const m64NoCapPath = path.join(m64TmpDir, 'nocap.json');
+  await fs.writeFile(m64NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m64NoCapResult = runCli(['divisor', 'index', '--manifest', m64NoCapPath], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64NoCapResult.status !== 1) {
+    throw new Error(`M64(k): missing capabilities array must exit 1:\nstdout=${m64NoCapResult.stdout}`);
+  }
+
+  // M64(l): --divisor with no value exits 1
+  const m64NoValueResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--divisor'], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64NoValueResult.status !== 1) {
+    throw new Error(`M64(l): --divisor with no value must exit 1:\nstdout=${m64NoValueResult.stdout}`);
+  }
+
+  // M64(m): --out writes JSON to file
+  const m64OutPath = path.join(m64TmpDir, 'out', 'divisor-index.json');
+  const m64OutResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--out', m64OutPath], { cwd: m64TmpDir });
+  if (m64OutResult.status !== 0) {
+    throw new Error(`M64(m): --out must exit 0:\nstderr=${m64OutResult.stderr}`);
+  }
+  const m64OutContent = JSON.parse(await fs.readFile(m64OutPath, 'utf8'));
+  if (!Array.isArray(m64OutContent.first_property_multiple_of_states)) {
+    throw new Error(`M64(m): --out file must contain first_property_multiple_of_states[]:\n${JSON.stringify(m64OutContent)}`);
+  }
+
+  // M64(n): --out path inside .tusq/ exits 1
+  const m64TusqOutResult = runCli(['divisor', 'index', '--manifest', m64SyntheticManifestPath, '--out', path.join(m64TmpDir, '.tusq', 'divisor.json')], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (m64TusqOutResult.status !== 1) {
+    throw new Error(`M64(n): --out inside .tusq/ must exit 1:\nstdout=${m64TusqOutResult.stdout}`);
+  }
+
+  // M64(o): empty capabilities manifest exits 0 with empty first_property_multiple_of_states[]
+  const m64EmptyCapPath = path.join(m64TmpDir, 'empty-cap.json');
+  await fs.writeFile(m64EmptyCapPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m64EmptyCapResult = runCli(['divisor', 'index', '--manifest', m64EmptyCapPath, '--json'], { cwd: m64TmpDir });
+  if (m64EmptyCapResult.status !== 0) {
+    throw new Error(`M64(o): empty capabilities must exit 0:\nstderr=${m64EmptyCapResult.stderr}`);
+  }
+  const m64EmptyJson = JSON.parse(m64EmptyCapResult.stdout);
+  if (!Array.isArray(m64EmptyJson.first_property_multiple_of_states) || m64EmptyJson.first_property_multiple_of_states.length !== 0) {
+    throw new Error(`M64(o): empty capabilities must produce empty first_property_multiple_of_states[]:\n${m64EmptyCapResult.stdout}`);
+  }
+
+  // M64(p): malformed input_schema → unknown bucket with all six frozen warning reason codes
+  const m64AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'no_schema_cap', description: 'no input_schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'not_obj_cap', description: 'input_schema not object', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_cap', description: 'input_schema.type missing', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_props_cap', description: 'input_schema.properties missing when type=object', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'bad_first_prop_cap', description: 'firstKey descriptor not plain object', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: null } } },
+      { name: 'zero_multiple_of_cap', description: 'multipleOf:0 (EXPLICIT-ZERO-IS-INVALID)', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: 0 } } } }
+    ]
+  };
+  const m64AllWarningsPath = path.join(m64TmpDir, 'all-warnings.json');
+  await fs.writeFile(m64AllWarningsPath, JSON.stringify(m64AllWarningsManifest, null, 2), 'utf8');
+  const m64WarningsResult = runCli(['divisor', 'index', '--manifest', m64AllWarningsPath, '--json'], { cwd: m64TmpDir });
+  if (m64WarningsResult.status !== 0) {
+    throw new Error(`M64(p): all-warnings manifest must exit 0:\nstderr=${m64WarningsResult.stderr}`);
+  }
+  const m64WarningsJson = JSON.parse(m64WarningsResult.stdout);
+  const m64ExpectedCodes = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_properties_first_property_descriptor_invalid',
+    'input_schema_properties_first_property_multiple_of_invalid_when_present'
+  ];
+  for (const code of m64ExpectedCodes) {
+    if (!m64WarningsJson.warnings.some((w) => w.reason === code)) {
+      throw new Error(`M64(p): warnings must include reason '${code}':\n${JSON.stringify(m64WarningsJson.warnings)}`);
+    }
+  }
+
+  // M64(q): multipleOf:null → multiple_unconstrained (null-as-absent, no warning)
+  const m64NullMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_mo_cap', description: 'multipleOf:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: null } } } }]
+  };
+  const m64NullMultipleOfPath = path.join(m64TmpDir, 'null-multipleof.json');
+  await fs.writeFile(m64NullMultipleOfPath, JSON.stringify(m64NullMultipleOfManifest, null, 2), 'utf8');
+  const m64NullMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64NullMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64NullMultipleOfParsed = JSON.parse(m64NullMultipleOfResult.stdout);
+  if (!m64NullMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'multiple_unconstrained' && e.capabilities.includes('null_mo_cap'))) {
+    throw new Error(`M64(q): multipleOf:null must bucket as multiple_unconstrained (null-as-absent):\n${m64NullMultipleOfResult.stdout}`);
+  }
+  if (m64NullMultipleOfParsed.warnings.some((w) => w.capability === 'null_mo_cap')) {
+    throw new Error(`M64(q): multipleOf:null must NOT produce a warning:\n${JSON.stringify(m64NullMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(r): multipleOf:0 → unknown WITH 6th warning code (EXPLICIT-ZERO-IS-INVALID)
+  const m64ZeroMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'zero_mo_cap', description: 'multipleOf:0 (EXPLICIT-ZERO-IS-INVALID)', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: 0 } } } }]
+  };
+  const m64ZeroMultipleOfPath = path.join(m64TmpDir, 'zero-multipleof.json');
+  await fs.writeFile(m64ZeroMultipleOfPath, JSON.stringify(m64ZeroMultipleOfManifest, null, 2), 'utf8');
+  const m64ZeroMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64ZeroMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64ZeroMultipleOfParsed = JSON.parse(m64ZeroMultipleOfResult.stdout);
+  if (!m64ZeroMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'unknown' && e.capabilities.includes('zero_mo_cap'))) {
+    throw new Error(`M64(r): multipleOf:0 must bucket as unknown (EXPLICIT-ZERO-IS-INVALID):\n${m64ZeroMultipleOfResult.stdout}`);
+  }
+  if (!m64ZeroMultipleOfParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_multiple_of_invalid_when_present')) {
+    throw new Error(`M64(r): multipleOf:0 must produce 6th warning code:\n${JSON.stringify(m64ZeroMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(s): multipleOf:-1 (negative) → unknown WITH 6th warning code
+  const m64NegMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'neg_mo_cap', description: 'multipleOf:-1 (negative)', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: -1 } } } }]
+  };
+  const m64NegMultipleOfPath = path.join(m64TmpDir, 'neg-multipleof.json');
+  await fs.writeFile(m64NegMultipleOfPath, JSON.stringify(m64NegMultipleOfManifest, null, 2), 'utf8');
+  const m64NegMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64NegMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64NegMultipleOfParsed = JSON.parse(m64NegMultipleOfResult.stdout);
+  if (!m64NegMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'unknown' && e.capabilities.includes('neg_mo_cap'))) {
+    throw new Error(`M64(s): multipleOf:-1 (negative) must bucket as unknown:\n${m64NegMultipleOfResult.stdout}`);
+  }
+  if (!m64NegMultipleOfParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_multiple_of_invalid_when_present')) {
+    throw new Error(`M64(s): multipleOf:-1 must produce 6th warning code:\n${JSON.stringify(m64NegMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(t): multipleOf:0.5 (fractional) → multiple_constrained (FRACTIONAL-DIVISORS-ARE-VALID)
+  const m64FracMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'frac_mo_cap', description: 'multipleOf:0.5 (FRACTIONAL-DIVISORS-ARE-VALID)', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'number', multipleOf: 0.5 } } } }]
+  };
+  const m64FracMultipleOfPath = path.join(m64TmpDir, 'frac-multipleof.json');
+  await fs.writeFile(m64FracMultipleOfPath, JSON.stringify(m64FracMultipleOfManifest, null, 2), 'utf8');
+  const m64FracMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64FracMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64FracMultipleOfParsed = JSON.parse(m64FracMultipleOfResult.stdout);
+  if (!m64FracMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'multiple_constrained' && e.capabilities.includes('frac_mo_cap'))) {
+    throw new Error(`M64(t): multipleOf:0.5 (fractional positive) must bucket as multiple_constrained (FRACTIONAL-DIVISORS-ARE-VALID):\n${m64FracMultipleOfResult.stdout}`);
+  }
+  if (m64FracMultipleOfParsed.warnings.some((w) => w.capability === 'frac_mo_cap')) {
+    throw new Error(`M64(t): multipleOf:0.5 must NOT produce a warning:\n${JSON.stringify(m64FracMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(u): multipleOf:'5' (string) → unknown WITH 6th warning code (NO type coercion)
+  const m64StringMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'string_mo_cap', description: 'multipleOf:"5"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: '5' } } } }]
+  };
+  const m64StringMultipleOfPath = path.join(m64TmpDir, 'string-multipleof.json');
+  await fs.writeFile(m64StringMultipleOfPath, JSON.stringify(m64StringMultipleOfManifest, null, 2), 'utf8');
+  const m64StringMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64StringMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64StringMultipleOfParsed = JSON.parse(m64StringMultipleOfResult.stdout);
+  if (!m64StringMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'unknown' && e.capabilities.includes('string_mo_cap'))) {
+    throw new Error(`M64(u): multipleOf:'5' (string) must bucket as unknown (NO type coercion):\n${m64StringMultipleOfResult.stdout}`);
+  }
+  if (!m64StringMultipleOfParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_multiple_of_invalid_when_present')) {
+    throw new Error(`M64(u): multipleOf:'5' must produce 6th warning code:\n${JSON.stringify(m64StringMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(v): multipleOf:true (boolean) → unknown WITH 6th warning code
+  const m64BoolMultipleOfManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'bool_mo_cap', description: 'multipleOf:true', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'integer', multipleOf: true } } } }]
+  };
+  const m64BoolMultipleOfPath = path.join(m64TmpDir, 'bool-multipleof.json');
+  await fs.writeFile(m64BoolMultipleOfPath, JSON.stringify(m64BoolMultipleOfManifest, null, 2), 'utf8');
+  const m64BoolMultipleOfResult = runCli(['divisor', 'index', '--manifest', m64BoolMultipleOfPath, '--json'], { cwd: m64TmpDir });
+  const m64BoolMultipleOfParsed = JSON.parse(m64BoolMultipleOfResult.stdout);
+  if (!m64BoolMultipleOfParsed.first_property_multiple_of_states.some((e) => e.input_schema_first_property_multiple_of === 'unknown' && e.capabilities.includes('bool_mo_cap'))) {
+    throw new Error(`M64(v): multipleOf:true (boolean) must bucket as unknown:\n${m64BoolMultipleOfResult.stdout}`);
+  }
+  if (!m64BoolMultipleOfParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_multiple_of_invalid_when_present')) {
+    throw new Error(`M64(v): multipleOf:true must produce 6th warning code:\n${JSON.stringify(m64BoolMultipleOfParsed.warnings)}`);
+  }
+
+  // M64(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'numeric_divisibility_constraint','not_applicable','unknown'}
+  const m64AggKeyResult = runCli(['divisor', 'index', '--manifest', m64AllWarningsPath, '--json'], { cwd: m64TmpDir });
+  const m64AggKeyParsed = JSON.parse(m64AggKeyResult.stdout);
+  const m64ValidAggKeys = new Set(['numeric_divisibility_constraint', 'not_applicable', 'unknown']);
+  for (const entry of m64AggKeyParsed.first_property_multiple_of_states) {
+    if (!m64ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M64(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m64AggConstrained = m64DefaultJson.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'multiple_constrained');
+  if (!m64AggConstrained || m64AggConstrained.aggregation_key !== 'numeric_divisibility_constraint') {
+    throw new Error(`M64(w): multiple_constrained bucket must have aggregation_key 'numeric_divisibility_constraint':\n${JSON.stringify(m64AggConstrained)}`);
+  }
+  const m64AggUnconstrained = m64DefaultJson.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'multiple_unconstrained');
+  if (!m64AggUnconstrained || m64AggUnconstrained.aggregation_key !== 'numeric_divisibility_constraint') {
+    throw new Error(`M64(w): multiple_unconstrained bucket must have aggregation_key 'numeric_divisibility_constraint':\n${JSON.stringify(m64AggUnconstrained)}`);
+  }
+  const m64AggNA = m64DefaultJson.first_property_multiple_of_states.find((e) => e.input_schema_first_property_multiple_of === 'not_applicable');
+  if (!m64AggNA || m64AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M64(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m64AggNA)}`);
+  }
+
+  // M64(x): non-persistence — manifest file not mutated
+  const m64ManifestAfter = JSON.parse(await fs.readFile(m64SyntheticManifestPath, 'utf8'));
+  for (const cap of m64ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_multiple_of')) {
+      throw new Error(`M64(x): input_schema_first_property_multiple_of must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M64(x2): help enumerates 48 commands (M64 adds 'divisor') and includes 'divisor' between 'diff' and 'domain'
+  const m64HelpResult = runCli(['help'], { cwd: m64TmpDir });
+  const m64HelpCommandCount = (m64HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m64HelpCommandCount !== 48) {
+    throw new Error(`M64(x2): tusq help must enumerate 48 commands (M64 adds 'divisor'); got ${m64HelpCommandCount}:\n${m64HelpResult.stdout}`);
+  }
+  if (!m64HelpResult.stdout.includes('  divisor')) {
+    throw new Error(`M64(x2): tusq help must include 'divisor' command:\n${m64HelpResult.stdout}`);
+  }
+  // Verify ordering: diff before divisor before domain
+  const m64HelpLines = m64HelpResult.stdout.split('\n');
+  const m64DiffIdx = m64HelpLines.findIndex((l) => l.startsWith('  diff'));
+  const m64DivisorIdx = m64HelpLines.findIndex((l) => l.startsWith('  divisor'));
+  const m64DomainIdx = m64HelpLines.findIndex((l) => l.startsWith('  domain'));
+  if (!(m64DiffIdx < m64DivisorIdx && m64DivisorIdx < m64DomainIdx)) {
+    throw new Error(`M64(x2): 'divisor' must appear between 'diff' and 'domain' in help:\n${m64HelpResult.stdout}`);
+  }
+
+  // M64(x3): divisor index --help includes planning-aid framing
+  const m64IndexHelpResult = runCli(['divisor', 'index', '--help'], { cwd: m64TmpDir });
+  if (!m64IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M64(x3): divisor index help must include planning-aid framing:\n${m64IndexHelpResult.stdout}`);
+  }
+
+  // M64(x4): unknown subcommand exits 1
+  const m64UnknownSubCmd = runCli(['divisor', 'bogusub'], { cwd: m64TmpDir, expectedStatus: 1 });
+  if (!m64UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m64UnknownSubCmd.stdout !== '') {
+    throw new Error(`M64(x4): unknown subcommand must exit 1:\nstdout=${m64UnknownSubCmd.stdout}\nstderr=${m64UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m64TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -11866,7 +12273,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 47) {
+  if (m44CommandCount !== 48) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -12404,7 +12811,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 47) {
+  if (m43CommandCount !== 48) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -12953,7 +13360,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 47) {
+  if (m42CommandCount !== 48) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -13499,7 +13906,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 47) {
+  if (m41CommandCount !== 48) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -14054,7 +14461,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 47) {
+  if (m40CommandCount !== 48) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -14526,7 +14933,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 47) {
+  if (m39CommandCount !== 48) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -14997,7 +15404,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 47) {
+  if (m38CommandCount !== 48) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -15480,7 +15887,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 47) {
+  if (m37CommandCount !== 48) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -15938,7 +16345,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 47) {
+  if (m36CommandCount !== 48) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -16331,7 +16738,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 47) {
+  if (m35CommandCount !== 48) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
