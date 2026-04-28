@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 43) {
+  if (m45CommandCount !== 44) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 43) {
-    throw new Error(`M46(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 44) {
+    throw new Error(`M46(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 43) {
-    throw new Error(`M47(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 44) {
+    throw new Error(`M47(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 43) {
-    throw new Error(`M48(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 44) {
+    throw new Error(`M48(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 43) {
-    throw new Error(`M49(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 44) {
+    throw new Error(`M49(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 43) {
-    throw new Error(`M50(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 44) {
+    throw new Error(`M50(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 43) {
-    throw new Error(`M51(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 44) {
+    throw new Error(`M51(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 43) {
-    throw new Error(`M52(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 44) {
+    throw new Error(`M52(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 43) {
-    throw new Error(`M53(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 44) {
+    throw new Error(`M53(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 43) {
-    throw new Error(`M54(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 44) {
+    throw new Error(`M54(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 43 commands (M59 adds 'regex') and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 43 commands (M60 adds 'seal') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 43) {
-    throw new Error(`M55(x3): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 44) {
+    throw new Error(`M55(x3): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8506,8 +8506,8 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 43) {
-    throw new Error(`M56(x): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  if (m56HelpCommandCount !== 44) {
+    throw new Error(`M56(x): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
     throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
@@ -8906,11 +8906,11 @@ async function run() {
     }
   }
 
-  // M57(x2): help enumerates 43 commands (M59 adds 'regex') and includes 'caption' between 'binding' and 'choice'
+  // M57(x2): help enumerates 43 commands (M60 adds 'seal') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 43) {
-    throw new Error(`M57(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
+  if (m57HelpCommandCount !== 44) {
+    throw new Error(`M57(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
     throw new Error(`M57(x2): tusq help must include 'caption' command:\n${m57HelpResult.stdout}`);
@@ -9335,8 +9335,8 @@ async function run() {
   // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
   const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
   const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m58HelpCommandCount !== 43) {
-    throw new Error(`M58(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
+  if (m58HelpCommandCount !== 44) {
+    throw new Error(`M58(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
   }
   if (!m58HelpResult.stdout.includes('  legacy')) {
     throw new Error(`M58(x2): tusq help must include 'legacy' command:\n${m58HelpResult.stdout}`);
@@ -9735,11 +9735,11 @@ async function run() {
     }
   }
 
-  // M59(x2): help enumerates 43 commands (M59 adds 'regex') and includes 'regex' between 'redaction' and 'request'
+  // M59(x2): help enumerates 43 commands (M60 adds 'seal') and includes 'regex' between 'redaction' and 'request'
   const m59HelpResult = runCli(['help'], { cwd: m59TmpDir });
   const m59HelpCommandCount = (m59HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m59HelpCommandCount !== 43) {
-    throw new Error(`M59(x2): tusq help must enumerate 43 commands (M59 adds 'regex'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
+  if (m59HelpCommandCount !== 44) {
+    throw new Error(`M59(x2): tusq help must enumerate 43 commands (M60 adds 'seal'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
   }
   if (!m59HelpResult.stdout.includes('  regex')) {
     throw new Error(`M59(x2): tusq help must include 'regex' command:\n${m59HelpResult.stdout}`);
@@ -9766,6 +9766,409 @@ async function run() {
   }
 
   await fs.rm(m59TmpDir, { recursive: true, force: true });
+
+  // ── M60: Static Capability Input Schema First Property ReadOnly Annotation Presence Index ──
+  const m60TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m60-smoke-'));
+
+  // M60 fixture manifest: synthetic capabilities across readonly/mutable/not_applicable buckets.
+  // readonly_cap → firstKey.readOnly = true (boolean true → readonly)
+  // mutable_cap → firstKey has no readOnly field (absent → mutable)
+  // not_applicable_cap → input_schema.type = 'array' (non-object → not_applicable, no warning)
+  const m60SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'readonly_cap',
+        description: 'Capability with readOnly true on first property',
+        method: 'GET',
+        path: '/api/v1/configs/:id',
+        domain: 'configs',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { config_id: { type: 'string', readOnly: true } },
+          required: ['config_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'mutable_cap',
+        description: 'Capability with no readOnly on first property',
+        method: 'PUT',
+        path: '/api/v1/settings/:id',
+        domain: 'settings',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { setting_id: { type: 'string', description: 'Setting identifier' } },
+          required: ['setting_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m60SyntheticManifestPath = path.join(m60TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m60SyntheticManifestPath, JSON.stringify(m60SyntheticManifest, null, 2), 'utf8');
+
+  // M60(a): default tusq seal index on synthetic fixture produces correct buckets in closed-enum order
+  const m60DefaultResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--json'], { cwd: m60TmpDir });
+  if (m60DefaultResult.status !== 0) {
+    throw new Error(`M60(a): seal index must exit 0:\nstderr=${m60DefaultResult.stderr}`);
+  }
+  const m60DefaultJson = JSON.parse(m60DefaultResult.stdout);
+  if (!Array.isArray(m60DefaultJson.first_property_read_only_states)) {
+    throw new Error(`M60(a): JSON output must have first_property_read_only_states[] array:\n${m60DefaultResult.stdout}`);
+  }
+  if (m60DefaultJson.tiers !== undefined || m60DefaultJson.first_property_pattern_constraints !== undefined || m60DefaultJson.first_property_deprecation_states !== undefined) {
+    throw new Error(`M60(a): JSON output must NOT have tiers/first_property_pattern_constraints/first_property_deprecation_states; field name must be first_property_read_only_states[]:\n${m60DefaultResult.stdout}`);
+  }
+  if (!m60DefaultJson.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'readonly' && e.capabilities.includes('readonly_cap'))) {
+    throw new Error(`M60(a): readonly bucket must include readonly_cap:\n${JSON.stringify(m60DefaultJson.first_property_read_only_states)}`);
+  }
+  if (!m60DefaultJson.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'mutable' && e.capabilities.includes('mutable_cap'))) {
+    throw new Error(`M60(a): mutable bucket must include mutable_cap:\n${JSON.stringify(m60DefaultJson.first_property_read_only_states)}`);
+  }
+  if (!m60DefaultJson.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M60(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m60DefaultJson.first_property_read_only_states)}`);
+  }
+  if (m60DefaultJson.warnings.length !== 0) {
+    throw new Error(`M60(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m60DefaultJson.warnings)}`);
+  }
+
+  // M60(b): bucket order is readonly → mutable → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m60BucketOrder = m60DefaultJson.first_property_read_only_states.map((e) => e.input_schema_first_property_read_only);
+  if (m60BucketOrder[0] !== 'readonly' || m60BucketOrder[1] !== 'mutable' || m60BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M60(b): bucket order must be readonly→mutable→not_applicable; got ${m60BucketOrder}`);
+  }
+
+  // M60(c): --seal readonly filter returns only readonly bucket
+  const m60ReadonlyResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal', 'readonly', '--json'], { cwd: m60TmpDir });
+  if (m60ReadonlyResult.status !== 0) {
+    throw new Error(`M60(c): --seal readonly must exit 0:\nstderr=${m60ReadonlyResult.stderr}`);
+  }
+  const m60ReadonlyJson = JSON.parse(m60ReadonlyResult.stdout);
+  if (m60ReadonlyJson.first_property_read_only_states.length !== 1 || m60ReadonlyJson.first_property_read_only_states[0].input_schema_first_property_read_only !== 'readonly') {
+    throw new Error(`M60(c): --seal readonly must return exactly one readonly entry:\n${m60ReadonlyResult.stdout}`);
+  }
+
+  // M60(d): --seal mutable filter returns only mutable bucket
+  const m60MutableResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal', 'mutable', '--json'], { cwd: m60TmpDir });
+  if (m60MutableResult.status !== 0) {
+    throw new Error(`M60(d): --seal mutable must exit 0:\nstderr=${m60MutableResult.stderr}`);
+  }
+  const m60MutableJson = JSON.parse(m60MutableResult.stdout);
+  if (m60MutableJson.first_property_read_only_states.length !== 1 || m60MutableJson.first_property_read_only_states[0].input_schema_first_property_read_only !== 'mutable') {
+    throw new Error(`M60(d): --seal mutable must return exactly one mutable entry:\n${m60MutableResult.stdout}`);
+  }
+
+  // M60(e): --seal not_applicable filter returns only not_applicable bucket
+  const m60NaResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal', 'not_applicable', '--json'], { cwd: m60TmpDir });
+  if (m60NaResult.status !== 0) {
+    throw new Error(`M60(e): --seal not_applicable must exit 0:\nstderr=${m60NaResult.stderr}`);
+  }
+  const m60NaJson = JSON.parse(m60NaResult.stdout);
+  if (m60NaJson.first_property_read_only_states.length !== 1 || m60NaJson.first_property_read_only_states[0].input_schema_first_property_read_only !== 'not_applicable') {
+    throw new Error(`M60(e): --seal not_applicable must return exactly one not_applicable entry:\n${m60NaResult.stdout}`);
+  }
+
+  // M60(f): --seal unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m60UnknownAbsentResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal', 'unknown'], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60UnknownAbsentResult.status !== 1 || !m60UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M60(f): --seal unknown on a manifest with no unknown caps must exit 1:\nstdout=${m60UnknownAbsentResult.stdout}\nstderr=${m60UnknownAbsentResult.stderr}`);
+  }
+
+  // M60(g): --seal READONLY exits 1 (case-sensitive enforcement)
+  const m60CaseResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal', 'READONLY'], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60CaseResult.status !== 1) {
+    throw new Error(`M60(g): --seal READONLY uppercase must exit 1 (case-sensitive):\nstdout=${m60CaseResult.stdout}\nstderr=${m60CaseResult.stderr}`);
+  }
+
+  // M60(h): unknown flag exits 1
+  const m60UnknownFlagResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--bogus'], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60UnknownFlagResult.status !== 1) {
+    throw new Error(`M60(h): unknown flag must exit 1:\nstdout=${m60UnknownFlagResult.stdout}\nstderr=${m60UnknownFlagResult.stderr}`);
+  }
+
+  // M60(i): missing manifest exits 1
+  const m60MissingManifestResult = runCli(['seal', 'index', '--manifest', path.join(m60TmpDir, 'nonexistent.json')], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60MissingManifestResult.status !== 1) {
+    throw new Error(`M60(i): missing manifest must exit 1:\nstdout=${m60MissingManifestResult.stdout}\nstderr=${m60MissingManifestResult.stderr}`);
+  }
+
+  // M60(j): malformed JSON exits 1
+  const m60BadJsonPath = path.join(m60TmpDir, 'bad.json');
+  await fs.writeFile(m60BadJsonPath, 'not json', 'utf8');
+  const m60BadJsonResult = runCli(['seal', 'index', '--manifest', m60BadJsonPath], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60BadJsonResult.status !== 1) {
+    throw new Error(`M60(j): malformed JSON manifest must exit 1:\nstdout=${m60BadJsonResult.stdout}\nstderr=${m60BadJsonResult.stderr}`);
+  }
+
+  // M60(k): missing capabilities array exits 1
+  const m60NoCapPath = path.join(m60TmpDir, 'nocap.json');
+  await fs.writeFile(m60NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m60NoCapResult = runCli(['seal', 'index', '--manifest', m60NoCapPath], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60NoCapResult.status !== 1) {
+    throw new Error(`M60(k): missing capabilities array must exit 1:\nstdout=${m60NoCapResult.stdout}\nstderr=${m60NoCapResult.stderr}`);
+  }
+
+  // M60(l): --seal with no value exits 1
+  const m60NoValueResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--seal'], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60NoValueResult.status !== 1) {
+    throw new Error(`M60(l): --seal with no value must exit 1:\nstdout=${m60NoValueResult.stdout}\nstderr=${m60NoValueResult.stderr}`);
+  }
+
+  // M60(m): --out writes to a file (no stdout)
+  const m60OutPath = path.join(m60TmpDir, 'out', 'seal-index.json');
+  const m60OutResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--out', m60OutPath], { cwd: m60TmpDir });
+  if (m60OutResult.status !== 0) {
+    throw new Error(`M60(m): --out must exit 0:\nstderr=${m60OutResult.stderr}`);
+  }
+  if (m60OutResult.stdout !== '') {
+    throw new Error(`M60(m): --out must produce no stdout:\nstdout=${m60OutResult.stdout}`);
+  }
+  const m60OutContent = JSON.parse(await fs.readFile(m60OutPath, 'utf8'));
+  if (!Array.isArray(m60OutContent.first_property_read_only_states)) {
+    throw new Error(`M60(m): --out file must contain first_property_read_only_states[]:\n${JSON.stringify(m60OutContent)}`);
+  }
+
+  // M60(n): --out inside .tusq/ exits 1
+  const m60TusqOutResult = runCli(['seal', 'index', '--manifest', m60SyntheticManifestPath, '--out', path.join(m60TmpDir, '.tusq', 'seal.json')], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (m60TusqOutResult.status !== 1) {
+    throw new Error(`M60(n): --out inside .tusq/ must exit 1:\nstdout=${m60TusqOutResult.stdout}\nstderr=${m60TusqOutResult.stderr}`);
+  }
+
+  // M60(o): empty capabilities → exit 0, first_property_read_only_states: []
+  const m60EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m60EmptyCapPath = path.join(m60TmpDir, 'empty-cap.json');
+  await fs.writeFile(m60EmptyCapPath, JSON.stringify(m60EmptyCapManifest, null, 2), 'utf8');
+  const m60EmptyCapResult = runCli(['seal', 'index', '--manifest', m60EmptyCapPath, '--json'], { cwd: m60TmpDir });
+  if (m60EmptyCapResult.status !== 0) {
+    throw new Error(`M60(o): empty capabilities must exit 0:\nstderr=${m60EmptyCapResult.stderr}`);
+  }
+  const m60EmptyCapJson = JSON.parse(m60EmptyCapResult.stdout);
+  if (!Array.isArray(m60EmptyCapJson.first_property_read_only_states) || m60EmptyCapJson.first_property_read_only_states.length !== 0) {
+    throw new Error(`M60(o): empty capabilities must produce first_property_read_only_states: []:\n${m60EmptyCapResult.stdout}`);
+  }
+
+  // M60(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m60AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'string_read_only', description: 'readOnly:"true" (string)', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: 'true' } } } }
+    ]
+  };
+  const m60AllWarningsPath = path.join(m60TmpDir, 'all-warnings.json');
+  await fs.writeFile(m60AllWarningsPath, JSON.stringify(m60AllWarningsManifest, null, 2), 'utf8');
+  const m60WarningsResult = runCli(['seal', 'index', '--manifest', m60AllWarningsPath, '--json'], { cwd: m60TmpDir });
+  if (m60WarningsResult.status !== 0) {
+    throw new Error(`M60(p): malformed schemas must exit 0 (not crash):\nstderr=${m60WarningsResult.stderr}`);
+  }
+  const m60WarningsJson = JSON.parse(m60WarningsResult.stdout);
+  if (!Array.isArray(m60WarningsJson.warnings) || m60WarningsJson.warnings.length !== 6) {
+    throw new Error(`M60(p): must produce exactly 6 warnings:\n${JSON.stringify(m60WarningsJson.warnings)}`);
+  }
+  const m60WarningReasons = m60WarningsJson.warnings.map((w) => w.reason);
+  if (!m60WarningReasons.includes('input_schema_field_missing')) throw new Error('M60(p): missing input_schema_field_missing reason');
+  if (!m60WarningReasons.includes('input_schema_field_not_object')) throw new Error('M60(p): missing input_schema_field_not_object reason');
+  if (!m60WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M60(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m60WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M60(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m60WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M60(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m60WarningReasons.includes('input_schema_properties_first_property_read_only_invalid_when_present')) throw new Error('M60(p): missing input_schema_properties_first_property_read_only_invalid_when_present reason');
+  if (!m60WarningsJson.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'unknown')) {
+    throw new Error(`M60(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m60WarningsJson.first_property_read_only_states)}`);
+  }
+
+  // M60(q): null readOnly → mutable (null-as-absent precedent from M55/M56/M57/M58/M59, no warning)
+  const m60NullReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_readonly_cap', description: 'readOnly:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: null } } } }]
+  };
+  const m60NullReadOnlyPath = path.join(m60TmpDir, 'null-readonly.json');
+  await fs.writeFile(m60NullReadOnlyPath, JSON.stringify(m60NullReadOnlyManifest, null, 2), 'utf8');
+  const m60NullReadOnlyResult = runCli(['seal', 'index', '--manifest', m60NullReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60NullReadOnlyParsed = JSON.parse(m60NullReadOnlyResult.stdout);
+  if (!m60NullReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'mutable' && e.capabilities.includes('null_readonly_cap'))) {
+    throw new Error(`M60(q): readOnly:null must bucket as mutable (null-as-absent):\n${m60NullReadOnlyResult.stdout}`);
+  }
+  if (m60NullReadOnlyParsed.warnings.length !== 0) {
+    throw new Error(`M60(q): readOnly:null must produce NO warning:\n${JSON.stringify(m60NullReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(r): readOnly === false → mutable (EXPLICIT-FALSE-IS-MUTABLE, no warning)
+  const m60FalseReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'false_readonly_cap', description: 'readOnly:false', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: false } } } }]
+  };
+  const m60FalseReadOnlyPath = path.join(m60TmpDir, 'false-readonly.json');
+  await fs.writeFile(m60FalseReadOnlyPath, JSON.stringify(m60FalseReadOnlyManifest, null, 2), 'utf8');
+  const m60FalseReadOnlyResult = runCli(['seal', 'index', '--manifest', m60FalseReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60FalseReadOnlyParsed = JSON.parse(m60FalseReadOnlyResult.stdout);
+  if (!m60FalseReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'mutable' && e.capabilities.includes('false_readonly_cap'))) {
+    throw new Error(`M60(r): readOnly:false must bucket as mutable (EXPLICIT-FALSE-IS-MUTABLE):\n${m60FalseReadOnlyResult.stdout}`);
+  }
+  if (m60FalseReadOnlyParsed.warnings.length !== 0) {
+    throw new Error(`M60(r): readOnly:false must produce NO warning:\n${JSON.stringify(m60FalseReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(s): string readOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m60StringReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'string_ro_cap', description: 'readOnly:"true"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: 'true' } } } }]
+  };
+  const m60StringReadOnlyPath = path.join(m60TmpDir, 'string-readonly.json');
+  await fs.writeFile(m60StringReadOnlyPath, JSON.stringify(m60StringReadOnlyManifest, null, 2), 'utf8');
+  const m60StringReadOnlyResult = runCli(['seal', 'index', '--manifest', m60StringReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60StringReadOnlyParsed = JSON.parse(m60StringReadOnlyResult.stdout);
+  if (!m60StringReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'unknown' && e.capabilities.includes('string_ro_cap'))) {
+    throw new Error(`M60(s): readOnly:'true' (string) must bucket as unknown WITH 6th warning code:\n${m60StringReadOnlyResult.stdout}`);
+  }
+  if (!m60StringReadOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_read_only_invalid_when_present')) {
+    throw new Error(`M60(s): readOnly:'true' must produce warning input_schema_properties_first_property_read_only_invalid_when_present:\n${JSON.stringify(m60StringReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(t): number readOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m60NumberReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'number_ro_cap', description: 'readOnly:1', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: 1 } } } }]
+  };
+  const m60NumberReadOnlyPath = path.join(m60TmpDir, 'number-readonly.json');
+  await fs.writeFile(m60NumberReadOnlyPath, JSON.stringify(m60NumberReadOnlyManifest, null, 2), 'utf8');
+  const m60NumberReadOnlyResult = runCli(['seal', 'index', '--manifest', m60NumberReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60NumberReadOnlyParsed = JSON.parse(m60NumberReadOnlyResult.stdout);
+  if (!m60NumberReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'unknown' && e.capabilities.includes('number_ro_cap'))) {
+    throw new Error(`M60(t): readOnly:1 (number) must bucket as unknown:\n${m60NumberReadOnlyResult.stdout}`);
+  }
+  if (!m60NumberReadOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_read_only_invalid_when_present')) {
+    throw new Error(`M60(t): readOnly:1 must produce warning:\n${JSON.stringify(m60NumberReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(u): array readOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m60ArrayReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'array_ro_cap', description: 'readOnly:[true]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: [true] } } } }]
+  };
+  const m60ArrayReadOnlyPath = path.join(m60TmpDir, 'array-readonly.json');
+  await fs.writeFile(m60ArrayReadOnlyPath, JSON.stringify(m60ArrayReadOnlyManifest, null, 2), 'utf8');
+  const m60ArrayReadOnlyResult = runCli(['seal', 'index', '--manifest', m60ArrayReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60ArrayReadOnlyParsed = JSON.parse(m60ArrayReadOnlyResult.stdout);
+  if (!m60ArrayReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'unknown' && e.capabilities.includes('array_ro_cap'))) {
+    throw new Error(`M60(u): readOnly:[true] (array) must bucket as unknown:\n${m60ArrayReadOnlyResult.stdout}`);
+  }
+  if (!m60ArrayReadOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_read_only_invalid_when_present')) {
+    throw new Error(`M60(u): readOnly:[true] must produce warning:\n${JSON.stringify(m60ArrayReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(v): plain-object readOnly → unknown WITH 6th warning code (non-boolean present non-null)
+  const m60ObjReadOnlyManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'obj_ro_cap', description: 'readOnly:{}', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', readOnly: {} } } } }]
+  };
+  const m60ObjReadOnlyPath = path.join(m60TmpDir, 'obj-readonly.json');
+  await fs.writeFile(m60ObjReadOnlyPath, JSON.stringify(m60ObjReadOnlyManifest, null, 2), 'utf8');
+  const m60ObjReadOnlyResult = runCli(['seal', 'index', '--manifest', m60ObjReadOnlyPath, '--json'], { cwd: m60TmpDir });
+  const m60ObjReadOnlyParsed = JSON.parse(m60ObjReadOnlyResult.stdout);
+  if (!m60ObjReadOnlyParsed.first_property_read_only_states.some((e) => e.input_schema_first_property_read_only === 'unknown' && e.capabilities.includes('obj_ro_cap'))) {
+    throw new Error(`M60(v): readOnly:{} (object) must bucket as unknown:\n${m60ObjReadOnlyResult.stdout}`);
+  }
+  if (!m60ObjReadOnlyParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_read_only_invalid_when_present')) {
+    throw new Error(`M60(v): readOnly:{} must produce warning:\n${JSON.stringify(m60ObjReadOnlyParsed.warnings)}`);
+  }
+
+  // M60(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'mutability_state','not_applicable','unknown'}
+  const m60AggKeyResult = runCli(['seal', 'index', '--manifest', m60AllWarningsPath, '--json'], { cwd: m60TmpDir });
+  const m60AggKeyParsed = JSON.parse(m60AggKeyResult.stdout);
+  const m60ValidAggKeys = new Set(['mutability_state', 'not_applicable', 'unknown']);
+  for (const entry of m60AggKeyParsed.first_property_read_only_states) {
+    if (!m60ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M60(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m60AggReadonly = m60DefaultJson.first_property_read_only_states.find((e) => e.input_schema_first_property_read_only === 'readonly');
+  if (!m60AggReadonly || m60AggReadonly.aggregation_key !== 'mutability_state') {
+    throw new Error(`M60(w): readonly bucket must have aggregation_key 'mutability_state':\n${JSON.stringify(m60AggReadonly)}`);
+  }
+  const m60AggMutable = m60DefaultJson.first_property_read_only_states.find((e) => e.input_schema_first_property_read_only === 'mutable');
+  if (!m60AggMutable || m60AggMutable.aggregation_key !== 'mutability_state') {
+    throw new Error(`M60(w): mutable bucket must have aggregation_key 'mutability_state':\n${JSON.stringify(m60AggMutable)}`);
+  }
+  const m60AggNA = m60DefaultJson.first_property_read_only_states.find((e) => e.input_schema_first_property_read_only === 'not_applicable');
+  if (!m60AggNA || m60AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M60(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m60AggNA)}`);
+  }
+
+  // M60(x): non-persistence — manifest file not mutated
+  const m60ManifestAfter = JSON.parse(await fs.readFile(m60SyntheticManifestPath, 'utf8'));
+  for (const cap of m60ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_read_only')) {
+      throw new Error(`M60(x): input_schema_first_property_read_only must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M60(x2): help enumerates 44 commands (M60 adds 'seal') and includes 'seal' between 'sample' and 'sensitivity'
+  const m60HelpResult = runCli(['help'], { cwd: m60TmpDir });
+  const m60HelpCommandCount = (m60HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m60HelpCommandCount !== 44) {
+    throw new Error(`M60(x2): tusq help must enumerate 44 commands (M60 adds 'seal'); got ${m60HelpCommandCount}:\n${m60HelpResult.stdout}`);
+  }
+  if (!m60HelpResult.stdout.includes('  seal')) {
+    throw new Error(`M60(x2): tusq help must include 'seal' command:\n${m60HelpResult.stdout}`);
+  }
+  // Verify ordering: sample before seal before sensitivity
+  const m60HelpLines = m60HelpResult.stdout.split('\n');
+  const m60SampleIdx = m60HelpLines.findIndex((l) => l.startsWith('  sample'));
+  const m60SealIdx = m60HelpLines.findIndex((l) => l.startsWith('  seal'));
+  const m60SensitivityIdx = m60HelpLines.findIndex((l) => l.startsWith('  sensitivity'));
+  if (!(m60SampleIdx < m60SealIdx && m60SealIdx < m60SensitivityIdx)) {
+    throw new Error(`M60(x2): 'seal' must appear between 'sample' and 'sensitivity' in help:\n${m60HelpResult.stdout}`);
+  }
+
+  // M60(x3): seal index --help includes planning-aid framing
+  const m60IndexHelpResult = runCli(['seal', 'index', '--help'], { cwd: m60TmpDir });
+  if (!m60IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M60(x3): seal index help must include planning-aid framing:\n${m60IndexHelpResult.stdout}`);
+  }
+
+  // M60(x4): unknown subcommand exits 1
+  const m60UnknownSubCmd = runCli(['seal', 'bogusub'], { cwd: m60TmpDir, expectedStatus: 1 });
+  if (!m60UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m60UnknownSubCmd.stdout !== '') {
+    throw new Error(`M60(x4): unknown subcommand must exit 1:\nstdout=${m60UnknownSubCmd.stdout}\nstderr=${m60UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m60TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -10234,7 +10637,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 43) {
+  if (m44CommandCount !== 44) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -10772,7 +11175,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 43) {
+  if (m43CommandCount !== 44) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -11321,7 +11724,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 43) {
+  if (m42CommandCount !== 44) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -11867,7 +12270,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 43) {
+  if (m41CommandCount !== 44) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -12422,7 +12825,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 43) {
+  if (m40CommandCount !== 44) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -12894,7 +13297,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 43) {
+  if (m39CommandCount !== 44) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -13365,7 +13768,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 43) {
+  if (m38CommandCount !== 44) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -13848,7 +14251,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 43) {
+  if (m37CommandCount !== 44) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -14306,7 +14709,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 43) {
+  if (m36CommandCount !== 44) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -14699,7 +15102,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 43) {
+  if (m35CommandCount !== 44) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 

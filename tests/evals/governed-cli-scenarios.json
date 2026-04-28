@@ -3093,6 +3093,159 @@
         "unknown"
       ],
       "expected_bucket_order": "patterned,unpatterned,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-read-only-index-determinism",
+      "scenario_type": "input_schema_first_property_read_only_index_determinism",
+      "description": "Verifies that tusq seal index produces byte-identical output across three runs on a synthetic manifest with readonly, mutable, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (readonly/mutable/not_applicable/unknown), closed three-value aggregation_key enum (mutability_state/not_applicable/unknown), bucket order determinism (readonly \u2192 mutable \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_read_only non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has readOnly=true (readonly), a has no readOnly (mutable), b has readOnly=\"true\" (string \u2014 unknown+warning input_schema_properties_first_property_read_only_invalid_when_present) \u2014 firstKey=z \u2192 readonly (insertion-order, NOT sorted). NULL-AS-ABSENT: readOnly:null \u2192 mutable (no warning, mirroring M55/M56/M57/M58/M59 null-as-absent). EXPLICIT-FALSE-IS-MUTABLE: readOnly:false \u2192 mutable (no warning, mirroring M58 EXPLICIT-FALSE-IS-ACTIVE). STRICT-BOOLEAN: readOnly must be exactly === true or === false; NO truthy/falsy coercion. Sixth frozen warning reason code: input_schema_properties_first_property_read_only_invalid_when_present (single consolidated code covers ALL non-boolean malformations: string, number, empty string, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "readonly_cap",
+          "method": "GET",
+          "path": "/readonly",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has readOnly=true (boolean) \u2014 lands in readonly bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "config_id": {
+                "type": "string",
+                "readOnly": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "mutable_cap",
+          "method": "PUT",
+          "path": "/mutable",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no readOnly field \u2014 lands in mutable bucket (absent \u2192 mutable)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "setting_id": {
+                "type": "string",
+                "description": "Setting identifier"
+              }
+            },
+            "required": [
+              "setting_id"
+            ]
+          }
+        },
+        {
+          "name": "null_readonly_cap",
+          "method": "GET",
+          "path": "/null-readonly",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has readOnly=null \u2014 lands in mutable bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "readOnly": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "false_readonly_cap",
+          "method": "GET",
+          "path": "/false-readonly",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has readOnly=false \u2014 lands in mutable bucket (EXPLICIT-FALSE-IS-MUTABLE, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "readOnly": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has readOnly=true (readonly), a has no readOnly (mutable), b has readOnly=\"true\" (string \u2014 unknown+warning). firstKey=z \u2192 readonly (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "readOnly": true
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "readOnly": "true"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_read_only_values": [
+        "readonly",
+        "mutable",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "mutability_state",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "readonly,mutable,not_applicable,unknown"
     }
   ]
 }

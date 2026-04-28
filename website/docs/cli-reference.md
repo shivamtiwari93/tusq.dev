@@ -1577,6 +1577,62 @@ tusq sample index --sample unexampled --json
 tusq sample index --out sample-index.json
 ```
 
+## `tusq seal index`
+
+Emit a deterministic, per-first-input-property-readOnly-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].readOnly` is boolean `true` (`readonly`), boolean `false` or absent or `null` (`mutable`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime readOnly enforcer, IAM-requirement-strength evaluator, server-set-vs-user-set classifier, parameter-mutability-tier distributor, end-user-prompt-eligibility enforcer, path-parameter-binding-tier ranker, schema-extraction-completeness assessor, writeOnly-crossref tool, or doc-contradiction detector**.
+
+**M60-vs-M58 distinctness:** `tusq legacy index` (M58) reads `input_schema.properties[firstKey].deprecated` (JSON-Schema's per-property lifecycle-stage boolean signaling phase-out). `tusq seal index` (M60) reads `input_schema.properties[firstKey].readOnly` (JSON-Schema Draft 7+'s per-property mutability boolean signaling server-set / not user-elicited). These two commands are read-only-invariant peers reading two distinct JSON-Schema boolean keywords under two distinct nouns; neither alters the other's output bytes. An operator may set both, either, or neither on the same property — they are orthogonal annotations.
+
+```bash
+tusq seal index [--seal <readonly|mutable|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--seal <readonly\|mutable\|not_applicable\|unknown>` | all buckets | Filter to a single readOnly annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].readOnly` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `readonly` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].readOnly === true` (strict boolean `true` only — NO truthy/falsy coercion; string `'true'`/number `1` → `unknown`) |
+| `mutable` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].readOnly === false` (EXPLICIT-FALSE-IS-MUTABLE — no warning) OR `properties[firstKey].readOnly` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57/M58/M59 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].readOnly` present non-null but NOT a boolean (string `'true'`, number `1`/`0`, empty string, array, plain object) |
+
+**Bucket iteration order:** `readonly → mutable → not_applicable → unknown` (deterministic stable-output convention — NOT a mutability-tier ranking, NOT a capability-compiler-readiness ranking, NOT an IAM-requirement-strength ranking).
+
+**Six frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_read_only_invalid_when_present`). The sixth code covers ALL non-boolean `readOnly` malformations under a single consolidated code.
+
+**Exit codes:**
+
+| Code | Condition |
+|------|-----------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown `--seal` value, `--seal` value with absent bucket, `--out` path error, or unknown subcommand |
+
+**Examples:**
+
+```bash
+# Human-readable output
+tusq seal index
+
+# JSON output
+tusq seal index --json
+
+# Filter to readonly bucket
+tusq seal index --seal readonly --json
+
+# Filter to mutable bucket
+tusq seal index --seal mutable --json
+
+# Write to file
+tusq seal index --out seal-index.json
+```
+
 ## `tusq sensitivity index`
 
 Emit a deterministic, per-sensitivity-class capability index from manifest evidence. Groups capabilities by their M28-derived `sensitivity_class` field in closed-enum order (`public → internal → confidential → restricted → unknown`), with a special `unknown` bucket for capabilities whose `sensitivity_class` is `null`, missing, empty-string, or any value outside the closed four-value named set. This is a **planning aid, not a runtime sensitivity enforcer or compliance certifier**.
