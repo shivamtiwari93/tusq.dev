@@ -2077,6 +2077,8 @@ async function run() {
       await runInputSchemaFirstPropertyWriteOnlyIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_min_length_index_determinism') {
       await runInputSchemaFirstPropertyMinLengthIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_max_length_index_determinism') {
+      await runInputSchemaFirstPropertyMaxLengthIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -4371,6 +4373,159 @@ async function runInputSchemaFirstPropertyMinLengthIndexDeterminismScenario(tmpR
   // Assert length_unfloored bucket has aggregation_key 'string_length_floor_constraint'
   if (unflooredEntry.aggregation_key !== 'string_length_floor_constraint') {
     fail(`${scenario.id}: length_unfloored bucket must have aggregation_key 'string_length_floor_constraint'; got '${unflooredEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyMaxLengthIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-max-length-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq ceiling index --json three times and assert byte-identical output
+  const run1 = runCli(['ceiling', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['ceiling', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['ceiling', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: ceiling index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_max_length bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validMaxLengthValues = new Set(scenario.expected_valid_max_length_values);
+  for (const entry of index.first_property_max_length_states) {
+    if (!validMaxLengthValues.has(entry.input_schema_first_property_max_length)) {
+      fail(`${scenario.id}: input_schema_first_property_max_length '${entry.input_schema_first_property_max_length}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_max_length_states) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_max_length}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (length_capped → length_uncapped → not_applicable → unknown)
+  const bucketOrder = index.first_property_max_length_states.map((e) => e.input_schema_first_property_max_length).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_max_length must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by ceiling index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_max_length')) {
+      fail(`${scenario.id}: input_schema_first_property_max_length must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_max_length_states.find((e) => e.input_schema_first_property_max_length === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_max_length_states.find((e) => e.input_schema_first_property_max_length === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert capped_cap is in length_capped bucket
+  const cappedEntry = index.first_property_max_length_states.find((e) => e.input_schema_first_property_max_length === 'length_capped');
+  if (!cappedEntry || !cappedEntry.capabilities.includes('capped_cap')) {
+    fail(`${scenario.id}: capped_cap (firstKey.maxLength=200) must be in length_capped bucket`);
+  }
+
+  // Assert zero_capped_cap is in length_capped bucket (EXPLICIT-ZERO-IS-CAPPED)
+  if (!cappedEntry || !cappedEntry.capabilities.includes('zero_capped_cap')) {
+    fail(`${scenario.id}: zero_capped_cap (firstKey.maxLength=0) must be in length_capped bucket (EXPLICIT-ZERO-IS-CAPPED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'zero_capped_cap')) {
+    fail(`${scenario.id}: zero_capped_cap (EXPLICIT-ZERO-IS-CAPPED → length_capped) must NOT produce a warning`);
+  }
+
+  // Assert uncapped_cap is in length_uncapped bucket
+  const uncappedEntry = index.first_property_max_length_states.find((e) => e.input_schema_first_property_max_length === 'length_uncapped');
+  if (!uncappedEntry || !uncappedEntry.capabilities.includes('uncapped_cap')) {
+    fail(`${scenario.id}: uncapped_cap (firstKey.maxLength absent) must be in length_uncapped bucket`);
+  }
+
+  // Assert null_max_length_cap is in length_uncapped bucket (NULL-AS-ABSENT)
+  if (!uncappedEntry || !uncappedEntry.capabilities.includes('null_max_length_cap')) {
+    fail(`${scenario.id}: null_max_length_cap (firstKey.maxLength=null) must be in length_uncapped bucket (null-as-absent)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_max_length_cap')) {
+    fail(`${scenario.id}: null_max_length_cap (null-as-absent → length_uncapped) must NOT produce a warning`);
+  }
+
+  // Assert insertion_order_cap is in length_capped bucket (firstKey='z', maxLength=200) NOT length_uncapped (sorted 'a' has no maxLength)
+  if (!cappedEntry || !cappedEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has maxLength=200) must be in length_capped bucket (insertion-order, NOT sorted)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (length_capped bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert length_capped bucket has aggregation_key 'string_length_ceiling_constraint'
+  if (cappedEntry.aggregation_key !== 'string_length_ceiling_constraint') {
+    fail(`${scenario.id}: length_capped bucket must have aggregation_key 'string_length_ceiling_constraint'; got '${cappedEntry.aggregation_key}'`);
+  }
+
+  // Assert length_uncapped bucket has aggregation_key 'string_length_ceiling_constraint'
+  if (uncappedEntry.aggregation_key !== 'string_length_ceiling_constraint') {
+    fail(`${scenario.id}: length_uncapped bucket must have aggregation_key 'string_length_ceiling_constraint'; got '${uncappedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

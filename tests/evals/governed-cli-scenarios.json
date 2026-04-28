@@ -3550,6 +3550,157 @@
         "unknown"
       ],
       "expected_bucket_order": "length_floored,length_unfloored,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-max-length-index-determinism",
+      "scenario_type": "input_schema_first_property_max_length_index_determinism",
+      "description": "Verifies that tusq ceiling index produces byte-identical output across three runs on a synthetic manifest with length_capped, length_uncapped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (length_capped/length_uncapped/not_applicable/unknown), closed three-value aggregation_key enum (string_length_ceiling_constraint/not_applicable/unknown), bucket order determinism (length_capped → length_uncapped → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_max_length non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has maxLength=200 (length_capped), a has no maxLength (length_uncapped), b has maxLength=-1 (negative integer — unknown+warning input_schema_properties_first_property_max_length_invalid_when_present) — firstKey=z → length_capped (insertion-order, NOT sorted). NULL-AS-ABSENT: maxLength:null → length_uncapped (no warning, mirroring M55/M56/M57/M58/M59/M60/M61/M62 null-as-absent). EXPLICIT-ZERO-IS-CAPPED: maxLength:0 → length_capped (no warning, mirrors M58/M60/M61/M62 explicit-default-value precedent for boundary axes). STRICT-NUMERIC: Number.isInteger() && >= 0; NO Number()/parseInt()/truthy coercion; string '100', boolean true, array [1] ALL bucket as unknown. Sixth frozen warning reason code: input_schema_properties_first_property_max_length_invalid_when_present (single consolidated code covers ALL non-non-negative-integer malformations: negative integer, fractional number, NaN, Infinity, -Infinity, string, boolean, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "capped_cap",
+          "method": "POST",
+          "path": "/capped",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has maxLength=200 (non-negative integer) — lands in length_capped bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "branch_name": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "zero_capped_cap",
+          "method": "PUT",
+          "path": "/zero-capped",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has maxLength=0 (EXPLICIT-ZERO-IS-CAPPED) — lands in length_capped bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tag_name": {
+                "type": "string",
+                "maxLength": 0
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "uncapped_cap",
+          "method": "GET",
+          "path": "/uncapped",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no maxLength field — lands in length_uncapped bucket (absent → length_uncapped)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_max_length_cap",
+          "method": "GET",
+          "path": "/null-max-length",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has maxLength=null — lands in length_uncapped bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "maxLength": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has maxLength=200 (length_capped), a has no maxLength (length_uncapped), b has maxLength=-1 (negative integer — unknown+warning). firstKey=z → length_capped (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "maxLength": -1
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_max_length_values": [
+        "length_capped",
+        "length_uncapped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "string_length_ceiling_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "length_capped,length_uncapped,not_applicable,unknown"
     }
   ]
 }

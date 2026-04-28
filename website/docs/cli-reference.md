@@ -1137,6 +1137,64 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq ceiling index`
+
+Emit a deterministic, per-first-input-property-maxLength-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].maxLength` is a non-negative integer (`length_capped`), absent/null/undefined (`length_uncapped`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`length_capped → length_uncapped → not_applicable → unknown`). This is a **planning aid, not a runtime maxLength enforcer, doc-contradiction detector, minLength-crossref tool, pattern-crossref tool, format-crossref tool, type-applicability validator, LLM-maxLength inferrer, evals-and-regression coverage ranker, or statistical aggregator**.
+
+**M63-vs-M62 distinction:** `tusq floor index` (M62) reads `input_schema.properties[firstKey].minLength` (the **FIRST input property's** JSON-Schema `minLength` non-negative-integer keyword — a numeric-bound string-length LOWER-bound constraint). `tusq ceiling index` (M63) reads `input_schema.properties[firstKey].maxLength` (the **FIRST input property's** JSON-Schema `maxLength` non-negative-integer keyword — a numeric-bound string-length UPPER-bound constraint). These two commands read orthogonal JSON-Schema string-length-bound keywords under two distinct nouns; neither alters the other's output bytes. An operator may set both (a length-bounded range), either, or neither on the same property.
+
+**M63-vs-M59 distinction:** `tusq regex index` (M59) reads `input_schema.properties[firstKey].pattern` (a shape-bound regex string — JSON-Schema Draft 4+ string-shape validation keyword). `tusq ceiling index` (M63) reads `input_schema.properties[firstKey].maxLength` (a numeric integer ceiling — JSON-Schema Draft 4+ numeric-bound validation keyword). These read orthogonal JSON-Schema string-validation keywords under two distinct nouns; neither alters the other's output bytes.
+
+```bash
+tusq ceiling index [--ceiling <length_capped|length_uncapped|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--ceiling <length_capped\|length_uncapped\|not_applicable\|unknown>` | all buckets | Filter to a single maxLength annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].maxLength` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `length_capped` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `Number.isInteger(properties[firstKey].maxLength) && properties[firstKey].maxLength >= 0` (STRICT-NUMERIC: must be a non-negative integer, NO Number()/parseInt()/truthy coercion; EXPLICIT-ZERO-IS-CAPPED: `maxLength === 0` → `length_capped` — mirrors M58/M60/M61/M62 explicit-default-value precedent) |
+| `length_uncapped` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].maxLength` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57/M58/M59/M60/M61/M62 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].maxLength` present non-null but NOT a non-negative integer (negative integer `−1`, fractional `1.5`, NaN, Infinity, −Infinity, string `'100'`, boolean `true`, array `[1]`, plain object `{}`) |
+
+**Bucket iteration order:** `length_capped → length_uncapped → not_applicable → unknown` (deterministic stable-output convention — NOT evals-and-regression-coverage-ranked, NOT schema-drift-severity-ranked, NOT permission-regression-priority-ranked, NOT marketplace-package-validation-strictness-tier-ranked, NOT UI-surface-smoke-test-criticality-ranked, NOT workflow-test-priority-ranked, NOT injection-payload-rejection-priority-ranked, NOT tool-input-truncation-priority-ranked).
+
+**Six frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_max_length_invalid_when_present`). The sixth code covers ALL non-non-negative-integer `maxLength` malformations under a single consolidated code.
+
+**Exit codes:**
+
+| Code | Condition |
+|------|-----------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown `--ceiling` value, `--ceiling` value with absent bucket, `--out` path error, or unknown subcommand |
+
+**Examples:**
+
+```bash
+# Human-readable output
+tusq ceiling index
+
+# JSON output
+tusq ceiling index --json
+
+# Filter to length_capped bucket
+tusq ceiling index --ceiling length_capped --json
+
+# Filter to length_uncapped bucket
+tusq ceiling index --ceiling length_uncapped --json
+
+# Write to file
+tusq ceiling index --out ceiling-index.json
+```
+
 ## `tusq floor index`
 
 Emit a deterministic, per-first-input-property-minLength-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].minLength` is a non-negative integer (`length_floored`), absent/null/undefined (`length_unfloored`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`length_floored → length_unfloored → not_applicable → unknown`). This is a **planning aid, not a runtime minLength enforcer, doc-contradiction detector, maxLength-crossref tool, pattern-crossref tool, format-crossref tool, type-applicability validator, LLM-minLength inferrer, tool-and-skill-compiler strictness tier emitter, or statistical aggregator**.
