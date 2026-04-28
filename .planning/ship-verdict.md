@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_0a3ee2aa85ddb69f (role=qa, run_4c16dd0f2f6674fc, M56 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_dd4dc63d5e634f5d, role=dev, HEAD 6f3c07e) for run_4c16dd0f2f6674fc independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M56 does not modify manifest format — `input_schema_first_property_examples` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_13f1b1f85e65a188 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_EXAMPLES_ENUM` (frozen Set: exampled/unexampled/not_applicable/unknown) at `src/cli.js:503`; `INPUT_SCHEMA_FIRST_PROPERTY_EXAMPLES_AGGREGATION_KEY_ENUM` (frozen Set: example_set/not_applicable/unknown) at `src/cli.js:507`; `INPUT_SCHEMA_FIRST_PROPERTY_EXAMPLES_BUCKET_ORDER` (frozen array: exampled/unexampled/not_applicable) at `src/cli.js:514`. Guards `_guardInputSchemaFirstPropertyExamplesBucketKey` at `src/cli.js:7848`, `_guardInputSchemaFirstPropertyExamplesAggregationKey` at `src/cli.js:7855`. PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyExamples` at `src/cli.js:7881–7919` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — elevated by M55); examples absent/null/undefined/!hasOwnProperty → unexampled (null-as-absent per M55 precedent, no warning); non-empty Array examples → exampled (no warning; element heterogeneity NOT classified); non-array OR empty-array examples → unknown WITH `input_schema_properties_first_property_examples_invalid_when_present` (SIXTH axis-specific frozen code; deliberate alignment with M54 empty-enum-is-malformed precedent). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 40. `sample` between `response` and `sensitivity` confirmed (response(r=114,e=101) < sample(s=115,a=97) at pos 0; sample(s=115,a=97) < sensitivity(s=115,e=101) at pos 0 same s, pos 1 a(97) < e(101)). `cmdSample` dispatcher, `cmdSampleIndex` handler, `parseSampleIndexArgs` verified at `src/cli.js:8167` (filter guard). PASS.
+
+**6. Express fixture run:** `node bin/tusq.js sample index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_examples[]` with `unexampled` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"example_set"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `exampled` bucket absent (empty-bucket-MUST-NOT-appear invariant confirmed); `warnings: []`. Bucket order: unexampled < not_applicable (exampled→unexampled→not_applicable→unknown convention). PASS.
+
+**7. Case-sensitive filter enforcement:** `--sample EXAMPLED` → exit 1, `Unknown input schema first property examples: EXAMPLED`. `--sample exampled` → exit 1, `No capabilities found for input schema first property examples: exampled` (absent-bucket enforcement). PASS.
+
+**8. M56-specific empty-array and null-as-absent rules:** `examples: []` (empty array) → unknown WITH `input_schema_properties_first_property_examples_invalid_when_present` (deliberate alignment with M54's empty-enum-is-malformed precedent; JSON-Schema requires ≥1 element). `examples: null` → unexampled (null-as-absent per M55 precedent, no warning). `examples: [...]` non-empty Array → exampled (no warning; element type heterogeneity NOT classified). Contrast with M55 where FALSY-DEFAULT-COUNTS-AS-DEFAULTED applies (default: null → defaulted); M56 explicitly preserves null-as-absent for `examples` per PM DEC-003. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six warning reason codes are PM-frozen by DEC-003 and enumerated in `src/cli.js:7955–7961`. The SIXTH code `input_schema_properties_first_property_examples_invalid_when_present` was explicitly declared by PM DEC-003, aligning with M54's 6th-code pattern. Unlike M52/M53/M54 where the 5th code was undeclared (OBJ-004/005/006), M56 has no undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 47 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (47 scenarios)`). Scenario 47 (`input-schema-first-property-examples-index-determinism`) with insertion-order test verified at `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP completeness:** All 18 M56 ROADMAP checkboxes [x] confirmed (18 items for M56, 2 more than M52–M55's 16-item structure). PASS.
+
+**13. Acceptance criteria:** REQ-765 through REQ-789 added to acceptance-matrix.md (25 new REQs, 789 total). All 789 acceptance criteria (REQ-001–REQ-789) pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_fd961becbc051d28 (role=qa, run_a75232d11566c4cb, M55 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_103ec2af102d2d3a, role=dev, HEAD 1cd952c) for run_a75232d11566c4cb independently rather than rubber-stamping it.

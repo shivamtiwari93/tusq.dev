@@ -1,5 +1,21 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M56 (turn_0a3ee2aa85ddb69f, run_4c16dd0f2f6674fc, 2026-04-28, HEAD 6f3c07e)
+
+**Milestone:** M56 — Static Capability Input Schema First Property Examples Array Presence Index Export from Manifest Evidence (~0.5 day) — V1.37
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_dd4dc63d5e634f5d, role=dev). HEAD 6f3c07e = M56 implementation checkpoint. All M56 implementation (src/cli.js, tests/smoke.mjs, 47 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (47 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyExamplesBucketKey` at src/cli.js:7848 and `_guardInputSchemaFirstPropertyExamplesAggregationKey` at src/cli.js:7855 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 40 (40-command CLI surface; `sample` between `response` and `sensitivity`: response(r=114,e=101) < sample(s=115,a=97) at pos 0; sample(s=115,a=97) < sensitivity(s=115,e=101) at pos 0 same s, pos 1 a(97) < e(101)). `node bin/tusq.js sample index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_examples[]` with `unexampled` bucket (get_users_api_v1_users_id AND post_users_users; aggregation_key `"example_set"`), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `exampled` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. `--sample EXAMPLED` → exit 1 (case-sensitive). `--sample exampled` → exit 1 (absent-bucket). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New command:** `tusq sample index` — indexes capabilities by `input_schema.properties[firstKey].examples` JSON-Schema-examples-array presence classification. Four-value bucket-key enum: `exampled` | `unexampled` | `not_applicable` | `unknown`. Three-value aggregation_key enum: `example_set` | `not_applicable` | `unknown`. Bucket iteration order: `exampled → unexampled → not_applicable → unknown` (deterministic stable-output convention only). Result array field: `first_property_examples[]`. Per-bucket field: `input_schema_first_property_examples`.
+
+**Key M56-specific invariants:** (1) EMPTY-ARRAY examples: `examples: []` → `unknown` WITH warning `input_schema_properties_first_property_examples_invalid_when_present` (deliberate alignment with M54's empty-`enum`-is-malformed precedent; JSON-Schema requires ≥1 element to carry semantic intent). (2) NULL-AS-ABSENT: `examples: null` → `unexampled` (no warning; mirroring M55's null-as-absent precedent). (3) Non-empty Array examples → `exampled` (no warning; element type heterogeneity NOT classified — deferred to M-Sample-Examples-Element-Type-Distribution-Index-1). (4) Non-array examples (present and non-null) → `unknown` WITH 6th warning code. (5) SIX fully PM-frozen warning reason codes — the 6th code `input_schema_properties_first_property_examples_invalid_when_present` was explicitly declared by PM DEC-003 for M56, fully retiring the undeclared-sixth-code pattern from M52/M53/M54. No new undeclared codes. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking.
+
+**VISION primary citation:** § Marketplace Packages (lines 241–253) — first milestone to use this section as primary aggregation source. Re-cited structural anchor: § Tools (lines 164–173). CLI noun `sample` (rather than reusing `examples` which is the M40 noun for capability-level top-level examples) is intentional — M56-vs-M40 distinctness documented in ROADMAP, SYSTEM_SPEC, and command-surface.
+
+**Acceptance criteria:** REQ-765–REQ-789 added (25 new REQs). Total: 789 acceptance criteria (REQ-001–REQ-789). All pass. Ship verdict: SHIP.
+
 ## QA Verification — M55 (turn_fd961becbc051d28, run_a75232d11566c4cb, 2026-04-28, HEAD 1cd952c)
 
 **Milestone:** M55 — Static Capability Input Schema First Property Default Value Presence Index Export from Manifest Evidence (~0.5 day) — V1.36
