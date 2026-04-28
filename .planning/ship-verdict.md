@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_b92a6c6bfa23b2bb (role=qa, run_c39bd102a520411b, M51 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_b129a6090e6226ec, role=dev, HEAD 9502125) for run_c39bd102a520411b independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff b76d944..9502125 --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M51 does not modify the manifest format schema — input_schema_first_property_source is intentionally non-persistent by design). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound (4 PM-owned files correctly changed, independently confirmed by git diff), M51 constants added at correct locations (`INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_ENUM` at `src/cli.js:407`, `INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET` at `src/cli.js:411`, `INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_AGGREGATION_KEY_ENUM` at `src/cli.js:415`, `INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER` at `src/cli.js:422`), `binding` noun inserted between `auth` and `confidence`, non-persistence of `input_schema_first_property_source` confirmed, `first_property_sources` field name is distinct from all prior index commands, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (42 scenarios)`. Independently re-run; 42 scenarios confirmed (41 prior + 1 M51 input-schema-first-property-source-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaFirstPropertySourceBucketKey` (`src/cli.js:6535`) and `_guardInputSchemaFirstPropertySourceAggregationKey` (`src/cli.js:6542`) guards pass synchronously.
+
+**4. CLI surface 35 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 35. `binding` correctly positioned between `auth` and `confidence` (a(97) < b(98) at pos 0 for auth<binding; b(98) < c(99) at pos 0 for binding<confidence).
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_sources[]` (NOT `tiers[]`, NOT `strictnesses[]`, NOT `types[]`, NOT `items_types[]`, NOT `first_property_types[]`, NOT `required_statuses[]`) with `path` bucket (get_users_api_v1_users_id; capability_count 1; aggregation_key `"source"`), `request_body` bucket (post_users_users; capability_count 1; aggregation_key `"source"`), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"`); `warnings: []`. The four locus buckets (path/request_body/query/header) all carry `aggregation_key: "source"` — the HTTP-request-anatomy locus itself is the aggregation axis, distinct from all prior index commands.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --source PATH` → exit 1, stderr `Unknown input schema first property source: PATH`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --source query` → exit 1, `No capabilities found for input schema first property source: query` (no query-source capabilities in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. Fixture mutation (re-run this turn):** `git diff --quiet HEAD -- tests/fixtures/` → exit 0. Zero fixture mutation.
+
+**10. M51 ROADMAP checkboxes:** All 16 M51 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M51 block), independently verified by grep this turn.
+
+**11. `classifyInputSchemaFirstPropertySource` rules (code inspection at src/cli.js:6565–6601):** null/undefined inputSchema → unknown; non-object/Array inputSchema → unknown; inputSchema.type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning — semantically valid for non-object inputs with no first property); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); firstVal null/primitive/Array → unknown (input_schema_properties_first_property_source_invalid); firstVal.source non-string or not in closed four-value set {path,request_body,query,header} → unknown (input_schema_properties_first_property_source_invalid); firstVal.source valid → returned verbatim. No all-properties-source walking; no nested-property recursion; no output-side source classification; no cookie/file/multipart locus; no runtime validation.
+
+**12. Five warning reason codes (code inspection at src/cli.js:6549–6601):** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_source_invalid`. Critically: `not_applicable` bucket (non-object or zero-property input) emits NO warning; four locus buckets (path/request_body/query/header) emit NO warning — only `unknown` triggers warnings.
+
+**13. OBJ-001/OBJ-002/OBJ-003 carried forward:** OBJ-001 (medium, non-blocking): R6 (auth_required === false → auth_scheme: 'none') remains dead code in the automated pipeline. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than a scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M51 close their own analogs. No new blocking objections raised for M51.
+
+**Verdict: SHIP** — 664 acceptance criteria pass (REQ-001–REQ-664). npm test exits 0 with 42 scenarios. All 16 M51 ROADMAP checkboxes [x].
+
 ## QA Challenge — turn_6d5b4b79eaf3ab7b (role=qa, run_6e53e7b50cd2c457, M50 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_99050f1349379e99, role=dev, HEAD 1a99caf) for run_6e53e7b50cd2c457 independently rather than rubber-stamping it.

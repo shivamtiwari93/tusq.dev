@@ -1,5 +1,17 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M51 (turn_b92a6c6bfa23b2bb, run_c39bd102a520411b, 2026-04-28, HEAD 9502125)
+
+**Milestone:** M51 — Static Capability Input Schema First Property Source Index Export from Manifest Evidence (~0.5 day) — V1.32
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_b129a6090e6226ec, role=dev). HEAD 9502125 = M51 implementation checkpoint. All M51 implementation (src/cli.js, tests/smoke.mjs, 42 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (42 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertySourceBucketKey` at src/cli.js:6535 and `_guardInputSchemaFirstPropertySourceAggregationKey` at src/cli.js:6542 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 35. `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_sources[]` with `path` bucket (get_users_api_v1_users_id; aggregation_key `"source"`), `request_body` bucket (post_users_users; aggregation_key `"source"`), and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --source PATH` → exit 1 (case-sensitive). `node bin/tusq.js binding index --manifest tests/fixtures/express-sample/tusq.manifest.json --source query` → exit 1, absent-bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**New command:** `tusq binding index` — indexes capabilities by `input_schema.properties[firstKey].source` HTTP-request-anatomy locus. Six-value closed-enum bucket-key (path | request_body | query | header | not_applicable | unknown). Bucket iteration order: path → request_body → query → header → not_applicable → unknown (matching M43's first-four locus ordering). Result field: `first_property_sources[]`. Aggregation key: `source` for the four locus buckets; `not_applicable` for not_applicable; `unknown` for unknown. Non-persistent: `input_schema_first_property_source` MUST NOT appear in tusq.manifest.json.
+
+**Acceptance:** 664 acceptance criteria pass (REQ-001–REQ-664; 25 new M51 REQs: REQ-640–REQ-664). Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Verification — M50 (turn_6d5b4b79eaf3ab7b, run_6e53e7b50cd2c457, 2026-04-28, HEAD 1a99caf)
 
 **Milestone:** M50 — Static Capability Input Schema First Property Required Status Index Export from Manifest Evidence (~0.5 day) — V1.31
