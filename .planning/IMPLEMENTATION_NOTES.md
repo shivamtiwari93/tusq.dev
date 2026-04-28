@@ -2,6 +2,57 @@
 
 ---
 
+## M70 (run_7aa3510dbb544d16, turn_834a243911a397f0, dev)
+
+**Axis:** `input_schema.properties[firstKey].contentEncoding` — JSON-Schema Draft 7+ string-content-transfer-encoding annotation
+**CLI noun:** `wire` (subcommand: `index`), inserted between `version` and `help` in printHelp() (CLI surface: 53 → 54)
+**Result array field:** `first_property_content_encoding_states`
+**Per-bucket field:** `input_schema_first_property_content_encoding`
+
+### Constants added (src/cli.js)
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_ENCODING_ENUM`: frozen Set — `encoded | unencoded | not_applicable | unknown`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_ENCODING_AGGREGATION_KEY_ENUM`: frozen Set — `content_transfer_encoding_constraint | not_applicable | unknown`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_ENCODING_BUCKET_ORDER`: frozen array — `['encoded', 'unencoded', 'not_applicable']`
+
+### Guard functions added (src/cli.js)
+- `_guardInputSchemaFirstPropertyContentEncodingBucketKey`
+- `_guardInputSchemaFirstPropertyContentEncodingAggregationKey`
+
+### Classify function: `classifyInputSchemaFirstPropertyContentEncoding`
+Frozen rules:
+- NULL-AS-ABSENT: `contentEncoding:null → unencoded` (mirrors M55–M68)
+- EMPTY-STRING-AS-ABSENT: `contentEncoding:'' → unencoded` (deliberate divergence from M69's FALSY-IS-VALID-CONST; empty string names no scheme)
+- TYPE-APPLICABILITY-STRING: `firstVal.type` is a string but NOT `'string'` → `not_applicable` (mirrors M62/M63)
+- ANY-NON-EMPTY-STRING-IS-ENCODED: non-empty string (including non-canonical 'rot13'/'gzip') → `encoded` (no warning)
+- DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING: non-string non-null non-absent → `unknown` WITH 6th code; NO-COERCION via String()
+
+### Six frozen warning reason codes
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_content_encoding_invalid_when_present` (M70-SPECIFIC, axis 6th code)
+
+### Functions added (src/cli.js)
+- `buildInputSchemaFirstPropertyContentEncodingIndex` — bucket iteration: encoded → unencoded → not_applicable → unknown
+- `formatInputSchemaFirstPropertyContentEncodingIndex` — human-readable text output
+- `cmdWire` — top-level dispatcher
+- `cmdWireIndex` — handler with --wire/--manifest/--out/--json flags
+- `parseWireIndexArgs` — flag parser
+
+### Tests updated
+- `tests/smoke.mjs`: all 35 `!== 53` assertions updated to `!== 54`; M70 24-case smoke matrix added (a–x4)
+- `tests/eval-regression.mjs`: `runInputSchemaFirstPropertyContentEncodingIndexDeterminismScenario` added (61 scenarios total)
+- `tests/evals/governed-cli-scenarios.json`: scenario `input-schema-first-property-content-encoding-index-determinism` added
+
+### Verification
+- `npm test` exits 0: `Smoke tests passed`, `Eval regression harness passed (61 scenarios)`
+- CLI surface: `node bin/tusq.js help | grep -c '^  [a-z]'` → 54
+- `wire index --json` on express fixture: `first_property_content_encoding_states[]` with `unencoded` and `not_applicable` buckets; `encoded` bucket absent (empty-bucket-MUST-NOT-appear invariant confirmed)
+
+---
+
 ## M69 (run_b755142c1e667f34, turn_34b72c9cd670d869, dev)
 
 **Milestone:** Static Capability Input Schema First Property Const Single-Allowed-Value Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.50

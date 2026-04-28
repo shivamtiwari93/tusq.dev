@@ -2091,6 +2091,8 @@ async function run() {
       await runInputSchemaFirstPropertyExclusiveMaximumIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_const_index_determinism') {
       await runInputSchemaFirstPropertyConstIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_content_encoding_index_determinism') {
+      await runInputSchemaFirstPropertyContentEncodingIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -5473,6 +5475,148 @@ async function runInputSchemaFirstPropertyConstIndexDeterminismScenario(tmpRoot,
   // Assert unpinned bucket has aggregation_key 'single_value_constraint'
   if (unpinnedEntry.aggregation_key !== 'single_value_constraint') {
     fail(`${scenario.id}: unpinned bucket must have aggregation_key 'single_value_constraint'; got '${unpinnedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyContentEncodingIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-content-encoding-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq wire index --json three times and assert byte-identical output
+  const run1 = runCli(['wire', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['wire', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['wire', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: wire index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_content_encoding bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validEncodingValues = new Set(scenario.expected_valid_content_encoding_values);
+  for (const entry of index.first_property_content_encoding_states) {
+    if (!validEncodingValues.has(entry.input_schema_first_property_content_encoding)) {
+      fail(`${scenario.id}: input_schema_first_property_content_encoding '${entry.input_schema_first_property_content_encoding}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_content_encoding_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_content_encoding}'`);
+    }
+  }
+
+  // Assert bucket order matches expected
+  const bucketOrder = index.first_property_content_encoding_states.map((e) => e.input_schema_first_property_content_encoding).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${scenario.expected_bucket_order}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_content_encoding must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_content_encoding')) {
+      fail(`${scenario.id}: input_schema_first_property_content_encoding must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert encoded_cap is in encoded bucket (base64 string)
+  const encodedEntry = index.first_property_content_encoding_states.find((e) => e.input_schema_first_property_content_encoding === 'encoded');
+  if (!encodedEntry || !encodedEntry.capabilities.includes('encoded_cap')) {
+    fail(`${scenario.id}: encoded_cap (firstKey.contentEncoding='base64') must be in encoded bucket (ANY-NON-EMPTY-STRING-IS-ENCODED)`);
+  }
+
+  // Assert NULL-AS-ABSENT: null_encoding_cap → unencoded (no warning)
+  const unencodedEntry = index.first_property_content_encoding_states.find((e) => e.input_schema_first_property_content_encoding === 'unencoded');
+  if (!unencodedEntry || !unencodedEntry.capabilities.includes('null_encoding_cap')) {
+    fail(`${scenario.id}: null_encoding_cap (firstKey.contentEncoding=null) must be in unencoded bucket (NULL-AS-ABSENT)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_encoding_cap')) {
+    fail(`${scenario.id}: null_encoding_cap (NULL-AS-ABSENT → unencoded) must NOT produce a warning`);
+  }
+
+  // Assert unencoded_cap is in unencoded bucket (absent contentEncoding)
+  if (!unencodedEntry || !unencodedEntry.capabilities.includes('unencoded_cap')) {
+    fail(`${scenario.id}: unencoded_cap (firstKey.contentEncoding absent) must be in unencoded bucket`);
+  }
+
+  // Assert not_applicable bucket exists (type_na_cap + schema_na_cap)
+  const naEntry = index.first_property_content_encoding_states.find((e) => e.input_schema_first_property_content_encoding === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('type_na_cap')) {
+    fail(`${scenario.id}: type_na_cap (firstKey.type='integer') must be in not_applicable bucket (TYPE-APPLICABILITY-STRING)`);
+  }
+
+  // Assert unknown bucket exists
+  const unknownEntry = index.first_property_content_encoding_states.find((e) => e.input_schema_first_property_content_encoding === 'unknown');
+  if (!unknownEntry) {
+    fail(`${scenario.id}: unknown bucket must be present`);
+  }
+
+  // Assert DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING: false_encoding_cap → unknown WITH 6th code
+  if (!unknownEntry.capabilities.includes('false_encoding_cap')) {
+    fail(`${scenario.id}: false_encoding_cap (firstKey.contentEncoding=false) must be in unknown bucket (DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING)`);
+  }
+  const falseEncodingWarning = index.warnings.find((w) => w.capability === 'false_encoding_cap');
+  if (!falseEncodingWarning || falseEncodingWarning.reason !== 'input_schema_properties_first_property_content_encoding_invalid_when_present') {
+    fail(`${scenario.id}: false_encoding_cap must produce 6th-code warning 'input_schema_properties_first_property_content_encoding_invalid_when_present'; got: ${JSON.stringify(falseEncodingWarning)}`);
+  }
+
+  // Assert encoded bucket has aggregation_key 'content_transfer_encoding_constraint'
+  if (encodedEntry.aggregation_key !== 'content_transfer_encoding_constraint') {
+    fail(`${scenario.id}: encoded bucket must have aggregation_key 'content_transfer_encoding_constraint'; got '${encodedEntry.aggregation_key}'`);
+  }
+
+  // Assert unencodedEntry bucket has aggregation_key 'content_transfer_encoding_constraint'
+  if (unencodedEntry.aggregation_key !== 'content_transfer_encoding_constraint') {
+    fail(`${scenario.id}: unencoded bucket must have aggregation_key 'content_transfer_encoding_constraint'; got '${unencodedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

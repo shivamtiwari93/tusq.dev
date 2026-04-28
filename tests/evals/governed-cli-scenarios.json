@@ -4661,6 +4661,150 @@
         "unknown"
       ],
       "expected_bucket_order": "pinned,unpinned,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-content-encoding-index-determinism",
+      "scenario_type": "input_schema_first_property_content_encoding_index_determinism",
+      "description": "Verifies that tusq wire index produces byte-identical output across three runs on a synthetic manifest with encoded, unencoded, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (encoded/unencoded/not_applicable/unknown), closed three-value aggregation_key enum (content_transfer_encoding_constraint/not_applicable/unknown), bucket order determinism (encoded \u2192 unencoded \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_content_encoding non-persistence. NULL-AS-ABSENT (mirrors M55\u2013M68): contentEncoding:null \u2192 unencoded (no warning). EMPTY-STRING-AS-ABSENT (mirrors M52/M53, deliberate divergence from M69's FALSY-IS-VALID-CONST): contentEncoding:'' \u2192 unencoded (empty string names no transfer-encoding scheme). ANY-NON-EMPTY-STRING-IS-ENCODED: any non-empty string including non-canonical 'rot13' \u2192 encoded (no warning). TYPE-APPLICABILITY-STRING (mirrors M62/M63): firstVal.type is a non-empty string other than 'string' \u2192 not_applicable. DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING: non-string non-null contentEncoding (number/boolean/array/object) \u2192 unknown WITH 6th code input_schema_properties_first_property_content_encoding_invalid_when_present; NO-COERCION via String().",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "type_na_cap",
+          "method": "GET",
+          "path": "/type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='integer' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-STRING) with no warning",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "encoded_cap",
+          "method": "POST",
+          "path": "/encoded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has contentEncoding='base64' \u2014 lands in encoded bucket (ANY-NON-EMPTY-STRING-IS-ENCODED)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "string",
+                "contentEncoding": "base64"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_encoding_cap",
+          "method": "GET",
+          "path": "/null-encoding",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has contentEncoding=null \u2014 lands in unencoded bucket (NULL-AS-ABSENT)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "term": {
+                "type": "string",
+                "contentEncoding": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "false_encoding_cap",
+          "method": "GET",
+          "path": "/false-encoding",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has contentEncoding=false (boolean) \u2014 lands in unknown bucket with 6th code (DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING; deliberate divergence from M69's FALSY-IS-VALID-CONST)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "string",
+                "contentEncoding": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unencoded_cap",
+          "method": "GET",
+          "path": "/unencoded",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has no contentEncoding field \u2014 lands in unencoded bucket (absent \u2192 unencoded)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              }
+            },
+            "required": []
+          }
+        }
+      ],
+      "expected_valid_content_encoding_values": [
+        "encoded",
+        "unencoded",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "content_transfer_encoding_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "encoded,unencoded,not_applicable,unknown"
     }
   ]
 }

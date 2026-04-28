@@ -1194,7 +1194,7 @@ tusq fixed index [--fixed <pinned|unpinned|not_applicable|unknown>] [--manifest 
 - `0`: Index produced (or empty-capabilities manifest)
 - `1`: Missing/invalid manifest, unknown flag, unknown const annotation value, `--out` path error, or unknown subcommand
 
-**Invariants:** `input_schema_first_property_const` is NOT written into the manifest (non-persistence rule). All 39 prior peer index commands remain byte-identical pre/post (`tusq surface plan`, `tusq domain index`, …, `tusq above index`, `tusq below index`).
+**Invariants:** `input_schema_first_property_const` is NOT written into the manifest (non-persistence rule). All 40 prior peer index commands remain byte-identical pre/post (`tusq surface plan`, `tusq domain index`, …, `tusq above index`, `tusq below index`, `tusq wire index`).
 
 ```
 tusq fixed index
@@ -1202,6 +1202,48 @@ tusq fixed index --json
 tusq fixed index --fixed pinned --json
 tusq fixed index --fixed unpinned --json
 tusq fixed index --out fixed-index.json
+```
+
+## `tusq wire index`
+
+Emit a deterministic, per-first-input-property-contentEncoding-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].contentEncoding` is a non-empty string (`encoded`), absent/null/empty-string (`unencoded`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal.type is a string other than 'string'), or malformed (`unknown`) in closed-enum order (`encoded → unencoded → not_applicable → unknown`). This is a **planning aid, not a runtime content-encoding enforcer, wire-payload decoder, base64-codec generator, mediaType-crossref tool, format-crossref tool, type-applicability validator, pattern-crossref tool, LLM-contentEncoding-inferrer, or ingestion-pre-decoder**.
+
+**M70-SPECIFIC invariants:**
+- **NULL-AS-ABSENT:** `contentEncoding: null` → `unencoded` (no warning) — mirrors M55–M68 null-as-absent precedent; null names no transfer-encoding scheme.
+- **EMPTY-STRING-AS-ABSENT:** `contentEncoding: ""` → `unencoded` (no warning) — deliberate divergence from M69's FALSY-IS-VALID-CONST; empty string names no transfer-encoding scheme (mirrors M52/M53).
+- **TYPE-APPLICABILITY-STRING:** `firstVal.type` is a string but NOT `"string"` → `not_applicable` (no warning) — `contentEncoding` is only meaningful for string-typed properties (mirrors M62/M63).
+- **ANY-NON-EMPTY-STRING-IS-ENCODED:** any non-empty string (including non-canonical `"rot13"`, `"gzip"`, `"utf-7"`) → `encoded` (no warning); canonical RFC-2045/RFC-4648 seven-value vocabulary validation deferred to `M-Wire-Canonical-Set-Validator-1`.
+- **DRAFT-7-STRING-IS-VALID-CONTENT-ENCODING:** non-string non-null non-absent `contentEncoding` (number/boolean/array/object) → `unknown` WITH 6th warning code `input_schema_properties_first_property_content_encoding_invalid_when_present`; NO-COERCION via `String()`.
+
+**Warning reason codes (six frozen):**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_content_encoding_invalid_when_present` _(M70-specific — non-string contentEncoding value)_
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--wire <value>` | Filter to a single content-encoding bucket (case-sensitive lowercase; closed four-value enum `encoded\|unencoded\|not_applicable\|unknown`) |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (no stdout on success; rejects `.tusq/` paths) |
+| `--json` | Emit machine-readable JSON (includes `warnings[]` array) |
+
+**Exit codes:**
+- `0`: Index produced (or empty-capabilities manifest)
+- `1`: Missing/invalid manifest, unknown flag, unknown content-encoding annotation value, `--out` path error, or unknown subcommand
+
+**Invariants:** `input_schema_first_property_content_encoding` is NOT written into the manifest (non-persistence rule). All 40 prior peer index commands remain byte-identical pre/post.
+
+```
+tusq wire index
+tusq wire index --json
+tusq wire index --wire encoded --json
+tusq wire index --wire unencoded --json
+tusq wire index --out wire-index.json
 ```
 
 ## `tusq below index`
