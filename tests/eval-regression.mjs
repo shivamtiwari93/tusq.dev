@@ -2067,6 +2067,8 @@ async function run() {
       await runInputSchemaFirstPropertyExamplesIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_title_presence_index_determinism') {
       await runInputSchemaFirstPropertyTitlePresenceIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_deprecated_index_determinism') {
+      await runInputSchemaFirstPropertyDeprecatedIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -3613,6 +3615,149 @@ async function runInputSchemaFirstPropertyTitlePresenceIndexDeterminismScenario(
   // Assert untitled bucket has aggregation_key 'title_label'
   if (untitledEntry.aggregation_key !== 'title_label') {
     fail(`${scenario.id}: untitled bucket must have aggregation_key 'title_label'; got '${untitledEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyDeprecatedIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-deprecated-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq legacy index --json three times and assert byte-identical output
+  const run1 = runCli(['legacy', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['legacy', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['legacy', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: legacy index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_deprecated bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validDeprecatedValues = new Set(scenario.expected_valid_deprecated_values);
+  for (const entry of index.first_property_deprecation_states) {
+    if (!validDeprecatedValues.has(entry.input_schema_first_property_deprecated)) {
+      fail(`${scenario.id}: input_schema_first_property_deprecated '${entry.input_schema_first_property_deprecated}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_deprecation_states) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_deprecated}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (deprecated → active → not_applicable → unknown)
+  const bucketOrder = index.first_property_deprecation_states.map((e) => e.input_schema_first_property_deprecated).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_deprecated must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by legacy index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_deprecated')) {
+      fail(`${scenario.id}: input_schema_first_property_deprecated must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert not_applicable_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'not_applicable_cap')) {
+    fail(`${scenario.id}: not_applicable_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert deprecated_cap is in deprecated bucket
+  const deprecatedEntry = index.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'deprecated');
+  if (!deprecatedEntry || !deprecatedEntry.capabilities.includes('deprecated_cap')) {
+    fail(`${scenario.id}: deprecated_cap (firstKey.deprecated=true) must be in deprecated bucket`);
+  }
+
+  // Assert active_absent_cap is in active bucket
+  const activeEntry = index.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'active');
+  if (!activeEntry || !activeEntry.capabilities.includes('active_absent_cap')) {
+    fail(`${scenario.id}: active_absent_cap (firstKey.deprecated absent) must be in active bucket`);
+  }
+
+  // Assert active_false_cap is in active bucket (EXPLICIT-FALSE-IS-ACTIVE)
+  if (!activeEntry || !activeEntry.capabilities.includes('active_false_cap')) {
+    fail(`${scenario.id}: active_false_cap (firstKey.deprecated=false) must be in active bucket (EXPLICIT-FALSE-IS-ACTIVE)`);
+  }
+
+  // Assert insertion_order_cap is in deprecated bucket (firstKey='z', deprecated=true) NOT active (sorted 'a' has no deprecated)
+  if (!deprecatedEntry || !deprecatedEntry.capabilities.includes('insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (keys={z,a,b}, firstKey=z has deprecated=true) must be in deprecated bucket (insertion-order, NOT sorted)`);
+  }
+  // insertion_order_cap's 'b' property has deprecated='true' which would be unknown, but firstKey='z' is deprecated — no warning for cap
+  if (index.warnings.some((w) => w.capability === 'insertion_order_cap')) {
+    fail(`${scenario.id}: insertion_order_cap (deprecated bucket via firstKey=z) must NOT produce a warning`);
+  }
+
+  // Assert deprecated bucket has aggregation_key 'lifecycle_stage'
+  if (deprecatedEntry.aggregation_key !== 'lifecycle_stage') {
+    fail(`${scenario.id}: deprecated bucket must have aggregation_key 'lifecycle_stage'; got '${deprecatedEntry.aggregation_key}'`);
+  }
+
+  // Assert active bucket has aggregation_key 'lifecycle_stage'
+  if (activeEntry.aggregation_key !== 'lifecycle_stage') {
+    fail(`${scenario.id}: active bucket must have aggregation_key 'lifecycle_stage'; got '${activeEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

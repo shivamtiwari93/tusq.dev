@@ -837,6 +837,69 @@ tusq items index --items-type integer --json
 tusq items index --out items-type-index.json
 ```
 
+## `tusq legacy index`
+
+Emit a deterministic, per-first-input-property-deprecated-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].deprecated` is boolean `true` (`deprecated`), boolean `false` or absent or `null` (`active`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime integration-readiness ranker, sunset-priority ranker, side-effect-emitter triage tool, webhook-migration planner, billing-integration stability assessor, queue-job deprecation scheduler, analytics-event sunset planner, or CRM-sync lifecycle-stage classifier**.
+
+**M58-vs-M57-vs-M56 distinctness:** `tusq caption index` (M57) reads `input_schema.properties[firstKey].title` (JSON-Schema's short-label keyword). `tusq sample index` (M56) reads `input_schema.properties[firstKey].examples` (JSON-Schema's per-property example-values keyword). `tusq legacy index` (M58) reads `input_schema.properties[firstKey].deprecated` (JSON-Schema's per-property lifecycle-stage annotation). These three commands are read-only-invariant peers reading three distinct JSON-Schema annotations under three distinct nouns.
+
+```bash
+tusq legacy index [--legacy <deprecated|active|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--legacy <deprecated\|active\|not_applicable\|unknown>` | all buckets | Filter to a single deprecated annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].deprecated` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `deprecated` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].deprecated === true` (strict boolean `true` only — NO truthy/falsy coercion) |
+| `active` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].deprecated === false` (EXPLICIT-FALSE-IS-ACTIVE — no warning) OR `properties[firstKey].deprecated` is absent, `undefined`, or `null` (null-as-absent per M55/M56/M57 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].deprecated` present non-null but NOT a boolean (string `'true'`, number `1`/`0`, array, object) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_deprecated_invalid_when_present` ← M58 axis-specific code; covers ALL non-boolean malformations (string/number/array/object) under a single consolidated code
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown deprecated value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `deprecated → active → not_applicable → unknown` (deterministic stable-output convention only — NOT integration-readiness-ranked, NOT sunset-priority-ranked, NOT side-effect-emitter-triage-ranked, NOT webhook-migration-priority-ranked, NOT billing-integration-stability-ranked, NOT queue-job-deprecation-ranked, NOT analytics-event-sunset-ranked, NOT CRM-sync-lifecycle-stage-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_deprecated` is NEVER written into the manifest.
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- Per-property deprecated annotation beyond the FIRST is NOT walked (reserved for `M-Legacy-All-Properties-Index-1`).
+- Strict boolean semantics: `deprecated === true` is the ONLY path to the `deprecated` bucket. Truthy values (number `1`, string `'true'`, object `{}`) all bucket as `unknown` with the 6th warning code.
+
+```bash
+# All deprecated annotation buckets (human-readable)
+tusq legacy index
+
+# All buckets (JSON)
+tusq legacy index --json
+
+# Deprecated capabilities only (strict boolean true on first property)
+tusq legacy index --legacy deprecated --json
+
+# Active capabilities (false, absent, or null deprecated on first property)
+tusq legacy index --legacy active --json
+
+# Write to file
+tusq legacy index --out legacy-index.json
+```
+
 ### `tusq output index`
 
 Index capabilities by output schema property count tier.

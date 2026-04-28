@@ -2827,6 +2827,139 @@
         "unknown"
       ],
       "expected_bucket_order": "titled,untitled,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-deprecated-index-determinism",
+      "scenario_type": "input_schema_first_property_deprecated_index_determinism",
+      "description": "Verifies that tusq legacy index produces byte-identical output across three runs on a synthetic manifest with deprecated, active, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (deprecated/active/not_applicable/unknown), closed three-value aggregation_key enum (lifecycle_stage/not_applicable/unknown), bucket order determinism (deprecated \u2192 active \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_deprecated non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has deprecated=true (deprecated), a has no deprecated field (active), b has deprecated='true' (unknown with warning input_schema_properties_first_property_deprecated_invalid_when_present) \u2014 firstKey=z \u2192 deprecated (insertion-order, NOT sorted). NULL-AS-ABSENT: deprecated:null \u2192 active (no warning, mirroring M55/M56/M57 null-as-absent). EXPLICIT-FALSE-IS-ACTIVE: deprecated:false \u2192 active (no warning). NO truthy/falsy coercion: deprecated:1 \u2192 unknown WITH warning. Sixth frozen warning reason code: input_schema_properties_first_property_deprecated_invalid_when_present (single consolidated code covers all non-boolean malformations: string/number/array/object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "deprecated_cap",
+          "method": "DELETE",
+          "path": "/deprecated",
+          "domain": "test",
+          "side_effect_class": "destructive",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has deprecated=true (strict boolean) \u2014 lands in deprecated bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "subscription_id": {
+                "type": "string",
+                "deprecated": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "active_absent_cap",
+          "method": "GET",
+          "path": "/active-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property has no deprecated field \u2014 lands in active bucket (absent \u2192 active)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "User identifier"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "active_false_cap",
+          "method": "GET",
+          "path": "/active-false",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has deprecated=false \u2014 lands in active bucket (EXPLICIT-FALSE-IS-ACTIVE, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "deprecated": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has deprecated=true (deprecated), a has no deprecated (active), b has deprecated='true' (unknown+warning). firstKey=z \u2192 deprecated (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "string",
+                "deprecated": true
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "deprecated": "true"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_deprecated_values": [
+        "deprecated",
+        "active",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "lifecycle_stage",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "deprecated,active,not_applicable,unknown"
     }
   ]
 }

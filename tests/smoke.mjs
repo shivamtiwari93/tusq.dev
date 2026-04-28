@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 41) {
+  if (m45CommandCount !== 42) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 41) {
-    throw new Error(`M46(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 42) {
+    throw new Error(`M46(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 41) {
-    throw new Error(`M47(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 42) {
+    throw new Error(`M47(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 41) {
-    throw new Error(`M48(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 42) {
+    throw new Error(`M48(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5639,8 +5639,8 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 41) {
-    throw new Error(`M49(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  if (m49HelpCommandCount !== 42) {
+    throw new Error(`M49(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
     throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
@@ -6037,8 +6037,8 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 41) {
-    throw new Error(`M50(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
+  if (m50HelpCommandCount !== 42) {
+    throw new Error(`M50(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
     throw new Error(`M50(x3): tusq help must include 'obligation' command:\n${m50HelpResult.stdout}`);
@@ -6419,8 +6419,8 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 41) {
-    throw new Error(`M51(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
+  if (m51HelpCommandCount !== 42) {
+    throw new Error(`M51(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
     throw new Error(`M51(x3): tusq help must include 'binding' command:\n${m51HelpResult.stdout}`);
@@ -6797,8 +6797,8 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 41) {
-    throw new Error(`M52(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
+  if (m52HelpCommandCount !== 42) {
+    throw new Error(`M52(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
     throw new Error(`M52(x3): tusq help must include 'gloss' command:\n${m52HelpResult.stdout}`);
@@ -7241,11 +7241,11 @@ async function run() {
     throw new Error(`M53(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m53AggNA)}`);
   }
 
-  // M53(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'hint' between 'gloss' and 'input'
+  // M53(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 41) {
-    throw new Error(`M53(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
+  if (m53HelpCommandCount !== 42) {
+    throw new Error(`M53(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
     throw new Error(`M53(x3): tusq help must include 'hint' command:\n${m53HelpResult.stdout}`);
@@ -7687,11 +7687,11 @@ async function run() {
     throw new Error(`M54(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m54AggNA)}`);
   }
 
-  // M54(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'choice' between 'binding' and 'confidence'
+  // M54(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 41) {
-    throw new Error(`M54(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
+  if (m54HelpCommandCount !== 42) {
+    throw new Error(`M54(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
     throw new Error(`M54(x3): tusq help must include 'choice' command:\n${m54HelpResult.stdout}`);
@@ -8127,11 +8127,11 @@ async function run() {
     throw new Error(`M55(x): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m55AggNA)}`);
   }
 
-  // M55(x3): help enumerates 41 commands (M57 adds 'caption') and includes 'preset' between 'policy' and 'redaction'
+  // M55(x3): help enumerates 42 commands (M58 adds 'legacy') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 41) {
-    throw new Error(`M55(x3): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
+  if (m55HelpCommandCount !== 42) {
+    throw new Error(`M55(x3): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
     throw new Error(`M55(x3): tusq help must include 'preset' command:\n${m55HelpResult.stdout}`);
@@ -8506,8 +8506,8 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 41) {
-    throw new Error(`M56(x): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
+  if (m56HelpCommandCount !== 42) {
+    throw new Error(`M56(x): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
     throw new Error(`M56(x): tusq help must include 'sample' command:\n${m56HelpResult.stdout}`);
@@ -8906,11 +8906,11 @@ async function run() {
     }
   }
 
-  // M57(x2): help enumerates 41 commands and includes 'caption' between 'binding' and 'choice'
+  // M57(x2): help enumerates 42 commands (M58 adds 'legacy') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 41) {
-    throw new Error(`M57(x2): tusq help must enumerate 41 commands (M57 adds 'caption'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
+  if (m57HelpCommandCount !== 42) {
+    throw new Error(`M57(x2): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
     throw new Error(`M57(x2): tusq help must include 'caption' command:\n${m57HelpResult.stdout}`);
@@ -8937,6 +8937,432 @@ async function run() {
   }
 
   await fs.rm(m57TmpDir, { recursive: true, force: true });
+
+  // ── M58: Static Capability Input Schema First Property Deprecated Annotation Presence Index ──
+  const m58TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m58-smoke-'));
+
+  // M58 fixture manifest: synthetic capabilities across deprecated/active/not_applicable buckets.
+  // deprecated_cap → firstKey.deprecated = true (strict boolean → deprecated)
+  // active_false_cap → firstKey.deprecated = false (EXPLICIT-FALSE-IS-ACTIVE → active)
+  // active_absent_cap → firstKey has no deprecated field (absent → active)
+  // not_applicable_cap → input_schema.type = 'array' (non-object → not_applicable, no warning)
+  const m58SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'deprecated_cap',
+        description: 'Capability with deprecated:true on first property',
+        method: 'POST',
+        path: '/api/v1/subscriptions',
+        domain: 'subscriptions',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { subscription_id: { type: 'string', deprecated: true } },
+          required: ['subscription_id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'active_false_cap',
+        description: 'Capability with deprecated:false on first property (EXPLICIT-FALSE-IS-ACTIVE)',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { id: { type: 'string', deprecated: false } },
+          required: ['id']
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'active_absent_cap',
+        description: 'Capability with no deprecated field on first property (absent → active)',
+        method: 'GET',
+        path: '/api/v1/orders',
+        domain: 'orders',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: {
+          type: 'object',
+          properties: { order_id: { type: 'string' } },
+          required: []
+        },
+        output_schema: { type: 'object', properties: {}, additionalProperties: true }
+      },
+      {
+        name: 'not_applicable_cap',
+        description: 'Capability with non-object input schema',
+        method: 'GET',
+        path: '/api/v1/items',
+        domain: 'items',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'static_analysis' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        input_schema: { type: 'array', items: { type: 'string' } },
+        output_schema: { type: 'array', items: { type: 'object', additionalProperties: true } }
+      }
+    ]
+  };
+  const m58SyntheticManifestPath = path.join(m58TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m58SyntheticManifestPath, JSON.stringify(m58SyntheticManifest, null, 2), 'utf8');
+
+  // M58(a): default tusq legacy index on synthetic fixture produces correct buckets in closed-enum order
+  const m58DefaultResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--json'], { cwd: m58TmpDir });
+  if (m58DefaultResult.status !== 0) {
+    throw new Error(`M58(a): legacy index must exit 0:\nstderr=${m58DefaultResult.stderr}`);
+  }
+  const m58DefaultJson = JSON.parse(m58DefaultResult.stdout);
+  if (!Array.isArray(m58DefaultJson.first_property_deprecation_states)) {
+    throw new Error(`M58(a): JSON output must have first_property_deprecation_states[] array:\n${m58DefaultResult.stdout}`);
+  }
+  if (m58DefaultJson.tiers !== undefined || m58DefaultJson.first_property_titles !== undefined || m58DefaultJson.first_property_default_values !== undefined) {
+    throw new Error(`M58(a): JSON output must NOT have tiers/first_property_titles/first_property_default_values; field name must be first_property_deprecation_states[]:\n${m58DefaultResult.stdout}`);
+  }
+  if (!m58DefaultJson.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'deprecated' && e.capabilities.includes('deprecated_cap'))) {
+    throw new Error(`M58(a): deprecated bucket must include deprecated_cap:\n${JSON.stringify(m58DefaultJson.first_property_deprecation_states)}`);
+  }
+  if (!m58DefaultJson.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'active' && e.capabilities.includes('active_false_cap'))) {
+    throw new Error(`M58(a): active bucket must include active_false_cap:\n${JSON.stringify(m58DefaultJson.first_property_deprecation_states)}`);
+  }
+  if (!m58DefaultJson.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'active' && e.capabilities.includes('active_absent_cap'))) {
+    throw new Error(`M58(a): active bucket must include active_absent_cap:\n${JSON.stringify(m58DefaultJson.first_property_deprecation_states)}`);
+  }
+  if (!m58DefaultJson.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'not_applicable' && e.capabilities.includes('not_applicable_cap'))) {
+    throw new Error(`M58(a): not_applicable bucket must include not_applicable_cap:\n${JSON.stringify(m58DefaultJson.first_property_deprecation_states)}`);
+  }
+  if (m58DefaultJson.warnings.length !== 0) {
+    throw new Error(`M58(a): synthetic fixture must produce zero warnings:\n${JSON.stringify(m58DefaultJson.warnings)}`);
+  }
+
+  // M58(b): bucket order is deprecated → active → not_applicable (closed-enum, NOT manifest-declared-order)
+  const m58BucketOrder = m58DefaultJson.first_property_deprecation_states.map((e) => e.input_schema_first_property_deprecated);
+  if (m58BucketOrder[0] !== 'deprecated' || m58BucketOrder[1] !== 'active' || m58BucketOrder[2] !== 'not_applicable') {
+    throw new Error(`M58(b): bucket order must be deprecated→active→not_applicable; got ${m58BucketOrder}`);
+  }
+
+  // M58(c): --legacy deprecated filter returns only deprecated bucket
+  const m58DeprecatedResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy', 'deprecated', '--json'], { cwd: m58TmpDir });
+  if (m58DeprecatedResult.status !== 0) {
+    throw new Error(`M58(c): --legacy deprecated must exit 0:\nstderr=${m58DeprecatedResult.stderr}`);
+  }
+  const m58DeprecatedJson = JSON.parse(m58DeprecatedResult.stdout);
+  if (m58DeprecatedJson.first_property_deprecation_states.length !== 1 || m58DeprecatedJson.first_property_deprecation_states[0].input_schema_first_property_deprecated !== 'deprecated') {
+    throw new Error(`M58(c): --legacy deprecated must return exactly one deprecated entry:\n${m58DeprecatedResult.stdout}`);
+  }
+
+  // M58(d): --legacy active filter returns only active bucket
+  const m58ActiveResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy', 'active', '--json'], { cwd: m58TmpDir });
+  if (m58ActiveResult.status !== 0) {
+    throw new Error(`M58(d): --legacy active must exit 0:\nstderr=${m58ActiveResult.stderr}`);
+  }
+  const m58ActiveJson = JSON.parse(m58ActiveResult.stdout);
+  if (m58ActiveJson.first_property_deprecation_states.length !== 1 || m58ActiveJson.first_property_deprecation_states[0].input_schema_first_property_deprecated !== 'active') {
+    throw new Error(`M58(d): --legacy active must return exactly one active entry:\n${m58ActiveResult.stdout}`);
+  }
+
+  // M58(e): --legacy not_applicable filter returns only not_applicable bucket
+  const m58NaResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy', 'not_applicable', '--json'], { cwd: m58TmpDir });
+  if (m58NaResult.status !== 0) {
+    throw new Error(`M58(e): --legacy not_applicable must exit 0:\nstderr=${m58NaResult.stderr}`);
+  }
+  const m58NaJson = JSON.parse(m58NaResult.stdout);
+  if (m58NaJson.first_property_deprecation_states.length !== 1 || m58NaJson.first_property_deprecation_states[0].input_schema_first_property_deprecated !== 'not_applicable') {
+    throw new Error(`M58(e): --legacy not_applicable must return exactly one not_applicable entry:\n${m58NaResult.stdout}`);
+  }
+
+  // M58(f): --legacy unknown exits 1 when no unknown capabilities exist (absent-bucket enforcement)
+  const m58UnknownAbsentResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy', 'unknown'], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58UnknownAbsentResult.status !== 1 || !m58UnknownAbsentResult.stderr.includes('No capabilities found')) {
+    throw new Error(`M58(f): --legacy unknown on a manifest with no unknown caps must exit 1:\nstdout=${m58UnknownAbsentResult.stdout}\nstderr=${m58UnknownAbsentResult.stderr}`);
+  }
+
+  // M58(g): --legacy DEPRECATED exits 1 (case-sensitive enforcement)
+  const m58CaseResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy', 'DEPRECATED'], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58CaseResult.status !== 1) {
+    throw new Error(`M58(g): --legacy DEPRECATED uppercase must exit 1 (case-sensitive):\nstdout=${m58CaseResult.stdout}\nstderr=${m58CaseResult.stderr}`);
+  }
+
+  // M58(h): unknown flag exits 1
+  const m58UnknownFlagResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--bogus'], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58UnknownFlagResult.status !== 1) {
+    throw new Error(`M58(h): unknown flag must exit 1:\nstdout=${m58UnknownFlagResult.stdout}\nstderr=${m58UnknownFlagResult.stderr}`);
+  }
+
+  // M58(i): missing manifest exits 1
+  const m58MissingManifestResult = runCli(['legacy', 'index', '--manifest', path.join(m58TmpDir, 'nonexistent.json')], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58MissingManifestResult.status !== 1) {
+    throw new Error(`M58(i): missing manifest must exit 1:\nstdout=${m58MissingManifestResult.stdout}\nstderr=${m58MissingManifestResult.stderr}`);
+  }
+
+  // M58(j): malformed JSON exits 1
+  const m58BadJsonPath = path.join(m58TmpDir, 'bad.json');
+  await fs.writeFile(m58BadJsonPath, 'not json', 'utf8');
+  const m58BadJsonResult = runCli(['legacy', 'index', '--manifest', m58BadJsonPath], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58BadJsonResult.status !== 1) {
+    throw new Error(`M58(j): malformed JSON manifest must exit 1:\nstdout=${m58BadJsonResult.stdout}\nstderr=${m58BadJsonResult.stderr}`);
+  }
+
+  // M58(k): missing capabilities array exits 1
+  const m58NoCapPath = path.join(m58TmpDir, 'nocap.json');
+  await fs.writeFile(m58NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m58NoCapResult = runCli(['legacy', 'index', '--manifest', m58NoCapPath], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58NoCapResult.status !== 1) {
+    throw new Error(`M58(k): missing capabilities array must exit 1:\nstdout=${m58NoCapResult.stdout}\nstderr=${m58NoCapResult.stderr}`);
+  }
+
+  // M58(l): --legacy with no value exits 1
+  const m58NoValueResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--legacy'], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58NoValueResult.status !== 1) {
+    throw new Error(`M58(l): --legacy with no value must exit 1:\nstdout=${m58NoValueResult.stdout}\nstderr=${m58NoValueResult.stderr}`);
+  }
+
+  // M58(m): --out writes to a file (no stdout)
+  const m58OutPath = path.join(m58TmpDir, 'out', 'legacy-index.json');
+  const m58OutResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--out', m58OutPath], { cwd: m58TmpDir });
+  if (m58OutResult.status !== 0) {
+    throw new Error(`M58(m): --out must exit 0:\nstderr=${m58OutResult.stderr}`);
+  }
+  if (m58OutResult.stdout !== '') {
+    throw new Error(`M58(m): --out must produce no stdout:\nstdout=${m58OutResult.stdout}`);
+  }
+  const m58OutContent = JSON.parse(await fs.readFile(m58OutPath, 'utf8'));
+  if (!Array.isArray(m58OutContent.first_property_deprecation_states)) {
+    throw new Error(`M58(m): --out file must contain first_property_deprecation_states[]:\n${JSON.stringify(m58OutContent)}`);
+  }
+
+  // M58(n): --out inside .tusq/ exits 1
+  const m58TusqOutResult = runCli(['legacy', 'index', '--manifest', m58SyntheticManifestPath, '--out', path.join(m58TmpDir, '.tusq', 'legacy.json')], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (m58TusqOutResult.status !== 1) {
+    throw new Error(`M58(n): --out inside .tusq/ must exit 1:\nstdout=${m58TusqOutResult.stdout}\nstderr=${m58TusqOutResult.stderr}`);
+  }
+
+  // M58(o): empty capabilities → exit 0, first_property_deprecation_states: []
+  const m58EmptyCapManifest = { schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] };
+  const m58EmptyCapPath = path.join(m58TmpDir, 'empty-cap.json');
+  await fs.writeFile(m58EmptyCapPath, JSON.stringify(m58EmptyCapManifest, null, 2), 'utf8');
+  const m58EmptyCapResult = runCli(['legacy', 'index', '--manifest', m58EmptyCapPath, '--json'], { cwd: m58TmpDir });
+  if (m58EmptyCapResult.status !== 0) {
+    throw new Error(`M58(o): empty capabilities must exit 0:\nstderr=${m58EmptyCapResult.stderr}`);
+  }
+  const m58EmptyCapJson = JSON.parse(m58EmptyCapResult.stdout);
+  if (!Array.isArray(m58EmptyCapJson.first_property_deprecation_states) || m58EmptyCapJson.first_property_deprecation_states.length !== 0) {
+    throw new Error(`M58(o): empty capabilities must produce first_property_deprecation_states: []:\n${m58EmptyCapResult.stdout}`);
+  }
+
+  // M58(p): malformed input_schema → unknown bucket with warning (all 6 warning reason codes covered)
+  const m58AllWarningsManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      { name: 'missing_schema', description: 'no schema', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      { name: 'non_object_schema', description: 'string schema', method: 'GET', path: '/b', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'bad' },
+      { name: 'no_type_schema', description: 'missing type', method: 'GET', path: '/c', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: {} } },
+      { name: 'no_properties', description: 'type object no props', method: 'GET', path: '/d', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      { name: 'invalid_first_val', description: 'firstVal is string', method: 'GET', path: '/e', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: 'not-an-object' } } },
+      { name: 'string_deprecated', description: 'deprecated:"true"', method: 'GET', path: '/f', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: 'true' } } } }
+    ]
+  };
+  const m58AllWarningsPath = path.join(m58TmpDir, 'all-warnings.json');
+  await fs.writeFile(m58AllWarningsPath, JSON.stringify(m58AllWarningsManifest, null, 2), 'utf8');
+  const m58WarningsResult = runCli(['legacy', 'index', '--manifest', m58AllWarningsPath, '--json'], { cwd: m58TmpDir });
+  if (m58WarningsResult.status !== 0) {
+    throw new Error(`M58(p): malformed schemas must exit 0 (not crash):\nstderr=${m58WarningsResult.stderr}`);
+  }
+  const m58WarningsJson = JSON.parse(m58WarningsResult.stdout);
+  if (!Array.isArray(m58WarningsJson.warnings) || m58WarningsJson.warnings.length !== 6) {
+    throw new Error(`M58(p): must produce exactly 6 warnings:\n${JSON.stringify(m58WarningsJson.warnings)}`);
+  }
+  const m58WarningReasons = m58WarningsJson.warnings.map((w) => w.reason);
+  if (!m58WarningReasons.includes('input_schema_field_missing')) throw new Error('M58(p): missing input_schema_field_missing reason');
+  if (!m58WarningReasons.includes('input_schema_field_not_object')) throw new Error('M58(p): missing input_schema_field_not_object reason');
+  if (!m58WarningReasons.includes('input_schema_type_missing_or_invalid')) throw new Error('M58(p): missing input_schema_type_missing_or_invalid reason');
+  if (!m58WarningReasons.includes('input_schema_properties_field_missing_when_type_is_object')) throw new Error('M58(p): missing input_schema_properties_field_missing_when_type_is_object reason');
+  if (!m58WarningReasons.includes('input_schema_properties_first_property_descriptor_invalid')) throw new Error('M58(p): missing input_schema_properties_first_property_descriptor_invalid reason');
+  if (!m58WarningReasons.includes('input_schema_properties_first_property_deprecated_invalid_when_present')) throw new Error('M58(p): missing input_schema_properties_first_property_deprecated_invalid_when_present reason');
+  if (!m58WarningsJson.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'unknown')) {
+    throw new Error(`M58(p): all 6 malformed caps must land in unknown bucket:\n${JSON.stringify(m58WarningsJson.first_property_deprecation_states)}`);
+  }
+
+  // M58(q): null deprecated → active (null-as-absent precedent from M55/M56/M57, no warning)
+  const m58NullDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'null_dep_cap', description: 'deprecated:null', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: null } } } }]
+  };
+  const m58NullDepPath = path.join(m58TmpDir, 'null-dep.json');
+  await fs.writeFile(m58NullDepPath, JSON.stringify(m58NullDepManifest, null, 2), 'utf8');
+  const m58NullDepResult = runCli(['legacy', 'index', '--manifest', m58NullDepPath, '--json'], { cwd: m58TmpDir });
+  const m58NullDepParsed = JSON.parse(m58NullDepResult.stdout);
+  if (!m58NullDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'active' && e.capabilities.includes('null_dep_cap'))) {
+    throw new Error(`M58(q): deprecated:null must bucket as active (null-as-absent):\n${m58NullDepResult.stdout}`);
+  }
+  if (m58NullDepParsed.warnings.length !== 0) {
+    throw new Error(`M58(q): deprecated:null must produce NO warning:\n${JSON.stringify(m58NullDepParsed.warnings)}`);
+  }
+
+  // M58(r): deprecated:false → active (EXPLICIT-FALSE-IS-ACTIVE, no warning)
+  const m58FalseDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'false_dep_cap', description: 'deprecated:false', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: false } } } }]
+  };
+  const m58FalseDepPath = path.join(m58TmpDir, 'false-dep.json');
+  await fs.writeFile(m58FalseDepPath, JSON.stringify(m58FalseDepManifest, null, 2), 'utf8');
+  const m58FalseDepResult = runCli(['legacy', 'index', '--manifest', m58FalseDepPath, '--json'], { cwd: m58TmpDir });
+  const m58FalseDepParsed = JSON.parse(m58FalseDepResult.stdout);
+  if (!m58FalseDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'active' && e.capabilities.includes('false_dep_cap'))) {
+    throw new Error(`M58(r): deprecated:false must bucket as active (EXPLICIT-FALSE-IS-ACTIVE):\n${m58FalseDepResult.stdout}`);
+  }
+  if (m58FalseDepParsed.warnings.length !== 0) {
+    throw new Error(`M58(r): deprecated:false must produce NO warning:\n${JSON.stringify(m58FalseDepParsed.warnings)}`);
+  }
+
+  // M58(s): number deprecated → unknown WITH 6th warning code (non-boolean present non-null — NO truthy coercion)
+  const m58NumberDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'number_dep_cap', description: 'deprecated:1', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: 1 } } } }]
+  };
+  const m58NumberDepPath = path.join(m58TmpDir, 'number-dep.json');
+  await fs.writeFile(m58NumberDepPath, JSON.stringify(m58NumberDepManifest, null, 2), 'utf8');
+  const m58NumberDepResult = runCli(['legacy', 'index', '--manifest', m58NumberDepPath, '--json'], { cwd: m58TmpDir });
+  const m58NumberDepParsed = JSON.parse(m58NumberDepResult.stdout);
+  if (!m58NumberDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'unknown' && e.capabilities.includes('number_dep_cap'))) {
+    throw new Error(`M58(s): deprecated:1 (number) must bucket as unknown (NO truthy coercion):\n${m58NumberDepResult.stdout}`);
+  }
+  if (!m58NumberDepParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_deprecated_invalid_when_present')) {
+    throw new Error(`M58(s): deprecated:1 must produce 6th warning:\n${JSON.stringify(m58NumberDepParsed.warnings)}`);
+  }
+
+  // M58(t): string 'true' deprecated → unknown WITH 6th warning code (non-boolean present non-null — NO truthy coercion)
+  const m58StringDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'string_dep_cap', description: 'deprecated:"true"', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: 'true' } } } }]
+  };
+  const m58StringDepPath = path.join(m58TmpDir, 'string-dep.json');
+  await fs.writeFile(m58StringDepPath, JSON.stringify(m58StringDepManifest, null, 2), 'utf8');
+  const m58StringDepResult = runCli(['legacy', 'index', '--manifest', m58StringDepPath, '--json'], { cwd: m58TmpDir });
+  const m58StringDepParsed = JSON.parse(m58StringDepResult.stdout);
+  if (!m58StringDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'unknown' && e.capabilities.includes('string_dep_cap'))) {
+    throw new Error(`M58(t): deprecated:'true' (string) must bucket as unknown (NO truthy coercion):\n${m58StringDepResult.stdout}`);
+  }
+  if (!m58StringDepParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_deprecated_invalid_when_present')) {
+    throw new Error(`M58(t): deprecated:'true' must produce 6th warning:\n${JSON.stringify(m58StringDepParsed.warnings)}`);
+  }
+
+  // M58(u): array deprecated → unknown WITH 6th warning code (non-boolean present non-null)
+  const m58ArrayDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'array_dep_cap', description: 'deprecated:[true]', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: [true] } } } }]
+  };
+  const m58ArrayDepPath = path.join(m58TmpDir, 'array-dep.json');
+  await fs.writeFile(m58ArrayDepPath, JSON.stringify(m58ArrayDepManifest, null, 2), 'utf8');
+  const m58ArrayDepResult = runCli(['legacy', 'index', '--manifest', m58ArrayDepPath, '--json'], { cwd: m58TmpDir });
+  const m58ArrayDepParsed = JSON.parse(m58ArrayDepResult.stdout);
+  if (!m58ArrayDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'unknown' && e.capabilities.includes('array_dep_cap'))) {
+    throw new Error(`M58(u): deprecated:[true] (array) must bucket as unknown:\n${m58ArrayDepResult.stdout}`);
+  }
+  if (!m58ArrayDepParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_deprecated_invalid_when_present')) {
+    throw new Error(`M58(u): deprecated:[true] must produce 6th warning:\n${JSON.stringify(m58ArrayDepParsed.warnings)}`);
+  }
+
+  // M58(v): object deprecated → unknown WITH 6th warning code (non-boolean present non-null)
+  const m58ObjectDepManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [{ name: 'object_dep_cap', description: 'deprecated:{}', method: 'GET', path: '/a', domain: 'd', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { key: { type: 'string', deprecated: {} } } } }]
+  };
+  const m58ObjectDepPath = path.join(m58TmpDir, 'object-dep.json');
+  await fs.writeFile(m58ObjectDepPath, JSON.stringify(m58ObjectDepManifest, null, 2), 'utf8');
+  const m58ObjectDepResult = runCli(['legacy', 'index', '--manifest', m58ObjectDepPath, '--json'], { cwd: m58TmpDir });
+  const m58ObjectDepParsed = JSON.parse(m58ObjectDepResult.stdout);
+  if (!m58ObjectDepParsed.first_property_deprecation_states.some((e) => e.input_schema_first_property_deprecated === 'unknown' && e.capabilities.includes('object_dep_cap'))) {
+    throw new Error(`M58(v): deprecated:{} (object) must bucket as unknown:\n${m58ObjectDepResult.stdout}`);
+  }
+  if (!m58ObjectDepParsed.warnings.some((w) => w.reason === 'input_schema_properties_first_property_deprecated_invalid_when_present')) {
+    throw new Error(`M58(v): deprecated:{} must produce 6th warning:\n${JSON.stringify(m58ObjectDepParsed.warnings)}`);
+  }
+
+  // M58(w): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'lifecycle_stage','not_applicable','unknown'}
+  const m58AggKeyResult = runCli(['legacy', 'index', '--manifest', m58AllWarningsPath, '--json'], { cwd: m58TmpDir });
+  const m58AggKeyParsed = JSON.parse(m58AggKeyResult.stdout);
+  const m58ValidAggKeys = new Set(['lifecycle_stage', 'not_applicable', 'unknown']);
+  for (const entry of m58AggKeyParsed.first_property_deprecation_states) {
+    if (!m58ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M58(w): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m58AggDeprecated = m58DefaultJson.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'deprecated');
+  if (!m58AggDeprecated || m58AggDeprecated.aggregation_key !== 'lifecycle_stage') {
+    throw new Error(`M58(w): deprecated bucket must have aggregation_key 'lifecycle_stage':\n${JSON.stringify(m58AggDeprecated)}`);
+  }
+  const m58AggActive = m58DefaultJson.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'active');
+  if (!m58AggActive || m58AggActive.aggregation_key !== 'lifecycle_stage') {
+    throw new Error(`M58(w): active bucket must have aggregation_key 'lifecycle_stage':\n${JSON.stringify(m58AggActive)}`);
+  }
+  const m58AggNA = m58DefaultJson.first_property_deprecation_states.find((e) => e.input_schema_first_property_deprecated === 'not_applicable');
+  if (!m58AggNA || m58AggNA.aggregation_key !== 'not_applicable') {
+    throw new Error(`M58(w): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m58AggNA)}`);
+  }
+
+  // M58(x): non-persistence — manifest file not mutated
+  const m58ManifestAfter = JSON.parse(await fs.readFile(m58SyntheticManifestPath, 'utf8'));
+  for (const cap of m58ManifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_deprecated')) {
+      throw new Error(`M58(x): input_schema_first_property_deprecated must NOT be written to manifest:\n${cap.name}`);
+    }
+  }
+
+  // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
+  const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
+  const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m58HelpCommandCount !== 42) {
+    throw new Error(`M58(x2): tusq help must enumerate 42 commands (M58 adds 'legacy'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
+  }
+  if (!m58HelpResult.stdout.includes('  legacy')) {
+    throw new Error(`M58(x2): tusq help must include 'legacy' command:\n${m58HelpResult.stdout}`);
+  }
+  // Verify ordering: items before legacy before method
+  const m58HelpLines = m58HelpResult.stdout.split('\n');
+  const m58ItemsIdx = m58HelpLines.findIndex((l) => l.startsWith('  items'));
+  const m58LegacyIdx = m58HelpLines.findIndex((l) => l.startsWith('  legacy'));
+  const m58MethodIdx = m58HelpLines.findIndex((l) => l.startsWith('  method'));
+  if (!(m58ItemsIdx < m58LegacyIdx && m58LegacyIdx < m58MethodIdx)) {
+    throw new Error(`M58(x2): 'legacy' must appear between 'items' and 'method' in help:\n${m58HelpResult.stdout}`);
+  }
+
+  // M58(x3): legacy index --help includes planning-aid framing
+  const m58IndexHelpResult = runCli(['legacy', 'index', '--help'], { cwd: m58TmpDir });
+  if (!m58IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M58(x3): legacy index help must include planning-aid framing:\n${m58IndexHelpResult.stdout}`);
+  }
+
+  // M58(x4): unknown subcommand exits 1
+  const m58UnknownSubCmd = runCli(['legacy', 'bogusub'], { cwd: m58TmpDir, expectedStatus: 1 });
+  if (!m58UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m58UnknownSubCmd.stdout !== '') {
+    throw new Error(`M58(x4): unknown subcommand must exit 1:\nstdout=${m58UnknownSubCmd.stdout}\nstderr=${m58UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m58TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -9405,7 +9831,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 41) {
+  if (m44CommandCount !== 42) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -9943,7 +10369,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 41) {
+  if (m43CommandCount !== 42) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -10492,7 +10918,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 41) {
+  if (m42CommandCount !== 42) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -11038,7 +11464,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 41) {
+  if (m41CommandCount !== 42) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -11593,7 +12019,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 41) {
+  if (m40CommandCount !== 42) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -12065,7 +12491,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 41) {
+  if (m39CommandCount !== 42) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -12536,7 +12962,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 41) {
+  if (m38CommandCount !== 42) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -13019,7 +13445,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 41) {
+  if (m37CommandCount !== 42) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -13477,7 +13903,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 41) {
+  if (m36CommandCount !== 42) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -13870,7 +14296,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 41) {
+  if (m35CommandCount !== 42) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
