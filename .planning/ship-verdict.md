@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_d02f87350955e8c4 (role=qa, run_e29754fde9f7e4f7, M63 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_a43e548e5465caff, role=dev, HEAD d20d992) for run_e29754fde9f7e4f7 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M63 does not modify manifest format — `input_schema_first_property_max_length` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_9b08017116bfbfdc upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_MAX_LENGTH_ENUM` (frozen Set: length_capped/length_uncapped/not_applicable/unknown) at `src/cli.js:627`; `INPUT_SCHEMA_FIRST_PROPERTY_MAX_LENGTH_AGGREGATION_KEY_ENUM` (frozen Set: string_length_ceiling_constraint/not_applicable/unknown) at `src/cli.js:631`; `INPUT_SCHEMA_FIRST_PROPERTY_MAX_LENGTH_BUCKET_ORDER` (frozen array: length_capped/length_uncapped/not_applicable) at `src/cli.js:639`. Guards `_guardInputSchemaFirstPropertyMaxLengthBucketKey` at `src/cli.js:10827`, `_guardInputSchemaFirstPropertyMaxLengthAggregationKey` at `src/cli.js:10834`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyMaxLength` at `src/cli.js:10863–10901` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57/M58/M59/M60/M61/M62); maxLength absent/!hasOwnProperty/null/undefined → length_uncapped (null-as-absent, no warning — mirrors M55–M62 null-as-absent; `Object.prototype.hasOwnProperty.call(firstVal, 'maxLength')` idiom used); Number.isInteger(maxLength) && maxLength >= 0 → length_capped (EXPLICIT-ZERO-IS-CAPPED: maxLength===0 → length_capped, no warning; STRICT-NUMERIC — NO Number()/parseInt()/truthy coercion); non-non-negative-integer maxLength → unknown WITH `input_schema_properties_first_property_max_length_invalid_when_present` (SIXTH FROZEN CODE at `src/cli.js:10900` — covers ALL malformations: negative integer/-1, fractional/1.5, NaN, Infinity, -Infinity, string, boolean, array, plain object under a single consolidated code; strict Number.isInteger() && >= 0 checks — NO coercion). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 47. `ceiling` between `caption` and `choice` confirmed (caption(c=99,a=97) < ceiling(c=99,e=101) at pos 1 (a(97)<e(101)); ceiling(c=99,e=101) < choice(c=99,h=104) at pos 1 (e(101)<h(104))). 29 help-count assertions updated to `!== 47` in tests/smoke.mjs. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js ceiling index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_max_length_states[]` with `length_uncapped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"string_length_ceiling_constraint"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `length_capped` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: length_uncapped < not_applicable (length_capped→length_uncapped→not_applicable→unknown convention with length_capped absent). PASS.
+
+**7. Case-sensitive filter enforcement:** `--ceiling LENGTH_CAPPED` → exit 1, `Unknown input schema first property max length state: LENGTH_CAPPED` (case-sensitive enforcement confirmed). `--ceiling length_capped` → exit 1, `No capabilities found for input schema first property max length state: length_capped` (absent-bucket enforcement confirmed). `--ceiling length_uncapped --json` → exit 0 with length_uncapped bucket (present bucket confirmed). PASS.
+
+**8. M63-specific rules:** NULL-AS-ABSENT: maxLength `null` → `length_uncapped` (no warning; mirrors M55/M56/M57/M58/M59/M60/M61/M62 null-as-absent). EXPLICIT-ZERO-IS-CAPPED: maxLength `0` → `length_capped` (no warning; mirrors M58 EXPLICIT-FALSE-IS-ACTIVE / M60 EXPLICIT-FALSE-IS-MUTABLE / M61 EXPLICIT-FALSE-IS-NOT-WRITE-ONLY / M62 EXPLICIT-ZERO-IS-FLOORED boundary-default-value precedent — zero is a valid non-negative integer ceiling). STRICT-NUMERIC: `maxLength: -1` (negative integer) → `unknown` WITH 6th code; `maxLength: 1.5` (fractional) → `unknown` WITH 6th code; `maxLength: NaN` → `unknown` WITH 6th code (Number.isInteger(NaN)===false); `maxLength: '100'` (string) → `unknown` WITH 6th code (NO Number()/parseInt() coercion); `maxLength: true` (boolean) → `unknown` WITH 6th code; `maxLength: [100]` (array) → `unknown` WITH 6th code; `maxLength: {}` (object) → `unknown` WITH 6th code. Absolute NO-COERCION: only `Number.isInteger(v) && v >= 0` — never `Number(v)`, `parseInt(v)`, or truthiness. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_max_length_invalid_when_present` at `src/cli.js:10900`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 54 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (54 scenarios)`). Scenario 54 (`input-schema-first-property-max-length-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP checkboxes:** All 18 M63 ROADMAP items confirmed [x] (zero unchecked items in M63 block). PASS.
+
+**13. Acceptance criteria:** REQ-940–REQ-964 added (25 new REQs). Total: 964 acceptance criteria (REQ-001–REQ-964). All pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_b1f4fd12b8d8cdf8 (role=qa, run_a9f53305f71ff8e4, M62 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_0ae9e9cb6c065564, role=dev, HEAD 0ee98f1) for run_a9f53305f71ff8e4 independently rather than rubber-stamping it.
