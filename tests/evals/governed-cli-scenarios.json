@@ -2107,6 +2107,99 @@
         "unknown"
       ],
       "expected_bucket_order": "path,request_body,query,header,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-description-presence-index-determinism",
+      "scenario_type": "input_schema_first_property_description_presence_index_determinism",
+      "description": "Verifies that tusq gloss index produces byte-identical output across three runs on a synthetic manifest with described, undescribed, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (described/undescribed/not_applicable/unknown), closed three-value aggregation_key enum (description_presence/not_applicable/unknown), bucket order determinism (described → undescribed → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_description_presence non-persistence. Object.keys insertion-order is preserved: keys={c,a,b} where c is undescribed (no description), a is described, b is described — firstKey=c → undescribed (NOT sorted 'a' which would be described).",
+      "synthetic_capabilities": [
+        {
+          "name": "described_cap",
+          "description": "First property has a non-empty description",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "description": "The user identifier" }
+            }
+          }
+        },
+        {
+          "name": "undescribed_cap",
+          "description": "First property has no description",
+          "domain": "users",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": { "type": "object" }
+            }
+          }
+        },
+        {
+          "name": "not_applicable_cap",
+          "description": "Non-object input (array type) — not_applicable, no warning",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No input schema — unknown bucket",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/status",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        },
+        {
+          "name": "insertion_order_cap",
+          "description": "Object with keys {c,a,b} where c is undescribed (no description), a is described — firstKey=c → undescribed (insertion-order, NOT sorted)",
+          "domain": "test",
+          "method": "POST",
+          "path": "/api/v1/test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "c": { "type": "string" },
+              "a": { "type": "string", "description": "described second key" },
+              "b": { "type": "string", "description": "described third key" }
+            }
+          }
+        }
+      ],
+      "expected_valid_presences": [
+        "described",
+        "undescribed",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "description_presence",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "described,undescribed,not_applicable,unknown"
     }
   ]
 }

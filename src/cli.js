@@ -421,6 +421,23 @@ const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_AGGREGATION_KEY_ENUM = Object.freeze(ne
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER = Object.freeze(['path', 'request_body', 'query', 'header', 'not_applicable']);
 
+// M52: frozen four-value input_schema_first_property_description_presence bucket-key enum. Immutable once M52 ships.
+// described = firstKey.description is a non-empty trimmed string (typeof === 'string' && trim().length > 0).
+// undescribed = firstKey.description is missing/null/undefined OR is a string with trim().length === 0 (empty or whitespace-only).
+// not_applicable = non-object input or zero-property object; unknown = malformed input_schema or firstKey.description present but non-string.
+const INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_ENUM = Object.freeze(new Set(['described', 'undescribed', 'not_applicable', 'unknown']));
+
+// M52: frozen three-value aggregation_key enum. Immutable once M52 ships.
+// described/undescribed buckets carry 'description_presence'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['description_presence', 'not_applicable', 'unknown']));
+
+// M52: closed-enum bucket iteration order (described → undescribed → not_applicable). Unknown appended last.
+// NOT documentation-completeness-ranked, NOT reviewer-priority-ranked, NOT maintenance-debt-ranked,
+// NOT public-docs-gap-ranked, NOT launch-readiness-ranked, NOT copilot-composition-readiness-ranked,
+// NOT onboarding-clarity-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER = Object.freeze(['described', 'undescribed', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -553,6 +570,9 @@ function dispatch(argv) {
       return;
     case 'examples':
       cmdExamples(args);
+      return;
+    case 'gloss':
+      cmdGloss(args);
       return;
     case 'input':
       cmdInput(args);
@@ -6761,6 +6781,405 @@ function formatInputSchemaFirstPropertySourceIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M52: tusq gloss — top-level noun dispatcher
+function cmdGloss(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('gloss');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdGlossIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M52: tusq gloss index — handler
+function cmdGlossIndex(args) {
+  const { opts, positionals } = parseGlossIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('gloss index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyDescriptionPresenceIndex(manifest, manifestPath);
+
+  const presenceFilter = opts['presence'] || null;
+  let outputIndex;
+  if (presenceFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_first_property_description_presence values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_ENUM.has(presenceFilter)) {
+      throw new CliError(`Unknown input schema first property description presence: ${presenceFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_description_presences.find((e) => e.input_schema_first_property_description_presence === presenceFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property description presence: ${presenceFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_description_presences: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property description presence (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property description presence (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyDescriptionPresenceIndex(outputIndex));
+}
+
+function parseGlossIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['presence', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaFirstPropertyDescriptionPresenceBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_description_presence outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M52: classifyInputSchemaFirstPropertyDescriptionPresence(inputSchema) → 'described'|'undescribed'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid)
+//              if firstVal.description is PRESENT (key exists with non-undefined value) AND typeof !== 'string' → 'unknown' (reason: input_schema_properties_first_property_description_invalid_when_present)
+//              if firstVal.description is missing/null/undefined OR is string with trim().length === 0 → 'undescribed' (no warning)
+//              else (typeof === 'string' && trim().length > 0) → 'described' (no warning)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property description beyond the FIRST is NOT walked (reserved for M-Gloss-All-Properties-Description-Presence-Index-1).
+// Nested-object property description NOT walked (reserved for M-Gloss-Nested-Property-Description-Presence-Index-1).
+// output_schema first-property description is NOT classified (reserved for M-Gloss-Output-First-Property-Description-Presence-Index-1).
+// input_schema_first_property_description_presence MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyDescriptionPresence(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // Check if description is present and not null/undefined (strict-typing rule applies to non-null, non-undefined values only)
+  if (Object.prototype.hasOwnProperty.call(firstVal, 'description') && firstVal.description !== undefined && firstVal.description !== null) {
+    if (typeof firstVal.description !== 'string') {
+      // Present, non-null, non-undefined but non-string (array/object/number/boolean) → unknown (strict-typing rule)
+      return 'unknown';
+    }
+    // String value: check if non-empty after trim
+    if (firstVal.description.trim().length > 0) {
+      return 'described';
+    }
+    // Empty or whitespace-only string → undescribed (no warning — documentation-completeness signal)
+    return 'undescribed';
+  }
+  // description missing/null/undefined → undescribed (no warning — semantically absent)
+  return 'undescribed';
+}
+
+// M52: buildInputSchemaFirstPropertyDescriptionPresenceIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property description presence index from the manifest's capabilities[].
+// Bucket iteration order: described → undescribed → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_description_presence MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyDescriptionPresenceIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_description_presences: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_description_presence.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property description is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (
+            Object.prototype.hasOwnProperty.call(firstVal, 'description') &&
+            firstVal.description !== undefined &&
+            firstVal.description !== null &&
+            typeof firstVal.description !== 'string'
+          ) {
+            warningReason = 'input_schema_properties_first_property_description_invalid_when_present';
+          }
+          // else: valid description (string or missing/null) — no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const presenceClass = classifyInputSchemaFirstPropertyDescriptionPresence(inputSchema);
+    const isNamedBucket = namedBuckets.has(presenceClass);
+    const bucketKey = isNamedBucket ? presenceClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: described → undescribed → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyDescriptionPresences = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const isPresenceBucket = bucketKey === 'described' || bucketKey === 'undescribed';
+    const presenceKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDescriptionPresenceBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyDescriptionPresenceBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey('description_presence');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_description_presence: presenceKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_description_presences: firstPropertyDescriptionPresences,
+    warnings
+  };
+}
+
+// M52: format input schema first property description presence index as human-readable text
+function formatInputSchemaFirstPropertyDescriptionPresenceIndex(index) {
+  if (index.first_property_description_presences.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Description Presence Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Planning aid: this index reports per-capability input_schema.properties[firstKey].description docstring-presence classification; it does NOT execute capability invocations, validate runtime documentation completeness, cross-reference manifest first-property docstring vs published API/OpenAPI/SDK docs, generate missing docstrings, score docstring quality, or auto-flip tusq serve filtering. Bucket order is deterministic stable-output ordering only (NOT documentation-completeness-ranked, NOT reviewer-priority-ranked, NOT maintenance-debt-ranked, NOT public-docs-gap-ranked, NOT launch-readiness-ranked, NOT copilot-composition-readiness-ranked, NOT onboarding-clarity-ranked).',
+    ''
+  ];
+
+  for (const entry of index.first_property_description_presences) {
+    lines.push(`[${entry.input_schema_first_property_description_presence}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: described (firstKey.description is a non-empty trimmed string) | undescribed (firstKey.description missing/null/undefined or empty trimmed string) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or firstKey not a plain object or firstKey.description present but non-string).");
+  lines.push('Bucket order: described → undescribed → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M41: tusq path — top-level noun dispatcher
 function cmdPath(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -10018,6 +10437,7 @@ function printHelp() {
   process.stdout.write('  domain             Index capabilities by domain for planning review\n');
   process.stdout.write('  effect             Index capabilities by side-effect class for planning review\n');
   process.stdout.write('  examples           Index capabilities by examples count tier for planning review\n');
+  process.stdout.write('  gloss              Index capabilities by input schema first property description presence for planning review\n');
   process.stdout.write('  input              Index capabilities by required input field count tier for planning review\n');
   process.stdout.write('  items              Index capabilities by output schema items type for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
@@ -10215,6 +10635,47 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime example executor, schema validator, example generator, or eval-readiness certifier; tiers are deterministic stable-output ordering only (NOT coverage-quality-ranked).'
+    ].join('\n'),
+    gloss: 'Usage: tusq gloss <subcommand>\n  Subcommands: index',
+    'gloss index': [
+      'Usage: tusq gloss index [--presence <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --presence <value>  Filter to a single input schema first property description presence bucket (default: all presences; case-sensitive lowercase)',
+      '  --manifest <path>   Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>        Write index to file (no stdout on success)',
+      '  --json              Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid firstKey.description)',
+      '',
+      'Classifier rule (applied to input_schema.properties[firstKey].description when input_schema.type === "object"):',
+      '  described      if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].description is a string with trim().length > 0',
+      '  undescribed    if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].description is missing/null/undefined or a string with trim().length === 0',
+      '  not_applicable if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown        if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or properties[firstKey] is not a plain object;',
+      '               or properties[firstKey].description is PRESENT but not a string (strict-typing: array/object/number/boolean are malformed).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property description beyond the FIRST is NOT walked (reserved for M-Gloss-All-Properties-Description-Presence-Index-1).',
+      '               Nested-property description under input_schema.properties[key].properties NOT walked (reserved for M-Gloss-Nested-Property-Description-Presence-Index-1).',
+      '               output_schema first-property description NOT classified here (reserved for M-Gloss-Output-First-Property-Description-Presence-Index-1).',
+      '               A present-but-empty (or whitespace-only) description string is undescribed, NOT unknown — empty docstring is a documentation-completeness signal, not a typing failure.',
+      '               Distinct from M44 (capability-level top-level description word-count tier via tusq description index),',
+      '               M47 (input_schema.properties count cardinality via tusq parameter index),',
+      '               M49 (input-side first-property primitive type via tusq signature index),',
+      '               M50 (input-side first-property required-status via tusq obligation index),',
+      '               M51 (input-side first-property HTTP-source locus via tusq binding index),',
+      '               M48 (output-side first-property type via tusq shape index).',
+      '',
+      'Bucket iteration order: described → undescribed → not_applicable → unknown',
+      '  (conventional "documented-first, undocumented-second, irrelevant-third, malformed-last" reading order — NOT documentation-completeness-ranked, NOT reviewer-priority-ranked, NOT maintenance-debt-ranked, NOT public-docs-gap-ranked, NOT launch-readiness-ranked, NOT copilot-composition-readiness-ranked, NOT onboarding-clarity-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown presence value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime documentation validator, doc-contradiction detector, quality scorer, LLM synthesizer, or SDK help-text generator; per-FIRST-property description presence is deterministic stable-output ordering only (NOT documentation-completeness-ranked, NOT reviewer-priority-ranked).'
     ].join('\n'),
     input: 'Usage: tusq input <subcommand>\n  Subcommands: index',
     'input index': [

@@ -2,6 +2,29 @@
 
 ---
 
+## M52 (run_3f128359168988b4, turn_09c7bb9f6448bf1a, dev)
+
+**Challenge to PM turn:** PM (turn_09cba7c7ad415bd0) correctly bound M52: Static Capability Input Schema First Property Description Presence Index Export from Manifest Evidence (~0.5 day) — V1.33 (PROPOSED) under intake charter `intent_1777370751746_c43c` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld: (1) new noun `gloss` inserted between `examples` and `input` (e=101 < g=103 at pos 0; g=103 < i=105 at pos 0); (2) four-value bucket-key enum `described|undescribed|not_applicable|unknown`; (3) aggregation_key enum `description_presence|not_applicable|unknown` three-value; (4) bucket iteration order `described→undescribed→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable/described/undescribed emit NO warning (only unknown triggers warnings); result array field name `first_property_description_presences`. Challenge resolved: no new objections. Key implementation decision: `description: null` is treated as semantically absent (→ `undescribed`, no warning), consistent with the bucket spec that lists null as one of the absent cases; only non-null, non-undefined, non-string values (arrays, objects, numbers, booleans) trigger the strict-typing `unknown` bucket.
+
+**Implementation:**
+- Added `INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_ENUM` (frozen Set: described/undescribed/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_AGGREGATION_KEY_ENUM` (frozen Set: description_presence/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_DESCRIPTION_PRESENCE_BUCKET_ORDER` (frozen array: described/undescribed/not_applicable) constants in `src/cli.js` after M51 source constants.
+- Added `_guardInputSchemaFirstPropertyDescriptionPresenceBucketKey` and `_guardInputSchemaFirstPropertyDescriptionPresenceAggregationKey` guard functions.
+- Added `classifyInputSchemaFirstPropertyDescriptionPresence(inputSchema)` pure function: returns `'unknown'` for null/undefined/non-object/array inputSchema; returns `'unknown'` for missing/non-string type; returns `'not_applicable'` for non-'object' type string (no warning); when type==='object': returns `'unknown'` for missing/null/non-object properties; returns `'not_applicable'` for zero-property object (no warning); reads `firstKey = Object.keys(properties)[0]`; if `firstVal` not plain object → `'unknown'`; if `description` present AND not null AND not undefined AND not string → `'unknown'` (strict-typing); if `description` missing/null/undefined OR string with trim().length===0 → `'undescribed'` (no warning); else → `'described'` (no warning). Object.keys insertion-order preserved — NOT sorted.
+- Added `buildInputSchemaFirstPropertyDescriptionPresenceIndex(manifest, manifestPath)` with closed-enum bucket ordering (`described→undescribed→not_applicable→unknown`) and warnings[] collection.
+- Added `formatInputSchemaFirstPropertyDescriptionPresenceIndex(index)` with planning-aid callout.
+- Added `cmdGloss` dispatcher, `cmdGlossIndex(args)` handler, `parseGlossIndexArgs` (4-flag parser: presence/manifest/out/json).
+- Wired `gloss` case into dispatch table between `examples` and `input`.
+- Updated `printHelp()` to emit 36-command surface with `gloss` between `examples` and `input`.
+- Updated `printCommandHelp()` with `gloss` and `gloss index` help entries.
+- Added 24-case M52 smoke matrix (a–x) to `tests/smoke.mjs`.
+- Updated all M35–M51 help-count assertions from 35 to 36.
+- Added `input-schema-first-property-description-presence-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json` (42→43 scenarios) with `runInputSchemaFirstPropertyDescriptionPresenceIndexDeterminismScenario` handler in `tests/eval-regression.mjs`.
+- Updated `website/docs/cli-reference.md`, `.planning/ROADMAP.md` (all 16 items checked), `.planning/SYSTEM_SPEC.md` (M52 detail block + Constraint 45), `.planning/command-surface.md` (M52 surface block).
+
+**Verification:** npm test exits 0 with 43 scenarios. 36-command CLI surface confirmed. gloss index --json on canonical fixture produces described (get_users_api_v1_users_id)/undescribed (post_users_users)/not_applicable (get_users_users) buckets with zero warnings. Null description → undescribed (no warning). Whitespace-only → undescribed (no warning). Array description → unknown with input_schema_properties_first_property_description_invalid_when_present warning. Zero package drift. All 16 M52 ROADMAP items [x].
+
+---
+
 ## M51 (run_c39bd102a520411b, turn_b129a6090e6226ec, dev)
 
 **Challenge to PM turn:** PM (turn_400dc74e4496c4df) correctly bound M51: Static Capability Input Schema First Property Source Index Export from Manifest Evidence (~0.5 day) — V1.32 (PROPOSED) under intake charter `intent_1777367619111_9934` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld. Challenge resolved: no objections.

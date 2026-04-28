@@ -6,6 +6,42 @@
 
 > **M50 Charter Sketch Reservation — 2026-04-28, run_6e53e7b50cd2c457, turn_644dcda246f21bc1, PM attempt 1, HEAD `061a227`.** Reserves the `### M50: Input Schema First Property Required Status Index — Product CLI Surface` detail block for the dev materialization turn. PM-frozen scope (dev MUST carry forward verbatim): new top-level noun `obligation` with single subcommand `index`; CLI surface growth 33 → 34; `obligation` inserted alphabetically between `method` and `output` in the post-`docs` block (`method` (m=109) < `obligation` (o=111) at position 0; `obligation` < `output` (o=o; b(98) < u(117)) at position 1); insertion sequence `..., items, method, obligation, output, parameter, path, ...`; command shape `tusq obligation index [--status <value>] [--manifest <path>] [--out <path>] [--json]`; four flags (case-sensitive lowercase-only `--status` filter against the closed four-value bucket-key enum `required | optional | not_applicable | unknown`); closed three-value `aggregation_key` enum `required_status | not_applicable | unknown`; eight-field per-bucket entry shape (`input_schema_first_property_required_status`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); five-value warning reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_required_field_invalid_when_type_is_object`); top-level `warnings[]` array always present in `--json` (empty `[]` when no malformed capabilities); `not_applicable` and `optional` emit NO warning (only `unknown` triggers warnings); bucket iteration order `required → optional → not_applicable → unknown` (deterministic stable-output convention only); within-bucket manifest declared order; empty buckets MUST NOT appear; result-array field name `required_statuses`; default-preservation table for the 33 unchanged commands; failure UX table; local-only invariants table including `tusq signature index` byte-identity guard (20 commands now); non-persistence rule (`input_schema_first_property_required_status` MUST NOT be written into `tusq.manifest.json`); explicit non-runtime-validator / non-action-policy-enforcer / non-SDK-call-site-signature-generator / non-runtime-conformance-detector / non-action-execution-risk-score-computer / non-statistical-aggregator boundary callout. VISION sources cited: `.planning/VISION.md` lines 409–422 (`### Action Execution Policy`) primary; `.planning/VISION.md` lines 143–158 (`## The Canonical Artifact`) structural anchor only. Full M50 surface block lands in dev attempt 1 of this run alongside the source-code implementation; this PM block reserves the structure only.
 
+### M52: Input Schema First Property Description Presence Index — Product CLI Surface
+
+**Status:** Shipped in `run_3f128359168988b4` / `turn_09c7bb9f6448bf1a` (dev implementation). V1.33.
+
+**Commands (2 rows):**
+
+| Command | Description |
+|---------|-------------|
+| `tusq gloss` | Top-level noun; no subcommand prints help |
+| `tusq gloss index` | Emit per-first-property-description-presence capability index from manifest |
+
+**Flags:**
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--presence <described\|undescribed\|not_applicable\|unknown>` | all presences | Filter to single bucket; case-sensitive lowercase only |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Bucket-key enum:** `described | undescribed | not_applicable | unknown` (closed four-value; immutable post-ship).
+
+**Aggregation-key enum:** `description_presence | not_applicable | unknown` (closed three-value).
+
+**Bucket iteration order:** `described → undescribed → not_applicable → unknown` (deterministic stable-output convention only — NOT documentation-completeness-ranked).
+
+**Per-bucket entry shape (8 fields):** `input_schema_first_property_description_presence`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Result-array field name:** `first_property_description_presences`.
+
+**Failure UX:** Missing manifest → exit 1 `Manifest not found:`; malformed JSON → exit 1 `Invalid manifest JSON:`; missing capabilities → exit 1 `Invalid manifest: missing capabilities array`; unknown flag → exit 1 `Unknown flag:`; unknown presence → exit 1 `Unknown input schema first property description presence:`; absent bucket → exit 1 `No capabilities found for input schema first property description presence:`; `--out .tusq/` → exit 1 `--out path must not be inside .tusq/`.
+
+**Local-only invariants:** `tusq.manifest.json` never mutated; `input_schema_first_property_description_presence` NOT written into manifest (non-persistence rule); all 22 prior peer index commands byte-identical pre/post (`tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`, `tusq examples index`, `tusq input index`, `tusq output index`, `tusq path index`, `tusq response index`, `tusq request index`, `tusq description index`, `tusq items index`, `tusq strictness index`, `tusq parameter index`, `tusq shape index`, `tusq signature index`, `tusq obligation index`, `tusq binding index`). CLI surface 35 → 36. M52 is NOT a runtime documentation validator, NOT a doc-contradiction detector, NOT a quality scorer, NOT an LLM synthesizer, NOT a language detector, NOT an SDK help-text generator.
+
+---
+
 ### M51: Input Schema First Property Source Index — Product CLI Surface
 
 **Status:** Shipped in `run_c39bd102a520411b` / `turn_b129a6090e6226ec` (dev implementation). V1.32.
