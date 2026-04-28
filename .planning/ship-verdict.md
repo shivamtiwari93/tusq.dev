@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_9fedaab704cf8812 (role=qa, run_139647ed3258809b, M60 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_76d6180219f49289, role=dev, HEAD c4d9626) for run_139647ed3258809b independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified. No `website/docs/manifest-format.md` change (M60 does not modify manifest format — `input_schema_first_property_read_only` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_769eaad1ebd861f1 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_READ_ONLY_ENUM` (frozen Set: readonly/mutable/not_applicable/unknown) at `src/cli.js:578`; `INPUT_SCHEMA_FIRST_PROPERTY_READ_ONLY_AGGREGATION_KEY_ENUM` (frozen Set: mutability_state/not_applicable/unknown) at `src/cli.js:582`; `INPUT_SCHEMA_FIRST_PROPERTY_READ_ONLY_BUCKET_ORDER` (frozen array: readonly/mutable/not_applicable) at `src/cli.js:589`. Guards `_guardInputSchemaFirstPropertyReadOnlyBucketKey` at `src/cli.js:9550`, `_guardInputSchemaFirstPropertyReadOnlyAggregationKey` at `src/cli.js:9557`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyReadOnly` at `src/cli.js:9585–9627` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57/M58/M59); readOnly absent/!hasOwnProperty/null/undefined → mutable (null-as-absent, no warning — mirrors M55/M56/M57/M58/M59; `Object.prototype.hasOwnProperty.call(firstVal, 'readOnly')` idiom used); readOnly===false → mutable (EXPLICIT-FALSE-IS-MUTABLE, no warning — mirrors M58 EXPLICIT-FALSE-IS-ACTIVE precedent); readOnly===true → readonly; typeof firstVal.readOnly !== 'boolean' → unknown WITH `input_schema_properties_first_property_read_only_invalid_when_present` (SIXTH FROZEN CODE — covers ALL non-boolean malformations: string 'true', number 1/0, empty string, array, plain object under one consolidated code; strict === checks — NO truthy/falsy coercion). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 44. `seal` between `sample` and `sensitivity` confirmed (sample(s=115,a=97) < seal(s=115,e=101) at pos 1; seal(s=115,e=101,a=97) < sensitivity(s=115,e=101,n=110) at pos 2). `cmdSeal` and `cmdSealIndex` and `parseSealIndexArgs` confirmed in `src/cli.js`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js seal index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_read_only_states[]` with `mutable` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"mutability_state"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `readonly` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: mutable < not_applicable (readonly→mutable→not_applicable→unknown convention with readonly absent). PASS.
+
+**7. Case-sensitive filter enforcement:** `--seal READONLY` → exit 1, `Unknown input schema first property readOnly state: READONLY` (case-sensitive enforcement confirmed). `--seal readonly` → exit 1, `No capabilities found for input schema first property readOnly state: readonly` (absent-bucket enforcement confirmed). `--seal mutable` → exit 0 with mutable bucket (present bucket confirmed). PASS.
+
+**8. M60-specific rules:** NULL-AS-ABSENT: readOnly `null` → `mutable` (no warning; mirrors M55/M56/M57/M58/M59 null-as-absent). EXPLICIT-FALSE-IS-MUTABLE: readOnly `false` → `mutable` (no warning; mirrors M58's EXPLICIT-FALSE-IS-ACTIVE precedent). NO-TRUTHY-COERCION: `readOnly: 'true'` (string), `readOnly: 1` (number), `readOnly: 0` (number), `readOnly: []` (array), `readOnly: {}` (object) ALL → `unknown` WITH 6th frozen code (strict === checks — absolutely NO truthy/falsy coercion). PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_read_only_invalid_when_present` at `src/cli.js:9626`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 51 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (51 scenarios)`). Scenario 51 (`input-schema-first-property-read-only-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP checkboxes:** All 18 M60 ROADMAP items confirmed [x]. PASS.
+
+**13. Acceptance criteria:** REQ-865–REQ-889 added (25 new REQs). Total: 889 acceptance criteria (REQ-001–REQ-889). All pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_295646f00d65038f (role=qa, run_8024d2c7f8ee0f10, M59 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_faf61809c4ae34cb, role=dev, HEAD a8616be) for run_8024d2c7f8ee0f10 independently rather than rubber-stamping it.
