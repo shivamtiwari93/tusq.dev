@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_b1f4fd12b8d8cdf8 (role=qa, run_a9f53305f71ff8e4, M62 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_0ae9e9cb6c065564, role=dev, HEAD 0ee98f1) for run_a9f53305f71ff8e4 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M62 does not modify manifest format — `input_schema_first_property_min_length` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_ba5df362ec35d789 upheld by dev DEC-001. Four PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md) confirmed modified; zero source drift. All five PM decisions carried forward correctly. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_MIN_LENGTH_ENUM` (frozen Set: length_floored/length_unfloored/not_applicable/unknown) at `src/cli.js:610`; `INPUT_SCHEMA_FIRST_PROPERTY_MIN_LENGTH_AGGREGATION_KEY_ENUM` (frozen Set: string_length_floor_constraint/not_applicable/unknown) at `src/cli.js:614`; `INPUT_SCHEMA_FIRST_PROPERTY_MIN_LENGTH_BUCKET_ORDER` (frozen array: length_floored/length_unfloored/not_applicable) at `src/cli.js:622`. Guards `_guardInputSchemaFirstPropertyMinLengthBucketKey` at `src/cli.js:10402`, `_guardInputSchemaFirstPropertyMinLengthAggregationKey` at `src/cli.js:10409`. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyMinLength` at `src/cli.js:10439–10477` verified: null/undefined/non-object/Array inputSchema → unknown; type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); zero-property properties → not_applicable (no warning); firstVal null/primitive/Array → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55/M56/M57/M58/M59/M60/M61); minLength absent/!hasOwnProperty/null/undefined → length_unfloored (null-as-absent, no warning — mirrors M55–M61 null-as-absent; `Object.prototype.hasOwnProperty.call(firstVal, 'minLength')` idiom used); Number.isInteger(minLength) && minLength >= 0 → length_floored (EXPLICIT-ZERO-IS-FLOORED: minLength===0 → length_floored, no warning; STRICT-NUMERIC — NO Number()/parseInt()/truthy coercion); non-non-negative-integer minLength → unknown WITH `input_schema_properties_first_property_min_length_invalid_when_present` (SIXTH FROZEN CODE at `src/cli.js:10541` — covers ALL malformations: negative integer/-1, fractional/1.5, NaN, Infinity, -Infinity, string/'1', boolean/true, array/[1], plain object/{} under a single consolidated code; strict Number.isInteger() && >= 0 checks — NO coercion). PASS.
+
+**5. CLI surface:** `node bin/tusq.js help | grep -c '^  [a-z]'` → 46. `floor` between `examples` and `gloss` confirmed (examples(e=101,x=120) < floor(f=102,l=108) at pos 0 (e(101)<f(102)); floor(f=102,l=108) < gloss(g=103,l=108) at pos 0 (f(102)<g(103))). `cmdFloor` at `src/cli.js:10655`; `cmdFloorIndex` at `src/cli.js:10672`; `parseFloorIndexArgs` at `src/cli.js:10763`. PASS.
+
+**6. Express fixture run:** `node bin/tusq.js floor index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_min_length_states[]` with `length_unfloored` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"string_length_floor_constraint"`, capability_count 2), `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`, capability_count 1); `length_floored` bucket absent (confirms empty-bucket-MUST-NOT-appear invariant); `warnings: []`. Bucket order: length_unfloored < not_applicable (length_floored→length_unfloored→not_applicable→unknown convention with length_floored absent). PASS.
+
+**7. Case-sensitive filter enforcement:** `--floor LENGTH_FLOORED` → exit 1, `Unknown input schema first property min length state: LENGTH_FLOORED` (case-sensitive enforcement confirmed). `--floor length_floored` → exit 1, `No capabilities found for input schema first property min length state: length_floored` (absent-bucket enforcement confirmed). `--floor length_unfloored` → exit 0 with length_unfloored bucket (present bucket confirmed). PASS.
+
+**8. M62-specific rules:** NULL-AS-ABSENT: minLength `null` → `length_unfloored` (no warning; mirrors M55/M56/M57/M58/M59/M60/M61 null-as-absent). EXPLICIT-ZERO-IS-FLOORED: minLength `0` → `length_floored` (no warning; mirrors M58 EXPLICIT-FALSE-IS-ACTIVE / M60 EXPLICIT-FALSE-IS-MUTABLE / M61 EXPLICIT-FALSE-IS-NOT-WRITE-ONLY boundary-default-value precedent — zero is a valid non-negative integer floor). STRICT-NUMERIC: `minLength: -1` (negative integer) → `unknown` WITH 6th code; `minLength: 1.5` (fractional) → `unknown` WITH 6th code; `minLength: NaN` → `unknown` WITH 6th code (Number.isInteger(NaN)===false); `minLength: '1'` (string) → `unknown` WITH 6th code (NO Number()/parseInt() coercion); `minLength: true` (boolean) → `unknown` WITH 6th code; `minLength: [1]` (array) → `unknown` WITH 6th code; `minLength: {}` (object) → `unknown` WITH 6th code. Absolute NO-COERCION: only `Number.isInteger(v) && v >= 0` — never `Number(v)`, `parseInt(v)`, or truthiness. PASS.
+
+**9. Six frozen warning codes — no undeclared code:** All six codes PM-frozen by DEC-003. Sixth code `input_schema_properties_first_property_min_length_invalid_when_present` at `src/cli.js:10541`. No new undeclared codes. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. OBJ-001/OBJ-002/OBJ-003 carried forward as non-blocking. No new blocking objections. PASS.
+
+**10. Eval scenarios:** 53 total eval scenarios confirmed (`npm test` → `Eval regression harness passed (53 scenarios)`). Scenario 53 (`input-schema-first-property-min-length-index-determinism`) verified in `tests/evals/governed-cli-scenarios.json`. PASS.
+
+**11. Drift checks:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). PASS.
+
+**12. ROADMAP checkboxes:** All 18 M62 ROADMAP items confirmed [x] (zero unchecked items in M62 block). PASS.
+
+**13. Acceptance criteria:** REQ-915–REQ-939 added (25 new REQs). Total: 939 acceptance criteria (REQ-001–REQ-939). All pass. Ship verdict: SHIP. Phase transition requested: launch (auto_approve policy).
+
 ## QA Challenge — turn_e89ca8b44e8699d2 (role=qa, run_95643a76d3091ffd, M61 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_31d6f8498c2b8b0b, role=dev, HEAD 47d68d9) for run_95643a76d3091ffd independently rather than rubber-stamping it.
