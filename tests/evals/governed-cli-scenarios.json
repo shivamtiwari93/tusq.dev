@@ -4365,6 +4365,177 @@
         "unknown"
       ],
       "expected_bucket_order": "lower_exclusive_bounded,lower_exclusive_unbounded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-exclusive-maximum-index-determinism",
+      "scenario_type": "input_schema_first_property_exclusive_maximum_index_determinism",
+      "description": "Verifies that tusq below index produces byte-identical output across three runs on a synthetic manifest with upper_exclusive_bounded, upper_exclusive_unbounded, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (upper_exclusive_bounded/upper_exclusive_unbounded/not_applicable/unknown), closed three-value aggregation_key enum (numeric_upper_exclusive_bound_constraint/not_applicable/unknown), bucket order determinism (upper_exclusive_bounded \u2192 upper_exclusive_unbounded \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_exclusive_maximum non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has exclusiveMaximum=100 (upper_exclusive_bounded), a has no exclusiveMaximum (upper_exclusive_unbounded), b has exclusiveMaximum='invalid' (unknown+warning input_schema_properties_first_property_exclusive_maximum_invalid_when_present) \u2014 firstKey=z \u2192 upper_exclusive_bounded (insertion-order, NOT sorted). NULL-AS-ABSENT: exclusiveMaximum:null \u2192 upper_exclusive_unbounded (no warning, mirroring M55-M67 null-as-absent). ZERO-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:0 \u2192 upper_exclusive_bounded (JSON-Schema permits zero; mirrors M65/M66/M67). NEGATIVE-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:-273.15 \u2192 upper_exclusive_bounded. FRACTIONAL-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): exclusiveMaximum:0.5 \u2192 upper_exclusive_bounded. DRAFT-4-BOOLEAN-IS-INVALID (M68-SPECIFIC): exclusiveMaximum:true/false \u2192 unknown with 6th code. STRICT: typeof===number&&Number.isFinite(); NO Number()/parseFloat()/truthy coercion; string '1', boolean true/false, array [1] ALL bucket as unknown. Sixth frozen warning reason code: input_schema_properties_first_property_exclusive_maximum_invalid_when_present (single consolidated code covers ALL non-finite-number malformations: NaN, Infinity, -Infinity, string, boolean, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "upper_exclusive_bounded_cap",
+          "method": "POST",
+          "path": "/upper-exclusive-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has exclusiveMaximum=100 (finite number) \u2014 lands in upper_exclusive_bounded bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number",
+                "exclusiveMaximum": 100
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "zero_bounded_cap",
+          "method": "PUT",
+          "path": "/zero-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has exclusiveMaximum=0 (ZERO-IS-VALID-EXCLUSIVE-UPPER-BOUND) \u2014 lands in upper_exclusive_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "delta": {
+                "type": "number",
+                "exclusiveMaximum": 0
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "neg_bounded_cap",
+          "method": "PUT",
+          "path": "/neg-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has exclusiveMaximum=-273.15 (NEGATIVE-IS-VALID-EXCLUSIVE-UPPER-BOUND) \u2014 lands in upper_exclusive_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "temp": {
+                "type": "number",
+                "exclusiveMaximum": -273.15
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unbounded_cap",
+          "method": "GET",
+          "path": "/unbounded",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no exclusiveMaximum field \u2014 lands in upper_exclusive_unbounded bucket (absent \u2192 upper_exclusive_unbounded)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_exclusive_maximum_cap",
+          "method": "GET",
+          "path": "/null-exclusive-maximum",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has exclusiveMaximum=null \u2014 lands in upper_exclusive_unbounded bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "integer",
+                "exclusiveMaximum": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has exclusiveMaximum=100 (upper_exclusive_bounded), a has no exclusiveMaximum (upper_exclusive_unbounded), b has exclusiveMaximum='invalid' (string \u2192 unknown+warning). firstKey=z \u2192 upper_exclusive_bounded (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "number",
+                "exclusiveMaximum": 100
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "number",
+                "exclusiveMaximum": "invalid"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_exclusive_maximum_values": [
+        "upper_exclusive_bounded",
+        "upper_exclusive_unbounded",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "numeric_upper_exclusive_bound_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "upper_exclusive_bounded,upper_exclusive_unbounded,not_applicable,unknown"
     }
   ]
 }

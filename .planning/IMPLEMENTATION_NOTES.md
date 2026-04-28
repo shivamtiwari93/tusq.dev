@@ -2,6 +2,44 @@
 
 ---
 
+## M68 (run_68afe5c0590c0d56, turn_71a39cd2a9291228, dev)
+
+### Axis: input_schema.properties[firstKey].exclusiveMaximum (JSON-Schema Draft 6+ numeric-exclusive-upper-bound)
+
+**CLI noun:** `below` (subcommand: `index`), inserted between `auth` and `binding` in the post-`docs` alphabetical block (CLI surface 51 → 52).
+
+**Bucket-key enum (closed, four-value):** `upper_exclusive_bounded | upper_exclusive_unbounded | not_applicable | unknown`
+
+**Aggregation_key enum (closed, three-value):** `numeric_upper_exclusive_bound_constraint | not_applicable | unknown`
+
+**Bucket iteration order:** `upper_exclusive_bounded → upper_exclusive_unbounded → not_applicable → unknown` (deterministic stable-output convention only)
+
+**Classifier:** `typeof v === 'number' && Number.isFinite(v)` — STRICT check, no coercion.
+- ZERO-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): `exclusiveMaximum:0` → `upper_exclusive_bounded`
+- NEGATIVE-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): `exclusiveMaximum:-273.15` → `upper_exclusive_bounded`
+- FRACTIONAL-IS-VALID-EXCLUSIVE-UPPER-BOUND (M68-SPECIFIC): `exclusiveMaximum:0.5` → `upper_exclusive_bounded`
+- DRAFT-4-BOOLEAN-IS-INVALID (M68-SPECIFIC): `exclusiveMaximum:true/false` → `unknown` WITH 6th code (Draft-4 boolean form invalid)
+- NULL-AS-ABSENT: `exclusiveMaximum:null` → `upper_exclusive_unbounded` (mirrors M55-M67)
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (carried forward)
+6. `input_schema_properties_first_property_exclusive_maximum_invalid_when_present` (NEW — covers ALL non-finite-number malformations including Draft-4 boolean form)
+
+**Result array field name:** `first_property_exclusive_maximum_states`
+**Per-bucket field name:** `input_schema_first_property_exclusive_maximum`
+
+**VISION primary citation:** § Runtime (lines 511–513) — first milestone to use this section as primary aggregation source.
+
+**Files changed:** `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`
+
+**Test counts:** 24-case M68 smoke matrix (a-x4); 1 new eval scenario (58→59 scenarios)
+
+---
+
 ## M67 (run_a32ec6b13eb1a938, turn_cd878f1f2157ef33, dev)
 
 ### Axis: input_schema.properties[firstKey].exclusiveMinimum (JSON-Schema Draft 6+ numeric-exclusive-lower-bound)
