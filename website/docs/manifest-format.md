@@ -523,6 +523,45 @@ The `tusq description index` command (M44) derives a per-tier capability breakdo
 
 **Non-persistence:** `description_word_count_tier` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq description index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Output Schema Items Type Index
+
+The `tusq items index` command (M45) derives a per-bucket capability breakdown from each capability's `output_schema.items.type` field, for array-typed responses only. This axis is orthogonal to M42 (which buckets on `output_schema.type` top-level primitive — object vs array vs string vs number vs boolean vs null); M45 measures, for array-typed responses only, the SHAPE OF EACH ARRAY ELEMENT. M42 says "is this a table?"; M45 says "if it's a table, what's in each row?" Directly operationalizes VISION § Frontend, Design System, And Product UX (lines 66–72) — `items.type` is the most fundamental structural claim about how each array element will render in the frontend product.
+
+**Tier function** (classification of `output_schema.items.type`):
+
+| Bucket | Condition |
+|--------|-----------|
+| `object` | `output_schema.type === 'array'` AND `items.type === 'object'` |
+| `array` | `output_schema.type === 'array'` AND `items.type === 'array'` |
+| `string` | `output_schema.type === 'array'` AND `items.type === 'string'` |
+| `number` | `output_schema.type === 'array'` AND `items.type === 'number'` |
+| `integer` | `output_schema.type === 'array'` AND `items.type === 'integer'` (first-class, NOT collapsed to number) |
+| `boolean` | `output_schema.type === 'array'` AND `items.type === 'boolean'` |
+| `null` | `output_schema.type === 'array'` AND `items.type === 'null'` |
+| `not_applicable` | `output_schema.type` is a string but not `'array'` (valid named bucket — emits NO warning) |
+| `unknown` | `output_schema` null/non-object/missing, `output_schema.type` non-string, or `items` malformed/items.type outside closed set |
+
+**Integer-NOT-collapsed-to-number rule:** Unlike M42 (which buckets `integer` as `unknown`), M45 treats `integer` as a first-class bucket. A typed array of integers (`[1, 2, 3]`) is a distinct rendering target from a typed array of arbitrary numbers (`[1.5, 2.7, 3.9]`) — frontend tables format integers without decimal points differently from floats.
+
+**Not-applicable is valid:** A capability with `output_schema.type === 'object'` (M42 `object` bucket) has no `items.type` to evaluate. It lands in `not_applicable`, which is a valid named bucket and emits NO warning. Only the `unknown` bucket (malformed/missing `output_schema` or `items`) triggers warnings.
+
+**Malformed values:** Five frozen warning reason codes for the `unknown` bucket:
+- `output_schema_field_missing` — no `output_schema` key on the capability
+- `output_schema_field_not_object` — `output_schema` is not a plain non-null object
+- `output_schema_items_field_missing_when_type_is_array` — `output_schema.type === 'array'` but `items` is missing/null/non-object
+- `output_schema_items_field_not_object_when_type_is_array` — `items` is present but is an array (tuple-style) or non-object
+- `output_schema_items_type_field_missing_or_invalid_when_type_is_array` — `items` is a plain object but `items.type` is missing, non-string, or outside the closed seven-value JSON-Schema primitive set
+
+**No-walking rules:** Compositional items (`oneOf`/`anyOf`/`allOf` without top-level `type`) → `unknown`; tuple-style items (items as array) → `unknown`; multi-type items (`items.type` as array) → `unknown`; nested-array element typing (`items.items.type`) is NOT examined.
+
+**Bucket iteration order:** `object → array → string → number → integer → boolean → null → not_applicable → unknown` (JSON-Schema 2020-12 spec primitive enumeration reading order with object first — deterministic stable-output convention only; NOT UI-rendering-precedence-ranked, NOT frontend-blast-radius-ranked, NOT table-vs-list-priority-ranked, NOT render-complexity-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--items-type` filter:** Only lowercase values match. `--items-type OBJECT` exits 1 with `Unknown output schema items type: OBJECT`.
+
+**Non-persistence:** `output_schema_items_type` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq items index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
 ### Path Segment Count Tier Index
 
 The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.

@@ -1,6 +1,72 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-> **M45 Charter Sketch Reservation — 2026-04-27, run_79db9c1f34791188, turn_99cd4b15e01e46ad, PM attempt 1, HEAD `9187fa7`.** Reserves the `### M45: Output Schema Items Type Index — Product CLI Surface` detail block for the dev materialization turn. The block will document: the two-row command table (`tusq items` enumerator and `tusq items index` subcommand); the four-flag table (`--items-type`, `--manifest`, `--out`, `--json`); closed nine-value `output_schema_items_type` bucket-key enum table (`object | array | string | number | integer | boolean | null | not_applicable | unknown`); closed three-value `aggregation_key` enum table (`items_type | not_applicable | unknown`); the frozen tier-function rules table (output_schema null/non-object → unknown; output_schema.type non-string → unknown; output_schema.type !== 'array' → not_applicable; output_schema.type === 'array' AND items malformed → unknown; output_schema.type === 'array' AND items.type in closed primitive set → bucket value); the integer-NOT-collapsed-to-number row (distinct from M42); the per-bucket entry 8-field shape table; the closed-enum bucket iteration order table (`object → array → string → number → integer → boolean → null → not_applicable → unknown`); the default-preservation table for the 28 unchanged commands (`init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, description, diff, domain, effect, examples, input, method, output, path, pii, policy, redaction, request, response, sensitivity, surface, version, help`); the failure UX table covering missing-manifest, malformed-JSON, missing-capabilities-array, unknown-flag, missing-flag-value, unknown-`--items-type`, no-capabilities-for-bucket, `--out` under `.tusq/`, `--out` parent unwritable; and the local-only invariants table (zero network, zero new dependencies, no manifest mutation, no other-command-output mutation, `output_schema_items_type` not persisted). New top-level CLI noun `items` with single subcommand `index`, inserted alphabetically between `input` and `method` in the post-`docs` block; the post-M45 CLI surface is 29 commands. VISION sources cited (acceptance contract item 2): `.planning/VISION.md` lines 66–72 (`### Frontend, Design System, And Product UX` under § Input Sources — primary aggregation source, has NOT been the primary aggregation source for any shipped milestone) and `.planning/VISION.md` lines 19–32 (`### The Promise` — re-cited for the frontend-rendering-paraphrase framing only).
+### M45: Output Schema Items Type Index — Product CLI Surface
+
+| Command | Shape |
+|---------|-------|
+| `tusq items` | `tusq items <subcommand>` |
+| `tusq items index` | `tusq items index [--items-type <value>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--items-type <value>` | all types | Case-sensitive lowercase; `OBJECT` exits 1 |
+| `--manifest <path>` | `tusq.manifest.json` | Resolved relative to cwd |
+| `--out <path>` | stdout | Writes JSON; no stdout on success; rejected if inside `.tusq/` |
+| `--json` | human text | Includes `warnings[]` for malformed output_schema/items fields |
+
+| Bucket key | Tier function condition |
+|------------|------------------------|
+| `object` | `output_schema.type === 'array'` AND `items.type === 'object'` |
+| `array` | `output_schema.type === 'array'` AND `items.type === 'array'` |
+| `string` | `output_schema.type === 'array'` AND `items.type === 'string'` |
+| `number` | `output_schema.type === 'array'` AND `items.type === 'number'` |
+| `integer` | `output_schema.type === 'array'` AND `items.type === 'integer'` (NOT collapsed to number) |
+| `boolean` | `output_schema.type === 'array'` AND `items.type === 'boolean'` |
+| `null` | `output_schema.type === 'array'` AND `items.type === 'null'` |
+| `not_applicable` | `output_schema.type` is a string but not `'array'` (emits NO warning) |
+| `unknown` | `output_schema` null/non-object/missing; `output_schema.type` non-string; items malformed; items.type outside closed set |
+
+| `aggregation_key` value | When |
+|------------------------|------|
+| `items_type` | Capability has a named primitive items-type bucket (one of the seven JSON-Schema primitives) |
+| `not_applicable` | Capability has `output_schema.type !== 'array'` |
+| `unknown` | Capability has malformed/missing `output_schema` or `items` |
+
+| Per-bucket entry field | Type | Notes |
+|------------------------|------|-------|
+| `output_schema_items_type` | string | One of the nine closed-enum values |
+| `aggregation_key` | string | `items_type`, `not_applicable`, or `unknown` |
+| `capability_count` | integer | Count of capabilities in bucket |
+| `capabilities[]` | string[] | Capability names in manifest declared order |
+| `approved_count` | integer | Count with `approved === true` |
+| `gated_count` | integer | Count with `approved !== true` |
+| `has_destructive_side_effect` | boolean | true if any cap has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true if any cap has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+| Bucket iteration order | Notes |
+|-----------------------|-------|
+| `object → array → string → number → integer → boolean → null → not_applicable → unknown` | Deterministic stable-output convention only — NOT UI-rendering-precedence-ranked, NOT frontend-blast-radius-ranked |
+
+| Failure condition | Exit | Stderr |
+|-------------------|------|--------|
+| Manifest not found | 1 | `Manifest file not found: <path>` |
+| Manifest not valid JSON | 1 | `Failed to parse manifest JSON: <message>` |
+| Manifest missing capabilities | 1 | `Manifest is missing capabilities array` |
+| Unknown `--items-type` value | 1 | `Unknown output schema items type: <value>` |
+| `--items-type` with no value | 1 | `--items-type requires a value` |
+| `--manifest` with no value | 1 | `--manifest requires a value` |
+| `--out` with no value | 1 | `--out requires a value` |
+| Unknown flag | 1 | `Unknown flag: <flag>` |
+| `--out` path inside `.tusq/` | 1 | `--out path must not be inside .tusq/` |
+| `--out` parent dir not writable | 1 | `--out parent directory does not exist or is not writable` |
+
+| Local-only invariant | Rule |
+|----------------------|------|
+| Manifest read-only | mtime + SHA-256 + all `capability_digest` values byte-identical pre/post |
+| `tusq compile` idempotent | Byte-identical output before and after `tusq items index` |
+| Other index commands idempotent | All 14 existing index commands byte-identical before and after |
+| No new dependencies | `package.json` and `package-lock.json` unmodified |
+| Non-persistence | `output_schema_items_type` MUST NOT appear in `tusq.manifest.json` after run |
 
 ### M44: Description Word Count Tier Index — Product CLI Surface
 

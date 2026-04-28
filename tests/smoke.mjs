@@ -3352,6 +3352,511 @@ async function run() {
 
   await fs.rm(m33TmpDir, { recursive: true, force: true });
 
+  // ── M45: Static Capability Output Schema Items Type Index ────────────────────
+  const m45TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m45-smoke-'));
+
+  // M45 fixture manifest: capabilities across object/not_applicable/unknown items type buckets.
+  // Declared order:
+  //   list_users_array (object — output_schema={type:"array",items:{type:"object"}}, gated — unapproved)
+  //   delete_batch_array (object — output_schema={type:"array",items:{type:"object"}}, destructive+restricted+approved — cross-axis flags)
+  //   get_integer_ids (integer — output_schema={type:"array",items:{type:"integer"}}, approved — NOT number)
+  //   get_by_id (not_applicable — output_schema={type:"object"}, unapproved — no warning)
+  //   post_create (not_applicable — output_schema={type:"object"}, approved — no warning)
+  //   no_schema_cap (unknown — missing output_schema → output_schema_field_missing)
+  //   bad_schema_cap (unknown — output_schema="a string" → output_schema_field_not_object)
+  //   array_no_items_cap (unknown — output_schema={type:"array"} → output_schema_items_field_missing_when_type_is_array)
+  //   array_bad_items_cap (unknown — output_schema={type:"array",items:"not-an-object"} → output_schema_items_field_not_object_when_type_is_array)
+  //   array_no_items_type_cap (unknown — output_schema={type:"array",items:{}} → output_schema_items_type_field_missing_or_invalid_when_type_is_array)
+  const m45Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'list_users_array',
+        description: 'List all users',
+        method: 'GET',
+        path: '/api/v1/users',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: { type: 'object' } }
+        // → object bucket
+      },
+      {
+        name: 'delete_batch_array',
+        description: 'Delete batch of items',
+        method: 'DELETE',
+        path: '/api/v1/items/batch',
+        domain: 'items',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: { type: 'object' } }
+        // → object bucket (cross-axis: destructive + restricted)
+      },
+      {
+        name: 'get_integer_ids',
+        description: 'Get list of integer IDs',
+        method: 'GET',
+        path: '/api/v1/ids',
+        domain: 'ids',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: { type: 'integer' } }
+        // → integer bucket (NOT number — integer is a first-class bucket key in M45)
+      },
+      {
+        name: 'get_by_id',
+        description: 'Get user by ID',
+        method: 'GET',
+        path: '/api/v1/users/:id',
+        domain: 'users',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object' }
+        // → not_applicable bucket (output_schema.type is a string but not 'array' → no warning)
+      },
+      {
+        name: 'post_create',
+        description: 'Create a new resource',
+        method: 'POST',
+        path: '/api/v1/resources',
+        domain: 'resources',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object' }
+        // → not_applicable bucket (output_schema.type is a string but not 'array' → no warning)
+      },
+      {
+        name: 'no_schema_cap',
+        description: 'No output schema',
+        method: 'GET',
+        path: '/api/v1/noschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // output_schema field absent → output_schema_field_missing
+      },
+      {
+        name: 'bad_schema_cap',
+        description: 'Bad output schema type',
+        method: 'GET',
+        path: '/api/v1/badschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: 'a string'
+        // output_schema is a string (not object) → output_schema_field_not_object
+      },
+      {
+        name: 'array_no_items_cap',
+        description: 'Array output schema missing items',
+        method: 'GET',
+        path: '/api/v1/noitems',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array' }
+        // output_schema.type === 'array' but no items field → output_schema_items_field_missing_when_type_is_array
+      },
+      {
+        name: 'array_bad_items_cap',
+        description: 'Array output schema with bad items value',
+        method: 'GET',
+        path: '/api/v1/baditems',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: 'not-an-object' }
+        // output_schema.type === 'array', items is a string (not object) → output_schema_items_field_not_object_when_type_is_array
+      },
+      {
+        name: 'array_no_items_type_cap',
+        description: 'Array output schema items missing type field',
+        method: 'GET',
+        path: '/api/v1/noitemstype',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: {} }
+        // output_schema.type === 'array', items is a valid object but items.type is missing → output_schema_items_type_field_missing_or_invalid_when_type_is_array
+      }
+    ]
+  };
+
+  const m45ManifestPath = path.join(m45TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m45ManifestPath, JSON.stringify(m45Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m45TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M45(a): default tusq items index produces exit 0 and per-bucket entries in closed-enum order
+  const m45DefaultResult = runCli(['items', 'index', '--manifest', m45ManifestPath], { cwd: m45TmpDir });
+  if (!m45DefaultResult.stdout.includes('[object]') || !m45DefaultResult.stdout.includes('[not_applicable]') || !m45DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M45(a): default index must include all present buckets:\n${m45DefaultResult.stdout}`);
+  }
+  if (!m45DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M45(a): default index must include planning-aid framing:\n${m45DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: object < not_applicable < unknown (integer is present between object and not_applicable)
+  const m45DefaultLines = m45DefaultResult.stdout.split('\n');
+  const m45ObjectPos = m45DefaultLines.findIndex((l) => l === '[object]');
+  const m45IntegerPos = m45DefaultLines.findIndex((l) => l === '[integer]');
+  const m45NotApplicablePos = m45DefaultLines.findIndex((l) => l === '[not_applicable]');
+  const m45UnknownPos = m45DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m45ObjectPos < m45IntegerPos && m45IntegerPos < m45NotApplicablePos && m45NotApplicablePos < m45UnknownPos)) {
+    throw new Error(`M45(a): bucket order must be object < integer < not_applicable < unknown; got positions object=${m45ObjectPos} integer=${m45IntegerPos} not_applicable=${m45NotApplicablePos} unknown=${m45UnknownPos}`);
+  }
+
+  // M45(b): --json output has all 8 per-bucket fields, top-level shape, items_types[] field name, and warnings[] always present
+  const m45Json1 = runCli(['items', 'index', '--manifest', m45ManifestPath, '--json'], { cwd: m45TmpDir });
+  const m45IndexJson = JSON.parse(m45Json1.stdout);
+  if (!Array.isArray(m45IndexJson.items_types) || m45IndexJson.items_types.length === 0) {
+    throw new Error(`M45(b): JSON output must have items_types[] array with at least one entry:\n${m45Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m45IndexJson, 'tiers')) {
+    throw new Error(`M45(b): JSON output must NOT have a tiers[] field (that is M44); field name must be items_types[]:\n${m45Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m45IndexJson, 'types')) {
+    throw new Error(`M45(b): JSON output must NOT have a types[] field (that is M42); field name must be items_types[]:\n${m45Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m45IndexJson, 'sources')) {
+    throw new Error(`M45(b): JSON output must NOT have a sources[] field (that is M43); field name must be items_types[]:\n${m45Json1.stdout}`);
+  }
+  const m45FirstEntry = m45IndexJson.items_types[0];
+  const m45RequiredFields = ['output_schema_items_type', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+  for (const field of m45RequiredFields) {
+    if (!Object.prototype.hasOwnProperty.call(m45FirstEntry, field)) {
+      throw new Error(`M45(b): per-bucket entry must have field '${field}':\n${JSON.stringify(m45FirstEntry)}`);
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(m45IndexJson, 'warnings') || !Array.isArray(m45IndexJson.warnings)) {
+    throw new Error(`M45(b): JSON output must have top-level warnings[] array:\n${m45Json1.stdout}`);
+  }
+  if (m45IndexJson.warnings.length < 5) {
+    throw new Error(`M45(b): warnings[] must contain entries for all 5 malformed capabilities:\n${JSON.stringify(m45IndexJson.warnings)}`);
+  }
+
+  // M45(c): --items-type object returns single matching bucket
+  const m45ObjectFilter = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'object', '--json'], { cwd: m45TmpDir });
+  const m45ObjectJson = JSON.parse(m45ObjectFilter.stdout);
+  if (m45ObjectJson.items_types.length !== 1 || m45ObjectJson.items_types[0].output_schema_items_type !== 'object') {
+    throw new Error(`M45(c): --items-type object must return exactly one object bucket:\n${m45ObjectFilter.stdout}`);
+  }
+  if (!m45ObjectJson.items_types[0].capabilities.includes('list_users_array') || !m45ObjectJson.items_types[0].capabilities.includes('delete_batch_array')) {
+    throw new Error(`M45(c): object bucket must include list_users_array and delete_batch_array:\n${JSON.stringify(m45ObjectJson.items_types[0].capabilities)}`);
+  }
+
+  // M45(d): --items-type integer returns single matching bucket (integer NOT collapsed to number)
+  const m45IntegerFilter = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'integer', '--json'], { cwd: m45TmpDir });
+  const m45IntegerJson = JSON.parse(m45IntegerFilter.stdout);
+  if (m45IntegerJson.items_types.length !== 1 || m45IntegerJson.items_types[0].output_schema_items_type !== 'integer') {
+    throw new Error(`M45(d): --items-type integer must return exactly one integer bucket (integer is NOT collapsed to number):\n${m45IntegerFilter.stdout}`);
+  }
+  if (!m45IntegerJson.items_types[0].capabilities.includes('get_integer_ids')) {
+    throw new Error(`M45(d): integer bucket must include get_integer_ids:\n${JSON.stringify(m45IntegerJson.items_types[0].capabilities)}`);
+  }
+
+  // M45(e): --items-type not_applicable returns single matching bucket
+  const m45NotApplicableFilter = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'not_applicable', '--json'], { cwd: m45TmpDir });
+  const m45NotApplicableJson = JSON.parse(m45NotApplicableFilter.stdout);
+  if (m45NotApplicableJson.items_types.length !== 1 || m45NotApplicableJson.items_types[0].output_schema_items_type !== 'not_applicable') {
+    throw new Error(`M45(e): --items-type not_applicable must return exactly one not_applicable bucket:\n${m45NotApplicableFilter.stdout}`);
+  }
+  if (!m45NotApplicableJson.items_types[0].capabilities.includes('get_by_id') || !m45NotApplicableJson.items_types[0].capabilities.includes('post_create')) {
+    throw new Error(`M45(e): not_applicable bucket must include get_by_id and post_create:\n${JSON.stringify(m45NotApplicableJson.items_types[0].capabilities)}`);
+  }
+
+  // M45(f): --items-type unknown returns single matching bucket
+  const m45UnknownFilter = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'unknown', '--json'], { cwd: m45TmpDir });
+  const m45UnknownJson = JSON.parse(m45UnknownFilter.stdout);
+  if (m45UnknownJson.items_types.length !== 1 || m45UnknownJson.items_types[0].output_schema_items_type !== 'unknown') {
+    throw new Error(`M45(f): --items-type unknown must return exactly one unknown bucket:\n${m45UnknownFilter.stdout}`);
+  }
+
+  // M45(g): --items-type OBJECT (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m45UppercaseType = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'OBJECT'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45UppercaseType.stderr.includes('Unknown output schema items type: OBJECT') || m45UppercaseType.stdout !== '') {
+    throw new Error(`M45(g): --items-type OBJECT (uppercase) must exit 1 with Unknown output schema items type: message:\nstdout=${m45UppercaseType.stdout}\nstderr=${m45UppercaseType.stderr}`);
+  }
+
+  // M45(h): --items-type xyz (unknown type) exits 1
+  const m45BogusType = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'xyz'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45BogusType.stderr.includes('Unknown output schema items type: xyz') || m45BogusType.stdout !== '') {
+    throw new Error(`M45(h): --items-type xyz must exit 1 with Unknown output schema items type: message`);
+  }
+
+  // M45(i): missing manifest exits 1 with error on stderr and empty stdout
+  const m45MissingManifest = runCli(['items', 'index', '--manifest', path.join(m45TmpDir, 'nonexistent.json')], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45MissingManifest.stderr.includes('Manifest not found') || m45MissingManifest.stdout !== '') {
+    throw new Error(`M45(i): missing manifest must exit 1:\nstdout=${m45MissingManifest.stdout}\nstderr=${m45MissingManifest.stderr}`);
+  }
+
+  // M45(j): --items-type with no matching bucket exits 1
+  const m45NoMatchType = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type', 'string'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45NoMatchType.stderr.includes('No capabilities found for output schema items type: string') || m45NoMatchType.stdout !== '') {
+    throw new Error(`M45(j): --items-type with no matching bucket must exit 1:\nstdout=${m45NoMatchType.stdout}\nstderr=${m45NoMatchType.stderr}`);
+  }
+
+  // M45(k): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m45BadJsonPath = path.join(m45TmpDir, 'bad.json');
+  await fs.writeFile(m45BadJsonPath, '{ not valid json', 'utf8');
+  const m45BadJson = runCli(['items', 'index', '--manifest', m45BadJsonPath], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45BadJson.stderr.includes('Invalid manifest JSON') || m45BadJson.stdout !== '') {
+    throw new Error(`M45(k): malformed manifest must exit 1:\nstdout=${m45BadJson.stdout}\nstderr=${m45BadJson.stderr}`);
+  }
+
+  // M45(l): manifest missing capabilities array exits 1
+  const m45NoCapsManifestPath = path.join(m45TmpDir, 'no-caps.json');
+  await fs.writeFile(m45NoCapsManifestPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m45NoCaps = runCli(['items', 'index', '--manifest', m45NoCapsManifestPath], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m45NoCaps.stdout !== '') {
+    throw new Error(`M45(l): missing capabilities array must exit 1:\nstdout=${m45NoCaps.stdout}\nstderr=${m45NoCaps.stderr}`);
+  }
+
+  // M45(m): unknown flag exits 1 with error on stderr and empty stdout
+  const m45UnknownFlag = runCli(['items', 'index', '--manifest', m45ManifestPath, '--badFlag'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m45UnknownFlag.stdout !== '') {
+    throw new Error(`M45(m): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m45UnknownFlag.stdout}\nstderr=${m45UnknownFlag.stderr}`);
+  }
+
+  // M45(n): --items-type with no value exits 1
+  const m45TypeNoValue = runCli(['items', 'index', '--manifest', m45ManifestPath, '--items-type'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (m45TypeNoValue.stdout !== '') {
+    throw new Error(`M45(n): --items-type with no value must produce empty stdout, got: ${m45TypeNoValue.stdout}`);
+  }
+
+  // M45(o): --out <valid path> writes correctly and stdout is empty
+  const m45OutPath = path.join(m45TmpDir, 'items-index-out.json');
+  const m45OutResult = runCli(['items', 'index', '--manifest', m45ManifestPath, '--out', m45OutPath], { cwd: m45TmpDir });
+  if (m45OutResult.stdout !== '') {
+    throw new Error(`M45(o): --out must emit no stdout on success, got: ${m45OutResult.stdout}`);
+  }
+  const m45OutContent = JSON.parse(await fs.readFile(m45OutPath, 'utf8'));
+  if (!Array.isArray(m45OutContent.items_types) || m45OutContent.items_types.length < 2) {
+    throw new Error(`M45(o): --out file must contain at least two items_types entries: ${JSON.stringify(m45OutContent.items_types)}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m45OutContent, 'warnings') || !Array.isArray(m45OutContent.warnings)) {
+    throw new Error(`M45(o): --out JSON must include top-level warnings[] array:\n${JSON.stringify(m45OutContent)}`);
+  }
+
+  // M45(p): --out .tusq/ path rejected with correct message and empty stdout
+  const m45TusqOutResult = runCli(
+    ['items', 'index', '--manifest', m45ManifestPath, '--out', path.join(m45TmpDir, '.tusq', 'index.json')],
+    { cwd: m45TmpDir, expectedStatus: 1 }
+  );
+  if (!m45TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m45TusqOutResult.stdout !== '') {
+    throw new Error(`M45(p): --out .tusq/ must reject with correct message:\nstdout=${m45TusqOutResult.stdout}\nstderr=${m45TusqOutResult.stderr}`);
+  }
+
+  // M45(q): --json outputs valid JSON with items_types[] and warnings[] present (clean manifest)
+  const m45CleanManifestPath = path.join(m45TmpDir, 'clean.json');
+  await fs.writeFile(m45CleanManifestPath, JSON.stringify({
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      { name: 'cap_object', description: 'Get users list', method: 'GET', path: '/a', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'array', items: { type: 'object' } } },
+      { name: 'cap_notapplicable', description: 'Get single user', method: 'GET', path: '/b', domain: 'x', side_effect_class: 'read', sensitivity_class: 'public', approved: true, redaction: { pii_fields: [], pii_categories: [] }, output_schema: { type: 'object' } }
+    ]
+  }, null, 2), 'utf8');
+  const m45CleanJson = JSON.parse(runCli(['items', 'index', '--manifest', m45CleanManifestPath, '--json'], { cwd: m45TmpDir }).stdout);
+  if (!Array.isArray(m45CleanJson.items_types) || !Array.isArray(m45CleanJson.warnings)) {
+    throw new Error(`M45(q): --json must include items_types[] and warnings[]:\n${JSON.stringify(m45CleanJson)}`);
+  }
+  if (m45CleanJson.warnings.length !== 0) {
+    throw new Error(`M45(q): clean manifest --json must have empty warnings[]:\n${JSON.stringify(m45CleanJson.warnings)}`);
+  }
+
+  // M45(r): determinism — three consecutive runs produce byte-identical stdout
+  const m45Human1 = runCli(['items', 'index', '--manifest', m45ManifestPath], { cwd: m45TmpDir });
+  const m45Human2 = runCli(['items', 'index', '--manifest', m45ManifestPath], { cwd: m45TmpDir });
+  const m45Human3 = runCli(['items', 'index', '--manifest', m45ManifestPath], { cwd: m45TmpDir });
+  if (m45Human1.stdout !== m45Human2.stdout || m45Human2.stdout !== m45Human3.stdout) {
+    throw new Error('M45(r): expected byte-identical human index output across three runs');
+  }
+  const m45JsonR1 = runCli(['items', 'index', '--manifest', m45ManifestPath, '--json'], { cwd: m45TmpDir });
+  const m45JsonR2 = runCli(['items', 'index', '--manifest', m45ManifestPath, '--json'], { cwd: m45TmpDir });
+  if (m45JsonR1.stdout !== m45JsonR2.stdout) {
+    throw new Error('M45(r): expected byte-identical JSON index output across runs');
+  }
+
+  // M45(s): manifest mtime + content invariant pre/post index run + non-persistence (output_schema_items_type not written)
+  const m45ManifestBefore = await fs.readFile(m45ManifestPath, 'utf8');
+  runCli(['items', 'index', '--manifest', m45ManifestPath, '--json'], { cwd: m45TmpDir });
+  const m45ManifestAfter = await fs.readFile(m45ManifestPath, 'utf8');
+  if (m45ManifestBefore !== m45ManifestAfter) {
+    throw new Error('M45(s): tusq items index must not mutate the manifest (read-only invariant)');
+  }
+  const m45ManifestParsed = JSON.parse(m45ManifestAfter);
+  for (const cap of m45ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_items_type')) {
+      throw new Error(`M45(s): output_schema_items_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M45(t): empty-capabilities manifest emits documented human line and items_types: [] in JSON, warnings: [] in JSON
+  const m45EmptyManifestPath = path.join(m45TmpDir, 'empty.json');
+  await fs.writeFile(m45EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T12:00:00.000Z', capabilities: [] }, null, 2), 'utf8');
+  const m45EmptyHuman = runCli(['items', 'index', '--manifest', m45EmptyManifestPath], { cwd: m45TmpDir });
+  if (m45EmptyHuman.stdout.trim() !== 'No capabilities in manifest — nothing to index.') {
+    throw new Error(`M45(t): empty-capabilities human output must be exactly the documented line:\n${m45EmptyHuman.stdout}`);
+  }
+  const m45EmptyJson = JSON.parse(runCli(['items', 'index', '--manifest', m45EmptyManifestPath, '--json'], { cwd: m45TmpDir }).stdout);
+  if (!Array.isArray(m45EmptyJson.items_types) || m45EmptyJson.items_types.length !== 0) {
+    throw new Error(`M45(t): empty-capabilities JSON must have items_types: []:\n${JSON.stringify(m45EmptyJson)}`);
+  }
+  if (!Array.isArray(m45EmptyJson.warnings) || m45EmptyJson.warnings.length !== 0) {
+    throw new Error(`M45(t): empty-capabilities JSON must have warnings: []:\n${JSON.stringify(m45EmptyJson)}`);
+  }
+
+  // M45(u): malformed output_schema capabilities produce all 5 warning reason codes in warnings[] and on stderr
+  // Covering all five frozen reason codes:
+  // no_schema_cap → output_schema_field_missing
+  // bad_schema_cap → output_schema_field_not_object
+  // array_no_items_cap → output_schema_items_field_missing_when_type_is_array
+  // array_bad_items_cap → output_schema_items_field_not_object_when_type_is_array
+  // array_no_items_type_cap → output_schema_items_type_field_missing_or_invalid_when_type_is_array
+  const m45WarnHuman = runCli(['items', 'index', '--manifest', m45ManifestPath], { cwd: m45TmpDir });
+  if (!m45WarnHuman.stderr.includes("Warning: capability 'no_schema_cap' has malformed output_schema (output_schema_field_missing)")) {
+    throw new Error(`M45(u): human mode must emit warning for no_schema_cap (output_schema_field_missing) on stderr:\n${m45WarnHuman.stderr}`);
+  }
+  if (!m45WarnHuman.stderr.includes("Warning: capability 'bad_schema_cap' has malformed output_schema (output_schema_field_not_object)")) {
+    throw new Error(`M45(u): human mode must emit warning for bad_schema_cap (output_schema_field_not_object) on stderr:\n${m45WarnHuman.stderr}`);
+  }
+  if (!m45WarnHuman.stderr.includes("Warning: capability 'array_no_items_cap' has malformed output_schema (output_schema_items_field_missing_when_type_is_array)")) {
+    throw new Error(`M45(u): human mode must emit warning for array_no_items_cap (output_schema_items_field_missing_when_type_is_array) on stderr:\n${m45WarnHuman.stderr}`);
+  }
+  if (!m45WarnHuman.stderr.includes("Warning: capability 'array_bad_items_cap' has malformed output_schema (output_schema_items_field_not_object_when_type_is_array)")) {
+    throw new Error(`M45(u): human mode must emit warning for array_bad_items_cap (output_schema_items_field_not_object_when_type_is_array) on stderr:\n${m45WarnHuman.stderr}`);
+  }
+  if (!m45WarnHuman.stderr.includes("Warning: capability 'array_no_items_type_cap' has malformed output_schema (output_schema_items_type_field_missing_or_invalid_when_type_is_array)")) {
+    throw new Error(`M45(u): human mode must emit warning for array_no_items_type_cap (output_schema_items_type_field_missing_or_invalid_when_type_is_array) on stderr:\n${m45WarnHuman.stderr}`);
+  }
+  const m45WarnJsonObj = JSON.parse(runCli(['items', 'index', '--manifest', m45ManifestPath, '--json'], { cwd: m45TmpDir }).stdout);
+  const m45NoSchemaWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'no_schema_cap');
+  if (!m45NoSchemaWarn || m45NoSchemaWarn.reason !== 'output_schema_field_missing') {
+    throw new Error(`M45(u): warnings[] must include {capability: 'no_schema_cap', reason: 'output_schema_field_missing'}:\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+  const m45BadSchemaWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'bad_schema_cap');
+  if (!m45BadSchemaWarn || m45BadSchemaWarn.reason !== 'output_schema_field_not_object') {
+    throw new Error(`M45(u): warnings[] must include {capability: 'bad_schema_cap', reason: 'output_schema_field_not_object'}:\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+  const m45NoItemsWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'array_no_items_cap');
+  if (!m45NoItemsWarn || m45NoItemsWarn.reason !== 'output_schema_items_field_missing_when_type_is_array') {
+    throw new Error(`M45(u): warnings[] must include {capability: 'array_no_items_cap', reason: 'output_schema_items_field_missing_when_type_is_array'}:\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+  const m45BadItemsWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'array_bad_items_cap');
+  if (!m45BadItemsWarn || m45BadItemsWarn.reason !== 'output_schema_items_field_not_object_when_type_is_array') {
+    throw new Error(`M45(u): warnings[] must include {capability: 'array_bad_items_cap', reason: 'output_schema_items_field_not_object_when_type_is_array'}:\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+  const m45NoItemsTypeWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'array_no_items_type_cap');
+  if (!m45NoItemsTypeWarn || m45NoItemsTypeWarn.reason !== 'output_schema_items_type_field_missing_or_invalid_when_type_is_array') {
+    throw new Error(`M45(u): warnings[] must include {capability: 'array_no_items_type_cap', reason: 'output_schema_items_type_field_missing_or_invalid_when_type_is_array'}:\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+  // not_applicable capabilities (get_by_id, post_create) must NOT appear in warnings[]
+  const m45GetByIdWarn = m45WarnJsonObj.warnings.find((w) => w.capability === 'get_by_id');
+  if (m45GetByIdWarn) {
+    throw new Error(`M45(u): not_applicable capability 'get_by_id' must NOT generate a warning (output_schema.type is string but not 'array'):\n${JSON.stringify(m45WarnJsonObj.warnings)}`);
+  }
+
+  // M45(v): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'items_type', 'not_applicable', 'unknown'}
+  const m45ValidAggregationKeys = new Set(['items_type', 'not_applicable', 'unknown']);
+  for (const entry of m45IndexJson.items_types) {
+    if (!m45ValidAggregationKeys.has(entry.aggregation_key)) {
+      throw new Error(`M45(v): aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for items_type '${entry.output_schema_items_type}'`);
+    }
+  }
+  const m45ObjectEntry = m45IndexJson.items_types.find((e) => e.output_schema_items_type === 'object');
+  const m45NotApplicableEntry = m45IndexJson.items_types.find((e) => e.output_schema_items_type === 'not_applicable');
+  const m45UnknownEntry = m45IndexJson.items_types.find((e) => e.output_schema_items_type === 'unknown');
+  if (!m45ObjectEntry || m45ObjectEntry.aggregation_key !== 'items_type') {
+    throw new Error(`M45(v): object bucket must have aggregation_key 'items_type', got: ${m45ObjectEntry ? m45ObjectEntry.aggregation_key : null}`);
+  }
+  if (!m45NotApplicableEntry || m45NotApplicableEntry.aggregation_key !== 'not_applicable') {
+    throw new Error(`M45(v): not_applicable bucket must have aggregation_key 'not_applicable', got: ${m45NotApplicableEntry ? m45NotApplicableEntry.aggregation_key : null}`);
+  }
+  if (!m45UnknownEntry || m45UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M45(v): unknown bucket must have aggregation_key 'unknown', got: ${m45UnknownEntry ? m45UnknownEntry.aggregation_key : null}`);
+  }
+
+  // M45(w): cross-axis flags: object bucket has delete_batch_array (destructive + restricted) → both flags true
+  if (!m45ObjectEntry || m45ObjectEntry.has_destructive_side_effect !== true) {
+    throw new Error(`M45(w): object bucket must have has_destructive_side_effect=true (delete_batch_array is destructive); got: ${JSON.stringify(m45ObjectEntry)}`);
+  }
+  if (!m45ObjectEntry || m45ObjectEntry.has_restricted_or_confidential_sensitivity !== true) {
+    throw new Error(`M45(w): object bucket must have has_restricted_or_confidential_sensitivity=true (delete_batch_array is restricted); got: ${JSON.stringify(m45ObjectEntry)}`);
+  }
+
+  // M45(x): markdown is NOT stripped + tusq help enumerates 29 commands + planning-aid framing + unknown subcommand exits 1
+  // tusq help enumerates 29 commands including 'items'
+  const m45HelpOutput = runCli(['help'], { cwd: m45TmpDir });
+  if (!m45HelpOutput.stdout.includes('items')) {
+    throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
+  }
+  const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
+  if (m45CommandCount !== 29) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 29 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  }
+  // items index help includes planning-aid framing
+  const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
+  if (!m45HelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M45(x): items index help must include planning-aid framing:\n${m45HelpResult.stdout}`);
+  }
+  // unknown subcommand exits 1
+  const m45UnknownSubCmd = runCli(['items', 'bogusub'], { cwd: m45TmpDir, expectedStatus: 1 });
+  if (!m45UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m45UnknownSubCmd.stdout !== '') {
+    throw new Error(`M45(x): unknown subcommand must exit 1:\nstdout=${m45UnknownSubCmd.stdout}\nstderr=${m45UnknownSubCmd.stderr}`);
+  }
+  // integer bucket aggregation_key must be 'items_type' (integer is a first-class bucket)
+  const m45IntegerEntry = m45IndexJson.items_types.find((e) => e.output_schema_items_type === 'integer');
+  if (!m45IntegerEntry || m45IntegerEntry.aggregation_key !== 'items_type') {
+    throw new Error(`M45(x): integer bucket must have aggregation_key 'items_type' (integer is a first-class bucket, NOT collapsed to number):\n${JSON.stringify(m45IntegerEntry)}`);
+  }
+  // number bucket must NOT be present (no capabilities with items.type === 'number')
+  const m45NumberEntry = m45IndexJson.items_types.find((e) => e.output_schema_items_type === 'number');
+  if (m45NumberEntry) {
+    throw new Error(`M45(x): number bucket must NOT be present when no capabilities have items.type === 'number' (integer is NOT collapsed to number):\n${JSON.stringify(m45IndexJson.items_types)}`);
+  }
+
+  await fs.rm(m45TmpDir, { recursive: true, force: true });
+
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
 
@@ -3819,8 +4324,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 28) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 28 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 29) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 29 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -4357,8 +4862,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 28) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 28 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 29) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 29 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -4906,8 +5411,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 28) {
-    throw new Error(`M42: tusq help must enumerate exactly 28 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 29) {
+    throw new Error(`M42: tusq help must enumerate exactly 29 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -5452,8 +5957,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 28) {
-    throw new Error(`M41: tusq help must enumerate exactly 28 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 29) {
+    throw new Error(`M41: tusq help must enumerate exactly 29 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -6007,8 +6512,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 28) {
-    throw new Error(`M40: tusq help must enumerate exactly 28 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 29) {
+    throw new Error(`M40: tusq help must enumerate exactly 29 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -6473,14 +6978,14 @@ async function run() {
     throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
   }
 
-  // M39: tusq help enumerates 27 commands including 'input' (M40/M41/M42/M43 ship in this run)
+  // M39: tusq help enumerates 29 commands including 'input' (M40/M41/M42/M43/M45 ship in this run)
   const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
   if (!m39HelpOutput.stdout.includes('input')) {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 28) {
-    throw new Error(`M39: tusq help must enumerate exactly 28 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 29) {
+    throw new Error(`M39: tusq help must enumerate exactly 29 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -6944,14 +7449,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 27 commands including 'examples' (M39/M40/M41/M42/M43 ship in this run)
+  // M38: tusq help enumerates 29 commands including 'examples' (M39/M40/M41/M42/M43/M45 ship in this run)
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 28) {
-    throw new Error(`M38: tusq help must enumerate exactly 28 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 29) {
+    throw new Error(`M38: tusq help must enumerate exactly 29 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -7427,14 +7932,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 27 commands including 'pii' (M38/M39/M40/M41/M42/M43 ship in this run)
+  // M37: tusq help enumerates 29 commands including 'pii' (M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 28) {
-    throw new Error(`M37: tusq help must enumerate exactly 28 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 29) {
+    throw new Error(`M37: tusq help must enumerate exactly 29 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -7885,14 +8390,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 27 commands including 'confidence' (M37/M38/M39/M40/M41/M42/M43 ship in this run)
+  // M36: tusq help enumerates 29 commands including 'confidence' (M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 28) {
-    throw new Error(`M36: tusq help must enumerate exactly 28 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 29) {
+    throw new Error(`M36: tusq help must enumerate exactly 29 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -8278,14 +8783,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 27 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', 'request', and 'response' (M36/M37/M38/M39/M40/M41/M42/M43 ship in this run)
+  // M35: tusq help enumerates 29 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', 'request', 'response', and 'items' (M36/M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 28) {
-    throw new Error(`M35: tusq help must enumerate exactly 28 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 29) {
+    throw new Error(`M35: tusq help must enumerate exactly 29 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

@@ -2041,6 +2041,8 @@ async function run() {
       await runInputSchemaPrimaryParameterSourceIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'description_word_count_tier_index_determinism') {
       await runDescriptionWordCountTierIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'output_schema_items_type_index_determinism') {
+      await runOutputSchemaItemsTypeIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -2136,6 +2138,101 @@ async function runDescriptionWordCountTierIndexDeterminismScenario(tmpRoot, scen
   for (const cap of manifestParsed.capabilities) {
     if (Object.prototype.hasOwnProperty.call(cap, 'description_word_count_tier')) {
       fail(`${scenario.id}: description_word_count_tier must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+}
+
+async function runOutputSchemaItemsTypeIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: Object.prototype.hasOwnProperty.call(cap, 'method') ? cap.method : null,
+      path: cap.path || '/',
+      domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+      side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+      sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+      approved: cap.approved === true,
+      auth_requirements: {
+        auth_scheme: cap.auth_scheme || 'unknown',
+        auth_scopes: [],
+        auth_roles: [],
+        evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+      },
+      redaction: {
+        pii_fields: [],
+        pii_categories: []
+      }
+    };
+    // Propagate description field only if present in cap
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    // Propagate output_schema field only if present in cap
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema')) {
+      obj.output_schema = cap.output_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq items index --json three times and assert byte-identical output
+  const run1 = runCli(['items', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['items', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['items', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: items index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert output_schema_items_type bucket-key enum is closed — every key is one of the nine valid values
+  const index = JSON.parse(run1.stdout);
+  const validItemsTypes = new Set(scenario.expected_valid_output_schema_items_types);
+  for (const entry of index.items_types) {
+    if (!validItemsTypes.has(entry.output_schema_items_type)) {
+      fail(`${scenario.id}: output_schema_items_type '${entry.output_schema_items_type}' is outside the closed nine-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.items_types) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for items_type '${entry.output_schema_items_type}'`);
+    }
+  }
+
+  // Assert items_types appear in closed-enum order
+  const itemsTypeOrder = index.items_types.map((e) => e.output_schema_items_type).join(',');
+  if (itemsTypeOrder !== scenario.expected_items_type_order) {
+    fail(`${scenario.id}: items_types must appear in closed-enum order '${scenario.expected_items_type_order}'; got: ${itemsTypeOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (output_schema_items_type must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by items index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_items_type')) {
+      fail(`${scenario.id}: output_schema_items_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
     }
   }
 }

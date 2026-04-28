@@ -700,6 +700,72 @@ tusq input index --tier unknown --json
 tusq input index --out input-index.json
 ```
 
+### `tusq items index`
+
+Index capabilities by output schema items type (for array-typed responses). Groups capabilities by the JSON-Schema `output_schema.items.type` value in closed-enum order (`object → array → string → number → integer → boolean → null → not_applicable → unknown`). For capabilities where `output_schema.type === 'array'`, the `items.type` is the most fundamental structural claim about how each array element will render in the frontend: `object` → multi-column table; `string`/`number`/`integer`/`boolean`/`null` → single-column list; `array` → nested-array tree. Capabilities with `output_schema.type !== 'array'` land in the `not_applicable` bucket (valid named bucket, not an error). This is a **planning aid, not a runtime response validator, frontend component generator, or rendering completeness certifier**.
+
+```bash
+tusq items index [--items-type <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--items-type <value>` | all types | Filter to a single items-type bucket; **case-sensitive lowercase only** (`OBJECT` exits 1) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success; rejected if path is inside `.tusq/` |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown/absent `--items-type`, `--out` path error, or unknown subcommand
+
+**Bucket-key enum** (closed nine-value, immutable): `object | array | string | number | integer | boolean | null | not_applicable | unknown`
+
+**Tier function:**
+
+| `output_schema` condition | Bucket |
+|---------------------------|--------|
+| `output_schema` missing / null / not a plain object | `unknown` (reason: `output_schema_field_missing` or `output_schema_field_not_object`) |
+| `output_schema.type` missing / null / not a string | `unknown` (reason: `output_schema_field_missing`) |
+| `output_schema.type` is a string but not `'array'` | `not_applicable` (NO warning emitted) |
+| `output_schema.type === 'array'`, `items` missing / malformed | `unknown` (reason: `output_schema_items_field_missing_when_type_is_array` or `output_schema_items_field_not_object_when_type_is_array`) |
+| `output_schema.type === 'array'`, `items.type` missing or not in JSON-Schema primitive set | `unknown` (reason: `output_schema_items_type_field_missing_or_invalid_when_type_is_array`) |
+| `output_schema.type === 'array'`, `items.type` in closed set | literal `items.type` value (one of seven primitives) |
+
+> **Note:** `integer` is a **first-class bucket** in M45 — it is NOT collapsed into `number` (unlike M42 which buckets integer as unknown). A typed array of integers is a distinct frontend rendering target from a typed array of arbitrary numbers.
+
+> **Note:** `not_applicable` is a valid named bucket and emits NO warning. It simply means the capability's output schema is not an array-typed response, so there is no `items.type` to evaluate.
+
+**`warnings[]` array:** Present in `--json` output always (even when empty `[]` for shape stability). Five frozen warning reason codes: `output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_items_field_missing_when_type_is_array`, `output_schema_items_field_not_object_when_type_is_array`, `output_schema_items_type_field_missing_or_invalid_when_type_is_array`. In human mode, warnings are emitted to stderr.
+
+**Bucket iteration order:** `object → array → string → number → integer → boolean → null → not_applicable → unknown` (deterministic stable-output convention only — NOT UI-rendering-precedence-ranked, NOT frontend-blast-radius-ranked).
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `output_schema_items_type` is NOT written into the manifest — it is derived at read-time only.
+- Compositional items (`oneOf`/`anyOf`/`allOf`), tuple-style items (items as array), and multi-type items (`items.type` as array) all bucket as `unknown`.
+- Nested-array element typing (`items.items.type`) is NOT examined.
+
+```bash
+# All items types (human-readable)
+tusq items index
+
+# All items types (JSON)
+tusq items index --json
+
+# Filter to object items type only
+tusq items index --items-type object
+
+# Filter to not_applicable bucket
+tusq items index --items-type not_applicable --json
+
+# Filter to integer bucket (first-class, not collapsed to number)
+tusq items index --items-type integer --json
+
+# Write to file
+tusq items index --out items-type-index.json
+```
+
 ### `tusq output index`
 
 Index capabilities by output schema property count tier.

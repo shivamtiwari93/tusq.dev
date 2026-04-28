@@ -1219,6 +1219,63 @@
       "expected_valid_description_word_count_tiers": ["low", "medium", "high", "unknown"],
       "expected_valid_aggregation_keys": ["tier", "unknown"],
       "expected_tier_order": "low,medium,unknown"
+    },
+    {
+      "id": "output-schema-items-type-index-determinism",
+      "description": "M45: tusq items index --json produces byte-identical output across three runs on the same manifest; output_schema_items_type bucket-key enum is closed (nine values: object/array/string/number/integer/boolean/null/not_applicable/unknown); aggregation_key enum is closed (three values: items_type/not_applicable/unknown); bucket iteration order is the frozen closed-enum order (object → array → string → number → integer → boolean → null → not_applicable → unknown); integer is NOT collapsed to number (both are first-class buckets); not_applicable is a valid named bucket for non-array output_schema.type (emits no warning); unknown is emitted for malformed/missing output_schema or items; warnings[] always present in JSON output",
+      "scenario_type": "output_schema_items_type_index_determinism",
+      "synthetic_capabilities": [
+        {
+          "name": "list_users",
+          "description": "List all users",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.95,
+          "output_schema": { "type": "array", "items": { "type": "object" } }
+        },
+        {
+          "name": "list_ids",
+          "description": "List user IDs",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/ids",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.9,
+          "output_schema": { "type": "array", "items": { "type": "integer" } }
+        },
+        {
+          "name": "get_user",
+          "description": "Get a user by ID",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "confidence": 0.9,
+          "output_schema": { "type": "object", "properties": { "id": {}, "name": {} } }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No schema capability",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "confidence": 0.7
+        }
+      ],
+      "expected_valid_output_schema_items_types": ["object", "array", "string", "number", "integer", "boolean", "null", "not_applicable", "unknown"],
+      "expected_valid_aggregation_keys": ["items_type", "not_applicable", "unknown"],
+      "expected_items_type_order": "object,integer,not_applicable,unknown"
     }
   ]
 }
