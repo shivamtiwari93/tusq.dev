@@ -982,6 +982,70 @@ tusq sensitivity index --sensitivity unknown --json
 tusq sensitivity index --out sensitivity-index.json
 ```
 
+## `tusq strictness index`
+
+Emit a deterministic, per-strictness capability index from manifest evidence. Groups capabilities by whether their `output_schema.additionalProperties` boolean is `false` (closed-key contract) or `true` (unspecified-field-tolerant) for object-typed responses, in closed-enum order (`strict → permissive → not_applicable → unknown`). Non-object responses bucket as `not_applicable` (no warning). Malformed or missing `output_schema` or non-boolean `additionalProperties` buckets as `unknown` with a warning. This is a **planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier**.
+
+```bash
+tusq strictness index [--strictness <strict|permissive|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--strictness <strict\|permissive\|not_applicable\|unknown>` | all buckets | Filter to a single strictness bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `output_schema`) |
+
+**Strictness rule:**
+- `strict` — `output_schema.type === 'object'` AND `output_schema.additionalProperties === false` (closed-key contract; LLM/caller may NOT introduce response fields not enumerated in `properties[]`)
+- `permissive` — `output_schema.type === 'object'` AND `output_schema.additionalProperties === true` (unspecified-field-tolerant)
+- `not_applicable` — `output_schema.type` is a string but not literal `'object'` (no warning emitted; includes array, string, number, boolean, null responses)
+- `unknown` — `output_schema` or `output_schema.type` missing/malformed; OR `output_schema.type === 'object'` but `additionalProperties` is missing or non-boolean. Schema-as-`additionalProperties` (e.g., `{ "type": "string" }`) buckets as `unknown` (boolean-only contract; reserved for `M-Strictness-Schema-As-AdditionalProperties-1`).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown strictness value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `strict → permissive → not_applicable → unknown` (closed-then-open boolean enumeration, falsy-first — NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked). Empty buckets do not appear.
+
+**Per-bucket fields:** `output_schema_strictness`, `aggregation_key` (`"strictness"` for strict/permissive, `"not_applicable"` for not_applicable, `"unknown"` for unknown), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**`--json` top-level shape:** `{ manifest_path, manifest_version, generated_at, strictnesses[], warnings[] }`. `warnings[]` is always present (empty `[]` when no malformed capabilities) for shape stability.
+
+**Warning reason codes (five frozen values):**
+- `output_schema_field_missing` — `output_schema` key absent from capability
+- `output_schema_field_not_object` — `output_schema` is not a plain non-null object
+- `output_schema_type_missing_or_invalid` — `output_schema.type` is missing or not a string
+- `output_schema_additional_properties_missing_when_type_is_object` — `output_schema.type === 'object'` but `additionalProperties` key absent
+- `output_schema_additional_properties_not_boolean_when_type_is_object` — `output_schema.type === 'object'` and `additionalProperties` present but not a boolean (includes schema-as-`additionalProperties`)
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; mtime and content are unchanged after any invocation.
+- `output_schema_strictness` is NOT written into `tusq.manifest.json` (non-persistence rule).
+- Per-nested-property `additionalProperties` under `properties.x.additionalProperties` is NOT walked (reserved for `M-Strictness-Per-Property-1`).
+- `output_schema.items.additionalProperties` for array-of-object items is NOT walked (reserved for `M-Strictness-Items-Object-1`).
+- `input_schema.additionalProperties` strictness is reserved for `M-Strictness-Input-Schema-1`.
+- The `--strictness` filter is case-sensitive lowercase-only; uppercase or mixed-case values exit `1` with `Unknown output schema strictness:`.
+- The four-value `output_schema_strictness` enum, the three-value `aggregation_key` enum, and the five-value warning reason-code enum are frozen; any addition is a material governance event.
+
+```bash
+# All buckets (human-readable)
+tusq strictness index
+
+# All buckets (JSON)
+tusq strictness index --json
+
+# Single bucket
+tusq strictness index --strictness permissive --json
+
+# Filter to strict-schema capabilities only
+tusq strictness index --strictness strict --json
+
+# Write to file
+tusq strictness index --out strictness-index.json
+```
+
 ## `tusq redaction review`
 
 Emit a deterministic, per-capability reviewer report aggregating M25 `redaction.pii_fields`, M26 `redaction.pii_categories`, and frozen per-category advisory text from `PII_REVIEW_ADVISORY_BY_CATEGORY`. This is a **reviewer aid, not a runtime enforcement gate**.

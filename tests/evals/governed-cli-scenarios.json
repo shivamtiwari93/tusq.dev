@@ -1276,6 +1276,59 @@
       "expected_valid_output_schema_items_types": ["object", "array", "string", "number", "integer", "boolean", "null", "not_applicable", "unknown"],
       "expected_valid_aggregation_keys": ["items_type", "not_applicable", "unknown"],
       "expected_items_type_order": "object,integer,not_applicable,unknown"
+    },
+    {
+      "id": "output-schema-strictness-index-determinism",
+      "scenario_type": "output_schema_strictness_index_determinism",
+      "description": "Verifies that tusq strictness index produces byte-identical output across three runs on a synthetic manifest with strict, permissive, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum, closed three-value aggregation_key enum, bucket order determinism, warnings[] always present, manifest non-mutation, and output_schema_strictness non-persistence.",
+      "synthetic_capabilities": [
+        {
+          "name": "strict_cap",
+          "description": "Strict schema capability",
+          "domain": "strict",
+          "method": "GET",
+          "path": "/api/v1/strict",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "output_schema": { "type": "object", "additionalProperties": false }
+        },
+        {
+          "name": "permissive_cap",
+          "description": "Permissive schema capability",
+          "domain": "permissive",
+          "method": "POST",
+          "path": "/api/v1/permissive",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "output_schema": { "type": "object", "additionalProperties": true }
+        },
+        {
+          "name": "array_cap",
+          "description": "Array response capability",
+          "domain": "array",
+          "method": "GET",
+          "path": "/api/v1/array",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "output_schema": { "type": "array", "items": { "type": "object" } }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No schema capability",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_output_schema_strictnesses": ["strict", "permissive", "not_applicable", "unknown"],
+      "expected_valid_aggregation_keys": ["strictness", "not_applicable", "unknown"],
+      "expected_strictness_order": "strict,permissive,not_applicable,unknown"
     }
   ]
 }

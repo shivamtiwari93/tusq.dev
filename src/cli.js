@@ -303,6 +303,28 @@ const OUTPUT_SCHEMA_ITEMS_TYPE_BUCKET_ORDER = Object.freeze(['object', 'array', 
 // Multi-type items (items.type as array) → unknown (handled by typeof items.type !== 'string' check).
 const OUTPUT_SCHEMA_ITEMS_TYPE_PRIMITIVE_VALUE_SET = Object.freeze(new Set(['object', 'array', 'string', 'number', 'integer', 'boolean', 'null']));
 
+// M46: frozen four-value output_schema_strictness bucket-key enum. Immutable once M46 ships.
+// strict = output_schema.type === 'object' AND additionalProperties === false (closed-key contract)
+// permissive = output_schema.type === 'object' AND additionalProperties === true (unspecified-field-tolerant)
+// not_applicable = output_schema.type is a string but not literal 'object'
+// unknown = output_schema or type missing/malformed, or non-boolean additionalProperties (including schema-object case)
+// Expansion is a material governance event requiring its own ROADMAP milestone.
+const OUTPUT_SCHEMA_STRICTNESS_ENUM = Object.freeze(new Set(['strict', 'permissive', 'not_applicable', 'unknown']));
+
+// M46: frozen three-value aggregation_key enum (parallel to M31–M45). Immutable once M46 ships.
+// strictness = capability is object-typed with a valid boolean additionalProperties (strict or permissive)
+// not_applicable = capability is NOT object-typed (output_schema.type !== 'object')
+// unknown = output_schema or additionalProperties is missing/malformed
+// An implementation-time guard fires if buildOutputSchemaStrictnessIndex produces a key outside this set.
+const OUTPUT_SCHEMA_STRICTNESS_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['strictness', 'not_applicable', 'unknown']));
+
+// M46: closed-enum bucket iteration order (strict → permissive → not_applicable).
+// Closed-then-open boolean enumeration: false (strict=additionalProperties:false) before true (permissive=additionalProperties:true).
+// not_applicable appended next. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+// NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked,
+// NOT tool-generation-safety-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT customer-facing-strictness-claim-ranked.
+const OUTPUT_SCHEMA_STRICTNESS_BUCKET_ORDER = Object.freeze(['strict', 'permissive', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -465,6 +487,9 @@ function dispatch(argv) {
       return;
     case 'sensitivity':
       cmdSensitivity(args);
+      return;
+    case 'strictness':
+      cmdStrictness(args);
       return;
     case 'surface':
       cmdSurface(args);
@@ -6476,6 +6501,363 @@ function formatOutputSchemaItemsTypeIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M46: tusq strictness — top-level noun dispatcher
+function cmdStrictness(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('strictness');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdStrictnessIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M46: tusq strictness index — handler
+function cmdStrictnessIndex(args) {
+  const { opts, positionals } = parseStrictnessIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('strictness index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildOutputSchemaStrictnessIndex(manifest, manifestPath);
+
+  const strictnessFilter = opts['strictness'] || null;
+  let outputIndex;
+  if (strictnessFilter !== null) {
+    // Case-sensitive: lowercase canonical output_schema_strictness values; anything else exits 1
+    if (!OUTPUT_SCHEMA_STRICTNESS_ENUM.has(strictnessFilter)) {
+      throw new CliError(`Unknown output schema strictness: ${strictnessFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.strictnesses.find((e) => e.output_schema_strictness === strictnessFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for output schema strictness: ${strictnessFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { strictnesses: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema strictness (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed output_schema strictness (${w.reason})\n`);
+  }
+  process.stdout.write(formatOutputSchemaStrictnessIndex(outputIndex));
+}
+
+function parseStrictnessIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['strictness', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardOutputSchemaStrictnessBucketKey(key) {
+  if (!OUTPUT_SCHEMA_STRICTNESS_ENUM.has(key)) {
+    throw new Error(`Internal error: output_schema_strictness outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardOutputSchemaStrictnessAggregationKey(key) {
+  if (!OUTPUT_SCHEMA_STRICTNESS_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M46: classifyOutputSchemaStrictness(outputSchema) → 'strict'|'permissive'|'not_applicable'|'unknown'
+// Classification rules:
+//   outputSchema missing/null/undefined → 'unknown' (reason: output_schema_field_missing)
+//   outputSchema not plain non-null object → 'unknown' (reason: output_schema_field_not_object)
+//   outputSchema.type missing or not a string → 'unknown' (reason: output_schema_type_missing_or_invalid)
+//   outputSchema.type is a string but not 'object' → 'not_applicable' (no warning; aggregation_key: 'not_applicable')
+//   outputSchema.type === 'object', additionalProperties missing → 'unknown' (reason: output_schema_additional_properties_missing_when_type_is_object)
+//   outputSchema.type === 'object', additionalProperties not a boolean → 'unknown' (reason: output_schema_additional_properties_not_boolean_when_type_is_object)
+//   outputSchema.type === 'object', additionalProperties === false → 'strict'
+//   outputSchema.type === 'object', additionalProperties === true → 'permissive'
+// boolean-only contract is intentional: schema-as-additionalProperties ({ type: 'string' }) buckets as 'unknown'.
+// Per-nested-property additionalProperties NOT walked. output_schema.items.additionalProperties NOT walked.
+// input_schema.additionalProperties strictness reserved for M-Strictness-Input-Schema-1 successor.
+function classifyOutputSchemaStrictness(outputSchema) {
+  if (outputSchema === null || outputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = outputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // outputSchema.type === 'object'
+  if (!Object.prototype.hasOwnProperty.call(outputSchema, 'additionalProperties')) {
+    return 'unknown';
+  }
+  const ap = outputSchema.additionalProperties;
+  if (typeof ap !== 'boolean') {
+    return 'unknown';
+  }
+  return ap === false ? 'strict' : 'permissive';
+}
+
+// M46: buildOutputSchemaStrictnessIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered output schema strictness index from the manifest's capabilities[].
+// Bucket iteration order: strict → permissive → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// output_schema_strictness MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildOutputSchemaStrictnessIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      strictnesses: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) strictness values — the three ordered bucket keys.
+  const namedStrictnesses = new Set(OUTPUT_SCHEMA_STRICTNESS_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their output_schema_strictness.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const outputSchema = Object.prototype.hasOwnProperty.call(capability, 'output_schema')
+      ? capability.output_schema
+      : undefined;
+
+    // Determine warning reason if output_schema or additionalProperties structure is malformed
+    let warningReason = null;
+    if (outputSchema === undefined || outputSchema === null) {
+      warningReason = 'output_schema_field_missing';
+    } else if (typeof outputSchema !== 'object' || Array.isArray(outputSchema)) {
+      warningReason = 'output_schema_field_not_object';
+    } else if (typeof outputSchema.type !== 'string') {
+      warningReason = 'output_schema_type_missing_or_invalid';
+    } else if (outputSchema.type === 'object') {
+      if (!Object.prototype.hasOwnProperty.call(outputSchema, 'additionalProperties')) {
+        warningReason = 'output_schema_additional_properties_missing_when_type_is_object';
+      } else if (typeof outputSchema.additionalProperties !== 'boolean') {
+        warningReason = 'output_schema_additional_properties_not_boolean_when_type_is_object';
+      }
+    }
+    // Note: output_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const strictness = classifyOutputSchemaStrictness(outputSchema);
+    const isNamedBucket = namedStrictnesses.has(strictness);
+    const bucketKey = isNamedBucket ? strictness : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: strict → permissive → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...OUTPUT_SCHEMA_STRICTNESS_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const strictnesses = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const isStrictOrPermissiveBucket = bucketKey === 'strict' || bucketKey === 'permissive';
+    const strictnessKey = isUnknownBucket
+      ? _guardOutputSchemaStrictnessBucketKey('unknown')
+      : _guardOutputSchemaStrictnessBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardOutputSchemaStrictnessAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardOutputSchemaStrictnessAggregationKey('not_applicable')
+        : _guardOutputSchemaStrictnessAggregationKey('strictness');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      output_schema_strictness: strictnessKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    strictnesses,
+    warnings
+  };
+}
+
+// M46: format output schema strictness index as human-readable text
+function formatOutputSchemaStrictnessIndex(index) {
+  if (index.strictnesses.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Output Schema Strictness Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Note: This is a planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier. Bucket order is deterministic stable-output ordering only (closed-then-open boolean enumeration — NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked).',
+    ''
+  ];
+
+  for (const entry of index.strictnesses) {
+    lines.push(`[${entry.output_schema_strictness}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: strict (additionalProperties === false) | permissive (additionalProperties === true) | not_applicable (output_schema.type !== 'object') | unknown (malformed output_schema or non-boolean additionalProperties).");
+  lines.push('Bucket order: strict → permissive → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M34: tusq method — top-level noun dispatcher
 function cmdMethod(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -7645,6 +8027,7 @@ function printHelp() {
   process.stdout.write('  request            Index capabilities by input schema primary parameter source for planning review\n');
   process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
+  process.stdout.write('  strictness         Index capabilities by output schema additionalProperties strictness for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
@@ -8019,6 +8402,36 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown sensitivity, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime sensitivity enforcer or compliance certifier.'
+    ].join('\n'),
+    strictness: 'Usage: tusq strictness <subcommand>\n  Subcommands: index',
+    'strictness index': [
+      'Usage: tusq strictness index [--strictness <strict|permissive|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --strictness <strict|permissive|not_applicable|unknown>',
+      '                                     Filter to a single output schema strictness bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed output_schema)',
+      '',
+      'Strictness rule (applied to output_schema.additionalProperties for object-typed capabilities):',
+      "  strict         if output_schema.type === 'object' AND output_schema.additionalProperties === false",
+      "  permissive     if output_schema.type === 'object' AND output_schema.additionalProperties === true",
+      "  not_applicable if output_schema.type is a string but not literal 'object' (no warning emitted)",
+      "  unknown        if output_schema or output_schema.type is missing/malformed;",
+      "                 or output_schema.type === 'object' but additionalProperties is missing or non-boolean.",
+      "                 Schema-as-additionalProperties (e.g., { type: 'string' }) → unknown (boolean-only contract; reserved for M-Strictness-Schema-As-AdditionalProperties-1).",
+      "                 Per-nested-property additionalProperties NOT walked (reserved for M-Strictness-Per-Property-1).",
+      "                 output_schema.items.additionalProperties NOT walked (reserved for M-Strictness-Items-Object-1).",
+      "                 input_schema.additionalProperties strictness reserved for M-Strictness-Input-Schema-1.",
+      '',
+      'Bucket iteration order: strict → permissive → not_applicable → unknown (closed-then-open boolean enumeration, falsy-first — NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown strictness value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier; strictness values are deterministic stable-output ordering only (NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked).'
     ].join('\n'),
     surface: 'Usage: tusq surface <subcommand>\n  Subcommands: plan',
     'surface plan': [

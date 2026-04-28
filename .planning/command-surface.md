@@ -1,8 +1,64 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-### M46: Output Schema Strictness Index — Product CLI Surface — Charter Sketch Reservation
+### M46: Output Schema Strictness Index — Product CLI Surface
 
-**Status:** PM-bound 2026-04-27 in `run_7c4036f0eba4cde3` / `turn_c1bdc2ccb3a73e68` (PM attempt 1, HEAD `2df5438`). Full Product CLI Surface block (two-row command table for `tusq strictness` / `tusq strictness index`, four-flag table for `--strictness <value>` / `--manifest <path>` / `--out <path>` / `--json`, closed four-value bucket-key enum table `strict | permissive | not_applicable | unknown`, closed three-value `aggregation_key` enum table `strictness | not_applicable | unknown`, frozen tier-function rules table reading `output_schema.additionalProperties` boolean only, frozen 8-field per-bucket entry shape table, closed-enum bucket iteration order table `strict → permissive → not_applicable → unknown`, default-preservation table for the 29 unchanged commands, failure UX table covering `Unknown output schema strictness:` / `No capabilities found for output schema strictness:` / unknown flag / missing manifest / malformed manifest / missing capabilities / `--out .tusq/` / `--out` unwritable / non-boolean `additionalProperties` warnings, and local-only invariants table covering manifest mtime + SHA-256 + `capability_digest` byte-identity and `tusq compile` / `tusq surface plan` / `tusq domain index` / `tusq effect index` / `tusq sensitivity index` / `tusq method index` / `tusq auth index` / `tusq confidence index` / `tusq pii index` / `tusq examples index` / `tusq input index` / `tusq output index` / `tusq path index` / `tusq response index` / `tusq request index` / `tusq description index` / `tusq items index` byte-identity) to be materialized by the dev role in the implementation phase, before any source code lands. Charter origin and PM-frozen scope decisions are recorded verbatim in `PM_SIGNOFF.md` § "M46 Charter Bound" and in `ROADMAP.md` § M46. The new noun `strictness` is inserted alphabetically between `sensitivity` and `surface` (`sensitivity` < `strictness`: `s` = `s` at position 0, `e` (101) < `t` (116) at position 1; `strictness` < `surface`: `s` = `s` at position 0, `t` (116) < `u` (117) at position 1). CLI surface grows 29 → 30. The index buckets capabilities by the JSON-Schema `output_schema.additionalProperties` boolean strictness gate for object-typed responses; the boolean-only contract is intentional (schema-as-additionalProperties buckets as `unknown`).
+**Status:** Shipped in `run_7c4036f0eba4cde3` / `turn_c5d62ccd1c2a4bcd` (dev implementation). V1.27.
+
+| Command | Shape |
+|---------|-------|
+| `tusq strictness` | `tusq strictness <subcommand>` |
+| `tusq strictness index` | `tusq strictness index [--strictness <value>] [--manifest <path>] [--out <path>] [--json]` |
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--strictness <strict\|permissive\|not_applicable\|unknown>` | all buckets | Case-sensitive lowercase only; unknown value → exit 1 |
+| `--manifest <path>` | `tusq.manifest.json` in cwd | Manifest file to read |
+| `--out <path>` | stdout | Write to file; no stdout on success; `.tusq/` prefix rejected |
+| `--json` | human text | Machine-readable JSON (includes `warnings[]`) |
+
+| Bucket key | Aggregation key | Condition |
+|------------|----------------|-----------|
+| `strict` | `strictness` | `output_schema.type === 'object'` AND `additionalProperties === false` |
+| `permissive` | `strictness` | `output_schema.type === 'object'` AND `additionalProperties === true` |
+| `not_applicable` | `not_applicable` | `output_schema.type` is string but not `'object'` (no warning) |
+| `unknown` | `unknown` | `output_schema` missing/malformed, `type` non-string, or non-boolean `additionalProperties` |
+
+| aggregation_key value | Meaning |
+|----------------------|---------|
+| `strictness` | capability is object-typed with valid boolean `additionalProperties` |
+| `not_applicable` | capability is NOT object-typed |
+| `unknown` | `output_schema` or `additionalProperties` is missing/malformed |
+
+**Tier function** reading `output_schema.additionalProperties` boolean only:
+1. `output_schema` null/undefined/missing/non-object/array → `unknown` (reason: `output_schema_field_missing` or `output_schema_field_not_object`)
+2. `output_schema.type` missing/non-string → `unknown` (reason: `output_schema_type_missing_or_invalid`)
+3. `output_schema.type` is string but not `'object'` → `not_applicable` (no warning)
+4. `output_schema.type === 'object'` AND `additionalProperties` absent → `unknown` (reason: `output_schema_additional_properties_missing_when_type_is_object`)
+5. `output_schema.type === 'object'` AND `additionalProperties` present but non-boolean → `unknown` (reason: `output_schema_additional_properties_not_boolean_when_type_is_object`)
+6. `output_schema.type === 'object'` AND `additionalProperties === false` → `strict`
+7. `output_schema.type === 'object'` AND `additionalProperties === true` → `permissive`
+
+**Per-bucket entry shape (8 fields):** `output_schema_strictness`, `aggregation_key`, `capability_count`, `capabilities[]` (manifest order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Bucket iteration order:** `strict → permissive → not_applicable → unknown` (closed-then-open boolean enumeration, falsy-first; NOT security-blast-radius-ranked, NOT strictness-precedence-ranked). Empty buckets absent.
+
+**Default-preservation:** All 29 prior commands (`init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, description, diff, domain, effect, examples, input, items, method, output, path, pii, policy, redaction, request, response, sensitivity, surface, version, help`) retain byte-identical stdout/stderr/exit-code behavior. CLI surface: 29 → 30.
+
+**Failure UX:**
+- `Unknown output schema strictness: <value>` → stderr, exit 1 (case-sensitive filter; `STRICT` and `Permissive` both fail)
+- `No capabilities found for output schema strictness: <value>` → stderr, exit 1 (absent bucket)
+- `Unknown flag: --<flag>` → stderr, exit 1
+- `Manifest not found: <path>` → stderr, exit 1
+- `Invalid manifest JSON: <path>` → stderr, exit 1
+- `Invalid manifest: missing capabilities array` → stderr, exit 1
+- `--out path must not be inside .tusq/` → stderr, exit 1
+- `Cannot write to --out path: <path>` → stderr, exit 1
+- `Warning: capability '<name>' has malformed output_schema strictness (<reason>)` → stderr (human); `warnings[]` entry (`--json`)
+
+**Local-only invariants:**
+- `tusq.manifest.json` mtime + SHA-256 + per-capability `capability_digest` byte-identical before/after run
+- `output_schema_strictness` NOT written into `tusq.manifest.json`
+- `tusq compile`, `tusq surface plan`, `tusq domain index`, `tusq effect index`, `tusq sensitivity index`, `tusq method index`, `tusq auth index`, `tusq confidence index`, `tusq pii index`, `tusq examples index`, `tusq input index`, `tusq output index`, `tusq path index`, `tusq response index`, `tusq request index`, `tusq description index`, `tusq items index` all byte-identical before/after `tusq strictness index` run
 
 ### M45: Output Schema Items Type Index — Product CLI Surface
 

@@ -1,8 +1,78 @@
 # System Spec — tusq.dev Docs & Website Platform
 
-### M46: Static Capability Output Schema Strictness Index — Charter Sketch Reservation
+### M46: Static Capability Output Schema additionalProperties Strictness Index
 
-**Status:** PM-bound 2026-04-27 in `run_7c4036f0eba4cde3` / `turn_c1bdc2ccb3a73e68` (PM attempt 1, HEAD `2df5438`). Full detail block (purpose, command shape, frozen four-value `output_schema_strictness` bucket-key enum `strict | permissive | not_applicable | unknown`, frozen three-value `aggregation_key` enum `strictness | not_applicable | unknown`, frozen tier function reading `output_schema.additionalProperties` boolean only, frozen 8-field per-bucket entry shape, top-level `warnings[]` rule with five frozen reason codes, closed-enum bucket iteration order `strict → permissive → not_applicable → unknown`, within-bucket manifest-declared-order rule, case-sensitive lowercase-only `--strictness` filter rule, empty-capabilities and stdout-discipline rules, read-only invariants including non-persistence of `output_schema_strictness`, the boolean-only-additionalProperties rule, the no-schema-as-additionalProperties-walking rule, the no-per-property-walking rule, the no-items-additionalProperties-walking rule, the no-input-schema-strictness rule, and Constraint 39 — "M46 is a planning aid, NOT a runtime response validator / strict-schema middleware generator / schema enforceability certifier") to be materialized by the dev role in the implementation phase, before any source code lands. Charter origin and PM-frozen scope decisions are recorded verbatim in `PM_SIGNOFF.md` § "M46 Charter Bound" and in `ROADMAP.md` § M46. The index buckets capabilities by the JSON-Schema `output_schema.additionalProperties` boolean strictness gate for object-typed responses — `strict` for `additionalProperties === false` (closed-key contract), `permissive` for `additionalProperties === true` (unspecified-field-tolerant), `not_applicable` for capabilities whose top-level `output_schema.type !== 'object'`, `unknown` for malformed `output_schema` or non-boolean `additionalProperties` (including the schema-object case `{ "type": "string" }` reserved for the deferred `M-Strictness-Schema-As-AdditionalProperties-1` successor). Operationalizes VISION § Tools (lines 164–173) — "AI tools with **strict schemas**, normalized errors, dry-run and confirmation support, IAM context requirements, audit metadata, provenance back to source" — as the primary aggregation source; the first shipped milestone to use this section. CLI surface 29 → 30 with new noun `strictness` inserted alphabetically between `sensitivity` and `surface`. Result-array field name `strictnesses` (plural, distinct from M42's `types`, M43's `sources`, M44's `tiers`, M45's `items_types`). Eval count 36 → 37.
+**Status:** Shipped in `run_7c4036f0eba4cde3` / `turn_c5d62ccd1c2a4bcd` (dev implementation). V1.27.
+
+**Purpose:** Export a per-bucket breakdown of capabilities by the JSON-Schema `output_schema.additionalProperties` boolean strictness gate for object-typed responses. `strict` if `additionalProperties === false` (closed-key contract — the LLM/caller may NOT introduce response fields not enumerated in `properties[]`); `permissive` if `additionalProperties === true` (unspecified-field-tolerant); `not_applicable` for capabilities whose top-level `output_schema.type !== 'object'`; `unknown` for malformed `output_schema` or non-boolean `additionalProperties` (including the schema-object case `{ "type": "string" }` reserved for the deferred `M-Strictness-Schema-As-AdditionalProperties-1` successor). Directly answers: "for the object-typed responses my capabilities return, which generated tool schemas are STRICT (closed-key contract enforceable as written), which are PERMISSIVE (unspecified-field-tolerant), and which capabilities respond with non-object top-level shapes?" Operationalizes VISION § Tools (lines 164–173) — "AI tools with **strict schemas**, normalized errors, dry-run and confirmation support, IAM context requirements, audit metadata, provenance back to source" — as the primary aggregation source; the first shipped milestone to use this section. Orthogonal to M40 (`output_schema.properties` cardinality on object responses; M46 measures the boolean strictness GATE of object responses — a fundamentally different axis class from numeric tier), M42 (top-level `output_schema.type` primitive; M46 measures the closed-vs-open contract claim of object-typed responses only), and M45 (`output_schema.items.type` per-element shape for array responses; M46 measures the boolean strictness gate of object responses).
+
+**Command:** `tusq strictness index [--strictness <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**Tier function** (applied to `output_schema` of each capability):
+- Returns `'unknown'` if `output_schema` is null, undefined, missing, not a plain object, or an array
+- Returns `'unknown'` if `output_schema.type` is missing, null, or not a string (reason: `output_schema_type_missing_or_invalid`)
+- Returns `'not_applicable'` if `output_schema.type` is a string but not the literal `'object'` (no warning)
+- For `output_schema.type === 'object'`: returns `'unknown'` if `additionalProperties` is missing (reason: `output_schema_additional_properties_missing_when_type_is_object`)
+- For `output_schema.type === 'object'`: returns `'unknown'` if `additionalProperties` is not a boolean — including the schema-object case `{ type: 'string' }` (reason: `output_schema_additional_properties_not_boolean_when_type_is_object`)
+- For `output_schema.type === 'object'` AND `additionalProperties === false`: returns `'strict'`
+- For `output_schema.type === 'object'` AND `additionalProperties === true`: returns `'permissive'`
+
+**Frozen four-value bucket-key enum:** `strict | permissive | not_applicable | unknown`. Immutable once M46 ships. Expansion is a material governance event.
+
+**Frozen three-value aggregation_key enum:** `strictness | not_applicable | unknown`.
+- `strictness` — capability is object-typed with a valid boolean `additionalProperties` (`strict` or `permissive` buckets)
+- `not_applicable` — capability is NOT object-typed (`output_schema.type !== 'object'`)
+- `unknown` — `output_schema` or `additionalProperties` is missing/malformed
+
+**Frozen 8-field per-bucket entry shape:**
+- `output_schema_strictness` (one of the four bucket-key values)
+- `aggregation_key` (one of the three aggregation_key enum values)
+- `capability_count` (integer ≥ 1)
+- `capabilities[]` (array of capability name strings, manifest declared order)
+- `approved_count` (count of `approved === true`)
+- `gated_count` (count of `approved !== true`)
+- `has_destructive_side_effect` (boolean — true iff any capability in bucket has `side_effect_class === 'destructive'`)
+- `has_restricted_or_confidential_sensitivity` (boolean — true iff any capability in bucket has `sensitivity_class === 'restricted'` or `'confidential'`)
+
+**Top-level `warnings[]` rule:** Always present in `--json` output (empty `[]` when no malformed capabilities) for shape stability. In human mode, one `Warning: capability '<name>' has malformed output_schema strictness (<reason>)` per malformed capability emitted to stderr. Five frozen warning reason codes:
+1. `output_schema_field_missing` — `output_schema` key absent from capability
+2. `output_schema_field_not_object` — `output_schema` is not a plain non-null object
+3. `output_schema_type_missing_or_invalid` — `output_schema.type` is missing or not a string
+4. `output_schema_additional_properties_missing_when_type_is_object` — `output_schema.type === 'object'` but `additionalProperties` key absent
+5. `output_schema_additional_properties_not_boolean_when_type_is_object` — `output_schema.type === 'object'` and `additionalProperties` present but not a boolean
+
+**`not_applicable`-bucket-emits-NO-warning rule:** `not_applicable` is a valid named bucket (aggregation_key: `'not_applicable'`), NOT a malformation. Only `unknown` triggers warnings.
+
+**Closed-enum bucket iteration order:** `strict → permissive → not_applicable → unknown` (closed-then-open boolean enumeration: false before true in JavaScript falsy-first convention; `not_applicable` appended next; `unknown` always appended last). NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT customer-facing-strictness-claim-ranked. Empty buckets MUST NOT appear.
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--strictness` filter:** Only lowercase values match (`strict | permissive | not_applicable | unknown`). `--strictness STRICT` or `--strictness Permissive` exits `1` with `Unknown output schema strictness: <value>`. Empty-string exits `1` with `Unknown output schema strictness:`.
+
+**Empty-capabilities rule:** `tusq strictness index` on a manifest with zero capabilities exits `0` with `No capabilities in manifest — nothing to index.` (human) or `{ strictnesses: [], warnings: [] }` (`--json`).
+
+**Stdout discipline:** In `--out` mode, zero bytes to stdout on success; all warnings go to stderr. In `--json` mode, valid JSON to stdout. In human mode, formatted text to stdout; warnings to stderr.
+
+**Read-only invariants:**
+- `output_schema_strictness` is NOT written into `tusq.manifest.json` (non-persistence rule)
+- `tusq.manifest.json` mtime, SHA-256, and per-capability `capability_digest` are byte-identical before and after any `tusq strictness index` invocation
+
+**Boolean-only-additionalProperties rule:** M46 reads `output_schema.additionalProperties` ONLY as a boolean. Schema-as-`additionalProperties` (e.g., `{ "type": "string" }`) buckets as `unknown` with reason `output_schema_additional_properties_not_boolean_when_type_is_object`. Reserved for `M-Strictness-Schema-As-AdditionalProperties-1`.
+
+**No-walking rules:**
+- Per-nested-property `additionalProperties` under `properties.x.additionalProperties` NOT walked (reserved for `M-Strictness-Per-Property-1`)
+- `output_schema.items.additionalProperties` for array-of-object items NOT walked (reserved for `M-Strictness-Items-Object-1`)
+- `input_schema.additionalProperties` strictness reserved for `M-Strictness-Input-Schema-1`
+
+**Result-array field name:** `strictnesses` (plural, distinct from M42's `types`, M43's `sources`, M44's `tiers`, M45's `items_types`).
+
+**CLI surface:** 29 → 30 with new noun `strictness` inserted alphabetically between `sensitivity` and `surface` (`sensitivity` < `strictness`: `s` = `s` at position 0, `e` (101) < `t` (116) at position 1; `strictness` < `surface`: `s` = `s` at position 0, `t` (116) < `u` (117) at position 1).
+
+**Eval count:** 36 → 37 (new `output-schema-strictness-index-determinism` eval scenario).
+
+**Deferred successors:** `M-Strictness-Input-Schema-1` / `M-Strictness-Items-Object-1` / `M-Strictness-Schema-As-AdditionalProperties-1` / `M-Strictness-Per-Property-1` / `M-Strictness-Persistence-1` / `M-Strictness-Doc-Contradiction-1` / `M-Strictness-Runtime-Conformance-1`.
+
+**Constraint 39:** `tusq strictness index` is a planning aid that surfaces the JSON-Schema `output_schema.additionalProperties` boolean strictness for object-typed capability responses and the cross-axis side-effect/sensitivity exposure of each strictness bucket. It does NOT execute capability invocations at runtime, does NOT validate runtime response payloads against the declared strictness, does NOT generate strict-schema enforcement middleware (e.g., AJV strict-mode validators) or middleware-library recommendations, does NOT certify schema enforceability, does NOT alter M40's `output_schema.properties` cardinality bucketing rules, does NOT alter M42's top-level `output_schema.type` bucketing rules, does NOT alter M45's `output_schema.items.type` bucketing rules, does NOT walk schema-as-`additionalProperties` (`additionalProperties: { type: 'string' }` buckets as `unknown`; reserved for `M-Strictness-Schema-As-AdditionalProperties-1`), does NOT walk per-nested-property `additionalProperties` under nested object properties (reserved for `M-Strictness-Per-Property-1`), does NOT walk `items.additionalProperties` for array-of-object items (reserved for `M-Strictness-Items-Object-1`), does NOT bucket on `input_schema.additionalProperties` strictness (reserved for `M-Strictness-Input-Schema-1`), does NOT persist `output_schema_strictness` into `tusq.manifest.json`, and does NOT compute statistical aggregates. The four-value `output_schema_strictness` bucket-key enum (`strict | permissive | not_applicable | unknown`), the three-value `aggregation_key` enum (`strictness | not_applicable | unknown`), and the five-value warning reason-code enum are frozen; any addition is a material governance event. The `--strictness` filter is case-sensitive lowercase-only; uppercase or mixed-case filter values exit `1` with `Unknown output schema strictness:`. Malformed `output_schema`/non-boolean `additionalProperties` values are bucketed as `unknown` and emit a `Warning: ...` to stderr (human) or `warnings[]` (`--json`); the `not_applicable` bucket (`output_schema.type !== 'object'`) is a valid named bucket and emits NO warning.
 
 ### M45: Static Capability Output Schema Items Type Index
 

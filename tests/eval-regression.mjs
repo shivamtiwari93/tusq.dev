@@ -2043,6 +2043,8 @@ async function run() {
       await runDescriptionWordCountTierIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'output_schema_items_type_index_determinism') {
       await runOutputSchemaItemsTypeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'output_schema_strictness_index_determinism') {
+      await runOutputSchemaStrictnessIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -2234,6 +2236,107 @@ async function runOutputSchemaItemsTypeIndexDeterminismScenario(tmpRoot, scenari
     if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_items_type')) {
       fail(`${scenario.id}: output_schema_items_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
     }
+  }
+}
+
+async function runOutputSchemaStrictnessIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+
+  // Build a synthetic manifest from the scenario's capabilities
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: Object.prototype.hasOwnProperty.call(cap, 'method') ? cap.method : null,
+      path: cap.path || '/',
+      domain: Object.prototype.hasOwnProperty.call(cap, 'domain') ? cap.domain : null,
+      side_effect_class: Object.prototype.hasOwnProperty.call(cap, 'side_effect_class') ? cap.side_effect_class : null,
+      sensitivity_class: Object.prototype.hasOwnProperty.call(cap, 'sensitivity_class') ? cap.sensitivity_class : null,
+      approved: cap.approved === true,
+      auth_requirements: {
+        auth_scheme: cap.auth_scheme || 'unknown',
+        auth_scopes: [],
+        auth_roles: [],
+        evidence_source: cap.auth_scheme && cap.auth_scheme !== 'unknown' ? 'middleware_name' : 'none'
+      },
+      redaction: {
+        pii_fields: [],
+        pii_categories: []
+      }
+    };
+    // Propagate description field only if present in cap
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    // Propagate output_schema field only if present in cap
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema')) {
+      obj.output_schema = cap.output_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq strictness index --json three times and assert byte-identical output
+  const run1 = runCli(['strictness', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['strictness', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['strictness', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: strictness index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert output_schema_strictness bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validStrictnesses = new Set(scenario.expected_valid_output_schema_strictnesses);
+  for (const entry of index.strictnesses) {
+    if (!validStrictnesses.has(entry.output_schema_strictness)) {
+      fail(`${scenario.id}: output_schema_strictness '${entry.output_schema_strictness}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.strictnesses) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for strictness '${entry.output_schema_strictness}'`);
+    }
+  }
+
+  // Assert strictnesses appear in closed-enum order (strict → permissive → not_applicable → unknown)
+  const strictnessOrder = index.strictnesses.map((e) => e.output_schema_strictness).join(',');
+  if (strictnessOrder !== scenario.expected_strictness_order) {
+    fail(`${scenario.id}: strictnesses must appear in closed-enum order '${scenario.expected_strictness_order}'; got: ${strictnessOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (output_schema_strictness must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by strictness index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_strictness')) {
+      fail(`${scenario.id}: output_schema_strictness must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert schema-as-additionalProperties buckets as unknown (no_schema_cap has missing output_schema → unknown)
+  const unknownEntry = index.strictnesses.find((e) => e.output_schema_strictness === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing output_schema) must be in unknown bucket`);
   }
 }
 

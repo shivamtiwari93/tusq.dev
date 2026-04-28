@@ -562,6 +562,42 @@ The `tusq items index` command (M45) derives a per-bucket capability breakdown f
 
 **Non-persistence:** `output_schema_items_type` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq items index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
 
+### Output Schema Strictness Index
+
+The `tusq strictness index` command (M46) derives a per-bucket capability breakdown from each capability's `output_schema.additionalProperties` boolean field, for object-typed responses only. This axis is orthogonal to M40 (which counts `output_schema.properties` keys on object responses — "how many top-level keys?"), M42 (which buckets on `output_schema.type` top-level primitive — "what shape at all?"), and M45 (which buckets on `output_schema.items.type` per-element shape for array responses — "what's in each row?"). M46 measures, for object-typed responses only, whether the response schema is CLOSED (`additionalProperties === false`) or OPEN (`additionalProperties === true`) — a fundamentally different axis class (boolean strictness gate, not numeric tier, not categorical primitive type, not categorical locus class). Directly operationalizes VISION § Tools (lines 164–173) — "AI tools with **strict schemas**, normalized errors, dry-run and confirmation support, IAM context requirements, audit metadata, provenance back to source."
+
+**Tier function** (classification of `output_schema.additionalProperties`):
+
+| Bucket | Condition |
+|--------|-----------|
+| `strict` | `output_schema.type === 'object'` AND `output_schema.additionalProperties === false` |
+| `permissive` | `output_schema.type === 'object'` AND `output_schema.additionalProperties === true` |
+| `not_applicable` | `output_schema.type` is a string but not `'object'` (valid named bucket — emits NO warning) |
+| `unknown` | `output_schema` null/non-object/missing, `output_schema.type` non-string, or `output_schema.type === 'object'` with missing/non-boolean `additionalProperties` |
+
+**Boolean-only contract:** JSON-Schema 2020-12 allows `additionalProperties` as either a boolean or a schema object. M46 reads ONLY the boolean form. Schema-as-`additionalProperties` (e.g., `{ "type": "string" }`) buckets as `unknown` with reason `output_schema_additional_properties_not_boolean_when_type_is_object`. This is intentional and frozen. Schema-object `additionalProperties` walking is reserved for `M-Strictness-Schema-As-AdditionalProperties-1`.
+
+**Not-applicable is valid:** A capability with `output_schema.type === 'array'` (M45 array bucket) has no `additionalProperties` to evaluate at the top level. It lands in `not_applicable`, which is a valid named bucket and emits NO warning. Only the `unknown` bucket (malformed/missing `output_schema` or non-boolean `additionalProperties`) triggers warnings.
+
+**Malformed values:** Five frozen warning reason codes for the `unknown` bucket:
+- `output_schema_field_missing` — no `output_schema` key on the capability
+- `output_schema_field_not_object` — `output_schema` is not a plain non-null object
+- `output_schema_type_missing_or_invalid` — `output_schema.type` is missing, null, or not a string
+- `output_schema_additional_properties_missing_when_type_is_object` — `output_schema.type === 'object'` but `additionalProperties` key absent
+- `output_schema_additional_properties_not_boolean_when_type_is_object` — `output_schema.type === 'object'` and `additionalProperties` present but not a boolean (includes schema-as-`additionalProperties`)
+
+**No-walking rules:** Per-nested-property `additionalProperties` under `properties.x.additionalProperties` is NOT walked (reserved for `M-Strictness-Per-Property-1`); `output_schema.items.additionalProperties` for array-of-object items is NOT walked (reserved for `M-Strictness-Items-Object-1`); `input_schema.additionalProperties` strictness is reserved for `M-Strictness-Input-Schema-1`.
+
+**Bucket iteration order:** `strict → permissive → not_applicable → unknown` (closed-then-open boolean enumeration, falsy-first in JavaScript convention — deterministic stable-output convention only; NOT security-blast-radius-ranked, NOT strictness-precedence-ranked, NOT contract-quality-ranked, NOT tool-generation-safety-ranked).
+
+**Within-bucket ordering:** Capabilities appear in manifest declared order.
+
+**Case-sensitive `--strictness` filter:** Only lowercase values match. `--strictness STRICT` exits 1 with `Unknown output schema strictness: STRICT`.
+
+**Non-persistence:** `output_schema_strictness` is reviewer-aid metadata only and is NEVER persisted into `tusq.manifest.json`. The manifest is read-only during `tusq strictness index` — mtime, SHA-256, and all `capability_digest` values are byte-identical before and after the command.
+
+**Orthogonality summary:** M40 = how many properties (numeric tier); M42 = what top-level type (categorical primitive); M45 = what items type for array responses (categorical locus); M46 = is the object-typed response schema strict or permissive (boolean strictness gate). These four axes are independent aggregation dimensions on the same `output_schema` field.
+
 ### Path Segment Count Tier Index
 
 The `tusq path index` command (M41) derives a per-tier capability breakdown from each capability's `path` URL string field, as populated by the M11/M14 route-extraction pipeline from Express `app.<verb>(<path>, ...)` literals, Fastify route `url` strings, and equivalent framework adapters.

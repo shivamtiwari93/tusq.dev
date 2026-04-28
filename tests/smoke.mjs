@@ -3824,15 +3824,15 @@ async function run() {
     throw new Error(`M45(w): object bucket must have has_restricted_or_confidential_sensitivity=true (delete_batch_array is restricted); got: ${JSON.stringify(m45ObjectEntry)}`);
   }
 
-  // M45(x): markdown is NOT stripped + tusq help enumerates 29 commands + planning-aid framing + unknown subcommand exits 1
-  // tusq help enumerates 29 commands including 'items'
+  // M45(x): markdown is NOT stripped + tusq help enumerates 30 commands + planning-aid framing + unknown subcommand exits 1
+  // tusq help enumerates 30 commands including 'items'
   const m45HelpOutput = runCli(['help'], { cwd: m45TmpDir });
   if (!m45HelpOutput.stdout.includes('items')) {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 29) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 29 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 30) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 30 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -3856,6 +3856,487 @@ async function run() {
   }
 
   await fs.rm(m45TmpDir, { recursive: true, force: true });
+
+  // ── M46: Static Capability Output Schema additionalProperties Strictness Index Export ──
+  const m46TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m46-smoke-'));
+
+  // M46 fixture manifest: capabilities across strict/permissive/not_applicable/unknown buckets.
+  // Declared order:
+  //   get_strict (strict — output_schema={type:"object",additionalProperties:false}, gated — unapproved)
+  //   delete_strict_destructive (strict — output_schema={type:"object",additionalProperties:false}, destructive+restricted+approved — cross-axis flags)
+  //   get_permissive (permissive — output_schema={type:"object",additionalProperties:true}, public+approved)
+  //   post_permissive (permissive — output_schema={type:"object",additionalProperties:true}, write+internal+approved)
+  //   get_array_cap (not_applicable — output_schema={type:"array",items:{type:"object"}}, unapproved — no warning)
+  //   no_schema_cap (unknown — missing output_schema → output_schema_field_missing)
+  //   bad_schema_cap (unknown — output_schema="a string" → output_schema_field_not_object)
+  //   no_type_cap (unknown — output_schema={} → output_schema_type_missing_or_invalid)
+  //   obj_no_ap_cap (unknown — output_schema={type:"object"} → output_schema_additional_properties_missing_when_type_is_object)
+  //   obj_schema_ap_cap (unknown — output_schema={type:"object",additionalProperties:{type:"string"}} → output_schema_additional_properties_not_boolean_when_type_is_object)
+  const m46Manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-27T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'get_strict',
+        description: 'Get strict schema resource',
+        method: 'GET',
+        path: '/api/v1/strict',
+        domain: 'strict',
+        side_effect_class: 'read',
+        sensitivity_class: 'internal',
+        approved: false,
+        capability_digest: 'aaa',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', additionalProperties: false }
+        // → strict bucket
+      },
+      {
+        name: 'delete_strict_destructive',
+        description: 'Delete strict destructive resource',
+        method: 'DELETE',
+        path: '/api/v1/strict/:id',
+        domain: 'strict',
+        side_effect_class: 'destructive',
+        sensitivity_class: 'restricted',
+        approved: true,
+        capability_digest: 'bbb',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', additionalProperties: false }
+        // → strict bucket (cross-axis: destructive + restricted)
+      },
+      {
+        name: 'get_permissive',
+        description: 'Get permissive schema resource',
+        method: 'GET',
+        path: '/api/v1/permissive',
+        domain: 'permissive',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ccc',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', additionalProperties: true }
+        // → permissive bucket
+      },
+      {
+        name: 'post_permissive',
+        description: 'Create permissive schema resource',
+        method: 'POST',
+        path: '/api/v1/permissive',
+        domain: 'permissive',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        capability_digest: 'ddd',
+        auth_requirements: { auth_scheme: 'bearer', auth_scopes: [], auth_roles: [], evidence_source: 'middleware_name' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', additionalProperties: true }
+        // → permissive bucket
+      },
+      {
+        name: 'get_array_cap',
+        description: 'Get array of resources',
+        method: 'GET',
+        path: '/api/v1/array',
+        domain: 'array',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: false,
+        capability_digest: 'eee',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'array', items: { type: 'object' } }
+        // → not_applicable bucket (output_schema.type !== 'object' → no warning)
+      },
+      {
+        name: 'no_schema_cap',
+        description: 'No output schema',
+        method: 'GET',
+        path: '/api/v1/noschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'fff',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] }
+        // output_schema field absent → output_schema_field_missing
+      },
+      {
+        name: 'bad_schema_cap',
+        description: 'Bad output schema type',
+        method: 'GET',
+        path: '/api/v1/badschema',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'ggg',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: 'a string'
+        // output_schema is a string (not object) → output_schema_field_not_object
+      },
+      {
+        name: 'no_type_cap',
+        description: 'Output schema missing type field',
+        method: 'GET',
+        path: '/api/v1/notype',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'hhh',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: {}
+        // output_schema.type is missing (not a string) → output_schema_type_missing_or_invalid
+      },
+      {
+        name: 'obj_no_ap_cap',
+        description: 'Object output schema missing additionalProperties',
+        method: 'GET',
+        path: '/api/v1/noap',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'iii',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object' }
+        // output_schema.type === 'object' but additionalProperties missing → output_schema_additional_properties_missing_when_type_is_object
+      },
+      {
+        name: 'obj_schema_ap_cap',
+        description: 'Object output schema with schema-as-additionalProperties',
+        method: 'GET',
+        path: '/api/v1/schemaap',
+        domain: 'ops',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        capability_digest: 'jjj',
+        auth_requirements: { auth_scheme: 'none', auth_scopes: [], auth_roles: [], evidence_source: 'none' },
+        redaction: { pii_fields: [], pii_categories: [] },
+        output_schema: { type: 'object', additionalProperties: { type: 'string' } }
+        // additionalProperties is an object (schema), not a boolean → output_schema_additional_properties_not_boolean_when_type_is_object
+      }
+    ]
+  };
+
+  const m46ManifestPath = path.join(m46TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m46ManifestPath, JSON.stringify(m46Manifest, null, 2), 'utf8');
+  await fs.writeFile(path.join(m46TmpDir, 'tusq.config.json'), JSON.stringify({ schema_version: '1.0', framework: 'express' }), 'utf8');
+
+  // M46(a): default tusq strictness index produces exit 0 and per-bucket entries in closed-enum order
+  const m46DefaultResult = runCli(['strictness', 'index', '--manifest', m46ManifestPath], { cwd: m46TmpDir });
+  if (!m46DefaultResult.stdout.includes('[strict]') || !m46DefaultResult.stdout.includes('[permissive]') || !m46DefaultResult.stdout.includes('[not_applicable]') || !m46DefaultResult.stdout.includes('[unknown]')) {
+    throw new Error(`M46(a): default index must include all present buckets:\n${m46DefaultResult.stdout}`);
+  }
+  if (!m46DefaultResult.stdout.includes('planning aid')) {
+    throw new Error(`M46(a): default index must include planning-aid framing:\n${m46DefaultResult.stdout}`);
+  }
+  // Verify closed-enum order: strict < permissive < not_applicable < unknown
+  const m46DefaultLines = m46DefaultResult.stdout.split('\n');
+  const m46StrictPos = m46DefaultLines.findIndex((l) => l === '[strict]');
+  const m46PermissivePos = m46DefaultLines.findIndex((l) => l === '[permissive]');
+  const m46NotApplicablePos = m46DefaultLines.findIndex((l) => l === '[not_applicable]');
+  const m46UnknownPos = m46DefaultLines.findIndex((l) => l === '[unknown]');
+  if (!(m46StrictPos < m46PermissivePos && m46PermissivePos < m46NotApplicablePos && m46NotApplicablePos < m46UnknownPos)) {
+    throw new Error(`M46(a): bucket order must be strict < permissive < not_applicable < unknown; got positions strict=${m46StrictPos} permissive=${m46PermissivePos} not_applicable=${m46NotApplicablePos} unknown=${m46UnknownPos}`);
+  }
+
+  // M46(b): --json output has all 8 per-bucket fields, top-level shape, strictnesses[] field name, and warnings[] always present
+  const m46Json1 = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46IndexJson = JSON.parse(m46Json1.stdout);
+  if (!Array.isArray(m46IndexJson.strictnesses) || m46IndexJson.strictnesses.length === 0) {
+    throw new Error(`M46(b): JSON output must have strictnesses[] array with at least one entry:\n${m46Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m46IndexJson, 'tiers')) {
+    throw new Error(`M46(b): JSON output must NOT have a tiers[] field (that is M44); field name must be strictnesses[]:\n${m46Json1.stdout}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(m46IndexJson, 'items_types')) {
+    throw new Error(`M46(b): JSON output must NOT have an items_types[] field (that is M45); field name must be strictnesses[]:\n${m46Json1.stdout}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m46IndexJson, 'warnings') || !Array.isArray(m46IndexJson.warnings)) {
+    throw new Error(`M46(b): JSON output must have top-level warnings[] array:\n${m46Json1.stdout}`);
+  }
+  // Validate all 8 per-bucket fields
+  for (const entry of m46IndexJson.strictnesses) {
+    const required8 = ['output_schema_strictness', 'aggregation_key', 'capability_count', 'capabilities', 'approved_count', 'gated_count', 'has_destructive_side_effect', 'has_restricted_or_confidential_sensitivity'];
+    for (const field of required8) {
+      if (!Object.prototype.hasOwnProperty.call(entry, field)) {
+        throw new Error(`M46(b): per-bucket entry missing required field '${field}':\n${JSON.stringify(entry)}`);
+      }
+    }
+  }
+
+  // M46(c): --strictness not_applicable returns single matching bucket (no warning)
+  const m46NotApResult = runCli(['strictness', 'index', '--strictness', 'not_applicable', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46NotApJson = JSON.parse(m46NotApResult.stdout);
+  if (m46NotApJson.strictnesses.length !== 1 || m46NotApJson.strictnesses[0].output_schema_strictness !== 'not_applicable') {
+    throw new Error(`M46(c): --strictness not_applicable must return single not_applicable bucket:\n${m46NotApResult.stdout}`);
+  }
+  if (m46NotApJson.strictnesses[0].aggregation_key !== 'not_applicable') {
+    throw new Error(`M46(c): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m46NotApJson.strictnesses[0])}`);
+  }
+
+  // M46(d): --strictness strict returns single matching bucket with correct cross-axis flags
+  const m46StrictResult = runCli(['strictness', 'index', '--strictness', 'strict', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46StrictJson = JSON.parse(m46StrictResult.stdout);
+  if (m46StrictJson.strictnesses.length !== 1 || m46StrictJson.strictnesses[0].output_schema_strictness !== 'strict') {
+    throw new Error(`M46(d): --strictness strict must return single strict bucket:\n${m46StrictResult.stdout}`);
+  }
+  if (m46StrictJson.strictnesses[0].aggregation_key !== 'strictness') {
+    throw new Error(`M46(d): strict bucket must have aggregation_key 'strictness':\n${JSON.stringify(m46StrictJson.strictnesses[0])}`);
+  }
+  if (!m46StrictJson.strictnesses[0].has_destructive_side_effect) {
+    throw new Error(`M46(d): strict bucket must have has_destructive_side_effect=true (delete_strict_destructive is destructive):\n${JSON.stringify(m46StrictJson.strictnesses[0])}`);
+  }
+  if (!m46StrictJson.strictnesses[0].has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M46(d): strict bucket must have has_restricted_or_confidential_sensitivity=true (delete_strict_destructive is restricted):\n${JSON.stringify(m46StrictJson.strictnesses[0])}`);
+  }
+
+  // M46(e): --strictness permissive returns single matching bucket
+  const m46PermResult = runCli(['strictness', 'index', '--strictness', 'permissive', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46PermJson = JSON.parse(m46PermResult.stdout);
+  if (m46PermJson.strictnesses.length !== 1 || m46PermJson.strictnesses[0].output_schema_strictness !== 'permissive') {
+    throw new Error(`M46(e): --strictness permissive must return single permissive bucket:\n${m46PermResult.stdout}`);
+  }
+  if (m46PermJson.strictnesses[0].aggregation_key !== 'strictness') {
+    throw new Error(`M46(e): permissive bucket must have aggregation_key 'strictness':\n${JSON.stringify(m46PermJson.strictnesses[0])}`);
+  }
+
+  // M46(f): --strictness unknown returns single matching bucket
+  const m46UnkResult = runCli(['strictness', 'index', '--strictness', 'unknown', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46UnkJson = JSON.parse(m46UnkResult.stdout);
+  if (m46UnkJson.strictnesses.length !== 1 || m46UnkJson.strictnesses[0].output_schema_strictness !== 'unknown') {
+    throw new Error(`M46(f): --strictness unknown must return single unknown bucket:\n${m46UnkResult.stdout}`);
+  }
+  if (m46UnkJson.strictnesses[0].aggregation_key !== 'unknown') {
+    throw new Error(`M46(f): unknown bucket must have aggregation_key 'unknown':\n${JSON.stringify(m46UnkJson.strictnesses[0])}`);
+  }
+
+  // M46(g): --strictness STRICT (uppercase) exits 1 with case-sensitivity error and empty stdout
+  const m46UpperResult = runCli(['strictness', 'index', '--strictness', 'STRICT', '--manifest', m46ManifestPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46UpperResult.stderr.includes('Unknown output schema strictness: STRICT') || m46UpperResult.stdout !== '') {
+    throw new Error(`M46(g): uppercase --strictness STRICT must exit 1 with error on stderr, empty stdout:\nstdout=${m46UpperResult.stdout}\nstderr=${m46UpperResult.stderr}`);
+  }
+
+  // M46(h): --strictness Permissive (mixed-case) exits 1
+  const m46MixedResult = runCli(['strictness', 'index', '--strictness', 'Permissive', '--manifest', m46ManifestPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46MixedResult.stderr.includes('Unknown output schema strictness: Permissive') || m46MixedResult.stdout !== '') {
+    throw new Error(`M46(h): mixed-case --strictness must exit 1:\nstdout=${m46MixedResult.stdout}\nstderr=${m46MixedResult.stderr}`);
+  }
+
+  // M46(i): --strictness xyz (unknown value) exits 1
+  const m46UnknownVal = runCli(['strictness', 'index', '--strictness', 'xyz', '--manifest', m46ManifestPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46UnknownVal.stderr.includes('Unknown output schema strictness: xyz') || m46UnknownVal.stdout !== '') {
+    throw new Error(`M46(i): unknown --strictness xyz must exit 1:\nstdout=${m46UnknownVal.stdout}\nstderr=${m46UnknownVal.stderr}`);
+  }
+
+  // M46(j): missing manifest exits 1 with error on stderr and empty stdout
+  const m46MissingManifest = runCli(['strictness', 'index', '--manifest', '/nonexistent/tusq.manifest.json'], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46MissingManifest.stderr.includes('Manifest not found') || m46MissingManifest.stdout !== '') {
+    throw new Error(`M46(j): missing manifest must exit 1 with error on stderr, empty stdout:\nstdout=${m46MissingManifest.stdout}\nstderr=${m46MissingManifest.stderr}`);
+  }
+
+  // M46(k): malformed JSON manifest exits 1 with error on stderr and empty stdout
+  const m46BadJsonPath = path.join(m46TmpDir, 'bad.json');
+  await fs.writeFile(m46BadJsonPath, 'not json', 'utf8');
+  const m46MalformedManifest = runCli(['strictness', 'index', '--manifest', m46BadJsonPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46MalformedManifest.stderr.includes('Invalid manifest JSON') || m46MalformedManifest.stdout !== '') {
+    throw new Error(`M46(k): malformed JSON must exit 1 with error on stderr, empty stdout:\nstdout=${m46MalformedManifest.stdout}\nstderr=${m46MalformedManifest.stderr}`);
+  }
+
+  // M46(l): manifest missing capabilities array exits 1
+  const m46NoCapPath = path.join(m46TmpDir, 'nocap.json');
+  await fs.writeFile(m46NoCapPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m46NoCapManifest = runCli(['strictness', 'index', '--manifest', m46NoCapPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46NoCapManifest.stderr.includes('missing capabilities array') || m46NoCapManifest.stdout !== '') {
+    throw new Error(`M46(l): missing capabilities must exit 1 with error on stderr, empty stdout:\nstdout=${m46NoCapManifest.stdout}\nstderr=${m46NoCapManifest.stderr}`);
+  }
+
+  // M46(m): unknown flag exits 1 with error on stderr and empty stdout
+  const m46UnknownFlag = runCli(['strictness', 'index', '--unknown-flag', '--manifest', m46ManifestPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46UnknownFlag.stderr.includes('Unknown flag: --unknown-flag') || m46UnknownFlag.stdout !== '') {
+    throw new Error(`M46(m): unknown flag must exit 1 with error on stderr, empty stdout:\nstdout=${m46UnknownFlag.stdout}\nstderr=${m46UnknownFlag.stderr}`);
+  }
+
+  // M46(n): --strictness with no value exits 1
+  const m46NoValue = runCli(['strictness', 'index', '--strictness', '--manifest', m46ManifestPath], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46NoValue.stderr.includes('Missing value for --strictness') || m46NoValue.stdout !== '') {
+    throw new Error(`M46(n): --strictness with no value must exit 1:\nstdout=${m46NoValue.stdout}\nstderr=${m46NoValue.stderr}`);
+  }
+
+  // M46(o): --out <valid path> writes correctly and stdout is empty
+  const m46OutPath = path.join(m46TmpDir, 'strictness-out.json');
+  const m46OutResult = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--out', m46OutPath], { cwd: m46TmpDir });
+  if (m46OutResult.stdout !== '') {
+    throw new Error(`M46(o): --out must produce empty stdout:\nstdout=${m46OutResult.stdout}`);
+  }
+  const m46OutContent = JSON.parse(await fs.readFile(m46OutPath, 'utf8'));
+  if (!Array.isArray(m46OutContent.strictnesses)) {
+    throw new Error(`M46(o): --out file must contain valid JSON with strictnesses[] array:\n${JSON.stringify(m46OutContent)}`);
+  }
+
+  // M46(p): --out .tusq/ path rejected with correct message and empty stdout
+  const m46TusqOutResult = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--out', '.tusq/strictness.json'], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m46TusqOutResult.stdout !== '') {
+    throw new Error(`M46(p): --out .tusq/ must exit 1 with correct message:\nstdout=${m46TusqOutResult.stdout}\nstderr=${m46TusqOutResult.stderr}`);
+  }
+
+  // M46(q): --json outputs valid JSON with strictnesses[] and warnings[] present (clean manifest)
+  // Use canonical express fixture (not_applicable + permissive buckets, no warnings)
+  const m46ExpressResult = runCli(['strictness', 'index', '--manifest', 'tests/fixtures/express-sample/tusq.manifest.json', '--json'], { cwd: process.cwd() });
+  const m46ExpressJson = JSON.parse(m46ExpressResult.stdout);
+  if (!Array.isArray(m46ExpressJson.strictnesses)) {
+    throw new Error(`M46(q): express fixture JSON must have strictnesses[] array:\n${m46ExpressResult.stdout}`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(m46ExpressJson, 'warnings') || !Array.isArray(m46ExpressJson.warnings)) {
+    throw new Error(`M46(q): express fixture JSON must have warnings[] array:\n${m46ExpressResult.stdout}`);
+  }
+  if (m46ExpressJson.warnings.length !== 0) {
+    throw new Error(`M46(q): express fixture must produce zero warnings (all caps have valid output_schema strictness or not_applicable):\n${JSON.stringify(m46ExpressJson.warnings)}`);
+  }
+  // Express fixture: get_users_users→not_applicable; get_users_api_v1_users_id→permissive; post_users_users→permissive
+  const m46NotApBucket = m46ExpressJson.strictnesses.find((e) => e.output_schema_strictness === 'not_applicable');
+  if (!m46NotApBucket || !m46NotApBucket.capabilities.includes('get_users_users')) {
+    throw new Error(`M46(q): express fixture not_applicable bucket must include get_users_users:\n${JSON.stringify(m46ExpressJson.strictnesses)}`);
+  }
+  const m46PermBucket = m46ExpressJson.strictnesses.find((e) => e.output_schema_strictness === 'permissive');
+  if (!m46PermBucket || !m46PermBucket.capabilities.includes('get_users_api_v1_users_id') || !m46PermBucket.capabilities.includes('post_users_users')) {
+    throw new Error(`M46(q): express fixture permissive bucket must include get_users_api_v1_users_id and post_users_users:\n${JSON.stringify(m46ExpressJson.strictnesses)}`);
+  }
+
+  // M46(r): determinism — three consecutive runs produce byte-identical stdout
+  const m46Det1 = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46Det2 = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46Det3 = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  if (m46Det1.stdout !== m46Det2.stdout || m46Det2.stdout !== m46Det3.stdout) {
+    throw new Error(`M46(r): strictness index --json must be byte-identical across three consecutive runs`);
+  }
+
+  // M46(s): manifest mtime + content invariant pre/post index run + non-persistence (output_schema_strictness not written)
+  const m46ManifestBefore = await fs.readFile(m46ManifestPath, 'utf8');
+  const m46StatBefore = await fs.stat(m46ManifestPath);
+  runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46ManifestAfter = await fs.readFile(m46ManifestPath, 'utf8');
+  const m46StatAfter = await fs.stat(m46ManifestPath);
+  if (m46ManifestBefore !== m46ManifestAfter) {
+    throw new Error(`M46(s): manifest must not be mutated by strictness index`);
+  }
+  if (m46StatBefore.mtimeMs !== m46StatAfter.mtimeMs) {
+    throw new Error(`M46(s): manifest mtime must not change after strictness index run`);
+  }
+  const m46ManifestParsed = JSON.parse(m46ManifestAfter);
+  for (const cap of m46ManifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'output_schema_strictness')) {
+      throw new Error(`M46(s): output_schema_strictness must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M46(t): empty-capabilities manifest emits documented human line and strictnesses: [] in JSON, warnings: [] in JSON
+  const m46EmptyManifestPath = path.join(m46TmpDir, 'empty.json');
+  await fs.writeFile(m46EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-27T00:00:00.000Z', capabilities: [] }), 'utf8');
+  const m46EmptyHuman = runCli(['strictness', 'index', '--manifest', m46EmptyManifestPath], { cwd: m46TmpDir });
+  if (!m46EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M46(t): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m46EmptyHuman.stdout}`);
+  }
+  const m46EmptyJson = runCli(['strictness', 'index', '--manifest', m46EmptyManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46EmptyJsonParsed = JSON.parse(m46EmptyJson.stdout);
+  if (!Array.isArray(m46EmptyJsonParsed.strictnesses) || m46EmptyJsonParsed.strictnesses.length !== 0) {
+    throw new Error(`M46(t): empty capabilities (JSON) must have strictnesses: []:\n${m46EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(m46EmptyJsonParsed.warnings) || m46EmptyJsonParsed.warnings.length !== 0) {
+    throw new Error(`M46(t): empty capabilities (JSON) must have warnings: []:\n${m46EmptyJson.stdout}`);
+  }
+
+  // M46(u): malformed output_schema capabilities produce all 5 warning reason codes in warnings[] and on stderr
+  const m46AllWarnings = runCli(['strictness', 'index', '--manifest', m46ManifestPath, '--json'], { cwd: m46TmpDir });
+  const m46AllWarningsJson = JSON.parse(m46AllWarnings.stdout);
+  const m46ExpectedReasons = [
+    'output_schema_field_missing',
+    'output_schema_field_not_object',
+    'output_schema_type_missing_or_invalid',
+    'output_schema_additional_properties_missing_when_type_is_object',
+    'output_schema_additional_properties_not_boolean_when_type_is_object'
+  ];
+  for (const reason of m46ExpectedReasons) {
+    if (!m46AllWarningsJson.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M46(u): warnings[] must include reason '${reason}':\n${JSON.stringify(m46AllWarningsJson.warnings)}`);
+    }
+  }
+  // not_applicable bucket must NOT produce a warning (get_array_cap has output_schema.type='array' → not_applicable, no warning)
+  if (m46AllWarningsJson.warnings.some((w) => w.capability === 'get_array_cap')) {
+    throw new Error(`M46(u): get_array_cap (not_applicable) must NOT produce a warning:\n${JSON.stringify(m46AllWarningsJson.warnings)}`);
+  }
+  // Human mode: verify warnings on stderr
+  const m46HumanWarnings = runCli(['strictness', 'index', '--manifest', m46ManifestPath], { cwd: m46TmpDir });
+  if (!m46HumanWarnings.stderr.includes('has malformed output_schema strictness')) {
+    throw new Error(`M46(u): human mode must emit warning to stderr:\nstderr=${m46HumanWarnings.stderr}`);
+  }
+
+  // M46(v): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'strictness', 'not_applicable', 'unknown'}
+  const m46ValidAggKeys = new Set(['strictness', 'not_applicable', 'unknown']);
+  for (const entry of m46IndexJson.strictnesses) {
+    if (!m46ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M46(v): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  // strict and permissive buckets must have aggregation_key 'strictness'
+  const m46StrictEntry = m46IndexJson.strictnesses.find((e) => e.output_schema_strictness === 'strict');
+  const m46PermEntry = m46IndexJson.strictnesses.find((e) => e.output_schema_strictness === 'permissive');
+  if (!m46StrictEntry || m46StrictEntry.aggregation_key !== 'strictness') {
+    throw new Error(`M46(v): strict bucket must have aggregation_key 'strictness':\n${JSON.stringify(m46StrictEntry)}`);
+  }
+  if (!m46PermEntry || m46PermEntry.aggregation_key !== 'strictness') {
+    throw new Error(`M46(v): permissive bucket must have aggregation_key 'strictness':\n${JSON.stringify(m46PermEntry)}`);
+  }
+
+  // M46(w): cross-axis flags: strict bucket has delete_strict_destructive (destructive + restricted) → both flags true
+  if (!m46StrictEntry.has_destructive_side_effect || !m46StrictEntry.has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M46(w): strict bucket must have has_destructive_side_effect=true and has_restricted_or_confidential_sensitivity=true (delete_strict_destructive is destructive+restricted):\n${JSON.stringify(m46StrictEntry)}`);
+  }
+  // permissive bucket has only non-destructive, non-restricted caps → both flags false
+  if (m46PermEntry.has_destructive_side_effect || m46PermEntry.has_restricted_or_confidential_sensitivity) {
+    throw new Error(`M46(w): permissive bucket must have has_destructive_side_effect=false and has_restricted_or_confidential_sensitivity=false:\n${JSON.stringify(m46PermEntry)}`);
+  }
+
+  // M46(x): schema-as-additionalProperties (additionalProperties: { type: 'string' }) buckets as unknown
+  // + tusq help enumerates 30 commands + planning-aid framing + unknown subcommand exits 1
+  const m46SchemaApEntry = m46IndexJson.strictnesses.find((e) => e.output_schema_strictness === 'unknown');
+  if (!m46SchemaApEntry || !m46SchemaApEntry.capabilities.includes('obj_schema_ap_cap')) {
+    throw new Error(`M46(x): schema-as-additionalProperties must bucket as 'unknown' (obj_schema_ap_cap expected in unknown bucket):\n${JSON.stringify(m46IndexJson.strictnesses)}`);
+  }
+  // Also verify 'obj_schema_ap_cap' has the correct warning reason
+  const m46SchemaApWarning = m46AllWarningsJson.warnings.find((w) => w.capability === 'obj_schema_ap_cap');
+  if (!m46SchemaApWarning || m46SchemaApWarning.reason !== 'output_schema_additional_properties_not_boolean_when_type_is_object') {
+    throw new Error(`M46(x): obj_schema_ap_cap must have warning reason 'output_schema_additional_properties_not_boolean_when_type_is_object':\n${JSON.stringify(m46SchemaApWarning)}`);
+  }
+  // Help text enumerates 30 commands
+  const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
+  const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m46HelpCommandCount !== 30) {
+    throw new Error(`M46(x): tusq help must enumerate 30 commands (M46 adds 'strictness'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  }
+  // strictness index help includes planning-aid framing
+  const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
+  if (!m46IndexHelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M46(x): strictness index help must include planning-aid framing:\n${m46IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m46UnknownSubCmd = runCli(['strictness', 'bogusub'], { cwd: m46TmpDir, expectedStatus: 1 });
+  if (!m46UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m46UnknownSubCmd.stdout !== '') {
+    throw new Error(`M46(x): unknown subcommand must exit 1:\nstdout=${m46UnknownSubCmd.stdout}\nstderr=${m46UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m46TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -4324,8 +4805,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 29) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 29 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 30) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 30 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -4862,8 +5343,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 29) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 29 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 30) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 30 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -5411,8 +5892,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 29) {
-    throw new Error(`M42: tusq help must enumerate exactly 29 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 30) {
+    throw new Error(`M42: tusq help must enumerate exactly 30 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -5957,8 +6438,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 29) {
-    throw new Error(`M41: tusq help must enumerate exactly 29 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 30) {
+    throw new Error(`M41: tusq help must enumerate exactly 30 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -6512,8 +6993,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 29) {
-    throw new Error(`M40: tusq help must enumerate exactly 29 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 30) {
+    throw new Error(`M40: tusq help must enumerate exactly 30 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -6978,14 +7459,14 @@ async function run() {
     throw new Error(`M39: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m39NoneEntry ? m39NoneEntry.capabilities : null)}`);
   }
 
-  // M39: tusq help enumerates 29 commands including 'input' (M40/M41/M42/M43/M45 ship in this run)
+  // M39: tusq help enumerates 30 commands including 'input' (M40/M41/M42/M43/M45 ship in this run)
   const m39HelpOutput = runCli(['help'], { cwd: m39TmpDir });
   if (!m39HelpOutput.stdout.includes('input')) {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 29) {
-    throw new Error(`M39: tusq help must enumerate exactly 29 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 30) {
+    throw new Error(`M39: tusq help must enumerate exactly 30 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -7449,14 +7930,14 @@ async function run() {
     throw new Error(`M38: within none bucket, capabilities must follow manifest declared order (health_check, list_orders); got: ${JSON.stringify(m38NoneEntry ? m38NoneEntry.capabilities : null)}`);
   }
 
-  // M38: tusq help enumerates 29 commands including 'examples' (M39/M40/M41/M42/M43/M45 ship in this run)
+  // M38: tusq help enumerates 30 commands including 'examples' (M39/M40/M41/M42/M43/M45 ship in this run)
   const m38HelpOutput = runCli(['help'], { cwd: m38TmpDir });
   if (!m38HelpOutput.stdout.includes('examples')) {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 29) {
-    throw new Error(`M38: tusq help must enumerate exactly 29 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 30) {
+    throw new Error(`M38: tusq help must enumerate exactly 30 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -7932,14 +8413,14 @@ async function run() {
     throw new Error(`M37: pii index help must include planning-aid framing:\n${m37HelpResult.stdout}`);
   }
 
-  // M37: tusq help enumerates 29 commands including 'pii' (M38/M39/M40/M41/M42/M43/M45 ship in this run)
+  // M37: tusq help enumerates 30 commands including 'pii' (M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m37HelpOutput = runCli(['help'], { cwd: m37TmpDir });
   if (!m37HelpOutput.stdout.includes('pii')) {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 29) {
-    throw new Error(`M37: tusq help must enumerate exactly 29 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 30) {
+    throw new Error(`M37: tusq help must enumerate exactly 30 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -8390,14 +8871,14 @@ async function run() {
     throw new Error(`M36: confidence index help must include planning-aid framing:\n${m36HelpResult.stdout}`);
   }
 
-  // M36: tusq help enumerates 29 commands including 'confidence' (M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
+  // M36: tusq help enumerates 30 commands including 'confidence' (M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m36HelpOutput = runCli(['help'], { cwd: m36TmpDir });
   if (!m36HelpOutput.stdout.includes('confidence')) {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 29) {
-    throw new Error(`M36: tusq help must enumerate exactly 29 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 30) {
+    throw new Error(`M36: tusq help must enumerate exactly 30 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -8783,14 +9264,14 @@ async function run() {
     throw new Error(`M35: auth index help must include planning-aid framing:\n${m35HelpResult.stdout}`);
   }
 
-  // M35: tusq help enumerates 29 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', 'request', 'response', and 'items' (M36/M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
+  // M35: tusq help enumerates 30 commands including 'auth', 'confidence', 'pii', 'examples', 'input', 'output', 'path', 'request', 'response', and 'items' (M36/M37/M38/M39/M40/M41/M42/M43/M45 ship in this run)
   const m35HelpOutput = runCli(['help'], { cwd: m35TmpDir });
   if (!m35HelpOutput.stdout.includes('auth')) {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 29) {
-    throw new Error(`M35: tusq help must enumerate exactly 29 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 30) {
+    throw new Error(`M35: tusq help must enumerate exactly 30 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });
