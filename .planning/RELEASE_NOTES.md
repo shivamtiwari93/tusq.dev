@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M49 (turn_cbc4204c2b1db778, run_9a2f6448e2199cda, 2026-04-28, HEAD 8801282)
+
+**Milestone:** M49 — Static Capability Input Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.30
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_a71ef526db35c329, role=dev). HEAD 8801282 = M49 implementation checkpoint. All M49 implementation (src/cli.js, tests/smoke.mjs, 40 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (40 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaFirstPropertyTypeBucketKey` at src/cli.js:5718 and `_guardInputSchemaFirstPropertyTypeAggregationKey` at src/cli.js:5725 pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 33. `node bin/tusq.js signature index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_types[]` with `string` bucket (get_users_api_v1_users_id; aggregation_key `"first_property_type"`), `object` bucket (post_users_users; aggregation_key `"first_property_type"`), and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js signature index --first-type STRING --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js signature index --first-type boolean --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-bucket. `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet HEAD -- tests/fixtures/` → exit 0 (zero fixture mutation).
+
+**Acceptance criteria:** 614 total (REQ-001–REQ-614). Added REQ-590–REQ-614 (25 new M49 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_a71ef526db35c329 upheld — 9 dev-owned files correctly modified (`git diff f0fea4b..8801282 --name-only`; no manifest-format.md change because M49 is non-persistent), all 5 dev decisions sound, M49 implementation complete and correct.
+
+**Key M49 features:** `tusq signature index` command added (33rd CLI command); `first_property_types[]` result field (matches M48 verbatim); nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown); three-value aggregation_key enum (first_property_type/not_applicable/unknown) matching M48 precedent; per-bucket field name `input_schema_first_property_type` (distinct from M48's `output_schema_first_property_type`); `not_applicable` bucket covers both non-object inputs (input_schema.type !== 'object') and zero-property object inputs — emits NO warning; five frozen warning reason codes including `input_schema_properties_first_property_descriptor_invalid`; bucket order string→number→integer→boolean→null→object→array→not_applicable→unknown (scalar-primitives-first convention matching M48); eval count 39→40; `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER` frozen array excludes `unknown` (always appended last dynamically). Critical distinction from M48 (shape): post_users_users lands in `object` bucket for input (body param type) vs `boolean` bucket for output (M48 response first property type) — confirms correct input-vs-output side separation.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Verification — M48 (turn_3795b2905fff720e, run_f61946531dda2fe6, 2026-04-28, HEAD c5eef25)
 
 **Milestone:** M48 — Static Capability Output Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.29

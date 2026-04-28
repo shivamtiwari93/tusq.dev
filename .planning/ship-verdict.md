@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_cbc4204c2b1db778 (role=qa, run_9a2f6448e2199cda, M49 verification, 2026-04-28)
+
+This QA turn challenges the prior accepted dev turn (turn_a71ef526db35c329, role=dev, HEAD 8801282) for run_9a2f6448e2199cda independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff f0fea4b..8801282 --name-only` → 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Note: `website/docs/manifest-format.md` is NOT in this diff (M49 does not modify the manifest format schema — input_schema_first_property_type is intentionally non-persistent by design). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound (4 PM-owned files correctly changed), M49 constants added at correct locations (INPUT_SCHEMA_FIRST_PROPERTY_TYPE_ENUM at src/cli.js:370, PRIMITIVE_VALUE_SET at src/cli.js:374, AGGREGATION_KEY_ENUM at src/cli.js:379, BUCKET_ORDER at src/cli.js:386), `signature` noun inserted between `shape` and `strictness`, non-persistence of `input_schema_first_property_type` confirmed, `first_property_types` field name matches M48 precedent verbatim, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (40 scenarios)`. Independently re-run; 40 scenarios confirmed (39 prior + 1 M49 input-schema-first-property-type-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaFirstPropertyTypeBucketKey` (src/cli.js:5718) and `_guardInputSchemaFirstPropertyTypeAggregationKey` (src/cli.js:5725) guards pass synchronously.
+
+**4. CLI surface 33 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 33. `signature` correctly positioned between `shape` and `strictness` (s=s at pos 0; h(104)<i(105) at pos 1 → shape<signature; i(105)<t(116) at pos 1 → signature<strictness).
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js signature index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `first_property_types[]` (NOT `tiers[]`, NOT `strictnesses[]`, NOT `types[]`, NOT `items_types[]`, NOT `output_schema_first_property_type[]`) with `string` bucket (get_users_api_v1_users_id; capability_count 1; aggregation_key `"first_property_type"`), `object` bucket (post_users_users; capability_count 1; aggregation_key `"first_property_type"`), `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"`); `warnings: []`. Note: post_users_users is in `object` bucket (input_schema.properties.body.type='object') in M49 — distinct from M48 where post_users_users is in `boolean` bucket (output_schema first property type). This distinction confirms correct input-vs-output side separation.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js signature index --first-type STRING --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown input schema first property type: STRING`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js signature index --first-type boolean --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, `No capabilities found for input schema first property type: boolean` (no boolean-typed first input properties in express fixture).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. Fixture mutation (re-run this turn):** `git diff --quiet HEAD -- tests/fixtures/` → exit 0. Zero fixture mutation.
+
+**10. M49 ROADMAP checkboxes:** All 16 M49 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M49 block), independently verified by reading `.planning/ROADMAP.md` M49 section this turn.
+
+**11. classifyInputSchemaFirstPropertyType rules (code inspection at src/cli.js:5746–5779):** null/undefined inputSchema → unknown; non-object/Array inputSchema → unknown; inputSchema.type not-string → unknown (input_schema_type_missing_or_invalid); type string but not 'object' → not_applicable (no warning — mirrors M48 classifyOutputSchemaFirstPropertyType for symmetric input-side handling); type === 'object' + properties null/undefined/non-object/Array → unknown (input_schema_properties_field_missing_when_type_is_object); type === 'object' + properties plain object + keys.length === 0 → not_applicable (no warning); firstDescriptor null/primitive/Array/undefined → unknown; firstDescriptor.type missing/non-string/not in seven-primitive set → unknown; else → firstDescriptor.type. No all-properties walking; no nested-property recursion; no output-side classification; no required-status cross-axis; no runtime validation.
+
+**12. Five frozen warning reason codes (code inspection at src/cli.js:5817–5838):** `input_schema_field_missing` (line 5817), `input_schema_field_not_object` (line 5819), `input_schema_type_missing_or_invalid` (line 5821), `input_schema_properties_field_missing_when_type_is_object` (line 5825), `input_schema_properties_first_property_descriptor_invalid` (line 5838). All five present. `not_applicable` bucket (non-object input or zero-property object) emits NO warning (valid named bucket). Only `unknown` triggers warnings.
+
+**13. Acceptance criteria count:** 614 (REQ-001–REQ-614). Added REQ-590–REQ-614 (25 new M49 criteria) this turn. All 614 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_3795b2905fff720e (role=qa, run_f61946531dda2fe6, M48 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_7aca0e4acba46509, role=dev, HEAD c5eef25) for run_f61946531dda2fe6 independently rather than rubber-stamping it.
