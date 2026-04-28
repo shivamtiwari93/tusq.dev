@@ -1137,6 +1137,69 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq upper index`
+
+Emit a deterministic, per-first-input-property-maximum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].maximum` is a finite number (`upper_bounded`), absent/null/undefined (`upper_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`upper_bounded → upper_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime maximum enforcer, doc-contradiction detector, minimum-crossref tool, exclusiveMaximum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-maximum inferrer, data-intelligence-compiler-criticality tier emitter, or statistical aggregator**.
+
+**M66-vs-M65 distinction:** `tusq lower index` (M65) reads `input_schema.properties[firstKey].minimum` (the **FIRST input property's** JSON-Schema `minimum` finite-number keyword — a numeric-inclusive-LOWER-bound constraint; zero, negative, and fractional values ARE VALID). `tusq upper index` (M66) reads `input_schema.properties[firstKey].maximum` (the **FIRST input property's** JSON-Schema `maximum` finite-number keyword — a numeric-inclusive-UPPER-bound constraint; zero, negative, and fractional values ARE VALID). These two commands read orthogonal JSON-Schema validation keywords under two distinct nouns; neither alters the other's output bytes.
+
+**M66-vs-M64 distinction:** `tusq divisor index` (M64) reads `input_schema.properties[firstKey].multipleOf` (the **FIRST input property's** JSON-Schema `multipleOf` strictly-positive-finite-number keyword — a numeric-divisibility constraint; zero is INVALID per JSON-Schema). `tusq upper index` (M66) reads `input_schema.properties[firstKey].maximum` (a finite-number numeric-inclusive-upper-bound constraint; zero IS VALID, negative numbers ARE VALID, fractional numbers ARE VALID). These read orthogonal JSON-Schema validation keywords; neither alters the other's output bytes.
+
+**M66-specific classifier rules:**
+- **ZERO-IS-VALID-UPPER-BOUND** (M66-SPECIFIC): `maximum: 0` → `upper_bounded` (no warning). JSON-Schema permits zero as a perfectly valid numeric-inclusive-upper-bound (e.g., `value <= 0` for non-positive deltas). Mirrors M65 ZERO-IS-VALID-LOWER-BOUND.
+- **NEGATIVE-IS-VALID-UPPER-BOUND** (M66-SPECIFIC): `maximum: -273.15` → `upper_bounded` (no warning). JSON-Schema permits arbitrary negative finite-number upper bounds (e.g., `-273.15` for Celsius temperature upper bounds in cryogenic contexts).
+- **FRACTIONAL-IS-VALID-UPPER-BOUND** (M66-SPECIFIC): `maximum: 0.5` → `upper_bounded` (no warning). The classifier uses `typeof v === 'number' && Number.isFinite(v)` — NOT `Number.isInteger(v) && v >= 0` as in M62/M63, and NOT `Number.isFinite(v) && v > 0` as in M64.
+
+```bash
+tusq upper index [--upper <upper_bounded|upper_unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--upper <upper_bounded\|upper_unbounded\|not_applicable\|unknown>` | all buckets | Filter to a single maximum annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].maximum` when `input_schema.type === "object"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `upper_bounded` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `typeof properties[firstKey].maximum === 'number' && Number.isFinite(properties[firstKey].maximum)` (STRICT: NO Number()/parseFloat()/truthy coercion; NOT >= 0, NOT > 0, NOT Number.isInteger; ZERO-IS-VALID-UPPER-BOUND: `maximum === 0` → `upper_bounded`; NEGATIVE-IS-VALID-UPPER-BOUND: `maximum === -273.15` → `upper_bounded`; FRACTIONAL-IS-VALID-UPPER-BOUND: `maximum === 0.5` → `upper_bounded`) |
+| `upper_unbounded` | `input_schema.type === "object"`, `Object.keys(properties).length > 0`, `properties[firstKey].maximum` is absent, `undefined`, or `null` (null-as-absent per M55–M65 precedent — no warning) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property) OR `input_schema.type === "object"` and `Object.keys(properties).length === 0` |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].maximum` present non-null but NOT a finite number (NaN, Infinity, −Infinity, string `'0'`, boolean `true`, array `[0]`, plain object `{}`) |
+
+**Bucket iteration order:** `upper_bounded → upper_unbounded → not_applicable → unknown` (deterministic stable-output convention — NOT data-intelligence-compiler-criticality-ranked, NOT semantic-layer-priority-ranked, NOT metric-catalog-completeness-tier-ranked, NOT safe-SQL-tool-strictness-ranked, NOT dashboard-Q&A-coverage-ranked, NOT anomaly-explanation-priority-ranked, NOT data-governance-artifact-deprecation-priority-ranked, NOT dashboard-fallback-guidance-strength-ranked).
+
+**Six frozen warning reason codes** (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_maximum_invalid_when_present`). The sixth code covers ALL non-finite-number `maximum` malformations under a single consolidated code.
+
+**Exit codes:**
+
+| Code | Condition |
+|------|-----------|
+| `0` | Index produced (or empty-capabilities manifest) |
+| `1` | Missing/invalid manifest, unknown flag, unknown `--upper` value, `--upper` value with absent bucket, `--out` path error, or unknown subcommand |
+
+**Examples:**
+
+```bash
+# Human-readable output
+tusq upper index
+
+# JSON output
+tusq upper index --json
+
+# Filter to upper_bounded bucket
+tusq upper index --upper upper_bounded --json
+
+# Filter to upper_unbounded bucket
+tusq upper index --upper upper_unbounded --json
+
+# Write to file
+tusq upper index --out upper-index.json
+```
+
 ## `tusq lower index`
 
 Emit a deterministic, per-first-input-property-minimum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].minimum` is a finite number (`lower_bounded`), absent/null/undefined (`lower_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`lower_bounded → lower_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime minimum enforcer, doc-contradiction detector, maximum-crossref tool, exclusiveMinimum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-minimum inferrer, knowledge-and-copilot-compiler-criticality tier emitter, or statistical aggregator**.

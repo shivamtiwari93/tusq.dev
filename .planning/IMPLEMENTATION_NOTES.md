@@ -2,6 +2,52 @@
 
 ---
 
+## M66 (run_f11fc93257e4e50c, turn_0522461f4f32c54c, dev)
+
+### Axis: input_schema.properties[firstKey].maximum (JSON-Schema Draft 4+ numeric-inclusive-upper-bound)
+
+**CLI noun:** `upper` (subcommand: `index`), inserted between `surface` and `version` (CLI surface 49 → 50).
+
+**Bucket-key enum (closed, four-value):** `upper_bounded | upper_unbounded | not_applicable | unknown`
+
+**Aggregation_key enum (closed, three-value):** `numeric_upper_bound_constraint | not_applicable | unknown`
+
+**Bucket iteration order:** `upper_bounded → upper_unbounded → not_applicable → unknown` (deterministic stable-output convention only)
+
+**Classifier:** `typeof v === 'number' && Number.isFinite(v)` — STRICT check, no coercion.
+- ZERO-IS-VALID-UPPER-BOUND (M66-SPECIFIC): `maximum:0` → `upper_bounded`
+- NEGATIVE-IS-VALID-UPPER-BOUND (M66-SPECIFIC): `maximum:-273.15` → `upper_bounded`
+- FRACTIONAL-IS-VALID-UPPER-BOUND (M66-SPECIFIC): `maximum:0.5 / -0.001` → `upper_bounded`
+- NULL-AS-ABSENT: `maximum:null` → `upper_unbounded` (mirrors M55-M65)
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (carried forward)
+6. `input_schema_properties_first_property_maximum_invalid_when_present` (NEW — covers ALL non-finite-number malformations)
+
+**Result-array field name:** `first_property_maximum_states`
+**Per-bucket field name:** `input_schema_first_property_maximum`
+**Filter flag:** `--upper` (case-sensitive lowercase)
+**Non-persistence rule:** `input_schema_first_property_maximum` MUST NOT be written into `tusq.manifest.json`
+
+**Files changed:**
+- `src/cli.js` — constants, guard functions, classifier, build/format/cmd/parse functions, dispatch wiring, printHelp, printCommandHelp
+- `tests/smoke.mjs` — help-count assertions updated 49→50; 20-case M66 smoke matrix added
+- `tests/evals/governed-cli-scenarios.json` — M66 eval scenario added (56→57 scenarios)
+- `tests/eval-regression.mjs` — dispatch + handler for M66 scenario
+- `.planning/IMPLEMENTATION_NOTES.md` — this section
+- `.planning/ROADMAP.md` — all 18 M66 items [x]
+- `.planning/SYSTEM_SPEC.md` — M66 Materialized prepended
+- `.planning/command-surface.md` — M66 Materialized prepended
+- `website/docs/cli-reference.md` — `tusq upper index` section inserted before `tusq lower index`
+
+**Verification:** `npm test` exits 0 with `Smoke tests passed` and `Eval regression harness passed (57 scenarios)`.
+
+---
+
 ## M65 (run_55fdb392f22e9987, turn_fab8a0c105d82460, dev)
 
 **Challenge to PM turn:** PM (turn_722acdf65c49b523) correctly bound M65: Static Capability Input Schema First Property Minimum Numeric-Lower-Bound Annotation Presence Index (V1.46 PROPOSED) under intake charter `intent_1777404009159_7b39` (vision_scan, roadmap_exhausted_vision_open). git diff HEAD~1..HEAD --name-only confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld: (1) new noun `lower` inserted between `legacy` and `method` (legacy(l=108,e=101)<lower(l=108,o=111) at pos 1 (e(101)<o(111)); lower(l=108,o=111)<method(m=109) at pos 0 (l(108)<m(109))); (2) four-value bucket-key enum `lower_bounded|lower_unbounded|not_applicable|unknown`; (3) aggregation_key enum `numeric_lower_bound_constraint|not_applicable|unknown` three-value; (4) bucket iteration order `lower_bounded→lower_unbounded→not_applicable→unknown`; (5) six frozen warning reason codes (five from M55–M64 + SIXTH: `input_schema_properties_first_property_minimum_invalid_when_present` — covers ALL non-finite-number malformations under single consolidated code); NULL-AS-ABSENT `minimum:null` → lower_unbounded (no warning, mirrors M55–M64 precedent); ZERO-IS-VALID-LOWER-BOUND (M65-SPECIFIC): `minimum:0` → lower_bounded (JSON-Schema permits zero as valid finite-number lower bound; diverges from M64 EXPLICIT-ZERO-IS-INVALID); NEGATIVE-IS-VALID-LOWER-BOUND (M65-SPECIFIC): `minimum:-273.15` → lower_bounded; FRACTIONAL-IS-VALID-LOWER-BOUND (M65-SPECIFIC): `minimum:0.5` → lower_bounded; STRICT `typeof v === 'number' && Number.isFinite(v)` (NOT >= 0, NOT > 0, NOT Number.isInteger; NO Number()/parseFloat()/truthy coercion); result array field name `first_property_minimum_states`; per-bucket field name `input_schema_first_property_minimum`. Challenge resolved: no new objections.

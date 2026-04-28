@@ -3831,7 +3831,7 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 49) {
+  if (m45CommandCount !== 50) {
     throw new Error(`M45(x): tusq help must enumerate exactly 39 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
@@ -4322,7 +4322,7 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 49) {
+  if (m46HelpCommandCount !== 50) {
     throw new Error(`M46(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
@@ -4839,7 +4839,7 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 49) {
+  if (m47HelpCommandCount !== 50) {
     throw new Error(`M47(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
@@ -5237,7 +5237,7 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 49) {
+  if (m48HelpCommandCount !== 50) {
     throw new Error(`M48(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
@@ -5639,7 +5639,7 @@ async function run() {
   // M49(x3): help enumerates 34 commands and includes 'signature' between 'shape' and 'strictness'
   const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
   const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m49HelpCommandCount !== 49) {
+  if (m49HelpCommandCount !== 50) {
     throw new Error(`M49(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
   }
   if (!m49HelpResult.stdout.includes('  signature')) {
@@ -6037,7 +6037,7 @@ async function run() {
   // M50(x3): help enumerates 34 commands and includes 'obligation' between 'method' and 'output'
   const m50HelpResult = runCli(['help'], { cwd: m50TmpDir });
   const m50HelpCommandCount = (m50HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m50HelpCommandCount !== 49) {
+  if (m50HelpCommandCount !== 50) {
     throw new Error(`M50(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m50HelpCommandCount}:\n${m50HelpResult.stdout}`);
   }
   if (!m50HelpResult.stdout.includes('  obligation')) {
@@ -6419,7 +6419,7 @@ async function run() {
   // M51(x3): help enumerates 35 commands and includes 'binding' between 'auth' and 'confidence'
   const m51HelpResult = runCli(['help'], { cwd: m51TmpDir });
   const m51HelpCommandCount = (m51HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m51HelpCommandCount !== 49) {
+  if (m51HelpCommandCount !== 50) {
     throw new Error(`M51(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m51HelpCommandCount}:\n${m51HelpResult.stdout}`);
   }
   if (!m51HelpResult.stdout.includes('  binding')) {
@@ -6797,7 +6797,7 @@ async function run() {
   // M52(x3): help enumerates 36 commands and includes 'gloss' between 'examples' and 'input'
   const m52HelpResult = runCli(['help'], { cwd: m52TmpDir });
   const m52HelpCommandCount = (m52HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m52HelpCommandCount !== 49) {
+  if (m52HelpCommandCount !== 50) {
     throw new Error(`M52(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m52HelpCommandCount}:\n${m52HelpResult.stdout}`);
   }
   if (!m52HelpResult.stdout.includes('  gloss')) {
@@ -7244,7 +7244,7 @@ async function run() {
   // M53(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'hint' between 'gloss' and 'input'
   const m53HelpResult = runCli(['help'], { cwd: m53TmpDir });
   const m53HelpCommandCount = (m53HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m53HelpCommandCount !== 49) {
+  if (m53HelpCommandCount !== 50) {
     throw new Error(`M53(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m53HelpCommandCount}:\n${m53HelpResult.stdout}`);
   }
   if (!m53HelpResult.stdout.includes('  hint')) {
@@ -7690,7 +7690,7 @@ async function run() {
   // M54(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'choice' between 'binding' and 'confidence'
   const m54HelpResult = runCli(['help'], { cwd: m54TmpDir });
   const m54HelpCommandCount = (m54HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m54HelpCommandCount !== 49) {
+  if (m54HelpCommandCount !== 50) {
     throw new Error(`M54(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m54HelpCommandCount}:\n${m54HelpResult.stdout}`);
   }
   if (!m54HelpResult.stdout.includes('  choice')) {
@@ -8130,7 +8130,7 @@ async function run() {
   // M55(x3): help enumerates 45 commands (M62 adds 'floor') and includes 'preset' between 'policy' and 'redaction'
   const m55HelpResult = runCli(['help'], { cwd: m55TmpDir });
   const m55HelpCommandCount = (m55HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m55HelpCommandCount !== 49) {
+  if (m55HelpCommandCount !== 50) {
     throw new Error(`M55(x3): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m55HelpCommandCount}:\n${m55HelpResult.stdout}`);
   }
   if (!m55HelpResult.stdout.includes('  preset')) {
@@ -8506,7 +8506,7 @@ async function run() {
   // M56(x): help enumerates 40 commands and includes 'sample' between 'response' and 'sensitivity'
   const m56HelpResult = runCli(['help'], { cwd: m56TmpDir });
   const m56HelpCommandCount = (m56HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m56HelpCommandCount !== 49) {
+  if (m56HelpCommandCount !== 50) {
     throw new Error(`M56(x): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m56HelpCommandCount}:\n${m56HelpResult.stdout}`);
   }
   if (!m56HelpResult.stdout.includes('  sample')) {
@@ -8909,7 +8909,7 @@ async function run() {
   // M57(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'caption' between 'binding' and 'choice'
   const m57HelpResult = runCli(['help'], { cwd: m57TmpDir });
   const m57HelpCommandCount = (m57HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m57HelpCommandCount !== 49) {
+  if (m57HelpCommandCount !== 50) {
     throw new Error(`M57(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m57HelpCommandCount}:\n${m57HelpResult.stdout}`);
   }
   if (!m57HelpResult.stdout.includes('  caption')) {
@@ -9335,7 +9335,7 @@ async function run() {
   // M58(x2): help enumerates 42 commands and includes 'legacy' between 'items' and 'method'
   const m58HelpResult = runCli(['help'], { cwd: m58TmpDir });
   const m58HelpCommandCount = (m58HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m58HelpCommandCount !== 49) {
+  if (m58HelpCommandCount !== 50) {
     throw new Error(`M58(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m58HelpCommandCount}:\n${m58HelpResult.stdout}`);
   }
   if (!m58HelpResult.stdout.includes('  legacy')) {
@@ -9738,7 +9738,7 @@ async function run() {
   // M59(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'regex' between 'redaction' and 'request'
   const m59HelpResult = runCli(['help'], { cwd: m59TmpDir });
   const m59HelpCommandCount = (m59HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m59HelpCommandCount !== 49) {
+  if (m59HelpCommandCount !== 50) {
     throw new Error(`M59(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m59HelpCommandCount}:\n${m59HelpResult.stdout}`);
   }
   if (!m59HelpResult.stdout.includes('  regex')) {
@@ -10141,7 +10141,7 @@ async function run() {
   // M60(x2): help enumerates 45 commands (M62 adds 'floor') and includes 'seal' between 'sample' and 'sensitivity'
   const m60HelpResult = runCli(['help'], { cwd: m60TmpDir });
   const m60HelpCommandCount = (m60HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m60HelpCommandCount !== 49) {
+  if (m60HelpCommandCount !== 50) {
     throw new Error(`M60(x2): tusq help must enumerate 45 commands (M62 adds 'floor'); got ${m60HelpCommandCount}:\n${m60HelpResult.stdout}`);
   }
   if (!m60HelpResult.stdout.includes('  seal')) {
@@ -10544,7 +10544,7 @@ async function run() {
   // M61(x2): help enumerates 45 commands (M61 adds 'secret') and includes 'secret' between 'seal' and 'sensitivity'
   const m61HelpResult = runCli(['help'], { cwd: m61TmpDir });
   const m61HelpCommandCount = (m61HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m61HelpCommandCount !== 49) {
+  if (m61HelpCommandCount !== 50) {
     throw new Error(`M61(x2): tusq help must enumerate 45 commands (M61 adds 'secret'); got ${m61HelpCommandCount}:\n${m61HelpResult.stdout}`);
   }
   if (!m61HelpResult.stdout.includes('  secret')) {
@@ -10957,7 +10957,7 @@ async function run() {
   // M62(x2): help enumerates 46 commands (M62 adds 'floor') and includes 'floor' between 'examples' and 'gloss'
   const m62HelpResult = runCli(['help'], { cwd: m62TmpDir });
   const m62HelpCommandCount = (m62HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m62HelpCommandCount !== 49) {
+  if (m62HelpCommandCount !== 50) {
     throw new Error(`M62(x2): tusq help must enumerate 46 commands (M62 adds 'floor'); got ${m62HelpCommandCount}:\n${m62HelpResult.stdout}`);
   }
   if (!m62HelpResult.stdout.includes('  floor')) {
@@ -11370,7 +11370,7 @@ async function run() {
   // M63(x2): help enumerates 47 commands (M63 adds 'ceiling') and includes 'ceiling' between 'caption' and 'choice'
   const m63HelpResult = runCli(['help'], { cwd: m63TmpDir });
   const m63HelpCommandCount = (m63HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m63HelpCommandCount !== 49) {
+  if (m63HelpCommandCount !== 50) {
     throw new Error(`M63(x2): tusq help must enumerate 47 commands (M63 adds 'ceiling'); got ${m63HelpCommandCount}:\n${m63HelpResult.stdout}`);
   }
   if (!m63HelpResult.stdout.includes('  ceiling')) {
@@ -11774,11 +11774,11 @@ async function run() {
     }
   }
 
-  // M64(x2): help enumerates 49 commands (M64 adds 'divisor'; M65 adds 'lower') and includes 'divisor' between 'diff' and 'domain'
+  // M64(x2): help enumerates 50 commands (M64 adds 'divisor'; M65 adds 'lower'; M66 adds 'upper') and includes 'divisor' between 'diff' and 'domain'
   const m64HelpResult = runCli(['help'], { cwd: m64TmpDir });
   const m64HelpCommandCount = (m64HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m64HelpCommandCount !== 49) {
-    throw new Error(`M64(x2): tusq help must enumerate 49 commands (M64 adds 'divisor'; M65 adds 'lower'); got ${m64HelpCommandCount}:\n${m64HelpResult.stdout}`);
+  if (m64HelpCommandCount !== 50) {
+    throw new Error(`M64(x2): tusq help must enumerate 50 commands (M64 adds 'divisor'; M65 adds 'lower'; M66 adds 'upper'); got ${m64HelpCommandCount}:\n${m64HelpResult.stdout}`);
   }
   if (!m64HelpResult.stdout.includes('  divisor')) {
     throw new Error(`M64(x2): tusq help must include 'divisor' command:\n${m64HelpResult.stdout}`);
@@ -12205,11 +12205,11 @@ async function run() {
     throw new Error(`M65(r): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m65AggNA)}`);
   }
 
-  // M65(x2): help enumerates 49 commands and includes 'lower' between 'legacy' and 'method'
+  // M65(x2): help enumerates 50 commands (M65 adds 'lower'; M66 adds 'upper') and includes 'lower' between 'legacy' and 'method'
   const m65HelpResult = runCli(['help'], { cwd: m65TmpDir });
   const m65HelpCommandCount = (m65HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m65HelpCommandCount !== 49) {
-    throw new Error(`M65(x2): tusq help must enumerate 49 commands (M65 adds 'lower'); got ${m65HelpCommandCount}:\n${m65HelpResult.stdout}`);
+  if (m65HelpCommandCount !== 50) {
+    throw new Error(`M65(x2): tusq help must enumerate 50 commands (M65 adds 'lower'; M66 adds 'upper'); got ${m65HelpCommandCount}:\n${m65HelpResult.stdout}`);
   }
   if (!m65HelpResult.stdout.includes('  lower')) {
     throw new Error(`M65(x2): tusq help must include 'lower' command:\n${m65HelpResult.stdout}`);
@@ -12236,6 +12236,307 @@ async function run() {
   }
 
   await fs.rm(m65TmpDir, { recursive: true, force: true });
+
+  // ── M66: Static Capability Input Schema First Property Maximum Numeric-Upper-Bound Annotation Presence Index ──
+  const m66TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m66-smoke-'));
+
+  // M66 fixture manifest: synthetic capabilities across upper_bounded/upper_unbounded/not_applicable buckets.
+  // upper_bounded_cap → firstKey.maximum = 100 (finite number → upper_bounded)
+  // zero_bounded_cap → firstKey.maximum = 0 (ZERO-IS-VALID-UPPER-BOUND → upper_bounded)
+  // unbounded_cap → firstKey has no maximum field (absent → upper_unbounded)
+  // not_applicable_cap → input_schema.type = 'string' (not_applicable)
+  const m66SyntheticManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'upper_bounded_cap',
+        method: 'GET',
+        path: '/upper-bounded',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'object', properties: { page_size: { type: 'integer', maximum: 100 } }, required: [] }
+      },
+      {
+        name: 'zero_bounded_cap',
+        method: 'PUT',
+        path: '/zero-bounded',
+        domain: 'test',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        input_schema: { type: 'object', properties: { score: { type: 'number', maximum: 0 } }, required: [] }
+      },
+      {
+        name: 'neg_bounded_cap',
+        method: 'PUT',
+        path: '/neg-bounded',
+        domain: 'test',
+        side_effect_class: 'write',
+        sensitivity_class: 'internal',
+        approved: true,
+        input_schema: { type: 'object', properties: { temp: { type: 'number', maximum: -273.15 } }, required: [] }
+      },
+      {
+        name: 'frac_bounded_cap',
+        method: 'GET',
+        path: '/frac-bounded',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'object', properties: { ratio: { type: 'number', maximum: 0.5 } }, required: [] }
+      },
+      {
+        name: 'unbounded_cap',
+        method: 'GET',
+        path: '/unbounded',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: false,
+        input_schema: { type: 'object', properties: { item_id: { type: 'string' } }, required: [] }
+      },
+      {
+        name: 'null_maximum_cap',
+        method: 'GET',
+        path: '/null-maximum',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'object', properties: { order_id: { type: 'integer', maximum: null } }, required: [] }
+      },
+      {
+        name: 'not_applicable_cap',
+        method: 'GET',
+        path: '/not-applicable',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'string' }
+      }
+    ]
+  };
+
+  const m66ManifestPath = path.join(m66TmpDir, 'tusq.manifest.json');
+  await fs.writeFile(m66ManifestPath, JSON.stringify(m66SyntheticManifest, null, 2), 'utf8');
+
+  // M66(a): default run on synthetic fixture produces first_property_maximum_states[] field name
+  const m66DefaultResult = runCli(['upper', 'index', '--manifest', m66ManifestPath, '--json'], { cwd: m66TmpDir });
+  if (m66DefaultResult.status !== 0) {
+    throw new Error(`M66(a): upper index must exit 0:\nstderr=${m66DefaultResult.stderr}`);
+  }
+  const m66DefaultJson = JSON.parse(m66DefaultResult.stdout);
+  if (!Array.isArray(m66DefaultJson.first_property_maximum_states)) {
+    throw new Error(`M66(a): JSON output must have first_property_maximum_states[] array:\n${m66DefaultResult.stdout}`);
+  }
+
+  // M66(b): upper_bounded bucket present (upper_bounded_cap, zero_bounded_cap, neg_bounded_cap, frac_bounded_cap)
+  const m66UpperBoundedEntry = m66DefaultJson.first_property_maximum_states.find((e) => e.input_schema_first_property_maximum === 'upper_bounded');
+  if (!m66UpperBoundedEntry) {
+    throw new Error(`M66(b): upper_bounded bucket must be present:\n${m66DefaultResult.stdout}`);
+  }
+  if (!m66UpperBoundedEntry.capabilities.includes('upper_bounded_cap')) {
+    throw new Error(`M66(b): upper_bounded_cap (maximum=100) must be in upper_bounded bucket:\n${JSON.stringify(m66UpperBoundedEntry)}`);
+  }
+
+  // M66(c): ZERO-IS-VALID-UPPER-BOUND: maximum:0 → upper_bounded (no warning)
+  if (!m66UpperBoundedEntry.capabilities.includes('zero_bounded_cap')) {
+    throw new Error(`M66(c): zero_bounded_cap (maximum=0, ZERO-IS-VALID-UPPER-BOUND) must be in upper_bounded bucket:\n${JSON.stringify(m66UpperBoundedEntry)}`);
+  }
+  if (m66DefaultJson.warnings.some((w) => w.capability === 'zero_bounded_cap')) {
+    throw new Error(`M66(c): zero_bounded_cap (ZERO-IS-VALID-UPPER-BOUND → upper_bounded) must NOT produce a warning`);
+  }
+
+  // M66(d): NEGATIVE-IS-VALID-UPPER-BOUND: maximum:-273.15 → upper_bounded (no warning)
+  if (!m66UpperBoundedEntry.capabilities.includes('neg_bounded_cap')) {
+    throw new Error(`M66(d): neg_bounded_cap (maximum=-273.15, NEGATIVE-IS-VALID-UPPER-BOUND) must be in upper_bounded bucket:\n${JSON.stringify(m66UpperBoundedEntry)}`);
+  }
+  if (m66DefaultJson.warnings.some((w) => w.capability === 'neg_bounded_cap')) {
+    throw new Error(`M66(d): neg_bounded_cap (NEGATIVE-IS-VALID-UPPER-BOUND → upper_bounded) must NOT produce a warning`);
+  }
+
+  // M66(e): FRACTIONAL-IS-VALID-UPPER-BOUND: maximum:0.5 → upper_bounded (no warning)
+  if (!m66UpperBoundedEntry.capabilities.includes('frac_bounded_cap')) {
+    throw new Error(`M66(e): frac_bounded_cap (maximum=0.5, FRACTIONAL-IS-VALID-UPPER-BOUND) must be in upper_bounded bucket:\n${JSON.stringify(m66UpperBoundedEntry)}`);
+  }
+  if (m66DefaultJson.warnings.some((w) => w.capability === 'frac_bounded_cap')) {
+    throw new Error(`M66(e): frac_bounded_cap (FRACTIONAL-IS-VALID-UPPER-BOUND → upper_bounded) must NOT produce a warning`);
+  }
+
+  // M66(f): upper_unbounded bucket present (unbounded_cap, null_maximum_cap)
+  const m66UpperUnboundedEntry = m66DefaultJson.first_property_maximum_states.find((e) => e.input_schema_first_property_maximum === 'upper_unbounded');
+  if (!m66UpperUnboundedEntry) {
+    throw new Error(`M66(f): upper_unbounded bucket must be present:\n${m66DefaultResult.stdout}`);
+  }
+  if (!m66UpperUnboundedEntry.capabilities.includes('unbounded_cap')) {
+    throw new Error(`M66(f): unbounded_cap (no maximum field) must be in upper_unbounded bucket:\n${JSON.stringify(m66UpperUnboundedEntry)}`);
+  }
+
+  // M66(g): NULL-AS-ABSENT: maximum:null → upper_unbounded (no warning)
+  if (!m66UpperUnboundedEntry.capabilities.includes('null_maximum_cap')) {
+    throw new Error(`M66(g): null_maximum_cap (maximum=null, null-as-absent) must be in upper_unbounded bucket:\n${JSON.stringify(m66UpperUnboundedEntry)}`);
+  }
+  if (m66DefaultJson.warnings.some((w) => w.capability === 'null_maximum_cap')) {
+    throw new Error(`M66(g): null_maximum_cap (null-as-absent → upper_unbounded) must NOT produce a warning`);
+  }
+
+  // M66(h): not_applicable bucket present (not_applicable_cap)
+  const m66NotApplicableEntry = m66DefaultJson.first_property_maximum_states.find((e) => e.input_schema_first_property_maximum === 'not_applicable');
+  if (!m66NotApplicableEntry || !m66NotApplicableEntry.capabilities.includes('not_applicable_cap')) {
+    throw new Error(`M66(h): not_applicable_cap (input_schema.type='string') must be in not_applicable bucket:\n${m66DefaultResult.stdout}`);
+  }
+
+  // M66(i): upper_bounded bucket absent from express fixture (no capabilities have maximum set)
+  const m66ExpressManifestPath = path.resolve(process.cwd(), 'tests/fixtures/express-sample/tusq.manifest.json');
+  const m66ExpressResult = runCli(['upper', 'index', '--manifest', m66ExpressManifestPath, '--json'], { cwd: m66TmpDir });
+  if (m66ExpressResult.status !== 0) {
+    throw new Error(`M66(i): upper index on express fixture must exit 0:\nstderr=${m66ExpressResult.stderr}`);
+  }
+  const m66ExpressJson = JSON.parse(m66ExpressResult.stdout);
+  if (m66ExpressJson.first_property_maximum_states.some((e) => e.input_schema_first_property_maximum === 'upper_bounded')) {
+    throw new Error(`M66(i): upper_bounded bucket must be absent from express fixture (empty-bucket-MUST-NOT-appear invariant):\n${m66ExpressResult.stdout}`);
+  }
+
+  // M66(j): bucket iteration order upper_bounded → upper_unbounded → not_applicable → unknown
+  const m66BucketOrder = m66DefaultJson.first_property_maximum_states.map((e) => e.input_schema_first_property_maximum);
+  const m66UpperBoundedIdx = m66BucketOrder.indexOf('upper_bounded');
+  const m66UpperUnboundedIdx = m66BucketOrder.indexOf('upper_unbounded');
+  const m66NotApplicableIdx = m66BucketOrder.indexOf('not_applicable');
+  if (!(m66UpperBoundedIdx < m66UpperUnboundedIdx && m66UpperUnboundedIdx < m66NotApplicableIdx)) {
+    throw new Error(`M66(j): bucket order must be upper_bounded → upper_unbounded → not_applicable; got: ${m66BucketOrder.join(',')}`);
+  }
+
+  // M66(k): aggregation_key for upper_bounded is 'numeric_upper_bound_constraint'
+  if (m66UpperBoundedEntry.aggregation_key !== 'numeric_upper_bound_constraint') {
+    throw new Error(`M66(k): upper_bounded bucket must have aggregation_key 'numeric_upper_bound_constraint'; got '${m66UpperBoundedEntry.aggregation_key}'`);
+  }
+
+  // M66(l): aggregation_key for upper_unbounded is 'numeric_upper_bound_constraint'
+  if (m66UpperUnboundedEntry.aggregation_key !== 'numeric_upper_bound_constraint') {
+    throw new Error(`M66(l): upper_unbounded bucket must have aggregation_key 'numeric_upper_bound_constraint'; got '${m66UpperUnboundedEntry.aggregation_key}'`);
+  }
+
+  // M66(m): aggregation_key for not_applicable is 'not_applicable'
+  if (m66NotApplicableEntry.aggregation_key !== 'not_applicable') {
+    throw new Error(`M66(m): not_applicable bucket must have aggregation_key 'not_applicable'; got '${m66NotApplicableEntry.aggregation_key}'`);
+  }
+
+  // M66(n): --upper filter for present bucket exits 0
+  const m66FilterPresent = runCli(['upper', 'index', '--manifest', m66ManifestPath, '--upper', 'upper_bounded'], { cwd: m66TmpDir });
+  if (m66FilterPresent.status !== 0) {
+    throw new Error(`M66(n): --upper upper_bounded (present bucket) must exit 0:\nstderr=${m66FilterPresent.stderr}`);
+  }
+
+  // M66(o): --upper filter case-sensitivity (uppercase exits 1)
+  const m66FilterUpper = runCli(['upper', 'index', '--manifest', m66ManifestPath, '--upper', 'UPPER_BOUNDED'], { cwd: m66TmpDir, expectedStatus: 1 });
+  if (m66FilterUpper.status !== 1) {
+    throw new Error(`M66(o): --upper UPPER_BOUNDED (case-sensitive enforcement) must exit 1`);
+  }
+
+  // M66(p): --upper filter for absent bucket exits 1
+  const m66FilterAbsent = runCli(['upper', 'index', '--manifest', m66ExpressManifestPath, '--upper', 'upper_bounded'], { cwd: m66TmpDir, expectedStatus: 1 });
+  if (m66FilterAbsent.status !== 1) {
+    throw new Error(`M66(p): --upper upper_bounded (absent bucket) must exit 1`);
+  }
+
+  // M66(q): non-persistence — manifest must not be mutated
+  const m66ManifestAfter = JSON.parse(await fs.readFile(m66ManifestPath, 'utf8'));
+  if (m66ManifestAfter.capabilities.some((c) => Object.prototype.hasOwnProperty.call(c, 'input_schema_first_property_maximum'))) {
+    throw new Error(`M66(q): input_schema_first_property_maximum must NOT be written into tusq.manifest.json`);
+  }
+
+  // M66(r): unknown malformation → unknown bucket + 6th warning code
+  const m66MalformedManifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      {
+        name: 'string_max_cap',
+        method: 'GET',
+        path: '/string-max',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'object', properties: { val: { type: 'integer', maximum: '100' } }, required: [] }
+      },
+      {
+        name: 'bool_max_cap',
+        method: 'GET',
+        path: '/bool-max',
+        domain: 'test',
+        side_effect_class: 'read',
+        sensitivity_class: 'public',
+        approved: true,
+        input_schema: { type: 'object', properties: { flag: { type: 'boolean', maximum: true } }, required: [] }
+      }
+    ]
+  };
+  const m66MalformedPath = path.join(m66TmpDir, 'malformed.json');
+  await fs.writeFile(m66MalformedPath, JSON.stringify(m66MalformedManifest, null, 2), 'utf8');
+  const m66MalformedResult = runCli(['upper', 'index', '--manifest', m66MalformedPath, '--json'], { cwd: m66TmpDir });
+  if (m66MalformedResult.status !== 0) {
+    throw new Error(`M66(r): upper index on malformed manifest must exit 0:\nstderr=${m66MalformedResult.stderr}`);
+  }
+  const m66MalformedJson = JSON.parse(m66MalformedResult.stdout);
+  const m66UnknownEntry = m66MalformedJson.first_property_maximum_states.find((e) => e.input_schema_first_property_maximum === 'unknown');
+  if (!m66UnknownEntry) {
+    throw new Error(`M66(r): malformed maximum (string/bool) must land in unknown bucket:\n${m66MalformedResult.stdout}`);
+  }
+  const m66StringMaxWarning = m66MalformedJson.warnings.find((w) => w.capability === 'string_max_cap');
+  if (!m66StringMaxWarning || m66StringMaxWarning.reason !== 'input_schema_properties_first_property_maximum_invalid_when_present') {
+    throw new Error(`M66(r): string_max_cap must produce 6th warning code; got: ${JSON.stringify(m66StringMaxWarning)}`);
+  }
+
+  // M66(s): aggregation_key for unknown is 'unknown'
+  if (m66UnknownEntry.aggregation_key !== 'unknown') {
+    throw new Error(`M66(s): unknown bucket must have aggregation_key 'unknown'; got '${m66UnknownEntry.aggregation_key}'`);
+  }
+
+  // M66(t): unknown flag exits 1
+  const m66UnknownFlag = runCli(['upper', 'index', '--manifest', m66ManifestPath, '--badFlag'], { cwd: m66TmpDir, expectedStatus: 1 });
+  if (!m66UnknownFlag.stderr.includes('Unknown flag: --badFlag') || m66UnknownFlag.stdout !== '') {
+    throw new Error(`M66(t): unknown flag must exit 1 with error on stderr:\nstdout=${m66UnknownFlag.stdout}\nstderr=${m66UnknownFlag.stderr}`);
+  }
+
+  // M66(x2): help enumerates 50 commands and includes 'upper' between 'surface' and 'version'
+  const m66HelpResult = runCli(['help'], { cwd: m66TmpDir });
+  const m66HelpCommandCount = (m66HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
+  if (m66HelpCommandCount !== 50) {
+    throw new Error(`M66(x2): tusq help must enumerate 50 commands (M66 adds 'upper'); got ${m66HelpCommandCount}:\n${m66HelpResult.stdout}`);
+  }
+  if (!m66HelpResult.stdout.includes('  upper')) {
+    throw new Error(`M66(x2): tusq help must include 'upper' command:\n${m66HelpResult.stdout}`);
+  }
+  // Verify ordering: surface before upper before version
+  const m66HelpLines = m66HelpResult.stdout.split('\n');
+  const m66SurfaceIdx = m66HelpLines.findIndex((l) => l.startsWith('  surface'));
+  const m66UpperIdx = m66HelpLines.findIndex((l) => l.startsWith('  upper'));
+  const m66VersionIdx = m66HelpLines.findIndex((l) => l.startsWith('  version'));
+  if (!(m66SurfaceIdx < m66UpperIdx && m66UpperIdx < m66VersionIdx)) {
+    throw new Error(`M66(x2): 'upper' must appear between 'surface' and 'version' in help:\n${m66HelpResult.stdout}`);
+  }
+
+  // M66(x3): upper index --help includes planning-aid framing
+  const m66IndexHelpResult = runCli(['upper', 'index', '--help'], { cwd: m66TmpDir });
+  if (!m66IndexHelpResult.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M66(x3): upper index help must include planning-aid framing:\n${m66IndexHelpResult.stdout}`);
+  }
+
+  // M66(x4): unknown subcommand exits 1
+  const m66UnknownSubCmd = runCli(['upper', 'bogusub'], { cwd: m66TmpDir, expectedStatus: 1 });
+  if (!m66UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m66UnknownSubCmd.stdout !== '') {
+    throw new Error(`M66(x4): unknown subcommand must exit 1:\nstdout=${m66UnknownSubCmd.stdout}\nstderr=${m66UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m66TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -12704,7 +13005,7 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 49) {
+  if (m44CommandCount !== 50) {
     throw new Error(`M44(x): tusq help must enumerate exactly 39 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -13242,7 +13543,7 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 49) {
+  if (m43CommandCount !== 50) {
     throw new Error(`M43(x): tusq help must enumerate exactly 39 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
@@ -13791,7 +14092,7 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 49) {
+  if (m42CommandCount !== 50) {
     throw new Error(`M42: tusq help must enumerate exactly 39 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
@@ -14337,7 +14638,7 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 49) {
+  if (m41CommandCount !== 50) {
     throw new Error(`M41: tusq help must enumerate exactly 39 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
@@ -14892,7 +15193,7 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 49) {
+  if (m40CommandCount !== 50) {
     throw new Error(`M40: tusq help must enumerate exactly 39 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
@@ -15364,7 +15665,7 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 49) {
+  if (m39CommandCount !== 50) {
     throw new Error(`M39: tusq help must enumerate exactly 39 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
@@ -15835,7 +16136,7 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 49) {
+  if (m38CommandCount !== 50) {
     throw new Error(`M38: tusq help must enumerate exactly 39 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
@@ -16318,7 +16619,7 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 49) {
+  if (m37CommandCount !== 50) {
     throw new Error(`M37: tusq help must enumerate exactly 39 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
@@ -16776,7 +17077,7 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 49) {
+  if (m36CommandCount !== 50) {
     throw new Error(`M36: tusq help must enumerate exactly 39 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
@@ -17169,7 +17470,7 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 49) {
+  if (m35CommandCount !== 50) {
     throw new Error(`M35: tusq help must enumerate exactly 39 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 

@@ -4023,6 +4023,177 @@
         "unknown"
       ],
       "expected_bucket_order": "lower_bounded,lower_unbounded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-maximum-index-determinism",
+      "scenario_type": "input_schema_first_property_maximum_index_determinism",
+      "description": "Verifies that tusq upper index produces byte-identical output across three runs on a synthetic manifest with upper_bounded, upper_unbounded, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (upper_bounded/upper_unbounded/not_applicable/unknown), closed three-value aggregation_key enum (numeric_upper_bound_constraint/not_applicable/unknown), bucket order determinism (upper_bounded → upper_unbounded → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_maximum non-persistence. Object.keys insertion-order is preserved: keys={z,a,b} where z has maximum=5 (upper_bounded), a has no maximum (upper_unbounded), b has maximum='invalid' (unknown+warning input_schema_properties_first_property_maximum_invalid_when_present) — firstKey=z → upper_bounded (insertion-order, NOT sorted). NULL-AS-ABSENT: maximum:null → upper_unbounded (no warning, mirroring M55-M65 null-as-absent). ZERO-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:0 → upper_bounded (JSON-Schema permits zero; mirrors M65 ZERO-IS-VALID-LOWER-BOUND). NEGATIVE-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:-273.15 → upper_bounded. FRACTIONAL-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:0.5 → upper_bounded. STRICT: typeof===number&&Number.isFinite(); NO Number()/parseFloat()/truthy coercion; string '0', boolean true, array [0] ALL bucket as unknown. Sixth frozen warning reason code: input_schema_properties_first_property_maximum_invalid_when_present (single consolidated code covers ALL non-finite-number malformations: NaN, Infinity, -Infinity, string, boolean, array, plain object).",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema — lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "not_applicable_cap",
+          "method": "GET",
+          "path": "/not-applicable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema — lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "upper_bounded_cap",
+          "method": "POST",
+          "path": "/upper-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has maximum=100 (finite number) — lands in upper_bounded bucket",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "page_size": {
+                "type": "integer",
+                "maximum": 100
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "zero_bounded_cap",
+          "method": "PUT",
+          "path": "/zero-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has maximum=0 (ZERO-IS-VALID-UPPER-BOUND) — lands in upper_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number",
+                "maximum": 0
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "neg_bounded_cap",
+          "method": "PUT",
+          "path": "/neg-bounded",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has maximum=-273.15 (NEGATIVE-IS-VALID-UPPER-BOUND) — lands in upper_bounded bucket (no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "temp": {
+                "type": "number",
+                "maximum": -273.15
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "unbounded_cap",
+          "method": "GET",
+          "path": "/unbounded",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has no maximum field — lands in upper_unbounded bucket (absent → upper_unbounded)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "description": "Item identifier"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_maximum_cap",
+          "method": "GET",
+          "path": "/null-maximum",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has maximum=null — lands in upper_unbounded bucket (null-as-absent, no warning)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "integer",
+                "maximum": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "insertion_order_cap",
+          "method": "PUT",
+          "path": "/insertion-order",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Keys={z,a,b}: z has maximum=5 (upper_bounded), a has no maximum (upper_unbounded), b has maximum='invalid' (string → unknown+warning). firstKey=z → upper_bounded (insertion-order, NOT sorted).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "z": {
+                "type": "integer",
+                "maximum": 5
+              },
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "integer",
+                "maximum": "invalid"
+              }
+            }
+          }
+        }
+      ],
+      "expected_valid_maximum_values": [
+        "upper_bounded",
+        "upper_unbounded",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "numeric_upper_bound_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "upper_bounded,upper_unbounded,not_applicable,unknown"
     }
   ]
 }

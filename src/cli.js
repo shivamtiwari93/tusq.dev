@@ -679,6 +679,29 @@ const INPUT_SCHEMA_FIRST_PROPERTY_MINIMUM_AGGREGATION_KEY_ENUM = Object.freeze(n
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_MINIMUM_BUCKET_ORDER = Object.freeze(['lower_bounded', 'lower_unbounded', 'not_applicable']);
 
+// M66: frozen four-value bucket-key enum for input_schema.properties[firstKey].maximum classification. Immutable once M66 ships.
+// upper_bounded — typeof firstKey.maximum === 'number' && Number.isFinite(firstKey.maximum)
+//   (STRICT: NO Number()/parseFloat()/truthy coercion; NOT >= 0, NOT > 0, NOT Number.isInteger)
+//   ZERO-IS-VALID-UPPER-BOUND (M66-SPECIFIC, mirrors M65 ZERO-IS-VALID-LOWER-BOUND): maximum:0 → upper_bounded
+//   NEGATIVE-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:-273.15 → upper_bounded
+//   FRACTIONAL-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:0.5 / -0.001 → upper_bounded
+// upper_unbounded — firstKey.maximum is absent, undefined, or null (null-as-absent, mirrors M55-M65)
+// not_applicable — input_schema.type is a string but not 'object', OR zero-property object
+// unknown — malformed input_schema, firstKey not a plain object, or maximum present non-null but not a finite number
+const INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_ENUM = Object.freeze(new Set(['upper_bounded', 'upper_unbounded', 'not_applicable', 'unknown']));
+
+// M66: frozen three-value aggregation_key enum. Immutable once M66 ships.
+// upper_bounded/upper_unbounded buckets carry 'numeric_upper_bound_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['numeric_upper_bound_constraint', 'not_applicable', 'unknown']));
+
+// M66: closed-enum bucket iteration order (upper_bounded → upper_unbounded → not_applicable). Unknown appended last.
+// NOT data-intelligence-compiler-criticality-ranked, NOT semantic-layer-priority-ranked,
+// NOT metric-catalog-completeness-tier-ranked, NOT safe-SQL-tool-strictness-ranked,
+// NOT dashboard-Q&A-coverage-ranked, NOT anomaly-explanation-priority-ranked,
+// NOT data-governance-artifact-deprecation-priority-ranked, NOT dashboard-fallback-guidance-strength-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_BUCKET_ORDER = Object.freeze(['upper_bounded', 'upper_unbounded', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -904,6 +927,9 @@ function dispatch(argv) {
       return;
     case 'surface':
       cmdSurface(args);
+      return;
+    case 'upper':
+      cmdUpper(args);
       return;
     default:
       printHelp();
@@ -12097,6 +12123,421 @@ function parseLowerIndexArgs(args) {
   return { opts, positionals };
 }
 
+function _guardInputSchemaFirstPropertyMaximumBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_maximum outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyMaximumAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M66: classifyInputSchemaFirstPropertyMaximum(inputSchema) → 'upper_bounded'|'upper_unbounded'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              HAS-OWN-PROPERTY check: Object.prototype.hasOwnProperty.call(firstVal, 'maximum')
+//              if NOT hasOwn OR firstVal.maximum === undefined OR firstVal.maximum === null → 'upper_unbounded' (null-as-absent, no warning)
+//              if typeof firstVal.maximum === 'number' && Number.isFinite(firstVal.maximum) → 'upper_bounded'
+//                (ZERO-IS-VALID-UPPER-BOUND: maximum:0 → upper_bounded; NEGATIVE-IS-VALID-UPPER-BOUND: maximum:-273.15 → upper_bounded;
+//                 FRACTIONAL-IS-VALID-UPPER-BOUND: maximum:0.5 / -0.001 → upper_bounded)
+//              if firstVal.maximum is present, non-null, not a finite number → 'unknown'
+//                (reason: input_schema_properties_first_property_maximum_invalid_when_present — SIXTH FROZEN CODE)
+//                Covers: NaN, Infinity, -Infinity, string, boolean, array, plain object
+// STRICT check: typeof === 'number' && Number.isFinite(). NO Number()/parseFloat()/truthy coercion. NOT >= 0, NOT > 0, NOT Number.isInteger.
+// ZERO-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:0 → upper_bounded (JSON-Schema permits zero; mirrors M65 ZERO-IS-VALID-LOWER-BOUND)
+// NEGATIVE-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:-273.15 → upper_bounded (JSON-Schema permits arbitrary negative finite numbers)
+// FRACTIONAL-IS-VALID-UPPER-BOUND (M66-SPECIFIC): maximum:0.5 / -0.001 → upper_bounded
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property maximum beyond the FIRST is NOT walked (reserved for M-Upper-All-Properties).
+// Nested-object property maximum annotation NOT walked (reserved for M-Upper-Nested).
+// output_schema first-property maximum is NOT classified (reserved for M-Upper-Output).
+// input_schema_first_property_maximum MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyMaximum(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // maximum absent, undefined, or null → upper_unbounded (null-as-absent, mirroring M55-M65 precedent)
+  if (!Object.prototype.hasOwnProperty.call(firstVal, 'maximum') || firstVal.maximum === undefined || firstVal.maximum === null) {
+    return 'upper_unbounded';
+  }
+  // ZERO-IS-VALID-UPPER-BOUND, NEGATIVE-IS-VALID-UPPER-BOUND, FRACTIONAL-IS-VALID-UPPER-BOUND:
+  // typeof === 'number' && Number.isFinite() → upper_bounded (no warning)
+  if (typeof firstVal.maximum === 'number' && Number.isFinite(firstVal.maximum)) {
+    return 'upper_bounded';
+  }
+  // present, non-null, not finite number → unknown (6th frozen code)
+  return 'unknown';
+}
+
+// M66: buildInputSchemaFirstPropertyMaximumIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property maximum annotation index from the manifest's capabilities[].
+// Bucket iteration order: upper_bounded → upper_unbounded → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_maximum MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyMaximumIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_maximum_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_maximum.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M66 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M65)
+    //   6. input_schema_properties_first_property_maximum_invalid_when_present (NEW axis-specific code for M66)
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (Object.prototype.hasOwnProperty.call(firstVal, 'maximum') && firstVal.maximum !== undefined && firstVal.maximum !== null) {
+            // maximum present non-null: must be a finite number; otherwise emit 6th warning
+            // ZERO-IS-VALID-UPPER-BOUND: 0 passes (Number.isFinite(0) is true) → no warning → upper_bounded
+            // NEGATIVE-IS-VALID-UPPER-BOUND: -273.15 passes → no warning → upper_bounded
+            if (!(typeof firstVal.maximum === 'number' && Number.isFinite(firstVal.maximum))) {
+              warningReason = 'input_schema_properties_first_property_maximum_invalid_when_present';
+            }
+            // else: valid finite number — no warning (→ upper_bounded)
+          }
+          // else: maximum absent, undefined, or null → upper_unbounded, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const maximumClass = classifyInputSchemaFirstPropertyMaximum(inputSchema);
+    const isNamedBucket = namedBuckets.has(maximumClass);
+    const bucketKey = isNamedBucket ? maximumClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: upper_bounded → upper_unbounded → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyMaximumStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const maximumKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMaximumBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyMaximumBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMaximumAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyMaximumAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyMaximumAggregationKey('numeric_upper_bound_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_maximum: maximumKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_maximum_states: firstPropertyMaximumStates,
+    warnings
+  };
+}
+
+// M66: format input schema first property maximum annotation index as human-readable text
+function formatInputSchemaFirstPropertyMaximumIndex(index) {
+  if (index.first_property_maximum_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Maximum Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].maximum JSON-Schema Draft 4+ finite-number numeric-inclusive-upper-bound classification; it does NOT execute capability invocations, validate runtime payloads, enforce maximum constraints, infer maximum from docs, cross-reference minimum/multipleOf/exclusiveMaximum annotations, check type-applicability, rank data-intelligence-compiler criticality, rank semantic-layer priority, rank metric-catalog completeness tier, rank safe-SQL-tool strictness, rank dashboard-Q&A coverage, rank anomaly-explanation priority, rank data-governance-artifact deprecation priority, or rank dashboard-fallback guidance strength. Bucket order is deterministic stable-output ordering only (NOT data-intelligence-compiler-criticality-ranked, NOT semantic-layer-priority-ranked, NOT metric-catalog-completeness-tier-ranked, NOT safe-SQL-tool-strictness-ranked, NOT dashboard-Q&A-coverage-ranked, NOT anomaly-explanation-priority-ranked, NOT data-governance-artifact-deprecation-priority-ranked, NOT dashboard-fallback-guidance-strength-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_maximum_states) {
+    lines.push(`[${entry.input_schema_first_property_maximum}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: upper_bounded (typeof firstKey.maximum === 'number' && Number.isFinite(firstKey.maximum) — STRICT: NO Number()/parseFloat()/truthy coercion; NOT >= 0, NOT > 0, NOT Number.isInteger; ZERO-IS-VALID-UPPER-BOUND: maximum:0 → upper_bounded; NEGATIVE-IS-VALID-UPPER-BOUND: maximum:-273.15 → upper_bounded; FRACTIONAL-IS-VALID-UPPER-BOUND: maximum:0.5 → upper_bounded) | upper_unbounded (firstKey.maximum absent, undefined, or null — null-as-absent per M55-M65 precedent) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema, firstKey not a plain object, or firstKey.maximum present non-null but not a finite number: NaN, Infinity, -Infinity, string/'0', boolean/true, array/[0], plain object/{}).");
+  lines.push('Bucket order: upper_bounded → upper_unbounded → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M66: tusq upper — top-level noun dispatcher
+function cmdUpper(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('upper');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdUpperIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M66: tusq upper index — handler
+function cmdUpperIndex(args) {
+  const { opts, positionals } = parseUpperIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('upper index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyMaximumIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const upperFilter = opts['upper'] || null;
+
+  if (upperFilter !== null) {
+    // Case-sensitive: lowercase canonical maximum bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_MAXIMUM_ENUM.has(upperFilter)) {
+      throw new CliError(`Unknown input schema first property maximum state: ${upperFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_maximum_states.find((e) => e.input_schema_first_property_maximum === upperFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property maximum state: ${upperFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_maximum_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyMaximumIndex(outputIndex));
+}
+
+function parseUpperIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['upper', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
 // M55: classifyInputSchemaFirstPropertyDefaultValue(inputSchema) → 'defaulted'|'undefaulted'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -15992,6 +16433,7 @@ function printHelp() {
   process.stdout.write('  signature          Index capabilities by input schema first property type for planning review\n');
   process.stdout.write('  strictness         Index capabilities by output schema additionalProperties strictness for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
+  process.stdout.write('  upper              Index capabilities by input schema first property maximum numeric-upper-bound annotation presence for data-intelligence-compiler review\n');
   process.stdout.write('  version            Print version and exit\n');
   process.stdout.write('  help               Print this help\n');
 }
@@ -16540,6 +16982,37 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown minimum annotation value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime minimum enforcer, doc-contradiction detector, maximum-crossref tool, exclusiveMinimum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-minimum inferrer, or statistical aggregator; bucket order is deterministic stable-output ordering only (NOT knowledge-and-copilot-compiler-criticality-ranked, NOT RAG-index-priority-ranked, NOT Q&A-pack-completeness-tier-ranked, NOT troubleshooting-tree-branching-priority-ranked, NOT employee-copilot-pre-validation-strictness-ranked, NOT customer-facing-help-content-coverage-ranked, NOT help-content-deprecation-priority-ranked, NOT copilot-fallback-guidance-strength-ranked).'
+    ].join('\n'),
+    upper: 'Usage: tusq upper <subcommand>\n  Subcommands: index',
+    'upper index': [
+      'Usage: tusq upper index [--upper <upper_bounded|upper_unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --upper <upper_bounded|upper_unbounded|not_applicable|unknown>',
+      '                                     Filter to a single input schema first property maximum annotation bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'Maximum annotation rule (applied to input_schema.properties[firstKey].maximum when input_schema.type === "object"):',
+      "  upper_bounded   if typeof properties[firstKey].maximum === 'number' && Number.isFinite(properties[firstKey].maximum)",
+      "                  (STRICT: NO Number()/parseFloat()/truthy coercion; NOT >= 0, NOT > 0, NOT Number.isInteger;",
+      "                  ZERO-IS-VALID-UPPER-BOUND: maximum:0 → upper_bounded;",
+      "                  NEGATIVE-IS-VALID-UPPER-BOUND: maximum:-273.15 → upper_bounded;",
+      "                  FRACTIONAL-IS-VALID-UPPER-BOUND: maximum:0.5 / -0.001 → upper_bounded)",
+      "  upper_unbounded if properties[firstKey].maximum is absent, undefined, or null",
+      "                  (null-as-absent per M55-M65 precedent — no warning)",
+      "  not_applicable  if input_schema.type is a string but not 'object' OR zero-property object",
+      "  unknown         if input_schema or properties are malformed, firstKey not a plain object, or maximum present non-null but not a finite number",
+      "                  (NaN, Infinity, -Infinity, string/'0', boolean/true, array/[0], plain object/{})",
+      '',
+      'Bucket iteration order: upper_bounded → upper_unbounded → not_applicable → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown maximum annotation value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime maximum enforcer, doc-contradiction detector, minimum-crossref tool, exclusiveMaximum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-maximum inferrer, or statistical aggregator; bucket order is deterministic stable-output ordering only (NOT data-intelligence-compiler-criticality-ranked, NOT semantic-layer-priority-ranked, NOT metric-catalog-completeness-tier-ranked, NOT safe-SQL-tool-strictness-ranked, NOT dashboard-Q&A-coverage-ranked, NOT anomaly-explanation-priority-ranked, NOT data-governance-artifact-deprecation-priority-ranked, NOT dashboard-fallback-guidance-strength-ranked).'
     ].join('\n'),
     method: 'Usage: tusq method <subcommand>\n  Subcommands: index',
     'method index': [
