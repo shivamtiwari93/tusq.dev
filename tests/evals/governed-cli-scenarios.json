@@ -1998,6 +1998,115 @@
         "unknown"
       ],
       "expected_bucket_order": "required,optional,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-source-index-determinism",
+      "scenario_type": "input_schema_first_property_source_index_determinism",
+      "description": "Verifies that tusq binding index produces byte-identical output across three runs on a synthetic manifest with path, request_body, query, header, not_applicable, and unknown buckets. Also validates closed six-value bucket-key enum (path/request_body/query/header/not_applicable/unknown), closed three-value aggregation_key enum (source/not_applicable/unknown), bucket order determinism (path → request_body → query → header → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_source non-persistence. Object.keys insertion-order is preserved; MUST NOT sort or reorder property keys.",
+      "synthetic_capabilities": [
+        {
+          "name": "path_cap",
+          "description": "Path-bound first property",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "source": "path" }
+            }
+          }
+        },
+        {
+          "name": "request_body_cap",
+          "description": "Request-body-bound first property",
+          "domain": "users",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": { "type": "object", "source": "request_body" }
+            }
+          }
+        },
+        {
+          "name": "query_cap",
+          "description": "Query-bound first property",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "filter": { "type": "string", "source": "query" }
+            }
+          }
+        },
+        {
+          "name": "header_cap",
+          "description": "Header-bound first property",
+          "domain": "tenant",
+          "method": "GET",
+          "path": "/api/v1/tenant",
+          "side_effect_class": "read",
+          "sensitivity_class": "confidential",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tenant_id": { "type": "string", "source": "header" }
+            }
+          }
+        },
+        {
+          "name": "array_input_cap",
+          "description": "Non-object input (array type) — not_applicable, no warning",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/items",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No input schema — unknown bucket",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_sources": [
+        "path",
+        "request_body",
+        "query",
+        "header",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "source",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "path,request_body,query,header,not_applicable,unknown"
     }
   ]
 }

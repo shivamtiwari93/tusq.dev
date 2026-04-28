@@ -147,6 +147,77 @@ tusq auth index --scheme unknown --json
 tusq auth index --out auth-index.json
 ```
 
+## `tusq binding index`
+
+Emit a deterministic, per-HTTP-request-anatomy-source capability index from manifest evidence. Groups capabilities by the `source` field of the FIRST property declared under `input_schema.properties` (Object.keys insertion-order index 0, when `input_schema.type === 'object'`), using a closed six-value bucket-key enum (`path | request_body | query | header | not_applicable | unknown`). This is a **planning aid, not a runtime request validator, request-conformance detector, SDK call-site generator, or widget-render-control deriver**.
+
+**M43 vs M51 distinction:** `tusq request index` (M43) buckets on the UNION of ALL properties' `source` values (capability-wide categorical: `path | request_body | query | header | mixed | none | unknown`, where `mixed` denotes multi-locus capabilities and `none` denotes zero-property capabilities). `tusq binding index` (M51) buckets on ONLY `properties[firstKey].source` (single-property categorical: `path | request_body | query | header | not_applicable | unknown` — no `mixed` value because index 0 is a single property; `not_applicable` rather than `none` to parallel M48/M49/M50 first-property-axis convention).
+
+```bash
+tusq binding index [--source <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--source <path\|request_body\|query\|header\|not_applicable\|unknown>` | all sources | Filter to a single source bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed capabilities) |
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown source value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `path → request_body → query → header → not_applicable → unknown` (closed-enum order matching M43's first-four locus ordering — NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked). Empty buckets do not appear.
+
+**Classifier function (frozen):**
+
+| Input | Result | Warning? |
+|-------|--------|----------|
+| `input_schema` missing/null/undefined | `unknown` | `input_schema_field_missing` |
+| `input_schema` not a plain non-null object | `unknown` | `input_schema_field_not_object` |
+| `input_schema.type` missing or non-string | `unknown` | `input_schema_type_missing_or_invalid` |
+| `input_schema.type` is a string but not `'object'` | `not_applicable` | none |
+| `type === 'object'`, `properties` missing/null/not-plain-object | `unknown` | `input_schema_properties_field_missing_when_type_is_object` |
+| `type === 'object'`, `Object.keys(properties).length === 0` | `not_applicable` | none |
+| `properties[firstKey]` not plain object, OR `.source` not a string, OR `.source` not in `{path,request_body,query,header}` | `unknown` | `input_schema_properties_first_property_source_invalid` |
+| `properties[firstKey].source ∈ {path,request_body,query,header}` | `.source` verbatim | none |
+
+**Case-sensitive filter:** `--source` values are matched verbatim. `--source PATH` exits 1 with `Unknown input schema first property source: PATH`. `--source cookie` exits 1 (cookie is NOT in the closed six-value enum; cookie-locus extension is reserved for `M-Binding-Cookie-Bucket-1`).
+
+**Per-bucket fields:** `input_schema_first_property_source`, `aggregation_key` (`"source"` for four locus buckets, `"not_applicable"`, or `"unknown"`), `capability_count`, `capabilities[]` (manifest declared order), `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**`warnings[]` (JSON mode only):** Always present (empty `[]` when no malformed capabilities). Five frozen reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_source_invalid`. The `not_applicable` bucket and all four locus buckets emit NO warning. Human mode emits one `Warning: capability '<name>' has malformed input_schema first property source (<reason>)` line per malformed capability to stderr.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_source` MUST NOT be written into the manifest.
+- The six-value `input_schema_first_property_source` bucket-key enum, the three-value `aggregation_key` enum, the closed four-value property-source value set (`path`, `request_body`, `query`, `header`), and the five-value warning reason-code enum are frozen.
+- Per-property source beyond index 0 NOT walked (reserved `M-Binding-All-Properties-Source-Index-1`).
+- Nested-object property source NOT walked (reserved `M-Binding-Nested-Property-Source-Index-1`).
+- OUTPUT-side first-property source NOT classified here (reserved `M-Binding-Output-First-Property-Source-Index-1`).
+- Cookie/file/multipart locus extensions NOT in scope (reserved `M-Binding-Cookie-Bucket-1`, `M-Binding-File-Bucket-1`).
+- Widget-render-control derivation NOT computed inline (reserved `M-Binding-Widget-Renderer-Crossref-1`).
+- Runtime payload conformance NOT detected here (reserved `M-Binding-Runtime-Conformance-1`).
+- SDK call-site signature generation NOT in scope (reserved `M-Binding-SDK-Generator-1`).
+- Distinct from M43 (`tusq request index` — capability-wide source UNION), M47 (`tusq parameter index` — properties count), M49 (`tusq signature index` — firstKey primitive type), M50 (`tusq obligation index` — firstKey required-status), M48 (`tusq shape index` — output-side first-property type).
+
+```bash
+# All source buckets (human-readable)
+tusq binding index
+
+# All source buckets (JSON)
+tusq binding index --json
+
+# Single source bucket (lowercase — case-sensitive)
+tusq binding index --source path --json
+
+# Request-body-bound first properties
+tusq binding index --source request_body --json
+
+# Write to file
+tusq binding index --out binding-index.json
+```
+
 ## `tusq confidence index`
 
 Emit a deterministic, per-confidence-tier capability index from manifest evidence. Groups capabilities by a tier derived from their numeric `confidence` field using frozen thresholds (`high` ≥ 0.85, `medium` in [0.6, 0.85), `low` < 0.6, `unknown` for null/undefined/missing/non-numeric/out-of-[0,1]), in closed-enum order (`high → medium → low → unknown`). This is a **planning aid, not a runtime confidence gate, evidence-quality scoring engine, or automated re-classifier**.

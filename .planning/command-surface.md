@@ -4,6 +4,76 @@
 
 > **M50 Charter Sketch Reservation — 2026-04-28, run_6e53e7b50cd2c457, turn_644dcda246f21bc1, PM attempt 1, HEAD `061a227`.** Reserves the `### M50: Input Schema First Property Required Status Index — Product CLI Surface` detail block for the dev materialization turn. PM-frozen scope (dev MUST carry forward verbatim): new top-level noun `obligation` with single subcommand `index`; CLI surface growth 33 → 34; `obligation` inserted alphabetically between `method` and `output` in the post-`docs` block (`method` (m=109) < `obligation` (o=111) at position 0; `obligation` < `output` (o=o; b(98) < u(117)) at position 1); insertion sequence `..., items, method, obligation, output, parameter, path, ...`; command shape `tusq obligation index [--status <value>] [--manifest <path>] [--out <path>] [--json]`; four flags (case-sensitive lowercase-only `--status` filter against the closed four-value bucket-key enum `required | optional | not_applicable | unknown`); closed three-value `aggregation_key` enum `required_status | not_applicable | unknown`; eight-field per-bucket entry shape (`input_schema_first_property_required_status`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); five-value warning reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_required_field_invalid_when_type_is_object`); top-level `warnings[]` array always present in `--json` (empty `[]` when no malformed capabilities); `not_applicable` and `optional` emit NO warning (only `unknown` triggers warnings); bucket iteration order `required → optional → not_applicable → unknown` (deterministic stable-output convention only); within-bucket manifest declared order; empty buckets MUST NOT appear; result-array field name `required_statuses`; default-preservation table for the 33 unchanged commands; failure UX table; local-only invariants table including `tusq signature index` byte-identity guard (20 commands now); non-persistence rule (`input_schema_first_property_required_status` MUST NOT be written into `tusq.manifest.json`); explicit non-runtime-validator / non-action-policy-enforcer / non-SDK-call-site-signature-generator / non-runtime-conformance-detector / non-action-execution-risk-score-computer / non-statistical-aggregator boundary callout. VISION sources cited: `.planning/VISION.md` lines 409–422 (`### Action Execution Policy`) primary; `.planning/VISION.md` lines 143–158 (`## The Canonical Artifact`) structural anchor only. Full M50 surface block lands in dev attempt 1 of this run alongside the source-code implementation; this PM block reserves the structure only.
 
+### M51: Input Schema First Property Source Index — Product CLI Surface
+
+**Status:** Shipped in `run_c39bd102a520411b` / `turn_b129a6090e6226ec` (dev implementation). V1.32.
+
+**Commands (2 rows):**
+
+| Command | Description |
+|---------|-------------|
+| `tusq binding` | Top-level noun dispatcher; prints subcommand list, exits 0 |
+| `tusq binding index` | Index capabilities by input schema first property HTTP-request-anatomy source for planning review |
+
+**Flags (4):**
+
+| Flag | Argument | Description | Default |
+|------|----------|-------------|---------|
+| `--source` | `path\|request_body\|query\|header\|not_applicable\|unknown` | Filter to single source bucket (case-sensitive lowercase) | all |
+| `--manifest` | `<path>` | Manifest file to read | `tusq.manifest.json` in cwd |
+| `--out` | `<path>` | Write index to file; no stdout on success | stdout |
+| `--json` | — | Emit machine-readable JSON | human text |
+
+**Bucket-key enum (6 values, closed, immutable):**
+
+| Value | Meaning |
+|-------|---------|
+| `path` | firstKey.source === 'path' |
+| `request_body` | firstKey.source === 'request_body' |
+| `query` | firstKey.source === 'query' |
+| `header` | firstKey.source === 'header' |
+| `not_applicable` | input_schema.type !== 'object' OR zero-property object |
+| `unknown` | malformed input_schema or firstKey.source outside closed four-value set |
+
+**aggregation_key enum (3 values, closed):** `source` (four locus buckets) | `not_applicable` | `unknown`.
+
+**Property-source value set (4 values, closed):** `path`, `request_body`, `query`, `header`. Any other string → `unknown`.
+
+**Per-bucket entry shape (8 fields):**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `input_schema_first_property_source` | string | One of the six bucket-key enum values |
+| `aggregation_key` | string | `source`, `not_applicable`, or `unknown` |
+| `capability_count` | number | Count of capabilities in this bucket |
+| `capabilities` | string[] | Capability names in manifest declared order |
+| `approved_count` | number | Count of capabilities with `approved === true` |
+| `gated_count` | number | capability_count - approved_count |
+| `has_destructive_side_effect` | boolean | true iff any capability has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | true iff any has `sensitivity_class === 'restricted'` or `'confidential'` |
+
+**Bucket iteration order:** `path → request_body → query → header → not_applicable → unknown`. Deterministic stable-output only. NOT security-blast-radius-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked.
+
+**Failure UX:**
+
+| Condition | Exit | Stderr |
+|-----------|------|--------|
+| `--source` value not in six-value enum | 1 | `Unknown input schema first property source: <value>` |
+| `--source` value absent from index | 1 | `No capabilities found for input schema first property source: <value>` |
+| Manifest not found | 1 | `Manifest not found: <path>` |
+| Invalid manifest JSON | 1 | `Invalid manifest JSON: <path>` |
+| Missing capabilities array | 1 | `Invalid manifest: missing capabilities array` |
+| Unknown flag | 1 | `Unknown flag: --<flag>` |
+| Missing flag value | 1 | `Missing value for --<flag>` |
+| `--out` inside `.tusq/` | 1 | `--out path must not be inside .tusq/` |
+| `--out` unwritable | 1 | `Cannot write to --out path: <path>` |
+
+**Local-only invariants:** Manifest byte-identical pre/post. `tusq compile` byte-identical pre/post. All 21 prior peer index commands byte-identical pre/post. `input_schema_first_property_source` MUST NOT be written into `tusq.manifest.json`.
+
+**CLI surface after M51 (35 commands, alphabetical):** init, scan, manifest, compile, serve, review, docs, approve, auth, **binding**, confidence, description, diff, domain, effect, examples, input, items, method, obligation, output, parameter, path, pii, policy, redaction, request, response, sensitivity, shape, signature, strictness, surface, version, help.
+
+---
+
 ### M50: Input Schema First Property Required Status Index — Product CLI Surface
 
 **Status:** Shipped in `run_6e53e7b50cd2c457` / `turn_99050f1349379e99` (dev implementation). V1.31.

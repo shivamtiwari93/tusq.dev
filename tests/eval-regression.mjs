@@ -2053,6 +2053,8 @@ async function run() {
       await runInputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_required_status_index_determinism') {
       await runInputSchemaFirstPropertyRequiredStatusIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_source_index_determinism') {
+      await runInputSchemaFirstPropertySourceIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -2749,6 +2751,127 @@ async function runInputSchemaFirstPropertyRequiredStatusIndexDeterminismScenario
   const requiredEntry = index.required_statuses.find((e) => e.input_schema_first_property_required_status === 'required');
   if (!requiredEntry || !requiredEntry.capabilities.includes('required_cap')) {
     fail(`${scenario.id}: required_cap (firstKey='id' ∈ required=['id']) must be in required bucket`);
+  }
+}
+
+async function runInputSchemaFirstPropertySourceIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-source-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq binding index --json three times and assert byte-identical output
+  const run1 = runCli(['binding', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['binding', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['binding', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: binding index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_source bucket-key enum is closed — every key is one of the six valid values
+  const index = JSON.parse(run1.stdout);
+  const validSources = new Set(scenario.expected_valid_sources);
+  for (const entry of index.first_property_sources) {
+    if (!validSources.has(entry.input_schema_first_property_source)) {
+      fail(`${scenario.id}: input_schema_first_property_source '${entry.input_schema_first_property_source}' is outside the closed six-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_sources) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_source}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (path → request_body → query → header → not_applicable → unknown)
+  const bucketOrder = index.first_property_sources.map((e) => e.input_schema_first_property_source).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_source must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by binding index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_source')) {
+      fail(`${scenario.id}: input_schema_first_property_source must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert array_input_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+
+  // Assert path_cap is in path bucket
+  const pathEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'path');
+  if (!pathEntry || !pathEntry.capabilities.includes('path_cap')) {
+    fail(`${scenario.id}: path_cap (firstKey.source='path') must be in path bucket`);
+  }
+
+  // Assert request_body_cap is in request_body bucket
+  const requestBodyEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'request_body');
+  if (!requestBodyEntry || !requestBodyEntry.capabilities.includes('request_body_cap')) {
+    fail(`${scenario.id}: request_body_cap (firstKey.source='request_body') must be in request_body bucket`);
+  }
+
+  // Assert query_cap is in query bucket
+  const queryEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'query');
+  if (!queryEntry || !queryEntry.capabilities.includes('query_cap')) {
+    fail(`${scenario.id}: query_cap (firstKey.source='query') must be in query bucket`);
+  }
+
+  // Assert header_cap is in header bucket
+  const headerEntry = index.first_property_sources.find((e) => e.input_schema_first_property_source === 'header');
+  if (!headerEntry || !headerEntry.capabilities.includes('header_cap')) {
+    fail(`${scenario.id}: header_cap (firstKey.source='header') must be in header bucket`);
   }
 }
 

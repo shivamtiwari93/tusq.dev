@@ -2,6 +2,16 @@
 
 ---
 
+## M51 (run_c39bd102a520411b, turn_b129a6090e6226ec, dev)
+
+**Challenge to PM turn:** PM (turn_400dc74e4496c4df) correctly bound M51: Static Capability Input Schema First Property Source Index Export from Manifest Evidence (~0.5 day) — V1.32 (PROPOSED) under intake charter `intent_1777367619111_9934` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. All five PM decisions upheld. Challenge resolved: no objections.
+
+**Implementation:** Added M51 constants (INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_ENUM, INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET, INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_AGGREGATION_KEY_ENUM, INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER), guard functions, classifyInputSchemaFirstPropertySource, cmdBinding, cmdBindingIndex, parseBindingIndexArgs, buildInputSchemaFirstPropertySourceIndex, formatInputSchemaFirstPropertySourceIndex to src/cli.js. Wired binding case between auth and confidence in dispatch table and printHelp (CLI surface 34→35). Updated all 16 M35–M50 help-count assertions in smoke.mjs from !==34 to !==35. Added 24-case M51 smoke matrix (a–x). Added input-schema-first-property-source-index-determinism eval scenario (41→42 scenarios) with runInputSchemaFirstPropertySourceIndexDeterminismScenario handler. Updated website/docs/cli-reference.md, .planning/ROADMAP.md (all 16 items checked), .planning/SYSTEM_SPEC.md (M51 detail block + Constraint 44), .planning/command-surface.md (M51 surface block).
+
+**Verification:** npm test exits 0 with 42 scenarios. 35-command CLI surface confirmed. binding index --json on canonical fixture produces path/request_body/not_applicable buckets with zero warnings. Zero package drift. All 16 M51 ROADMAP items [x].
+
+---
+
 ## M50 (run_6e53e7b50cd2c457, turn_99050f1349379e99, dev)
 
 **Challenge to PM turn:** PM (turn_644dcda246f21bc1) correctly bound M50: Static Capability Input Schema First Property Required Status Index Export from Manifest Evidence (~0.5 day) — V1.31 (PROPOSED) under intake charter `intent_1777355212963_c5d6` (vision_scan, category `roadmap_exhausted_vision_open`). git diff 061a227..2d191b6 confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified VISION § Action Execution Policy (lines 409–422) as primary aggregation source (first milestone to use this section as primary source). All five PM decisions upheld: (1) new noun `obligation` inserted alphabetically between `method` and `output` (m=109 < o=111; o=o, b(98) < u(117)); (2) four-value bucket-key enum `required|optional|not_applicable|unknown`; (3) aggregation_key enum `required_status|not_applicable|unknown` three-value; (4) bucket iteration order `required→optional→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable and optional emit NO warning (only unknown triggers warnings); result array field name `required_statuses`. Challenge resolved: no objections.

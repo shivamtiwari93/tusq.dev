@@ -400,6 +400,27 @@ const INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_AGGREGATION_KEY_ENUM = Object.
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_STATUS_BUCKET_ORDER = Object.freeze(['required', 'optional', 'not_applicable']);
 
+// M51: frozen six-value input_schema_first_property_source bucket-key enum. Immutable once M51 ships.
+// path = firstKey.source === 'path'; request_body = firstKey.source === 'request_body';
+// query = firstKey.source === 'query'; header = firstKey.source === 'header';
+// not_applicable = non-object input or zero-property object; unknown = malformed input_schema or invalid firstKey.source.
+const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_ENUM = Object.freeze(new Set(['path', 'request_body', 'query', 'header', 'not_applicable', 'unknown']));
+
+// M51: frozen closed four-value property-source value set (path, request_body, query, header). Matches M43. Immutable once M51 ships.
+// Any string outside this set causes classifyInputSchemaFirstPropertySource to return 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET = Object.freeze(new Set(['path', 'request_body', 'query', 'header']));
+
+// M51: frozen three-value aggregation_key enum. Immutable once M51 ships.
+// path/request_body/query/header buckets carry 'source'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['source', 'not_applicable', 'unknown']));
+
+// M51: closed-enum bucket iteration order (path → request_body → query → header → not_applicable → unknown).
+// Matching M43's first-four locus ordering. NOT security-blast-radius-ranked, NOT workflow-criticality-ranked,
+// NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked,
+// NOT widget-render-precedence-ranked. Deterministic stable-output convention only.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER = Object.freeze(['path', 'request_body', 'query', 'header', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -511,6 +532,9 @@ function dispatch(argv) {
       return;
     case 'auth':
       cmdAuth(args);
+      return;
+    case 'binding':
+      cmdBinding(args);
       return;
     case 'confidence':
       cmdConfidence(args);
@@ -6356,6 +6380,387 @@ function formatInputSchemaFirstPropertyRequiredStatusIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M51: tusq binding — top-level noun dispatcher
+function cmdBinding(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('binding');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdBindingIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M51: tusq binding index — handler
+function cmdBindingIndex(args) {
+  const { opts, positionals } = parseBindingIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('binding index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertySourceIndex(manifest, manifestPath);
+
+  const sourceFilter = opts['source'] || null;
+  let outputIndex;
+  if (sourceFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_first_property_source values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_ENUM.has(sourceFilter)) {
+      throw new CliError(`Unknown input schema first property source: ${sourceFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_sources.find((e) => e.input_schema_first_property_source === sourceFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property source: ${sourceFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_sources: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property source (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property source (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertySourceIndex(outputIndex));
+}
+
+function parseBindingIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['source', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaFirstPropertySourceBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_source outside closed six-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertySourceAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M51: classifyInputSchemaFirstPropertySource(inputSchema) → 'path'|'request_body'|'query'|'header'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object OR firstVal.source is not a string OR firstVal.source not in VALUE_SET → 'unknown' (reason: input_schema_properties_first_property_source_invalid)
+//              else return firstVal.source verbatim
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property source beyond the FIRST is NOT walked (reserved for M-Binding-All-Properties-Source-Index-1).
+// Nested-object property source NOT walked (reserved for M-Binding-Nested-Property-Source-Index-1).
+// output_schema first-property source is NOT classified (reserved for M-Binding-Output-First-Property-Source-Index-1).
+// input_schema_first_property_source MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertySource(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  if (typeof firstVal.source !== 'string' || !INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET.has(firstVal.source)) {
+    return 'unknown';
+  }
+  return firstVal.source;
+}
+
+// M51: buildInputSchemaFirstPropertySourceIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property source index from the manifest's capabilities[].
+// Bucket iteration order: path → request_body → query → header → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_source MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertySourceIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_sources: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the five ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_source.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property source is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_source_invalid';
+          } else if (typeof firstVal.source !== 'string' || !INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET.has(firstVal.source)) {
+            warningReason = 'input_schema_properties_first_property_source_invalid';
+          }
+          // else: valid source value — no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const sourceClass = classifyInputSchemaFirstPropertySource(inputSchema);
+    const isNamedBucket = namedBuckets.has(sourceClass);
+    const bucketKey = isNamedBucket ? sourceClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: path → request_body → query → header → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertySources = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const isLocusBucket = INPUT_SCHEMA_FIRST_PROPERTY_SOURCE_VALUE_SET.has(bucketKey);
+    const sourceKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertySourceBucketKey('unknown')
+      : _guardInputSchemaFirstPropertySourceBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertySourceAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertySourceAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertySourceAggregationKey('source');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_source: sourceKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_sources: firstPropertySources,
+    warnings
+  };
+}
+
+// M51: format input schema first property source index as human-readable text
+function formatInputSchemaFirstPropertySourceIndex(index) {
+  if (index.first_property_sources.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Source Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Planning aid: this index reports per-capability input_schema.properties[firstKey].source HTTP-request-anatomy locus classification; it does NOT execute capability invocations, validate runtime request payloads against the declared first-property source, cross-reference manifest first-property locus vs runtime request shape, generate request payloads, or auto-flip tusq serve filtering. Bucket order is deterministic stable-output ordering only (NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked).',
+    ''
+  ];
+
+  for (const entry of index.first_property_sources) {
+    lines.push(`[${entry.input_schema_first_property_source}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: path (firstKey.source === 'path') | request_body (firstKey.source === 'request_body') | query (firstKey.source === 'query') | header (firstKey.source === 'header') | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or firstKey.source missing/non-string/outside closed four-value set).");
+  lines.push('Bucket order: path → request_body → query → header → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M41: tusq path — top-level noun dispatcher
 function cmdPath(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -9606,6 +10011,7 @@ function printHelp() {
   process.stdout.write('  docs               Generate Markdown capability documentation\n');
   process.stdout.write('  approve            Approve manifest capabilities with audit metadata\n');
   process.stdout.write('  auth               Index capabilities by auth scheme for planning review\n');
+  process.stdout.write('  binding            Index capabilities by input schema first property source for planning review\n');
   process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
   process.stdout.write('  description        Index capabilities by description word count tier for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
@@ -9660,6 +10066,48 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown auth scheme, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime authentication enforcer or OAuth/OIDC/SAML/SOC2 compliance certifier.'
+    ].join('\n'),
+    binding: 'Usage: tusq binding <subcommand>\n  Subcommands: index',
+    'binding index': [
+      'Usage: tusq binding index [--source <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --source <value>      Filter to a single input schema first property source bucket (default: all sources; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid firstKey.source)',
+      '',
+      'Classifier rule (applied to input_schema.properties[firstKey].source when input_schema.type === "object"):',
+      '  path           if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].source === "path"',
+      '  request_body   if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].source === "request_body"',
+      '  query          if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].source === "query"',
+      '  header         if input_schema.type === "object" and Object.keys(properties).length > 0 and properties[firstKey].source === "header"',
+      '  not_applicable if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown        if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or properties[firstKey] is not a plain object or properties[firstKey].source is missing/non-string/not in closed four-value set.',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property source beyond the FIRST is NOT walked (reserved for M-Binding-All-Properties-Source-Index-1).',
+      '               Nested-property source under input_schema.properties[key].properties NOT walked (reserved for M-Binding-Nested-Property-Source-Index-1).',
+      '               output_schema first-property source NOT classified here (reserved for M-Binding-Output-First-Property-Source-Index-1).',
+      '               Cookie/file/multipart source extensions reserved for M-Binding-Cookie-Bucket-1 and M-Binding-File-Bucket-1.',
+      '               Distinct from M43 (input_schema capability-wide source UNION across all properties via tusq request index),',
+      '               M47 (input_schema.properties count cardinality via tusq parameter index),',
+      '               M49 (input-side first-property primitive type via tusq signature index),',
+      '               M50 (input-side first-property required-status via tusq obligation index),',
+      '               M48 (output-side first-property type via tusq shape index).',
+      '               All-property source distribution (capability-wide union) is M43\'s axis; per-property fine-grained granularity reserved for M-Binding-All-Properties-Source-Index-1.',
+      '',
+      'Bucket iteration order: path → request_body → query → header → not_applicable → unknown',
+      '  (matching M43\'s first-four locus ordering — NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown source value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime request validator, request-conformance detector, SDK call-site generator, or widget-render-control deriver; first-property source is deterministic stable-output ordering only (NOT security-blast-radius-ranked, NOT workflow-criticality-ranked, NOT permission-sensitivity-ranked, NOT HTTP-spec-precedence-ranked, NOT skill-composition-priority-ranked, NOT widget-render-precedence-ranked).'
     ].join('\n'),
     confidence: 'Usage: tusq confidence <subcommand>\n  Subcommands: index',
     'confidence index': [
