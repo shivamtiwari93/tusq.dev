@@ -1,6 +1,80 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-> **M49 Charter Sketch Reservation — 2026-04-28, run_9a2f6448e2199cda, turn_fd31ac8cace8aa10, PM attempt 1, HEAD `9b5ffb7`.** PM has bound M49 (Static Capability Input Schema First Property Type Index Export from Manifest Evidence — V1.30 PROPOSED) per ROADMAP § M49. Dev MUST author the full `### M49` Product CLI Surface block in the dev materialization turn before any source code lands. The block MUST include: two-row command table (`tusq signature` enumerator + `tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]`); four-flag table; closed nine-value bucket-key enum table (`string | number | integer | boolean | null | object | array | not_applicable | unknown`); closed three-value aggregation_key enum table (`first_property_type | not_applicable | unknown`); classifier-function rules table; per-bucket 8-field entry shape table; bucket iteration order table (`string → number → integer → boolean → null → object → array → not_applicable → unknown`, deterministic-stable-output-only framing); default-preservation table for the 32 unchanged commands (init, scan, manifest, compile, serve, review, docs, approve, auth, confidence, description, diff, domain, effect, examples, input, items, method, output, parameter, path, pii, policy, redaction, request, response, sensitivity, shape, strictness, surface, version, help); failure UX table (`Unknown input schema first property type:`, `No capabilities found for input schema first property type:`, `--out path must not be inside .tusq/`, `--out parent directory does not exist or is not writable`, `Manifest file not found:`, `Failed to parse manifest JSON:`, `Manifest is missing capabilities array`, `Unknown flag:`, `--first-type requires a value`); local-only invariants table (mirrors M30–M48 read-only guarantees + new `tusq shape index` byte-identity peer guarding 19 prior peer index commands). Dev MUST NOT alter PM-frozen scope decisions enumerated in ROADMAP § M49 Charter Bound block.
+### M49: Input Schema First Property Type Index — Product CLI Surface
+
+**Status:** Shipped in `run_9a2f6448e2199cda` / `turn_a71ef526db35c329` (dev implementation). V1.30.
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `tusq signature` | Top-level dispatcher; prints `tusq signature index` help and exits 0 with no subcommand |
+| `tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]` | Index capabilities by input schema first property type |
+
+**Flags:**
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--first-type <value>` | Optional | Filter to single bucket; case-sensitive lowercase-only; exit 1 if unknown |
+| `--manifest <path>` | Optional | Manifest to read (default: `tusq.manifest.json` in cwd) |
+| `--out <path>` | Optional | Write JSON to file (no stdout on success; `.tusq/` paths rejected) |
+| `--json` | Boolean | Emit machine-readable JSON including `warnings[]` |
+
+**Bucket-key enum (closed nine-value):**
+
+| Value | Condition |
+|-------|-----------|
+| `string` | `input_schema.type === 'object'` and `properties[firstKey].type === 'string'` |
+| `number` | `input_schema.type === 'object'` and `properties[firstKey].type === 'number'` |
+| `integer` | `input_schema.type === 'object'` and `properties[firstKey].type === 'integer'` |
+| `boolean` | `input_schema.type === 'object'` and `properties[firstKey].type === 'boolean'` |
+| `null` | `input_schema.type === 'object'` and `properties[firstKey].type === 'null'` |
+| `object` | `input_schema.type === 'object'` and `properties[firstKey].type === 'object'` |
+| `array` | `input_schema.type === 'object'` and `properties[firstKey].type === 'array'` |
+| `not_applicable` | `input_schema.type` is a non-`'object'` string, OR `input_schema.type === 'object'` and `Object.keys(properties).length === 0` |
+| `unknown` | Malformed `input_schema` or invalid first-property descriptor (see five frozen reason codes) |
+
+**Aggregation-key enum (closed three-value):**
+
+| Value | Assigned to |
+|-------|-------------|
+| `first_property_type` | Seven primitive buckets (string/number/integer/boolean/null/object/array) |
+| `not_applicable` | `not_applicable` bucket |
+| `unknown` | `unknown` bucket |
+
+**Per-bucket entry shape (frozen 8 fields):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `input_schema_first_property_type` | string | Bucket key |
+| `aggregation_key` | string | Closed three-value enum |
+| `capability_count` | number | Count of capabilities in bucket |
+| `capabilities` | string[] | Capability names in manifest order |
+| `approved_count` | number | Count where `approved === true` |
+| `gated_count` | number | Count where `approved !== true` |
+| `has_destructive_side_effect` | boolean | Any cap in bucket has `side_effect_class === 'destructive'` |
+| `has_restricted_or_confidential_sensitivity` | boolean | Any cap in bucket has `sensitivity_class` in `{restricted, confidential}` |
+
+**Bucket iteration order:** `string → number → integer → boolean → null → object → array → not_applicable → unknown` (deterministic stable-output convention only — NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked, NOT security-blast-radius-ranked)
+
+**CLI surface growth:** 32 → 33 commands. `signature` inserted alphabetically between `shape` and `strictness`.
+
+**Failure UX:**
+
+| Condition | Stderr | Exit |
+|-----------|--------|------|
+| `--first-type STRING` (uppercase) | `Unknown input schema first property type: STRING` | 1 |
+| `--first-type boolean` (absent bucket) | `No capabilities found for input schema first property type: boolean` | 1 |
+| `--out .tusq/foo.json` | `--out path must not be inside .tusq/` | 1 |
+| Manifest not found | `Manifest not found: <path>` | 1 |
+| Invalid JSON manifest | `Invalid manifest JSON: <path>` | 1 |
+| Missing capabilities array | `Invalid manifest: missing capabilities array` | 1 |
+| Unknown flag | `Unknown flag: --<flag>` | 1 |
+| `--first-type` with no value | `Missing value for --first-type` | 1 |
+
+**Local-only invariants:** Manifest mtime + content byte-identical pre/post. `input_schema_first_property_type` MUST NOT be written to `tusq.manifest.json` (non-persistence rule). `tusq compile` output byte-identical pre/post. All 19 prior peer index commands byte-identical pre/post.
+
+---
 
 ### M48: Output Schema First Property Type Index — Product CLI Surface
 

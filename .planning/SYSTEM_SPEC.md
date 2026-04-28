@@ -1,6 +1,53 @@
 # System Spec — tusq.dev Docs & Website Platform
 
-> **M49 Charter Sketch Reservation — 2026-04-28, run_9a2f6448e2199cda, turn_fd31ac8cace8aa10, PM attempt 1, HEAD `9b5ffb7`.** PM has bound M49 (Static Capability Input Schema First Property Type Index Export from Manifest Evidence — V1.30 PROPOSED) per ROADMAP § M49. Dev MUST author the full `### M49` SYSTEM_SPEC detail block in the dev materialization turn before any source code lands. The detail block MUST cover: purpose statement; command shape `tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]`; frozen nine-value `input_schema_first_property_type` bucket-key enum (`string | number | integer | boolean | null | object | array | not_applicable | unknown`); frozen three-value `aggregation_key` enum (`first_property_type | not_applicable | unknown`); frozen classifier-function rules including the `not_applicable` rule for `input_schema.type !== 'object'` and zero-property object inputs (no warning); frozen 8-field per-bucket entry shape (`input_schema_first_property_type`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`); top-level `warnings[]` rule with five frozen reason codes (`input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`); closed-enum bucket iteration order rule (`string → number → integer → boolean → null → object → array → not_applicable → unknown`) explicitly framed as deterministic-stable-output-only (NOT tool-call-difficulty / LLM-context-cost / JSON-Schema-precedence / parameter-binding-difficulty / customer-facing-shape-claim / security-blast-radius ranking); within-bucket manifest-declared-order rule; case-sensitive lowercase-only `--first-type` filter rule; empty-capabilities and stdout-discipline rules; read-only invariants including non-persistence of `input_schema_first_property_type`, the no-all-properties-walking rule, the no-nested-property-recursion rule, the no-output-side-classification rule, the no-required-status-cross-axis rule, and the explicit non-runtime-validator / non-SDK-generator / non-JSON-Schema-emitter boundary; full Constraint 42 text (planning aid only, see ROADMAP § M49 for verbatim spec). Dev MUST NOT alter PM-frozen scope decisions enumerated in ROADMAP § M49 Charter Bound block.
+### M49: Static Capability Input Schema First Property Type Index
+
+**Status:** Shipped in `run_9a2f6448e2199cda` / `turn_a71ef526db35c329` (dev implementation). V1.30.
+
+**Purpose:** Export a per-bucket breakdown of capabilities by the primitive `type` of the FIRST property declared under `input_schema.properties` (Object.keys insertion-order index 0) when `input_schema.type === 'object'`. Directly answers: "for the object-typed input parameter sets my tools accept, what is the primitive type of the first parameter of each — string, number, integer, boolean, null, object (nested), array (nested), not-applicable (non-object input or empty-property object), or unknown (malformed)?" Operationalizes VISION § The Promise (lines 19–32) — "AI tools with strict schemas" — as the primary aggregation source; the first milestone to use this section as the primary source. The first input parameter's primitive type is the leading characteristic of a tool's invocation footprint visible to LLM contexts, SDK call sites, MCP clients, and voice surfaces. Cross-axis flags `has_destructive_side_effect` and `has_restricted_or_confidential_sensitivity` are load-bearing for `object` and `array` buckets. Distinct from M39 (input_schema.required count), M43 (input_schema primary parameter source), M47 (input_schema.properties cardinality), M48 (output-side first-property type).
+
+**Command shape:** `tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]`
+
+**Frozen nine-value bucket-key enum:** `string | number | integer | boolean | null | object | array | not_applicable | unknown`. Immutable post-ship. Matches M48 output-side enum verbatim for cross-axis comparability.
+
+**Frozen three-value aggregation_key enum:** `first_property_type | not_applicable | unknown`. Matches M48 precedent verbatim.
+
+**Classifier function (frozen):**
+
+| Input | Result | Warning? |
+|-------|--------|----------|
+| `input_schema` missing/null/undefined | `unknown` | `input_schema_field_missing` |
+| `input_schema` not a plain non-null object (or is array) | `unknown` | `input_schema_field_not_object` |
+| `input_schema.type` missing or non-string | `unknown` | `input_schema_type_missing_or_invalid` |
+| `input_schema.type` is a string but not `'object'` | `not_applicable` | none |
+| `input_schema.type === 'object'`, `properties` missing/null/not-plain-object | `unknown` | `input_schema_properties_field_missing_when_type_is_object` |
+| `input_schema.type === 'object'`, `Object.keys(properties).length === 0` | `not_applicable` | none |
+| `firstDescriptor` not a plain non-null object, or `firstDescriptor.type` missing/non-string/outside seven-primitive set | `unknown` | `input_schema_properties_first_property_descriptor_invalid` |
+| Otherwise | `firstDescriptor.type` (one of seven primitives) | none |
+
+Object.keys insertion-order preserved. MUST NOT sort or reorder property keys.
+
+**Frozen 8-field per-bucket entry shape:** `input_schema_first_property_type`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`.
+
+**Top-level `warnings[]`:** Present only in `--json` mode; always emitted (even when empty `[]`). Five frozen reason codes: `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`.
+
+**Bucket iteration order (closed-enum, deterministic stable-output only):** `string → number → integer → boolean → null → object → array → not_applicable → unknown`. NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked, NOT customer-facing-shape-claim-ranked, NOT security-blast-radius-ranked. Empty buckets MUST NOT appear.
+
+**Within-bucket order:** Manifest declared order (capabilities[] index ascending).
+
+**`--first-type` filter:** Case-sensitive lowercase-only. Uppercase/mixed-case exits 1 `Unknown input schema first property type: <value>`. Filtering on absent bucket exits 1 `No capabilities found for input schema first property type: <value>`.
+
+**Read-only invariants:** Manifest mtime + SHA-256 + capability_digest byte-identical pre/post. `tusq compile` output byte-identical pre/post. All prior peer index commands byte-identical pre/post. `input_schema_first_property_type` MUST NOT be written into `tusq.manifest.json`.
+
+**Frozen invariants:**
+- Per-property types beyond index 0 NOT walked (reserved M-Signature-All-Properties-Type-Index-1).
+- Nested-object property types under `properties[key].properties` NOT walked (reserved M-Signature-Nested-Property-Type-Index-1).
+- `output_schema.properties[firstKey].type` NOT classified here (that is M48 tusq shape index).
+- `firstKey ∈ input_schema.required` NOT bucketed (reserved M-Signature-First-Property-Required-Status-Index-1).
+
+**Constraint 42:** `tusq signature index` is a planning aid that surfaces the per-capability `input_schema.properties[<firstKey>].type` primitive classification (the leading characteristic of object-typed input invocation footprints) and the cross-axis side-effect/sensitivity exposure of each primitive bucket. It does NOT execute capability invocations at runtime, does NOT validate runtime request payloads against the declared first-property type, does NOT generate SDK call-site code, does NOT emit JSON-Schema files, does NOT certify request-shape correctness, does NOT alter M39's `input_schema.required` count bucketing rules, does NOT alter M43's `input_schema` primary-parameter-source bucketing rules, does NOT alter M47's `input_schema.properties` cardinality bucketing rules, does NOT alter M48's `output_schema.properties[<firstKey>].type` bucketing rules, does NOT walk per-property types beyond the FIRST property, does NOT inspect nested-object property types, does NOT bucket on the cross-axis required-or-not status of the first property, does NOT generate downstream SDK call-site type definitions, does NOT persist `input_schema_first_property_type` into `tusq.manifest.json`, and does NOT compute statistical aggregates. The nine-value bucket-key enum, the three-value aggregation_key enum, the closed seven-primitive set, and the five-value warning reason-code enum are frozen.
+
+---
 
 ### M48: Static Capability Output Schema First Property Type Index
 

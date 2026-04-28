@@ -2,6 +2,42 @@
 
 ---
 
+## M49 (run_9a2f6448e2199cda, turn_a71ef526db35c329, dev)
+
+**Challenge to PM turn:** PM (turn_fd31ac8cace8aa10) correctly bound M49: Static Capability Input Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.30 (PROPOSED) under intake charter `intent_1777349577378_e2a7` (vision_scan, category `roadmap_exhausted_vision_open`). git diff confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified VISION § The Promise (lines 19–32) as primary aggregation source (first milestone to use this section as primary source). All five PM decisions upheld: (1) new noun `signature` inserted alphabetically between `shape` and `strictness` (s/h < s/i; s/i < s/t); (2) nine-value bucket-key enum `string|number|integer|boolean|null|object|array|not_applicable|unknown` matching M48 verbatim; (3) aggregation_key enum `first_property_type|not_applicable|unknown` three-value matching M48; (4) bucket iteration order `string→number→integer→boolean→null→object→array→not_applicable→unknown`; (5) five frozen warning reason codes; not_applicable emits NO warning; result array field name `first_property_types`. Challenge resolved: no objections.
+
+**Implementation:**
+- Added `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_ENUM` (frozen Set: string/number/integer/boolean/null/object/array/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_PRIMITIVE_VALUE_SET` (frozen Set: seven JSON-Schema primitives), `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_AGGREGATION_KEY_ENUM` (frozen Set: first_property_type/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER` (frozen array: string/number/integer/boolean/null/object/array/not_applicable) constants in `src/cli.js` after M48 `OUTPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER`.
+- Added `_guardInputSchemaFirstPropertyTypeBucketKey` and `_guardInputSchemaFirstPropertyTypeAggregationKey` guard functions.
+- Added `classifyInputSchemaFirstPropertyType(inputSchema)` pure function with same five-reason malform detection as M48 but for `input_schema` field.
+- Added `buildInputSchemaFirstPropertyTypeIndex(manifest, manifestPath)` with closed-enum bucket ordering and warnings[] collection.
+- Added `formatInputSchemaFirstPropertyTypeIndex(index)` with planning-aid callout.
+- Added `cmdSignature` dispatcher and `cmdSignatureIndex(args)` command handler, `parseSignatureIndexArgs` (4-flag parser: first-type/manifest/out/json).
+- Wired `signature` case into dispatch table between `shape` and `strictness`.
+- Updated `printHelp()` to emit 33-command surface with `signature` between `shape` and `strictness`.
+- Updated `printCommandHelp()` with `signature` and `signature index` help entries.
+- Added 24-case M49 smoke matrix (a–x) to `tests/smoke.mjs`.
+- Updated all M35–M48 help-count assertions from 32 to 33.
+- Added `input-schema-first-property-type-index-determinism` eval scenario to `tests/evals/governed-cli-scenarios.json`.
+- Added `runInputSchemaFirstPropertyTypeIndexDeterminismScenario` handler to `tests/eval-regression.mjs`.
+- Updated `.planning/ROADMAP.md` (all 16 M49 checkboxes flipped to [x]), `.planning/SYSTEM_SPEC.md` (M49 detail block), `.planning/command-surface.md` (M49 CLI surface block), `website/docs/cli-reference.md` (M49 documentation).
+
+**Verification evidence:**
+
+| Command | Result |
+|---------|--------|
+| `npm test` | Exit 0 — Smoke tests passed + Eval regression harness passed (40 scenarios) |
+| `node bin/tusq.js help \| grep -c '^ \s*[a-z]'` | 33 (signature between shape and strictness) |
+| `node bin/tusq.js signature index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` | Exit 0 — string: get_users_api_v1_users_id, object: post_users_users, not_applicable: get_users_users, warnings: [] |
+| `node bin/tusq.js signature index --first-type STRING` | Exit 1 — Unknown input schema first property type: STRING |
+| `node bin/tusq.js signature index --first-type boolean` | Exit 1 — No capabilities found for input schema first property type: boolean |
+| `node -e "require('./src/cli.js')"` | Exit 0 — module loads cleanly |
+| `git diff --quiet HEAD -- package.json package-lock.json` | Exit 0 — zero package drift |
+
+**Zero new dependencies added.** 33-command CLI surface confirmed. All M49 invariants verified: input_schema_first_property_type non-persistence, manifest mtime invariant, five warning reason codes all triggered, not_applicable bucket produces no warning.
+
+---
+
 ## M48 (run_f61946531dda2fe6, turn_7aca0e4acba46509, dev)
 
 **Challenge to PM turn:** PM (turn_2b52784e96159e79, attempt 1+2) correctly bound M48: Static Capability Output Schema First Property Type Index Export from Manifest Evidence (~0.5 day) — V1.29 (PROPOSED) under intake charter `intent_1777346457035_ff28`. git diff 1abac5e..a381730 --name-only confirms PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md), zero source drift in src/bin/tests/website/package.json. Independently verified VISION § Developer Artifacts as primary aggregation source and M48 charter content in all four PM artifacts (ROADMAP.md: 11 hits, PM_SIGNOFF.md: 1 hit, SYSTEM_SPEC.md: 2 hits, command-surface.md: 2 hits). All five PM decisions upheld: (1) new noun `shape` with single subcommand `index` — inserted alphabetically between `sensitivity` and `strictness`; (2) nine-value bucket-key enum `string|number|integer|boolean|null|object|array|not_applicable|unknown`; (3) aggregation_key enum `first_property_type|not_applicable|unknown` — three-value (matches M46 precedent); (4) bucket iteration order `string→number→integer→boolean→null→object→array→not_applicable→unknown` (scalar-primitives-first → null → structural-primitives → exits); (5) five frozen warning reason codes; not_applicable bucket emits NO warning; result array field name `first_property_types`; --first-type filter case-sensitive lowercase-only. Challenge resolved: no objections.

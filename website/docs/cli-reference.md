@@ -1073,6 +1073,51 @@ tusq shape index --first-type not_applicable --json
 tusq shape index --out shape-index.json
 ```
 
+## `tusq signature index`
+
+Index capabilities by the primitive type of the FIRST property declared in `input_schema.properties` (Object.keys insertion-order index 0) when `input_schema.type === 'object'`. Planning aid only — not a runtime request validator, SDK call-site generator, or JSON-Schema emitter. Distinct from `tusq shape index` (M48, output-side first-property type), `tusq parameter index` (M47, input-property count), and `tusq request index` (M43, input primary parameter source).
+
+```
+tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--first-type <value>` | Filter to one bucket. Case-sensitive lowercase-only. Exit 1 if unknown or absent. |
+| `--manifest <path>` | Path to manifest (default: `tusq.manifest.json`) |
+| `--out <path>` | Write to file (no stdout on success; `.tusq/` paths rejected) |
+| `--json` | Machine-readable JSON with `first_property_types[]` and `warnings[]` |
+
+**Bucket-key enum (closed nine-value):** `string` | `number` | `integer` | `boolean` | `null` | `object` | `array` | `not_applicable` | `unknown`
+
+Classifier: reads `input_schema.properties[Object.keys(properties)[0]].type` (literal lower-case string, must be in `{string,number,integer,boolean,null,object,array}`). Returns `not_applicable` when `input_schema.type !== 'object'` or zero-property object (no warning). Returns `unknown` for malformed `input_schema` or invalid first-property descriptor (warning emitted with one of five frozen reason codes).
+
+**Aggregation-key enum:** `first_property_type` (seven primitive buckets) | `not_applicable` | `unknown`
+
+**Bucket iteration order:** `string → number → integer → boolean → null → object → array → not_applicable → unknown` (deterministic stable-output ordering only — NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked)
+
+**Five frozen warning reason codes:** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown first-type value, --out path error, or unknown subcommand
+
+**Examples:**
+
+```sh
+tusq signature index
+
+tusq signature index --json
+
+tusq signature index --first-type string
+
+tusq signature index --first-type not_applicable --json
+
+tusq signature index --out signature-index.json
+```
+
 ## `tusq strictness index`
 
 Emit a deterministic, per-strictness capability index from manifest evidence. Groups capabilities by whether their `output_schema.additionalProperties` boolean is `false` (closed-key contract) or `true` (unspecified-field-tolerant) for object-typed responses, in closed-enum order (`strict → permissive → not_applicable → unknown`). Non-object responses bucket as `not_applicable` (no warning). Malformed or missing `output_schema` or non-boolean `additionalProperties` buckets as `unknown` with a warning. This is a **planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier**.

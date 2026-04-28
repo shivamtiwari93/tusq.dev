@@ -3831,8 +3831,8 @@ async function run() {
     throw new Error(`M45(x): tusq help must include 'items' command:\n${m45HelpOutput.stdout}`);
   }
   const m45CommandCount = (m45HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m45CommandCount !== 32) {
-    throw new Error(`M45(x): tusq help must enumerate exactly 32 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
+  if (m45CommandCount !== 33) {
+    throw new Error(`M45(x): tusq help must enumerate exactly 33 commands, got ${m45CommandCount}:\n${m45HelpOutput.stdout}`);
   }
   // items index help includes planning-aid framing
   const m45HelpResult = runCli(['items', 'index', '--help'], { cwd: m45TmpDir });
@@ -4322,8 +4322,8 @@ async function run() {
   // Help text enumerates 30 commands
   const m46HelpResult = runCli(['help'], { cwd: m46TmpDir });
   const m46HelpCommandCount = (m46HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m46HelpCommandCount !== 32) {
-    throw new Error(`M46(x): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
+  if (m46HelpCommandCount !== 33) {
+    throw new Error(`M46(x): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m46HelpCommandCount}:\n${m46HelpResult.stdout}`);
   }
   // strictness index help includes planning-aid framing
   const m46IndexHelpResult = runCli(['strictness', 'index', '--help'], { cwd: m46TmpDir });
@@ -4839,8 +4839,8 @@ async function run() {
   // Help text enumerates 32 commands
   const m47HelpResult = runCli(['help'], { cwd: m47TmpDir });
   const m47HelpCommandCount = (m47HelpResult.stdout.match(/^  [a-z]/gm) || []).length;
-  if (m47HelpCommandCount !== 32) {
-    throw new Error(`M47(x): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
+  if (m47HelpCommandCount !== 33) {
+    throw new Error(`M47(x): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m47HelpCommandCount}:\n${m47HelpResult.stdout}`);
   }
   // parameter index help includes planning-aid framing
   const m47IndexHelpResult = runCli(['parameter', 'index', '--help'], { cwd: m47TmpDir });
@@ -5237,8 +5237,8 @@ async function run() {
   // M48(x3): help enumerates 32 commands and includes 'shape' between 'sensitivity' and 'strictness'
   const m48HelpResult = runCli(['help'], { cwd: m48TmpDir });
   const m48HelpCommandCount = (m48HelpResult.stdout.match(/^  \w/gm) || []).length;
-  if (m48HelpCommandCount !== 32) {
-    throw new Error(`M48(x3): tusq help must enumerate 32 commands (M48 adds 'shape'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
+  if (m48HelpCommandCount !== 33) {
+    throw new Error(`M48(x3): tusq help must enumerate 33 commands (M48 adds 'shape'); got ${m48HelpCommandCount}:\n${m48HelpResult.stdout}`);
   }
   if (!m48HelpResult.stdout.includes('  shape')) {
     throw new Error(`M48(x3): tusq help must include 'shape' command:\n${m48HelpResult.stdout}`);
@@ -5256,6 +5256,408 @@ async function run() {
   }
 
   await fs.rm(m48TmpDir, { recursive: true, force: true });
+
+  // ── M49: Static Capability Input Schema First Property Type Index Export ──────
+  const m49TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m49-smoke-'));
+
+  // M49 fixture manifest: capabilities across string/object/not_applicable buckets using canonical express fixture.
+  // Also synthetic fixtures for number/integer/null/boolean/array/unknown buckets.
+  // Canonical express fixture:
+  //   get_users_api_v1_users_id → input_schema.properties.id.type='string' → string bucket
+  //   post_users_users → input_schema.properties.body.type='object' → object bucket
+  //   get_users_users → input_schema.type='object', properties={} → not_applicable bucket (zero-property object)
+  const m49ExpressManifestPath = path.resolve(process.cwd(), 'tests/fixtures/express-sample/tusq.manifest.json');
+
+  // M49(a): default tusq signature index on canonical express fixture produces correct buckets in closed-enum order
+  const m49DefaultResult = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  if (m49DefaultResult.status !== 0) {
+    throw new Error(`M49(a): signature index must exit 0:\nstderr=${m49DefaultResult.stderr}`);
+  }
+  const m49DefaultJson = JSON.parse(m49DefaultResult.stdout);
+  if (!Array.isArray(m49DefaultJson.first_property_types)) {
+    throw new Error(`M49(a): JSON output must have first_property_types[] array:\n${m49DefaultResult.stdout}`);
+  }
+  if (m49DefaultJson.first_property_types.some((e) => e.tiers !== undefined)) {
+    throw new Error(`M49(a): JSON output must NOT have a tiers[] field (that is M47); field name must be first_property_types[]:\n${m49DefaultResult.stdout}`);
+  }
+  // string bucket: get_users_api_v1_users_id
+  const m49StringEntry = m49DefaultJson.first_property_types.find((e) => e.input_schema_first_property_type === 'string');
+  if (!m49StringEntry || !m49StringEntry.capabilities.includes('get_users_api_v1_users_id')) {
+    throw new Error(`M49(a): string bucket must include get_users_api_v1_users_id:\n${JSON.stringify(m49DefaultJson.first_property_types)}`);
+  }
+  // object bucket: post_users_users
+  const m49ObjectEntry = m49DefaultJson.first_property_types.find((e) => e.input_schema_first_property_type === 'object');
+  if (!m49ObjectEntry || !m49ObjectEntry.capabilities.includes('post_users_users')) {
+    throw new Error(`M49(a): object bucket must include post_users_users:\n${JSON.stringify(m49DefaultJson.first_property_types)}`);
+  }
+  // not_applicable bucket: get_users_users (zero-property object → no first property, no warning)
+  const m49NotApplicableEntry = m49DefaultJson.first_property_types.find((e) => e.input_schema_first_property_type === 'not_applicable');
+  if (!m49NotApplicableEntry || !m49NotApplicableEntry.capabilities.includes('get_users_users')) {
+    throw new Error(`M49(a): not_applicable bucket must include get_users_users (zero-property object):\n${JSON.stringify(m49DefaultJson.first_property_types)}`);
+  }
+  // no warnings (all three caps have valid input_schema)
+  if (!Array.isArray(m49DefaultJson.warnings) || m49DefaultJson.warnings.length !== 0) {
+    throw new Error(`M49(a): canonical express fixture must produce zero warnings:\n${JSON.stringify(m49DefaultJson.warnings)}`);
+  }
+  // bucket order: string comes before object comes before not_applicable
+  const m49StringPos = m49DefaultJson.first_property_types.findIndex((e) => e.input_schema_first_property_type === 'string');
+  const m49ObjectPos = m49DefaultJson.first_property_types.findIndex((e) => e.input_schema_first_property_type === 'object');
+  const m49NotApplicablePos = m49DefaultJson.first_property_types.findIndex((e) => e.input_schema_first_property_type === 'not_applicable');
+  if (!(m49StringPos < m49ObjectPos && m49ObjectPos < m49NotApplicablePos)) {
+    throw new Error(`M49(a): bucket order must be string < object < not_applicable; got string=${m49StringPos} object=${m49ObjectPos} not_applicable=${m49NotApplicablePos}`);
+  }
+  // human mode works
+  const m49DefaultHuman = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath], { cwd: m49TmpDir });
+  if (!m49DefaultHuman.stdout.includes('[string]') || !m49DefaultHuman.stdout.includes('[object]') || !m49DefaultHuman.stdout.includes('[not_applicable]')) {
+    throw new Error(`M49(a): human mode must include [string], [object], [not_applicable] sections:\n${m49DefaultHuman.stdout}`);
+  }
+  if (!m49DefaultHuman.stdout.toLowerCase().includes('planning aid')) {
+    throw new Error(`M49(a): human mode must include planning-aid framing:\n${m49DefaultHuman.stdout}`);
+  }
+
+  // M49(b): --first-type string filter
+  const m49FilterString = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'string', '--json'], { cwd: m49TmpDir });
+  if (m49FilterString.status !== 0) {
+    throw new Error(`M49(b): --first-type string must exit 0:\nstderr=${m49FilterString.stderr}`);
+  }
+  const m49FilterStringJson = JSON.parse(m49FilterString.stdout);
+  if (m49FilterStringJson.first_property_types.length !== 1 || m49FilterStringJson.first_property_types[0].input_schema_first_property_type !== 'string') {
+    throw new Error(`M49(b): --first-type string must return exactly one string bucket:\n${m49FilterString.stdout}`);
+  }
+
+  // M49(c): --first-type object filter
+  const m49FilterObject = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'object', '--json'], { cwd: m49TmpDir });
+  if (m49FilterObject.status !== 0) {
+    throw new Error(`M49(c): --first-type object must exit 0:\nstderr=${m49FilterObject.stderr}`);
+  }
+  const m49FilterObjectJson = JSON.parse(m49FilterObject.stdout);
+  if (m49FilterObjectJson.first_property_types.length !== 1 || m49FilterObjectJson.first_property_types[0].input_schema_first_property_type !== 'object') {
+    throw new Error(`M49(c): --first-type object must return exactly one object bucket:\n${m49FilterObject.stdout}`);
+  }
+
+  // M49(d): --first-type not_applicable filter
+  const m49FilterNotApplicable = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'not_applicable', '--json'], { cwd: m49TmpDir });
+  if (m49FilterNotApplicable.status !== 0) {
+    throw new Error(`M49(d): --first-type not_applicable must exit 0:\nstderr=${m49FilterNotApplicable.stderr}`);
+  }
+  const m49FilterNAJson = JSON.parse(m49FilterNotApplicable.stdout);
+  if (m49FilterNAJson.first_property_types.length !== 1 || m49FilterNAJson.first_property_types[0].input_schema_first_property_type !== 'not_applicable') {
+    throw new Error(`M49(d): --first-type not_applicable must return exactly one not_applicable bucket:\n${m49FilterNotApplicable.stdout}`);
+  }
+
+  // M49(e)-(i): synthetic fixtures for number/integer/null/boolean/array buckets
+  const m49SyntheticManifestBase = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: []
+  };
+
+  // e: number bucket
+  const m49NumberManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_number', description: 'Accepts a count', method: 'POST', path: '/api/v1/count',
+      domain: 'ops', side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', additionalProperties: false, properties: { count: { type: 'number' } } }
+    }]
+  });
+  const m49NumberPath = path.join(m49TmpDir, 'number-manifest.json');
+  await fs.writeFile(m49NumberPath, JSON.stringify(m49NumberManifest), 'utf8');
+  const m49NumberResult = runCli(['signature', 'index', '--manifest', m49NumberPath, '--first-type', 'number', '--json'], { cwd: m49TmpDir });
+  if (m49NumberResult.status !== 0 || JSON.parse(m49NumberResult.stdout).first_property_types[0].input_schema_first_property_type !== 'number') {
+    throw new Error(`M49(e): number bucket must be produced for properties.count.type='number':\n${m49NumberResult.stdout}\n${m49NumberResult.stderr}`);
+  }
+
+  // f: integer bucket
+  const m49IntegerManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_integer', description: 'Accepts an integer id', method: 'GET', path: '/api/v1/id',
+      domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', additionalProperties: false, properties: { id: { type: 'integer' } } }
+    }]
+  });
+  const m49IntegerPath = path.join(m49TmpDir, 'integer-manifest.json');
+  await fs.writeFile(m49IntegerPath, JSON.stringify(m49IntegerManifest), 'utf8');
+  const m49IntegerResult = runCli(['signature', 'index', '--manifest', m49IntegerPath, '--first-type', 'integer', '--json'], { cwd: m49TmpDir });
+  if (m49IntegerResult.status !== 0 || JSON.parse(m49IntegerResult.stdout).first_property_types[0].input_schema_first_property_type !== 'integer') {
+    throw new Error(`M49(f): integer bucket must be produced for properties.id.type='integer':\n${m49IntegerResult.stdout}\n${m49IntegerResult.stderr}`);
+  }
+
+  // g: null bucket
+  const m49NullManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_null', description: 'Accepts null value', method: 'POST', path: '/api/v1/item/:id',
+      domain: 'ops', side_effect_class: 'write', sensitivity_class: 'internal', approved: true,
+      input_schema: { type: 'object', additionalProperties: false, properties: { value: { type: 'null' } } }
+    }]
+  });
+  const m49NullPath = path.join(m49TmpDir, 'null-manifest.json');
+  await fs.writeFile(m49NullPath, JSON.stringify(m49NullManifest), 'utf8');
+  const m49NullResult = runCli(['signature', 'index', '--manifest', m49NullPath, '--first-type', 'null', '--json'], { cwd: m49TmpDir });
+  if (m49NullResult.status !== 0 || JSON.parse(m49NullResult.stdout).first_property_types[0].input_schema_first_property_type !== 'null') {
+    throw new Error(`M49(g): null bucket must be produced for properties.value.type='null':\n${m49NullResult.stdout}\n${m49NullResult.stderr}`);
+  }
+
+  // h: boolean bucket
+  const m49BooleanManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_boolean', description: 'Accepts a flag', method: 'POST', path: '/api/v1/flag',
+      domain: 'ops', side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', additionalProperties: false, properties: { flag: { type: 'boolean' } } }
+    }]
+  });
+  const m49BooleanPath = path.join(m49TmpDir, 'boolean-manifest.json');
+  await fs.writeFile(m49BooleanPath, JSON.stringify(m49BooleanManifest), 'utf8');
+  const m49BooleanResult = runCli(['signature', 'index', '--manifest', m49BooleanPath, '--first-type', 'boolean', '--json'], { cwd: m49TmpDir });
+  if (m49BooleanResult.status !== 0 || JSON.parse(m49BooleanResult.stdout).first_property_types[0].input_schema_first_property_type !== 'boolean') {
+    throw new Error(`M49(h): boolean bucket must be produced for properties.flag.type='boolean':\n${m49BooleanResult.stdout}\n${m49BooleanResult.stderr}`);
+  }
+
+  // i: array bucket (first input property is array type)
+  const m49ArrayManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_list', description: 'Accepts list as first property', method: 'POST', path: '/api/v1/list',
+      domain: 'ops', side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', additionalProperties: true, properties: { list: { type: 'array' } } }
+    }]
+  });
+  const m49ArrayPath = path.join(m49TmpDir, 'array-manifest.json');
+  await fs.writeFile(m49ArrayPath, JSON.stringify(m49ArrayManifest), 'utf8');
+  const m49ArrayResult = runCli(['signature', 'index', '--manifest', m49ArrayPath, '--first-type', 'array', '--json'], { cwd: m49TmpDir });
+  if (m49ArrayResult.status !== 0 || JSON.parse(m49ArrayResult.stdout).first_property_types[0].input_schema_first_property_type !== 'array') {
+    throw new Error(`M49(i): array bucket must be produced for properties.list.type='array':\n${m49ArrayResult.stdout}\n${m49ArrayResult.stderr}`);
+  }
+
+  // j: unknown bucket (malformed first-property descriptor — descriptor has no 'type' field)
+  const m49UnknownManifest = Object.assign({}, m49SyntheticManifestBase, {
+    capabilities: [{
+      name: 'cap_bad_descriptor', description: 'Malformed first property', method: 'POST', path: '/api/v1/bad',
+      domain: 'ops', side_effect_class: 'write', sensitivity_class: 'public', approved: true,
+      input_schema: { type: 'object', additionalProperties: true, properties: { value: { description: 'no type here' } } }
+    }]
+  });
+  const m49UnknownPath = path.join(m49TmpDir, 'unknown-manifest.json');
+  await fs.writeFile(m49UnknownPath, JSON.stringify(m49UnknownManifest), 'utf8');
+  const m49UnknownResult = runCli(['signature', 'index', '--manifest', m49UnknownPath, '--first-type', 'unknown', '--json'], { cwd: m49TmpDir });
+  if (m49UnknownResult.status !== 0 || JSON.parse(m49UnknownResult.stdout).first_property_types[0].input_schema_first_property_type !== 'unknown') {
+    throw new Error(`M49(j): unknown bucket must be produced for malformed first-property descriptor:\n${m49UnknownResult.stdout}\n${m49UnknownResult.stderr}`);
+  }
+
+  // M49(k): --first-type STRING (uppercase) exits 1 — case-sensitive enforcement
+  const m49UpperCase = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'STRING'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49UpperCase.stderr.includes('Unknown input schema first property type: STRING') || m49UpperCase.stdout !== '') {
+    throw new Error(`M49(k): --first-type STRING must exit 1 with error on stderr and empty stdout:\nstdout=${m49UpperCase.stdout}\nstderr=${m49UpperCase.stderr}`);
+  }
+
+  // M49(l): --first-type Object (mixed-case) exits 1 — case-sensitive enforcement
+  const m49MixedCase = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'Object'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49MixedCase.stderr.includes('Unknown input schema first property type: Object') || m49MixedCase.stdout !== '') {
+    throw new Error(`M49(l): --first-type Object must exit 1 with error on stderr and empty stdout:\nstdout=${m49MixedCase.stdout}\nstderr=${m49MixedCase.stderr}`);
+  }
+
+  // M49(m): --first-type xyz (unknown) exits 1
+  const m49UnknownFilter = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--first-type', 'xyz'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49UnknownFilter.stderr.includes('Unknown input schema first property type: xyz') || m49UnknownFilter.stdout !== '') {
+    throw new Error(`M49(m): --first-type xyz must exit 1 with error:\nstdout=${m49UnknownFilter.stdout}\nstderr=${m49UnknownFilter.stderr}`);
+  }
+
+  // M49(n): missing --manifest path exits 1
+  const m49MissingManifest = runCli(['signature', 'index', '--manifest', '/nonexistent/tusq.manifest.json'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49MissingManifest.stderr.includes('Manifest not found:') || m49MissingManifest.stdout !== '') {
+    throw new Error(`M49(n): missing manifest must exit 1:\nstdout=${m49MissingManifest.stdout}\nstderr=${m49MissingManifest.stderr}`);
+  }
+
+  // M49(o): malformed JSON manifest exits 1
+  const m49BadJsonPath = path.join(m49TmpDir, 'bad.json');
+  await fs.writeFile(m49BadJsonPath, 'NOT VALID JSON', 'utf8');
+  const m49BadJson = runCli(['signature', 'index', '--manifest', m49BadJsonPath], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49BadJson.stderr.includes('Invalid manifest JSON:') || m49BadJson.stdout !== '') {
+    throw new Error(`M49(o): malformed JSON must exit 1:\nstdout=${m49BadJson.stdout}\nstderr=${m49BadJson.stderr}`);
+  }
+
+  // M49(p): missing capabilities array exits 1
+  const m49NoCapsPath = path.join(m49TmpDir, 'no-caps.json');
+  await fs.writeFile(m49NoCapsPath, JSON.stringify({ schema_version: '1.0' }), 'utf8');
+  const m49NoCaps = runCli(['signature', 'index', '--manifest', m49NoCapsPath], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49NoCaps.stderr.includes('Invalid manifest: missing capabilities array') || m49NoCaps.stdout !== '') {
+    throw new Error(`M49(p): missing capabilities array must exit 1:\nstdout=${m49NoCaps.stdout}\nstderr=${m49NoCaps.stderr}`);
+  }
+
+  // M49(q): unknown flag exits 1
+  const m49UnknownFlag = runCli(['signature', 'index', '--unknown-flag'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49UnknownFlag.stderr.includes('Unknown flag: --unknown-flag') || m49UnknownFlag.stdout !== '') {
+    throw new Error(`M49(q): unknown flag must exit 1:\nstdout=${m49UnknownFlag.stdout}\nstderr=${m49UnknownFlag.stderr}`);
+  }
+
+  // M49(r): --first-type with no value exits 1
+  const m49NoValue = runCli(['signature', 'index', '--first-type'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49NoValue.stderr.includes('Missing value for --first-type') || m49NoValue.stdout !== '') {
+    throw new Error(`M49(r): --first-type with no value must exit 1:\nstdout=${m49NoValue.stdout}\nstderr=${m49NoValue.stderr}`);
+  }
+
+  // M49(s): --out <valid path> writes file and emits no stdout on success
+  const m49OutPath = path.join(m49TmpDir, 'signature-out.json');
+  const m49OutResult = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--out', m49OutPath], { cwd: m49TmpDir });
+  if (m49OutResult.status !== 0 || m49OutResult.stdout !== '') {
+    throw new Error(`M49(s): --out must exit 0 with empty stdout:\nstdout=${m49OutResult.stdout}\nstderr=${m49OutResult.stderr}`);
+  }
+  const m49OutContent = JSON.parse(await fs.readFile(m49OutPath, 'utf8'));
+  if (!Array.isArray(m49OutContent.first_property_types)) {
+    throw new Error(`M49(s): --out file must contain valid JSON with first_property_types[] array:\n${JSON.stringify(m49OutContent)}`);
+  }
+
+  // M49(t): --out .tusq/ path rejected
+  const m49TusqOutResult = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--out', '.tusq/signature.json'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49TusqOutResult.stderr.includes('--out path must not be inside .tusq/') || m49TusqOutResult.stdout !== '') {
+    throw new Error(`M49(t): --out .tusq/ must exit 1 with correct message:\nstdout=${m49TusqOutResult.stdout}\nstderr=${m49TusqOutResult.stderr}`);
+  }
+
+  // M49(v): --json outputs valid JSON with first_property_types[] and warnings[] present
+  const m49JsonResult = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  if (m49JsonResult.status !== 0) {
+    throw new Error(`M49(v): --json must exit 0:\nstderr=${m49JsonResult.stderr}`);
+  }
+  const m49JsonParsed = JSON.parse(m49JsonResult.stdout);
+  if (!Array.isArray(m49JsonParsed.first_property_types) || m49JsonParsed.first_property_types.length === 0) {
+    throw new Error(`M49(v): express fixture JSON must have first_property_types[] array:\n${m49JsonResult.stdout}`);
+  }
+  if (!Array.isArray(m49JsonParsed.warnings)) {
+    throw new Error(`M49(v): express fixture JSON must have warnings[] array:\n${m49JsonResult.stdout}`);
+  }
+  if (m49JsonParsed.warnings.length !== 0) {
+    throw new Error(`M49(v): express fixture must produce zero warnings (all caps have valid input_schema):\n${JSON.stringify(m49JsonParsed.warnings)}`);
+  }
+
+  // M49(w): determinism — three consecutive runs produce byte-identical stdout
+  const m49Det1 = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  const m49Det2 = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  const m49Det3 = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  if (m49Det1.stdout !== m49Det2.stdout || m49Det2.stdout !== m49Det3.stdout) {
+    throw new Error(`M49(w): signature index --json must be byte-identical across three consecutive runs`);
+  }
+
+  // M49(w2): manifest mtime + content invariant pre/post index run + non-persistence (input_schema_first_property_type not written)
+  const m49ManifestStatBefore = await fs.stat(m49ExpressManifestPath);
+  runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  const m49ManifestStatAfter = await fs.stat(m49ExpressManifestPath);
+  const m49ManifestAfterContent = JSON.parse(await fs.readFile(m49ExpressManifestPath, 'utf8'));
+  if (m49ManifestStatBefore.mtimeMs !== m49ManifestStatAfter.mtimeMs) {
+    throw new Error(`M49(w2): manifest mtime must not change after signature index run`);
+  }
+  for (const cap of m49ManifestAfterContent.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_type')) {
+      throw new Error(`M49(w2): input_schema_first_property_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // M49(w3): empty-capabilities manifest emits documented human line and first_property_types: [] in JSON, warnings: [] in JSON
+  const m49EmptyManifestPath = path.join(m49TmpDir, 'empty.json');
+  await fs.writeFile(m49EmptyManifestPath, JSON.stringify({ schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z', capabilities: [] }), 'utf8');
+  const m49EmptyHuman = runCli(['signature', 'index', '--manifest', m49EmptyManifestPath], { cwd: m49TmpDir });
+  if (!m49EmptyHuman.stdout.includes('No capabilities in manifest')) {
+    throw new Error(`M49(w3): empty capabilities (human) must emit 'No capabilities in manifest' line:\n${m49EmptyHuman.stdout}`);
+  }
+  const m49EmptyJson = runCli(['signature', 'index', '--manifest', m49EmptyManifestPath, '--json'], { cwd: m49TmpDir });
+  const m49EmptyJsonParsed = JSON.parse(m49EmptyJson.stdout);
+  if (!Array.isArray(m49EmptyJsonParsed.first_property_types) || m49EmptyJsonParsed.first_property_types.length !== 0) {
+    throw new Error(`M49(w3): empty capabilities (JSON) must have first_property_types: []:\n${m49EmptyJson.stdout}`);
+  }
+  if (!Array.isArray(m49EmptyJsonParsed.warnings) || m49EmptyJsonParsed.warnings.length !== 0) {
+    throw new Error(`M49(w3): empty capabilities (JSON) must have warnings: []:\n${m49EmptyJson.stdout}`);
+  }
+
+  // M49(x): malformed input_schema capabilities produce all 5 warning reason codes in warnings[] and in stderr (human mode)
+  // Also verifies: not_applicable bucket (zero-property object) emits NO warning; unknown-bucket absent-filter exits 1; help enumerates 33 commands
+  const m49AllWarningsManifest = {
+    schema_version: '1.0', manifest_version: 1, generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities: [
+      // input_schema_field_missing
+      { name: 'no_schema', description: 'No input_schema field', method: 'GET', path: '/a', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true },
+      // input_schema_field_not_object
+      { name: 'bad_schema', description: 'Non-object input_schema', method: 'GET', path: '/b', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: 'not_an_object' },
+      // input_schema_type_missing_or_invalid
+      { name: 'no_type', description: 'Missing type field', method: 'GET', path: '/c', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { properties: { x: { type: 'string' } } } },
+      // input_schema_properties_field_missing_when_type_is_object
+      { name: 'no_props', description: 'Object type but no properties', method: 'GET', path: '/d', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object' } },
+      // input_schema_properties_first_property_descriptor_invalid
+      { name: 'bad_desc', description: 'First property missing type', method: 'GET', path: '/e', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: { x: { description: 'no type' } } } },
+      // not_applicable: zero-property object → NO warning
+      { name: 'zero_props', description: 'Object with zero properties', method: 'GET', path: '/f', domain: 'ops', side_effect_class: 'read', sensitivity_class: 'public', approved: true, input_schema: { type: 'object', properties: {} } }
+    ]
+  };
+  const m49AllWarningsPath = path.join(m49TmpDir, 'all-warnings.json');
+  await fs.writeFile(m49AllWarningsPath, JSON.stringify(m49AllWarningsManifest), 'utf8');
+  const m49AllWarningsJson = runCli(['signature', 'index', '--manifest', m49AllWarningsPath, '--json'], { cwd: m49TmpDir });
+  if (m49AllWarningsJson.status !== 0) {
+    throw new Error(`M49(x): signature index with malformed caps must exit 0:\nstderr=${m49AllWarningsJson.stderr}`);
+  }
+  const m49AllWarningsParsed = JSON.parse(m49AllWarningsJson.stdout);
+  const m49ExpectedReasons = [
+    'input_schema_field_missing',
+    'input_schema_field_not_object',
+    'input_schema_type_missing_or_invalid',
+    'input_schema_properties_field_missing_when_type_is_object',
+    'input_schema_properties_first_property_descriptor_invalid'
+  ];
+  for (const reason of m49ExpectedReasons) {
+    if (!m49AllWarningsParsed.warnings.some((w) => w.reason === reason)) {
+      throw new Error(`M49(x): warnings[] must include reason '${reason}':\n${JSON.stringify(m49AllWarningsParsed.warnings)}`);
+    }
+  }
+  // zero_props (not_applicable) must NOT produce a warning
+  if (m49AllWarningsParsed.warnings.some((w) => w.capability === 'zero_props')) {
+    throw new Error(`M49(x): zero_props (not_applicable bucket, zero-property object) must NOT produce a warning:\n${JSON.stringify(m49AllWarningsParsed.warnings)}`);
+  }
+  // human mode emits warnings to stderr
+  const m49HumanWarnings = runCli(['signature', 'index', '--manifest', m49AllWarningsPath], { cwd: m49TmpDir });
+  if (!m49HumanWarnings.stderr.includes('Warning: capability ')) {
+    throw new Error(`M49(x): human mode must emit warning to stderr:\nstderr=${m49HumanWarnings.stderr}`);
+  }
+
+  // M49(x2): aggregation_key closed three-value enum: every emitted bucket must have aggregation_key in {'first_property_type', 'not_applicable', 'unknown'}
+  const m49AggKeyResult = runCli(['signature', 'index', '--manifest', m49ExpressManifestPath, '--json'], { cwd: m49TmpDir });
+  const m49AggKeyJson = JSON.parse(m49AggKeyResult.stdout);
+  const m49ValidAggKeys = new Set(['first_property_type', 'not_applicable', 'unknown']);
+  for (const entry of m49AggKeyJson.first_property_types) {
+    if (!m49ValidAggKeys.has(entry.aggregation_key)) {
+      throw new Error(`M49(x2): aggregation_key '${entry.aggregation_key}' outside closed three-value enum:\n${JSON.stringify(entry)}`);
+    }
+  }
+  const m49StringAgg = m49AggKeyJson.first_property_types.find((e) => e.input_schema_first_property_type === 'string');
+  const m49ObjectAgg = m49AggKeyJson.first_property_types.find((e) => e.input_schema_first_property_type === 'object');
+  const m49NAagg = m49AggKeyJson.first_property_types.find((e) => e.input_schema_first_property_type === 'not_applicable');
+  if (!m49StringAgg || m49StringAgg.aggregation_key !== 'first_property_type') {
+    throw new Error(`M49(x2): string bucket must have aggregation_key 'first_property_type':\n${JSON.stringify(m49StringAgg)}`);
+  }
+  if (!m49ObjectAgg || m49ObjectAgg.aggregation_key !== 'first_property_type') {
+    throw new Error(`M49(x2): object bucket must have aggregation_key 'first_property_type':\n${JSON.stringify(m49ObjectAgg)}`);
+  }
+  if (!m49NAagg || m49NAagg.aggregation_key !== 'not_applicable') {
+    throw new Error(`M49(x2): not_applicable bucket must have aggregation_key 'not_applicable':\n${JSON.stringify(m49NAagg)}`);
+  }
+
+  // M49(x3): help enumerates 33 commands and includes 'signature' between 'shape' and 'strictness'
+  const m49HelpResult = runCli(['help'], { cwd: m49TmpDir });
+  const m49HelpCommandCount = (m49HelpResult.stdout.match(/^  \w/gm) || []).length;
+  if (m49HelpCommandCount !== 33) {
+    throw new Error(`M49(x3): tusq help must enumerate 33 commands (M49 adds 'signature'); got ${m49HelpCommandCount}:\n${m49HelpResult.stdout}`);
+  }
+  if (!m49HelpResult.stdout.includes('  signature')) {
+    throw new Error(`M49(x3): tusq help must include 'signature' command:\n${m49HelpResult.stdout}`);
+  }
+
+  // signature index help includes planning-aid framing
+  const m49IndexHelpResult = runCli(['signature', 'index', '--help'], { cwd: m49TmpDir });
+  if (!m49IndexHelpResult.stdout.includes('planning aid')) {
+    throw new Error(`M49(x3): signature index help must include planning-aid framing:\n${m49IndexHelpResult.stdout}`);
+  }
+  // Unknown subcommand exits 1
+  const m49UnknownSubCmd = runCli(['signature', 'bogusub'], { cwd: m49TmpDir, expectedStatus: 1 });
+  if (!m49UnknownSubCmd.stderr.includes('Unknown subcommand: bogusub') || m49UnknownSubCmd.stdout !== '') {
+    throw new Error(`M49(x3): unknown subcommand must exit 1:\nstdout=${m49UnknownSubCmd.stdout}\nstderr=${m49UnknownSubCmd.stderr}`);
+  }
+
+  await fs.rm(m49TmpDir, { recursive: true, force: true });
 
   // ── M44: Static Capability Description Word Count Tier Index Export ────────────
   const m44TmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tusq-m44-smoke-'));
@@ -5724,8 +6126,8 @@ async function run() {
     throw new Error(`M44(x): tusq help must include 'description' command:\n${m44HelpOutput.stdout}`);
   }
   const m44CommandCount = (m44HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m44CommandCount !== 32) {
-    throw new Error(`M44(x): tusq help must enumerate exactly 32 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
+  if (m44CommandCount !== 33) {
+    throw new Error(`M44(x): tusq help must enumerate exactly 33 commands, got ${m44CommandCount}:\n${m44HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m44HelpResult = runCli(['description', 'index', '--help'], { cwd: m44TmpDir });
@@ -6262,8 +6664,8 @@ async function run() {
     throw new Error(`M43(x): tusq help must include 'request' command:\n${m43HelpOutput.stdout}`);
   }
   const m43CommandCount = (m43HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m43CommandCount !== 32) {
-    throw new Error(`M43(x): tusq help must enumerate exactly 32 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
+  if (m43CommandCount !== 33) {
+    throw new Error(`M43(x): tusq help must enumerate exactly 33 commands, got ${m43CommandCount}:\n${m43HelpOutput.stdout}`);
   }
   // help text includes planning-aid framing
   const m43HelpResult = runCli(['request', 'index', '--help'], { cwd: m43TmpDir });
@@ -6811,8 +7213,8 @@ async function run() {
     throw new Error(`M42: tusq help must include 'response' command:\n${m42HelpOutput.stdout}`);
   }
   const m42CommandCount = (m42HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m42CommandCount !== 32) {
-    throw new Error(`M42: tusq help must enumerate exactly 32 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
+  if (m42CommandCount !== 33) {
+    throw new Error(`M42: tusq help must enumerate exactly 33 commands, got ${m42CommandCount}:\n${m42HelpOutput.stdout}`);
   }
 
   // M42: help text includes planning-aid framing
@@ -7357,8 +7759,8 @@ async function run() {
     throw new Error(`M41: tusq help must include 'path' command:\n${m41HelpOutput.stdout}`);
   }
   const m41CommandCount = (m41HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m41CommandCount !== 32) {
-    throw new Error(`M41: tusq help must enumerate exactly 32 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
+  if (m41CommandCount !== 33) {
+    throw new Error(`M41: tusq help must enumerate exactly 33 commands, got ${m41CommandCount}:\n${m41HelpOutput.stdout}`);
   }
 
   // M41: help text includes planning-aid framing
@@ -7912,8 +8314,8 @@ async function run() {
     throw new Error(`M40: tusq help must include 'output' command:\n${m40HelpOutput.stdout}`);
   }
   const m40CommandCount = (m40HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m40CommandCount !== 32) {
-    throw new Error(`M40: tusq help must enumerate exactly 32 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
+  if (m40CommandCount !== 33) {
+    throw new Error(`M40: tusq help must enumerate exactly 33 commands, got ${m40CommandCount}:\n${m40HelpOutput.stdout}`);
   }
 
   // M40: help text includes planning-aid framing
@@ -8384,8 +8786,8 @@ async function run() {
     throw new Error(`M39: tusq help must include 'input' command:\n${m39HelpOutput.stdout}`);
   }
   const m39CommandCount = (m39HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m39CommandCount !== 32) {
-    throw new Error(`M39: tusq help must enumerate exactly 32 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
+  if (m39CommandCount !== 33) {
+    throw new Error(`M39: tusq help must enumerate exactly 33 commands, got ${m39CommandCount}:\n${m39HelpOutput.stdout}`);
   }
 
   // M39: help text includes planning-aid framing
@@ -8855,8 +9257,8 @@ async function run() {
     throw new Error(`M38: tusq help must include 'examples' command:\n${m38HelpOutput.stdout}`);
   }
   const m38CommandCount = (m38HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m38CommandCount !== 32) {
-    throw new Error(`M38: tusq help must enumerate exactly 32 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
+  if (m38CommandCount !== 33) {
+    throw new Error(`M38: tusq help must enumerate exactly 33 commands, got ${m38CommandCount}:\n${m38HelpOutput.stdout}`);
   }
 
   // M38: help text includes planning-aid framing
@@ -9338,8 +9740,8 @@ async function run() {
     throw new Error(`M37: tusq help must include 'pii' command:\n${m37HelpOutput.stdout}`);
   }
   const m37CommandCount = (m37HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m37CommandCount !== 32) {
-    throw new Error(`M37: tusq help must enumerate exactly 32 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
+  if (m37CommandCount !== 33) {
+    throw new Error(`M37: tusq help must enumerate exactly 33 commands, got ${m37CommandCount}:\n${m37HelpOutput.stdout}`);
   }
 
   // M37: unknown subcommand exits 1
@@ -9796,8 +10198,8 @@ async function run() {
     throw new Error(`M36: tusq help must include 'confidence' command:\n${m36HelpOutput.stdout}`);
   }
   const m36CommandCount = (m36HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m36CommandCount !== 32) {
-    throw new Error(`M36: tusq help must enumerate exactly 32 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
+  if (m36CommandCount !== 33) {
+    throw new Error(`M36: tusq help must enumerate exactly 33 commands, got ${m36CommandCount}:\n${m36HelpOutput.stdout}`);
   }
 
   // M36: unknown subcommand exits 1
@@ -10189,8 +10591,8 @@ async function run() {
     throw new Error(`M35: tusq help must include 'auth' command:\n${m35HelpOutput.stdout}`);
   }
   const m35CommandCount = (m35HelpOutput.stdout.match(/^  \w/gm) || []).length;
-  if (m35CommandCount !== 32) {
-    throw new Error(`M35: tusq help must enumerate exactly 32 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
+  if (m35CommandCount !== 33) {
+    throw new Error(`M35: tusq help must enumerate exactly 33 commands, got ${m35CommandCount}:\n${m35HelpOutput.stdout}`);
   }
 
   await fs.rm(m35TmpDir, { recursive: true, force: true });

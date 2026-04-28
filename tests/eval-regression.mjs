@@ -2049,6 +2049,8 @@ async function run() {
       await runInputSchemaPropertyCountTierIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'output_schema_first_property_type_index_determinism') {
       await runOutputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_type_index_determinism') {
+      await runInputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -2539,6 +2541,103 @@ async function runOutputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot,
   }
   if (index.warnings.some((w) => w.capability === 'array_type_cap')) {
     fail(`${scenario.id}: array_type_cap (not_applicable bucket) must NOT produce a warning`);
+  }
+}
+
+async function runInputSchemaFirstPropertyTypeIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-type-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq signature index --json three times and assert byte-identical output
+  const run1 = runCli(['signature', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['signature', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['signature', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: signature index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_type bucket-key enum is closed — every key is one of the nine valid values
+  const index = JSON.parse(run1.stdout);
+  const validTypes = new Set(scenario.expected_valid_input_schema_first_property_types);
+  for (const entry of index.first_property_types) {
+    if (!validTypes.has(entry.input_schema_first_property_type)) {
+      fail(`${scenario.id}: input_schema_first_property_type '${entry.input_schema_first_property_type}' is outside the closed nine-value enum`);
+    }
+  }
+
+  // Assert aggregation_key enum is closed — every key is one of the three valid values
+  const validAggregationKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_types) {
+    if (!validAggregationKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_type}'`);
+    }
+  }
+
+  // Assert buckets appear in closed-enum order (string → number → integer → boolean → null → object → array → not_applicable → unknown)
+  const bucketOrder = index.first_property_types.map((e) => e.input_schema_first_property_type).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: buckets must appear in closed-enum order '${scenario.expected_bucket_order}'; got: ${bucketOrder}`);
+  }
+
+  // Assert warnings[] is always present in JSON output
+  if (!Object.prototype.hasOwnProperty.call(index, 'warnings') || !Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: JSON output must have top-level warnings[] array`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_type must NOT be written into manifest)
+  const manifestAfter = await fs.readFile(manifestPath, 'utf8');
+  const manifestParsed = JSON.parse(manifestAfter);
+  if (JSON.stringify(manifestParsed) !== JSON.stringify(manifest)) {
+    fail(`${scenario.id}: manifest must not be mutated by signature index`);
+  }
+  for (const cap of manifestParsed.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_type')) {
+      fail(`${scenario.id}: input_schema_first_property_type must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert no_schema_cap (missing input_schema) is in unknown bucket
+  const unknownEntry = index.first_property_types.find((e) => e.input_schema_first_property_type === 'unknown');
+  if (!unknownEntry || !unknownEntry.capabilities.includes('no_schema_cap')) {
+    fail(`${scenario.id}: no_schema_cap (missing input_schema) must be in unknown bucket`);
+  }
+
+  // Assert array_input_cap (input_schema.type='array') is in not_applicable bucket with no warning
+  const naEntry = index.first_property_types.find((e) => e.input_schema_first_property_type === 'not_applicable');
+  if (!naEntry || !naEntry.capabilities.includes('array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+  if (index.warnings.some((w) => w.capability === 'array_input_cap')) {
+    fail(`${scenario.id}: array_input_cap (not_applicable bucket) must NOT produce a warning`);
   }
 }
 

@@ -1814,6 +1814,94 @@
         "unknown"
       ],
       "expected_bucket_order": "string,boolean,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-type-index-determinism",
+      "scenario_type": "input_schema_first_property_type_index_determinism",
+      "description": "Verifies that tusq signature index produces byte-identical output across three runs on a synthetic manifest with string, object, not_applicable, and unknown buckets (number/integer/null/boolean/array deliberately absent — empty buckets must not appear). Also validates closed nine-value bucket-key enum (string/number/integer/boolean/null/object/array/not_applicable/unknown), closed three-value aggregation_key enum (first_property_type/not_applicable/unknown), bucket order determinism (string → number → integer → boolean → null → object → array → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_type non-persistence. Object.keys insertion-order is preserved (JSON.parse preserves key order); MUST NOT sort or reorder property keys.",
+      "synthetic_capabilities": [
+        {
+          "name": "string_cap",
+          "description": "Accepts object with string first parameter",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users/:id",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "name": "object_cap",
+          "description": "Accepts object with nested object first parameter",
+          "domain": "ops",
+          "method": "POST",
+          "path": "/api/v1/users",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "name": "array_input_cap",
+          "description": "Non-object input (array type) — not_applicable, no warning",
+          "domain": "users",
+          "method": "GET",
+          "path": "/api/v1/users",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "no_schema_cap",
+          "description": "No input schema — unknown bucket",
+          "domain": "ops",
+          "method": "GET",
+          "path": "/api/v1/noschema",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true
+        }
+      ],
+      "expected_valid_input_schema_first_property_types": [
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null",
+        "object",
+        "array",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "first_property_type",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "string,object,not_applicable,unknown"
     }
   ]
 }

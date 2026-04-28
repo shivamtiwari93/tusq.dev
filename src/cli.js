@@ -364,6 +364,27 @@ const OUTPUT_SCHEMA_FIRST_PROPERTY_TYPE_AGGREGATION_KEY_ENUM = Object.freeze(new
 // The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const OUTPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER = Object.freeze(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array', 'not_applicable']);
 
+// M49: frozen nine-value input_schema_first_property_type bucket-key enum. Immutable once M49 ships.
+// Matches M48 output-side enum verbatim for cross-axis comparability.
+// An implementation-time guard fires if buildInputSchemaFirstPropertyTypeIndex produces a key outside this set.
+const INPUT_SCHEMA_FIRST_PROPERTY_TYPE_ENUM = Object.freeze(new Set(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array', 'not_applicable', 'unknown']));
+
+// M49: frozen set of the seven JSON-Schema primitive type names matched against firstDescriptor.type. Immutable once M49 ships.
+// Any string outside this closed set causes classifyInputSchemaFirstPropertyType to return 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_TYPE_PRIMITIVE_VALUE_SET = Object.freeze(new Set(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array']));
+
+// M49: frozen three-value aggregation_key enum. Immutable once M49 ships.
+// Matches M48 precedent (M48 used first_property_type | not_applicable | unknown).
+// An implementation-time guard fires if buildInputSchemaFirstPropertyTypeIndex produces a key outside this set.
+const INPUT_SCHEMA_FIRST_PROPERTY_TYPE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['first_property_type', 'not_applicable', 'unknown']));
+
+// M49: closed-enum bucket iteration order (string → number → integer → boolean → null → object → array → not_applicable).
+// Scalar-primitives-first → null → structural-primitives → exits convention. NOT tool-call-difficulty-ranked,
+// NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked,
+// NOT customer-facing-shape-claim-ranked, NOT security-blast-radius-ranked.
+// The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER = Object.freeze(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -532,6 +553,9 @@ function dispatch(argv) {
       return;
     case 'shape':
       cmdShape(args);
+      return;
+    case 'signature':
+      cmdSignature(args);
       return;
     case 'strictness':
       cmdStrictness(args);
@@ -5538,6 +5562,389 @@ function formatOutputSchemaFirstPropertyTypeIndex(index) {
   return lines.join('\n') + '\n';
 }
 
+// M49: tusq signature — top-level noun dispatcher
+function cmdSignature(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('signature');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdSignatureIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M49: tusq signature index — handler
+function cmdSignatureIndex(args) {
+  const { opts, positionals } = parseSignatureIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('signature index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Invalid manifest JSON: ${manifestPath}`, 1);
+  }
+
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.capabilities)) {
+    throw new CliError('Invalid manifest: missing capabilities array', 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyTypeIndex(manifest, manifestPath);
+
+  const firstTypeFilter = opts['first-type'] || null;
+  let outputIndex;
+  if (firstTypeFilter !== null) {
+    // Case-sensitive: lowercase canonical input_schema_first_property_type values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_TYPE_ENUM.has(firstTypeFilter)) {
+      throw new CliError(`Unknown input schema first property type: ${firstTypeFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_types.find((e) => e.input_schema_first_property_type === firstTypeFilter);
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property type: ${firstTypeFilter}`, 1);
+    }
+    outputIndex = Object.assign({}, fullIndex, { first_property_types: [matchedEntry] });
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property type (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input_schema first property type (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyTypeIndex(outputIndex));
+}
+
+function parseSignatureIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['first-type', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+function _guardInputSchemaFirstPropertyTypeBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_TYPE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_type outside closed nine-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyTypeAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_TYPE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
+// M49: classifyInputSchemaFirstPropertyType(inputSchema) → 'string'|'number'|'integer'|'boolean'|'null'|'object'|'array'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning; zero-property object has no first property)
+//   firstDescriptor not a plain non-null object, or firstDescriptor.type missing/non-string/outside closed seven-primitive set → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid)
+//   Otherwise → firstDescriptor.type (one of string|number|integer|boolean|null|object|array)
+// Object.keys insertion-order semantics preserved (JSON.parse preserves key order). MUST NOT sort or re-order property keys.
+// Per-property types beyond the FIRST are NOT walked (reserved for M-Signature-All-Properties-Type-Index-1).
+// Nested-object property types under properties[key].properties are NOT walked (reserved for M-Signature-Nested-Property-Type-Index-1).
+// output_schema.properties[firstKey].type is NOT classified (reserved for M48/shape; distinct axis).
+// input_schema_first_property_type MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyType(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstDescriptor = properties[firstKey];
+  if (firstDescriptor === null || firstDescriptor === undefined || typeof firstDescriptor !== 'object' || Array.isArray(firstDescriptor)) {
+    return 'unknown';
+  }
+  const firstType = firstDescriptor.type;
+  if (typeof firstType !== 'string' || !INPUT_SCHEMA_FIRST_PROPERTY_TYPE_PRIMITIVE_VALUE_SET.has(firstType)) {
+    return 'unknown';
+  }
+  return firstType;
+}
+
+// M49: buildInputSchemaFirstPropertyTypeIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property type index from the manifest's capabilities[].
+// Bucket iteration order: string → number → integer → boolean → null → object → array → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_type MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyTypeIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_types: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the eight ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_type.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstDescriptor = props[keys[0]];
+          if (
+            firstDescriptor === null ||
+            firstDescriptor === undefined ||
+            typeof firstDescriptor !== 'object' ||
+            Array.isArray(firstDescriptor) ||
+            typeof firstDescriptor.type !== 'string' ||
+            !INPUT_SCHEMA_FIRST_PROPERTY_TYPE_PRIMITIVE_VALUE_SET.has(firstDescriptor.type)
+          ) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          }
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const firstPropertyType = classifyInputSchemaFirstPropertyType(inputSchema);
+    const isNamedBucket = namedBuckets.has(firstPropertyType);
+    const bucketKey = isNamedBucket ? firstPropertyType : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: string → number → integer → boolean → null → object → array → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_TYPE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyTypes = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const firstPropertyTypeKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyTypeBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyTypeBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyTypeAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyTypeAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyTypeAggregationKey('first_property_type');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_type: firstPropertyTypeKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_types: firstPropertyTypes,
+    warnings
+  };
+}
+
+// M49: format input schema first property type index as human-readable text
+function formatInputSchemaFirstPropertyTypeIndex(index) {
+  if (index.first_property_types.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Type Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    'Planning aid: this index reports per-capability input_schema.properties[<firstKey>].type primitive classification; it does NOT execute capability invocations, validate runtime request payloads against the declared first-property type, generate SDK call-site code, or emit JSON-Schema files. Bucket order is deterministic stable-output ordering only (NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked).',
+    ''
+  ];
+
+  for (const entry of index.first_property_types) {
+    lines.push(`[${entry.input_schema_first_property_type}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: string | number | integer | boolean | null | object | array (per-property primitive) | not_applicable (input_schema.type !== 'object' or zero-property object) | unknown (malformed input_schema or invalid first-property descriptor).");
+  lines.push('Bucket order: string → number → integer → boolean → null → object → array → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
 // M41: tusq path — top-level noun dispatcher
 function cmdPath(args) {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -8807,6 +9214,7 @@ function printHelp() {
   process.stdout.write('  response           Index capabilities by output schema top-level type for planning review\n');
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
   process.stdout.write('  shape              Index capabilities by output schema first property type for planning review\n');
+  process.stdout.write('  signature          Index capabilities by input schema first property type for planning review\n');
   process.stdout.write('  strictness         Index capabilities by output schema additionalProperties strictness for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  version            Print version and exit\n');
@@ -9251,6 +9659,46 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown first-type value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime response validator, SDK type-definition generator, or JSON-Schema emitter; types are deterministic stable-output ordering only (NOT SDK-complexity-ranked, NOT tool-generation-difficulty-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT serialization-cost-ranked).'
+    ].join('\n'),
+    signature: 'Usage: tusq signature <subcommand>\n  Subcommands: index',
+    'signature index': [
+      'Usage: tusq signature index [--first-type <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --first-type <value>  Filter to a single input schema first property type bucket (default: all types; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].type when input_schema.type === "object"):',
+      '  string       if input_schema.type === "object" and properties[firstKey].type === "string"',
+      '  number       if input_schema.type === "object" and properties[firstKey].type === "number"',
+      '  integer      if input_schema.type === "object" and properties[firstKey].type === "integer"',
+      '  boolean      if input_schema.type === "object" and properties[firstKey].type === "boolean"',
+      '  null         if input_schema.type === "object" and properties[firstKey].type === "null"',
+      '  object       if input_schema.type === "object" and properties[firstKey].type === "object"',
+      '  array        if input_schema.type === "object" and properties[firstKey].type === "array"',
+      '  not_applicable  if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or the first property descriptor is not a plain object, or its type is missing/non-string/outside the closed seven-primitive set.',
+      '               Closed seven-primitive set (literal lower-case strings): string | number | integer | boolean | null | object | array.',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property types beyond the FIRST are NOT walked (reserved for M-Signature-All-Properties-Type-Index-1).',
+      '               Nested-object property types under properties[key].properties are NOT walked (reserved for M-Signature-Nested-Property-Type-Index-1).',
+      '               output_schema.properties[firstKey].type is NOT classified here (that is M48 tusq shape index).',
+      '               Distinct from M39 (input_schema.required count), M43 (input_schema primary parameter source), M47 (input_schema.properties count), M48 (output-side first-property type via tusq shape index).',
+      '',
+      'Bucket iteration order: string → number → integer → boolean → null → object → array → not_applicable → unknown',
+      '  (scalar-primitives-first → null → structural-primitives → exits — NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown first-type value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime request validator, SDK call-site generator, or JSON-Schema emitter; types are deterministic stable-output ordering only (NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked).'
     ].join('\n'),
     strictness: 'Usage: tusq strictness <subcommand>\n  Subcommands: index',
     'strictness index': [
