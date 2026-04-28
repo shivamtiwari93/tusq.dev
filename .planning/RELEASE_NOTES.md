@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M47 (turn_c84e2118f26b5b7c, run_240679669ee78f0b, 2026-04-27, HEAD a0dc519)
+
+**Milestone:** M47 — Static Capability Input Schema Property Count Tier Index Export from Manifest Evidence (~0.5 day) — V1.28
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_cc1f4a9f48f528e8, role=dev). HEAD a0dc519 = M47 implementation checkpoint. All M47 implementation (src/cli.js, tests/smoke.mjs, 38 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (38 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardInputSchemaPropertyCountTierBucketKey` and `_guardInputSchemaPropertyCountTierAggregationKey` pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 31. `node bin/tusq.js parameter index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `tiers[]` with `none` bucket (get_users_users; aggregation_key `"tier"`) and `low` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"tier"`); `warnings: []`. `node bin/tusq.js parameter index --tier LOW --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js parameter index --tier high --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-bucket (no high-cardinality caps in express fixture). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift).
+
+**Acceptance criteria:** 564 total (REQ-001–REQ-564). Added REQ-540–REQ-564 (25 new M47 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_cc1f4a9f48f528e8 upheld — 10 dev-owned files correctly modified, all 7 dev decisions sound, M47 implementation complete and correct.
+
+**Key M47 features:** `tusq parameter index` command added (31st CLI command); `tiers[]` result field (matches M40/M44); five-value bucket-key enum (none/low/medium/high/unknown) matching M40 verbatim; two-value aggregation_key enum (tier/unknown) matching M40 verbatim; frozen tier thresholds 0/2/5/6; `none` bucket emits NO warning (valid named bucket for zero-property capabilities); five frozen warning reason codes; eval count 37→38.
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Verification — M46 (turn_c650f5bf0046eb83, run_7c4036f0eba4cde3, 2026-04-27, HEAD 52e827b)
 
 **Milestone:** M46 — Static Capability Output Schema additionalProperties Strictness Index Export from Manifest Evidence (~0.5 day) — V1.27

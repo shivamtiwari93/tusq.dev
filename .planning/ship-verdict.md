@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c84e2118f26b5b7c (role=qa, run_240679669ee78f0b, M47 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_cc1f4a9f48f528e8, role=dev, HEAD a0dc519) for run_240679669ee78f0b independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff ca1893b..HEAD --name-only` → 10 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md` (plus PM-owned planning files from PM turn). Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All seven dev decisions (DEC-001 through DEC-007) in that turn are upheld on independent review: challenge of PM turn was sound, M47 artifacts verified present and correct, `tiers` field name is correct (matches M40/M44), `parameter` inserted between `output` and `path`, non-persistence of `input_schema_property_count_tier` confirmed, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (38 scenarios)`. Independently re-run; 38 scenarios confirmed (37 prior + 1 M47 input-schema-property-count-tier-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardInputSchemaPropertyCountTierBucketKey` and `_guardInputSchemaPropertyCountTierAggregationKey` guards pass synchronously.
+
+**4. CLI surface 31 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 31. `parameter` correctly positioned between `output` and `path`.
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js parameter index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `tiers[]` (NOT `strictnesses[]`, NOT `types[]`, NOT `sources[]`, NOT `items_types[]`) with `none` bucket (get_users_users; capability_count 1; aggregation_key `"tier"`) and `low` bucket (get_users_api_v1_users_id, post_users_users; capability_count 2; aggregation_key `"tier"`); `warnings: []`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js parameter index --tier LOW --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown input schema property count tier: LOW`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js parameter index --tier high --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, `No capabilities found for input schema property count tier: high` (no high-cardinality caps in express fixture — all caps have 0 or 1 properties).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. M47 ROADMAP checkboxes:** All 18 M47 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M47 block).
+
+**10. classifyInputSchemaPropertyCountTier rules (code inspection at src/cli.js:4959–4989):** null/undefined inputSchema → unknown; non-object/array inputSchema → unknown; missing properties field → unknown; properties null/undefined/non-object/array → unknown; any property descriptor that is null, typeof!=='object', Array, or function → unknown; Object.keys(properties).length === 0 → none; 1-2 → low; 3-5 → medium; ≥6 → high. No nested-property walking; no required-vs-optional intersection; no per-property type distribution.
+
+**11. Aggregation key two-value enum:** `INPUT_SCHEMA_PROPERTY_COUNT_TIER_AGGREGATION_KEY_ENUM` frozen Set `{tier, unknown}` at `src/cli.js:336`. Matches M40 verbatim. NOT three-value; NOT `strictness`; NOT `type`; NOT `source`; NOT `items_type`.
+
+**12. Five frozen warning reason codes:** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_properties_field_missing`, `input_schema_properties_field_not_object`, `input_schema_properties_field_contains_invalid_descriptor`. `none` bucket does NOT generate warnings (valid named bucket for zero-property caps).
+
+**13. Acceptance criteria count:** 564 (REQ-001–REQ-564). Added REQ-540–REQ-564 (25 new M47 criteria) this turn. All 564 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_c650f5bf0046eb83 (role=qa, run_7c4036f0eba4cde3, M46 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_c5d62ccd1c2a4bcd, role=dev, HEAD 52e827b) for run_7c4036f0eba4cde3 independently rather than rubber-stamping it.
