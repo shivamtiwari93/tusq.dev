@@ -1,5 +1,23 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M46 (turn_c650f5bf0046eb83, run_7c4036f0eba4cde3, 2026-04-27, HEAD 52e827b)
+
+**Milestone:** M46 — Static Capability Output Schema additionalProperties Strictness Index Export from Manifest Evidence (~0.5 day) — V1.27
+
+**Turn context:** Formal qa-phase verification turn challenging the prior accepted dev turn (turn_c5d62ccd1c2a4bcd, role=dev). HEAD 52e827b = M46 implementation checkpoint. All M46 implementation (src/cli.js, tests/smoke.mjs, 37 eval scenarios) confirmed at this HEAD.
+
+**Verification summary (run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (37 scenarios)`. `node -e "require('./src/cli.js')"` → exit 0 (guards `_guardOutputSchemaStrictnessBucketKey` and `_guardOutputSchemaStrictnessAggregationKey` pass). `node bin/tusq.js help | grep -c '^  [a-z]'` → 30. `node bin/tusq.js strictness index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `strictnesses[]` with `permissive` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `"strictness"`) and `not_applicable` bucket (get_users_users; aggregation_key `"not_applicable"`); `warnings: []`. `node bin/tusq.js strictness index --strictness STRICT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1 (case-sensitive). `node bin/tusq.js strictness index --strictness strict --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, absent-bucket (no strict caps in express fixture). `git diff --quiet HEAD -- package.json package-lock.json` → exit 0 (zero package drift).
+
+**Acceptance criteria:** 539 total (REQ-001–REQ-539). Added REQ-515–REQ-539 (25 new M46 criteria) this turn. All PASS.
+
+**Prior dev turn challenge:** turn_c5d62ccd1c2a4bcd upheld — 10 dev-owned files correctly modified (git diff d82d53d..52e827b), all 5 dev decisions sound, M46 implementation complete and correct.
+
+**Key M46 features:** `tusq strictness index` command added (30th CLI command); `strictnesses[]` result field; four-value bucket-key enum (strict/permissive/not_applicable/unknown); three-value aggregation_key enum (strictness/not_applicable/unknown); boolean-only additionalProperties contract (schema-as-additionalProperties → unknown); not_applicable bucket emits NO warning; five frozen warning reason codes including output_schema_type_missing_or_invalid (new vs M45).
+
+**Carried-forward objections (non-blocking):** OBJ-001 (medium): R6 auth_required dead code. OBJ-002 (low): surface-plan-determinism eval uses synthetic_capabilities. OBJ-003 (low): M31 per-domain flag value assertions.
+
+---
+
 ## QA Verification — M45 (turn_3fb041fa0224ce63, run_79db9c1f34791188, 2026-04-27, HEAD cb9d730)
 
 **Milestone:** M45 — Static Capability Output Schema Items Type Index Export from Manifest Evidence (~0.5 day) — V1.26

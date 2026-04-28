@@ -2,6 +2,36 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c650f5bf0046eb83 (role=qa, run_7c4036f0eba4cde3, M46 verification, 2026-04-27)
+
+This QA turn challenges the prior accepted dev turn (turn_c5d62ccd1c2a4bcd, role=dev, HEAD 52e827b) for run_7c4036f0eba4cde3 independently rather than rubber-stamping it.
+
+**1. Prior dev turn audit:** `git diff d82d53d..52e827b --name-only` → exactly 10 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `website/docs/manifest-format.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files modified. Zero QA-owned or launch-owned files modified. All five dev decisions (DEC-001 through DEC-005) in that turn are upheld on independent review: challenge of PM turn was sound, M46 artifacts verified present and correct, 'strictnesses' field name is correct, non-persistence of output_schema_strictness confirmed, phase_transition_request='qa' appropriate.
+
+**2. npm test (re-run this turn):** `npm test` → exit 0, `Smoke tests passed`, `Eval regression harness passed (37 scenarios)`. Independently re-run; 37 scenarios confirmed (36 prior + 1 M46 output-schema-strictness-index-determinism scenario).
+
+**3. Module guard (re-run this turn):** `node -e "require('./src/cli.js')"` → exit 0. Module loads OK; `_guardOutputSchemaStrictnessBucketKey` and `_guardOutputSchemaStrictnessAggregationKey` guards pass synchronously.
+
+**4. CLI surface 30 commands (re-run this turn):** `node bin/tusq.js help | grep -c '^  [a-z]'` → 30. `strictness` correctly positioned between `sensitivity` and `surface`.
+
+**5. Default JSON output (re-run this turn):** `node bin/tusq.js strictness index --manifest tests/fixtures/express-sample/tusq.manifest.json --json` → exit 0, `strictnesses[]` (NOT `tiers[]`, NOT `types[]`, NOT `sources[]`, NOT `items_types[]`) with `permissive` bucket (get_users_api_v1_users_id, post_users_users; capability_count 2; aggregation_key `"strictness"`) and `not_applicable` bucket (get_users_users; capability_count 1; aggregation_key `"not_applicable"`); `warnings: []`.
+
+**6. Case-sensitive uppercase enforcement (re-run this turn):** `node bin/tusq.js strictness index --strictness STRICT --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, stderr `Unknown output schema strictness: STRICT`.
+
+**7. Absent-bucket enforcement (re-run this turn):** `node bin/tusq.js strictness index --strictness strict --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 1, `No capabilities found for output schema strictness: strict` (no strict-typed caps in express fixture — all object-typed caps have additionalProperties=true).
+
+**8. Package drift (re-run this turn):** `git diff --quiet HEAD -- package.json package-lock.json` → exit 0. Zero new dependencies.
+
+**9. M46 ROADMAP checkboxes:** All 18 M46 ROADMAP items confirmed `[x]` (0 unchecked `[ ]` items in M46 block).
+
+**10. classifyOutputSchemaStrictness rules (code inspection at src/cli.js:6683–6706):** null/undefined output_schema → unknown; non-object/array → unknown; type not-string → unknown (triggers output_schema_type_missing_or_invalid — distinct from M45 which did NOT warn on missing/non-string type); type string but not 'object' → not_applicable (no warning); type 'object' + additionalProperties missing → unknown; typeof additionalProperties !== 'boolean' (schema-object case) → unknown; additionalProperties === false → strict; additionalProperties === true → permissive. No nested-property walking; no items.additionalProperties walking; no input_schema.additionalProperties walking.
+
+**11. Aggregation key tri-value enum:** `OUTPUT_SCHEMA_STRICTNESS_AGGREGATION_KEY_ENUM` frozen Set `{strictness, not_applicable, unknown}` at `src/cli.js:319`. NOT two-value; NOT `tier`; NOT `type`; NOT `source`; NOT `items_type`.
+
+**12. Five frozen warning reason codes:** `output_schema_field_missing`, `output_schema_field_not_object`, `output_schema_type_missing_or_invalid`, `output_schema_additional_properties_missing_when_type_is_object`, `output_schema_additional_properties_not_boolean_when_type_is_object`. not_applicable bucket does NOT generate warnings.
+
+**13. Acceptance criteria count:** 539 (REQ-001–REQ-539). Added REQ-515–REQ-539 (25 new M46 criteria) this turn. All 539 pass. Ship verdict remains SHIP.
+
 ## QA Challenge — turn_3fb041fa0224ce63 (role=qa, run_79db9c1f34791188, M45 verification, 2026-04-27)
 
 This QA turn challenges the prior accepted dev turn (turn_beac02a98d4b562d, role=dev, HEAD cb9d730) for run_79db9c1f34791188 independently rather than rubber-stamping it.
