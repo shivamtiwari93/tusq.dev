@@ -2,6 +2,57 @@
 
 ---
 
+## M78 (run_b2c5d5143ed0e344, turn_5f19567fcdd8fb6c, dev)
+
+**Axis:** `input_schema.properties[firstKey].minProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-FLOOR annotation. CLI noun: `sparse` (between `signature` and `strictness`). CLI surface 61→62.
+
+**Constants added** (`src/cli.js`, after M77 additionalProperties constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_ENUM` = frozen Set `['bounded', 'unbounded', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_count_floor_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_BUCKET_ORDER` = frozen array `['bounded', 'unbounded', 'not_applicable']`
+
+**Guard functions** (after M77 guards):
+- `_guardInputSchemaFirstPropertyMinPropertiesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyMinPropertiesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyMinProperties(inputSchema)` (after `classifyInputSchemaFirstPropertyAdditionalProperties`):
+1. `inputSchema` null/undefined → `unknown` (reason: `input_schema_field_missing`)
+2. `inputSchema` not plain object / is Array → `unknown` (reason: `input_schema_field_not_object`)
+3. `inputSchema.type` missing or non-string → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+4. `inputSchema.type !== 'object'` → `not_applicable` (no warning)
+5. `properties` missing/null/not-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+6. `Object.keys(properties).length === 0` → `not_applicable` (no warning)
+7. `firstVal` not plain non-null object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid` — FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT** (M78-SPECIFIC): `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (Draft-7 defines minProperties ONLY for type='object'; mirrors M77 TYPE-APPLICABILITY-OBJECT)
+9. **ABSENT-AS-UNBOUNDED**: `minProperties` absent/undefined → `unbounded` (Draft-7 default is no floor; no warning)
+10. **NULL-AS-ABSENT**: `minProperties === null` → `unbounded` (mirrors M55–M77; no warning)
+11. **NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES** + **PRESENT-AS-PRESENT-ZERO**: `Number.isInteger(v) && v >= 0` → `bounded` (integer 0 → bounded — explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0; no warning)
+12. **DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES**: any other value → `unknown` WITH 6th code `input_schema_properties_first_property_min_properties_invalid_when_present`; **NO-COERCION** via `Number()`/`parseInt()`/`parseFloat()`/`Boolean()`/`!!`/`v?true:false` — strict `Number.isInteger(v) && v >= 0` only
+
+**Build function:** `buildInputSchemaFirstPropertyMinPropertiesIndex(manifest, manifestPath)` — iterates capabilities, classifies each, groups into closed-enum buckets, emits only NON-EMPTY buckets in order `bounded → unbounded → not_applicable → unknown`. Per-bucket 8-field shape: `input_schema_first_property_min_properties`, `aggregation_key`, `capability_count`, `capabilities[]`, `approved_count`, `gated_count`, `has_destructive_side_effect`, `has_restricted_or_confidential_sensitivity`. Result-array field: `first_property_min_properties_states[]`. Six frozen warning reason codes. `bounded` and `unbounded` buckets carry `aggregation_key: 'object_property_count_floor_constraint'`; `not_applicable` carries `'not_applicable'`; `unknown` carries `'unknown'`.
+
+**Format function:** `formatInputSchemaFirstPropertyMinPropertiesIndex(index)` — plain-text output with planning-aid framing, bucket headers, capability counts, bucket-rule summary, bucket order note.
+
+**CLI wiring:**
+- `cmdSparse(args)` / `cmdSparseIndex(args)` / `parseSparseIndexArgs(args)` — mirrors M77 `cmdOpen`/`cmdOpenIndex`/`parseOpenIndexArgs`
+- Known flags: `--sparse` (case-sensitive bucket filter, absent-bucket → exit 1), `--manifest`, `--out` (rejects `.tusq/` paths), `--json`
+- Dispatch: `'sparse'` case wired between `'signature'` and `'strictness'` in dispatch switch
+- `printHelp()`: `sparse` line between `signature` and `strictness`
+- `printCommandHelp()`: `'sparse'` and `'sparse index'` entries between `'signature index'` and `'strictness'`
+
+**Tests updated:**
+- `tests/smoke.mjs`: 43 help-count assertions updated 61→62; 18-case M78 smoke matrix added after M77 matrix; M77 error message updated to "62 commands (M78 adds 'sparse')"
+- `tests/evals/governed-cli-scenarios.json`: `input-schema-first-property-min-properties-index-determinism` scenario added (68→69 scenarios)
+- `tests/eval-regression.mjs`: `input_schema_first_property_min_properties_index_determinism` dispatch case + `runInputSchemaFirstPropertyMinPropertiesIndexDeterminismScenario` function added
+
+**Planning files updated:** ROADMAP.md (all 18 M78 items [x]), SYSTEM_SPEC.md (M78 Materialized + Constraint 71), command-surface.md (M78 Materialized), IMPLEMENTATION_NOTES.md (this section), website/docs/cli-reference.md (## tusq sparse index section)
+
+**Express-sample fixture result:** `unbounded` bucket (post_users_users — first property is object-typed with no minProperties annotation) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id — first property is string/integer-typed, TYPE-APPLICABILITY-OBJECT applies). `bounded` and `unknown` buckets absent — empty-bucket-MUST-NOT-appear invariant confirmed. `warnings=[]`. Fixture NOT mutated.
+
+**npm test:** exits 0 with 69 scenarios.
+
+---
+
 ## M77 (run_23513ac80f87e34e, turn_57319dfd22963098, dev)
 
 **Axis:** `input_schema.properties[firstKey].additionalProperties` — JSON-Schema Draft 7 OBJECT-EXTENSION-CONTROL annotation. CLI noun: `open` (between `obligation` and `output`). CLI surface 60→61.

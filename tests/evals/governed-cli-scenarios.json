@@ -5953,6 +5953,147 @@
         "unknown"
       ],
       "expected_bucket_order": "closed,open,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-min-properties-index-determinism",
+      "scenario_type": "input_schema_first_property_min_properties_index_determinism",
+      "description": "Verifies that tusq sparse index produces byte-identical output across three runs on a synthetic manifest with bounded, unbounded, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (bounded/unbounded/not_applicable/unknown), closed three-value aggregation_key enum (object_property_count_floor_constraint/not_applicable/unknown), bucket order determinism (bounded \u2192 unbounded \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_min_properties non-persistence. NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: Number.isInteger(v) && v >= 0 \u2192 bounded (no warning). PRESENT-AS-PRESENT-ZERO: minProperties:0 \u2192 bounded (explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0). ABSENT-AS-UNBOUNDED: minProperties absent/undefined \u2192 unbounded (Draft-7 default is no floor, no warning). NULL-AS-ABSENT (mirrors M55\u2013M77): minProperties:null \u2192 unbounded (no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M77 TYPE-APPLICABILITY-OBJECT). DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: non-non-negative-integer present value \u2192 unknown WITH 6th code input_schema_properties_first_property_min_properties_invalid_when_present; NO-COERCION via Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false \u2014 strict Number.isInteger && >= 0 only.",
+      "synthetic_capabilities": [
+        {
+          "name": "bounded_zero_cap",
+          "method": "POST",
+          "path": "/bounded-zero",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "minProperties": 0
+              }
+            }
+          },
+          "description": "First property type='object', minProperties=0 \u2014 lands in bounded bucket (PRESENT-AS-PRESENT-ZERO: explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0)"
+        },
+        {
+          "name": "bounded_one_cap",
+          "method": "POST",
+          "path": "/bounded-one",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "minProperties": 1
+              }
+            }
+          },
+          "description": "First property type='object', minProperties=1 \u2014 lands in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES)"
+        },
+        {
+          "name": "unbounded_absent_cap",
+          "method": "GET",
+          "path": "/unbounded-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "First property type='object', minProperties absent \u2014 lands in unbounded bucket (ABSENT-AS-UNBOUNDED: Draft-7 default is no floor)"
+        },
+        {
+          "name": "unbounded_null_cap",
+          "method": "GET",
+          "path": "/unbounded-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "minProperties": null
+              }
+            }
+          },
+          "description": "First property type='object', minProperties=null \u2014 lands in unbounded bucket (NULL-AS-ABSENT: mirrors M55\u2013M77)"
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/string-type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT: minProperties only meaningful for object-typed properties)"
+        },
+        {
+          "name": "string_mp_cap",
+          "method": "POST",
+          "path": "/string-mp",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "minProperties": "1"
+              }
+            }
+          },
+          "description": "First property type='object', minProperties='1' (string) \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: string \u2192 unknown; NO-COERCION)"
+        },
+        {
+          "name": "missing_input_schema_cap",
+          "method": "GET",
+          "path": "/missing-input-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        }
+      ],
+      "expected_valid_min_properties_values": [
+        "bounded",
+        "unbounded",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_count_floor_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "bounded,unbounded,not_applicable,unknown"
     }
   ]
 }

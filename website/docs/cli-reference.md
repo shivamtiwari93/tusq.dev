@@ -2731,6 +2731,48 @@ tusq open index --open not_applicable --json
 tusq open index --out open-index.json
 ```
 
+## `tusq sparse index`
+
+Emit a deterministic, per-`minProperties`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-property-count-floor annotation on `input_schema.properties[firstKey].minProperties` (the first input property descriptor), in closed-enum order (`bounded → unbounded → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `minProperties` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime object-property-count-floor validator, runtime object-key-count rejector, DTO property-count-floor validator, governance-observability strictness aggregator, strict-tool-emitter-min-properties validator, or MCP-server-min-properties validator**.
+
+**Distinct from `tusq least index` (M73):** `tusq least index` reads `input_schema.properties[firstKey].minItems` (array-cardinality-floor — ARRAY-axis annotation on type:'array' properties). `tusq sparse index` reads `input_schema.properties[firstKey].minProperties` (object-property-count-floor — OBJECT-axis annotation on type:'object' properties). Same mathematical floor shape (non-negative integer), different type domains. These are sibling commands under the minFloor-annotation cluster, NOT interchangeable.
+
+**Distinct from `tusq open index` (M77):** `tusq open index` reads `firstKey.additionalProperties` (object-extension-control — boolean/schema controlling whether extra keys are permitted). `tusq sparse index` reads `firstKey.minProperties` (object-property-count-floor — non-negative-integer controlling the minimum number of required keys). Orthogonal field semantics on the same object-axis: extension-control vs property-count-floor.
+
+**Distinct from `tusq obligation index` (M50):** `tusq obligation index` reads `firstKey ∈ input_schema.required[]` (required-status — whether the specific property must be present). `tusq sparse index` reads `firstKey.minProperties` (minimum key count for the object). These are orthogonal fields on the same firstVal descriptor.
+
+```bash
+tusq sparse index [--sparse <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--sparse <bounded\|unbounded\|not_applicable\|unknown>` | all buckets | Filter to a single minProperties annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**MinProperties classification rule** (applied to `input_schema.properties[firstKey].minProperties` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+- `bounded` — `Number.isInteger(firstKey.minProperties) && firstKey.minProperties >= 0` (**NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES**; **PRESENT-AS-PRESENT-ZERO**: `minProperties: 0` → `bounded` — explicit zero is a declared floor, NOT unbounded; mirrors M73 `minItems: 0`; no warning)
+- `unbounded` — `firstKey.minProperties` is absent/undefined (**ABSENT-AS-UNBOUNDED**: Draft-7 default is no floor; no warning), OR `=== null` (**NULL-AS-ABSENT**: mirrors M55–M77 null-as-absent precedent; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR `firstVal.type` is a non-empty string other than `'object'` (**TYPE-APPLICABILITY-OBJECT**: `minProperties` only meaningful for object-typed properties; JSON-Schema-Draft-7 defines `minProperties` ONLY for `type === 'object'`; mirrors M77 TYPE-APPLICABILITY-OBJECT; no warning)
+- `unknown` — `input_schema` or `properties` are malformed, `firstKey` not a plain object, OR `minProperties` is present non-null non-non-negative-integer (negative integer `-1`, non-integer `0.5`/`1.5`, `NaN`, `Infinity`, string `'1'`/`'0'`, boolean `true`/`false`, array `[1]`, plain object `{}`) (**DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES**: triggers 6th warning code `input_schema_properties_first_property_min_properties_invalid_when_present`; **NO-COERCION** via `Number()`/`parseInt()`/`parseFloat()`/`Boolean()`/`!!`/`v?true:false` — strict `Number.isInteger(v) && v >= 0` only)
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT governance-observability-priority-ranked, NOT approval-gate-readiness-ranked, NOT audit-log-coverage-ranked, NOT drift-detection-priority-ranked, NOT policy-file-strictness-tier-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown minProperties state, `--out` path error, or unknown subcommand
+
+```bash
+tusq sparse index
+tusq sparse index --json
+tusq sparse index --sparse bounded
+tusq sparse index --sparse not_applicable --json
+tusq sparse index --out sparse-index.json
+```
+
 ## `tusq strictness index`
 
 Emit a deterministic, per-strictness capability index from manifest evidence. Groups capabilities by whether their `output_schema.additionalProperties` boolean is `false` (closed-key contract) or `true` (unspecified-field-tolerant) for object-typed responses, in closed-enum order (`strict → permissive → not_applicable → unknown`). Non-object responses bucket as `not_applicable` (no warning). Malformed or missing `output_schema` or non-boolean `additionalProperties` buckets as `unknown` with a warning. This is a **planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier**.

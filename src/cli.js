@@ -906,6 +906,25 @@ const INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_AGGREGATION_KEY_ENUM = O
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER = Object.freeze(['closed', 'open', 'not_applicable']);
 
+// M78: frozen four-value bucket-key enum for input_schema.properties[firstKey].minProperties (JSON-Schema-Draft-7 OBJECT-PROPERTY-COUNT-FLOOR annotation).
+// bounded   — Number.isInteger(v) && v >= 0 (NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: integer 0 → bounded, PRESENT-AS-PRESENT-ZERO)
+// unbounded — minProperties absent/undefined (ABSENT-AS-UNBOUNDED: Draft-7 default no floor), null (NULL-AS-ABSENT: mirrors M55–M77)
+// not_applicable — firstVal.type is a string but not 'object' (TYPE-APPLICABILITY-OBJECT), OR zero-property object
+// unknown   — malformed input_schema, firstVal not a plain object, OR minProperties present non-null non-non-negative-integer
+//             (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION)
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_ENUM = Object.freeze(new Set(['bounded', 'unbounded', 'not_applicable', 'unknown']));
+
+// M78: frozen three-value aggregation_key enum. Immutable once M78 ships.
+// bounded/unbounded buckets carry 'object_property_count_floor_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['object_property_count_floor_constraint', 'not_applicable', 'unknown']));
+
+// M78: closed-enum bucket iteration order (bounded → unbounded → not_applicable). Unknown appended last.
+// NOT governance-observability-priority-ranked, NOT approval-gate-readiness-ranked, NOT audit-log-coverage-ranked,
+// NOT drift-detection-priority-ranked, NOT policy-file-strictness-tier-ranked, NOT review-queue-priority-ranked,
+// NOT replay-dry-run-rejection-ranked, NOT evals-regression-strictness-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_BUCKET_ORDER = Object.freeze(['bounded', 'unbounded', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1152,6 +1171,9 @@ function dispatch(argv) {
       return;
     case 'signature':
       cmdSignature(args);
+      return;
+    case 'sparse':
+      cmdSparse(args);
       return;
     case 'strictness':
       cmdStrictness(args);
@@ -12929,6 +12951,20 @@ function _guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyMinPropertiesBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_min_properties outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyMinPropertiesAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -16745,6 +16781,81 @@ function classifyInputSchemaFirstPropertyAdditionalProperties(inputSchema) {
   return 'unknown';
 }
 
+// M78: classifyInputSchemaFirstPropertyMinProperties(inputSchema) → 'bounded'|'unbounded'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              TYPE-APPLICABILITY-OBJECT rule (M78, mirrors M77 TYPE-APPLICABILITY-OBJECT):
+//              if typeof firstVal.type === 'string' && firstVal.type !== 'object' → 'not_applicable' (no warning; minProperties only meaningful for object-typed properties)
+//              minProperties check (JSON-Schema Draft 7 object-property-count-floor annotation):
+//              ABSENT-AS-UNBOUNDED: !hasOwn(firstVal, 'minProperties') OR minProperties===undefined → 'unbounded' (Draft 7 default is no floor)
+//              NULL-AS-ABSENT: minProperties===null → 'unbounded' (mirrors M55–M77 null-as-absent precedent)
+//              NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: Number.isInteger(v) && v >= 0 → 'bounded'
+//                (PRESENT-AS-PRESENT-ZERO: minProperties:0 → 'bounded'; integer 0 is a valid declared floor, NOT unbounded)
+//              DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: any other value → 'unknown' WITH 6th code
+//              NO-COERCION: MUST NOT use Number(v)/parseInt(v,10)/parseFloat(v)/Boolean(v)/!!v/v?true:false
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property minProperties beyond the FIRST is NOT walked (reserved for M-MinProperties-All-Properties).
+// Nested-object property minProperties NOT walked (reserved for M-MinProperties-Nested).
+// output_schema first-property minProperties is NOT classified (reserved for M-MinProperties-Output-First-Property-Index).
+// input_schema_first_property_min_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyMinProperties(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // TYPE-APPLICABILITY-OBJECT: if firstVal.type is a string but not 'object' → not_applicable (minProperties only meaningful for object-typed properties)
+  if (typeof firstVal.type === 'string' && firstVal.type !== 'object') {
+    return 'not_applicable';
+  }
+  // minProperties check:
+  const mpVal = Object.prototype.hasOwnProperty.call(firstVal, 'minProperties') ? firstVal.minProperties : undefined;
+  // ABSENT-AS-UNBOUNDED: minProperties absent or undefined → unbounded (Draft-7 default is no floor)
+  if (mpVal === undefined) {
+    return 'unbounded';
+  }
+  // NULL-AS-ABSENT: minProperties===null → unbounded (mirrors M55–M77 null-as-absent)
+  if (mpVal === null) {
+    return 'unbounded';
+  }
+  // NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: Number.isInteger(v) && v >= 0 → bounded
+  // PRESENT-AS-PRESENT-ZERO: minProperties:0 → bounded (explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0)
+  if (Number.isInteger(mpVal) && mpVal >= 0) {
+    return 'bounded';
+  }
+  // DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION
+  return 'unknown';
+}
+
 // M76: buildInputSchemaFirstPropertyItemsIndex(manifest, manifestPath) → index object
 // Builds a full unfiltered input schema first property items annotation index from the manifest's capabilities[].
 // Bucket iteration order: declared → undeclared → not_applicable (closed-enum order), then unknown last.
@@ -17401,6 +17512,345 @@ function parseOpenIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['open', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M78: buildInputSchemaFirstPropertyMinPropertiesIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property minProperties annotation index from the manifest's capabilities[].
+// Bucket iteration order: bounded → unbounded → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_min_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyMinPropertiesIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_min_properties_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_min_properties.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M78 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M77)
+    //   6. input_schema_properties_first_property_min_properties_invalid_when_present (M78-SPECIFIC)
+    //      covers non-non-negative-integer present minProperties;
+    //      NO-COERCION via Number()/parseInt()/parseFloat()/Boolean()/!!v — strict Number.isInteger && >= 0 only
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (!(typeof firstVal.type === 'string' && firstVal.type !== 'object')) {
+            // TYPE-APPLICABILITY-OBJECT: only check minProperties for non-typed or object-typed firstVal
+            // Check minProperties for 6th code: present non-null value that is not a non-negative integer
+            const mpVal = Object.prototype.hasOwnProperty.call(firstVal, 'minProperties') ? firstVal.minProperties : undefined;
+            if (mpVal !== undefined && mpVal !== null) {
+              if (!(Number.isInteger(mpVal) && mpVal >= 0)) {
+                warningReason = 'input_schema_properties_first_property_min_properties_invalid_when_present';
+              }
+            }
+          }
+          // else: TYPE-APPLICABILITY-OBJECT → not_applicable, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const mpClass = classifyInputSchemaFirstPropertyMinProperties(inputSchema);
+    const isNamedBucket = namedBuckets.has(mpClass);
+    const bucketKey = isNamedBucket ? mpClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: bounded → unbounded → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyMinPropertiesStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const isBoundedOrUnboundedBucket = bucketKey === 'bounded' || bucketKey === 'unbounded';
+    const mpKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMinPropertiesBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyMinPropertiesBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMinPropertiesAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyMinPropertiesAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyMinPropertiesAggregationKey('object_property_count_floor_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_min_properties: mpKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_min_properties_states: firstPropertyMinPropertiesStates,
+    warnings
+  };
+}
+
+// M78: format input schema first property minProperties annotation index as human-readable text
+function formatInputSchemaFirstPropertyMinPropertiesIndex(index) {
+  if (index.first_property_min_properties_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property MinProperties Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].minProperties JSON-Schema-Draft-7 object-property-count-floor annotation classification; it does NOT execute capability invocations, validate runtime object-key-count, enforce object-property-count-floor contracts, infer minProperties from docs, cross-reference required/properties-count/maxProperties/additionalProperties/patternProperties/propertyNames annotations, rank governance-observability strictness, assess approval-gate readiness, or rank MCP-server-min-properties strictness. Bucket order is deterministic stable-output ordering only (NOT governance-observability-priority-ranked, NOT approval-gate-readiness-ranked, NOT drift-detection-priority-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_min_properties_states) {
+    lines.push(`[${entry.input_schema_first_property_min_properties}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: bounded (firstKey.minProperties is a non-negative integer — NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: integer 0 → bounded (PRESENT-AS-PRESENT-ZERO: explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0); integer 1/5/100 → bounded) | unbounded (firstKey.minProperties absent/undefined — ABSENT-AS-UNBOUNDED: Draft-7 default is no floor; OR null — NULL-AS-ABSENT: null defers to Draft-7 default no floor; mirrors M55–M77) | not_applicable (input_schema.type !== 'object' or zero-property object or firstVal.type is a non-empty string other than 'object' — TYPE-APPLICABILITY-OBJECT: minProperties only meaningful for object-typed properties; JSON-Schema-Draft-7 defines minProperties ONLY for type==='object'; mirrors M77 TYPE-APPLICABILITY-OBJECT) | unknown (malformed input_schema, firstKey not a plain object, or minProperties present non-null non-non-negative-integer: negative integer -1, non-integer 0.5/1.5, NaN, Infinity, string '1'/'0', boolean true/false, array [1], plain object {} — DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: 6th warning code input_schema_properties_first_property_min_properties_invalid_when_present; NO-COERCION via Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false).");
+  lines.push('Bucket order: bounded → unbounded → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M78: tusq sparse — top-level noun dispatcher
+function cmdSparse(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('sparse');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdSparseIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M78: tusq sparse index — handler
+function cmdSparseIndex(args) {
+  const { opts, positionals } = parseSparseIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('sparse index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyMinPropertiesIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const sparseFilter = opts['sparse'] || null;
+
+  if (sparseFilter !== null) {
+    // Case-sensitive: lowercase canonical minProperties bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_ENUM.has(sparseFilter)) {
+      throw new CliError(`Unknown input schema first property minProperties state: ${sparseFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_min_properties_states.find(
+      (e) => e.input_schema_first_property_min_properties === sparseFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property minProperties state: ${sparseFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_min_properties_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyMinPropertiesIndex(outputIndex));
+}
+
+function parseSparseIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['sparse', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -21326,6 +21776,7 @@ function printHelp() {
   process.stdout.write('  sensitivity        Index capabilities by sensitivity class for planning review\n');
   process.stdout.write('  shape              Index capabilities by output schema first property type for planning review\n');
   process.stdout.write('  signature          Index capabilities by input schema first property type for planning review\n');
+  process.stdout.write('  sparse             Index capabilities by input schema first property minProperties object-property-count-floor annotation presence for governance-and-observability review\n');
   process.stdout.write('  strictness         Index capabilities by output schema additionalProperties strictness for planning review\n');
   process.stdout.write('  surface            Plan embeddable surfaces from manifest capabilities\n');
   process.stdout.write('  unique             Index capabilities by input schema first property uniqueItems boolean annotation presence for tool-and-skill-compiler review\n');
@@ -22793,6 +23244,48 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown first-type value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime request validator, SDK call-site generator, or JSON-Schema emitter; types are deterministic stable-output ordering only (NOT tool-call-difficulty-ranked, NOT LLM-context-cost-ranked, NOT JSON-Schema-spec-precedence-ranked, NOT parameter-binding-difficulty-ranked).'
+    ].join('\n'),
+    sparse: 'Usage: tusq sparse <subcommand>\n  Subcommands: index',
+    'sparse index': [
+      'Usage: tusq sparse index [--sparse <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --sparse <value>      Filter to a single input schema first property minProperties bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].minProperties when input_schema.type === "object" and firstVal.type === "object"):',
+      '  bounded      if Number.isInteger(firstKey.minProperties) && firstKey.minProperties >= 0',
+      '               (NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: minProperties:0 → bounded (PRESENT-AS-PRESENT-ZERO: explicit zero is a declared floor, NOT unbounded; mirrors M73 minItems:0))',
+      '  unbounded    if firstKey.minProperties absent/undefined (ABSENT-AS-UNBOUNDED: Draft-7 default is no floor)',
+      '               OR null (NULL-AS-ABSENT: null defers to Draft-7 default no floor; mirrors M55–M77)',
+      '  not_applicable  if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '               OR if firstKey.type is a string but not "object" (TYPE-APPLICABILITY-OBJECT: minProperties only meaningful for object-typed properties; JSON-Schema-Draft-7 defines minProperties ONLY for type==="object")',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or the first property descriptor is not a plain object.',
+      '               or minProperties present non-null non-non-negative-integer: negative integer -1, non-integer 0.5/1.5, NaN, Infinity, string "1"/"0", boolean true/false, array [1], plain object {}',
+      '               (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: 6th warning code input_schema_properties_first_property_min_properties_invalid_when_present;',
+      '               NO-COERCION via Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property minProperties beyond the FIRST are NOT walked (reserved for M-MinProperties-All-Properties).',
+      '               Nested-object property minProperties NOT walked (reserved for M-MinProperties-Nested).',
+      '               output_schema first-property minProperties NOT classified here.',
+      '               Distinct from M73 tusq least index (minItems — array-cardinality-floor, same mathematical floor shape but different type domain: array-axis vs object-axis),',
+      '               M77 tusq open index (additionalProperties — object-extension-control, different field semantic: boolean/schema vs non-negative-integer),',
+      '               M50 tusq obligation index (required — required-status, different field semantic).',
+      '',
+      'Bucket iteration order: bounded → unbounded → not_applicable → unknown',
+      '  (declared-floor-first → no-floor → exits — NOT governance-observability-priority-ranked, NOT approval-gate-readiness-ranked, NOT drift-detection-priority-ranked, NOT policy-file-strictness-tier-ranked, NOT evals-regression-strictness-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown minProperties state, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime object-property-count-floor validator, runtime object-key-count rejector, DTO property-count-floor validator, or governance-observability strictness aggregator; minProperties states are deterministic stable-output ordering only (NOT governance-observability-priority-ranked, NOT approval-gate-readiness-ranked, NOT drift-detection-priority-ranked).'
     ].join('\n'),
     strictness: 'Usage: tusq strictness <subcommand>\n  Subcommands: index',
     'strictness index': [
