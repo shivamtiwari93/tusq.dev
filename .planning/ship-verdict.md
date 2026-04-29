@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_6e08785ced8500bb (role=qa, run_367446ff4d285c65, M81 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_6ac22b755c1fd5d7, role=dev, HEAD 1af3e1c) for run_367446ff4d285c65 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M81 does not modify manifest format — `input_schema_first_property_property_names` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_3b688ae4cc2b42e8 upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions carried forward correctly: (1) `named` inserted between `most` and `nullable` (most(m=109) < named(n=110) at pos 0 (m(109)<n(110)); named(n=110,a=97) < nullable(n=110,u=117) at pos 1 (a(97)<u(117))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum object_property_name_subschema_constraint|not_applicable|unknown three-value; (4) bucket order typed→untyped→not_applicable→unknown; (5) SIX frozen warning codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_property_names_invalid_when_present`); BOOLEAN-FALSE-AS-TYPED (M81-SPECIFIC RULE), TYPE-APPLICABILITY-OBJECT, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, BOOLEAN-TRUE-AS-UNTYPED, EMPTY-OBJECT-SCHEMA-AS-UNTYPED, PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED, DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES, NO-COERCION all correctly carried forward. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_AGGREGATION_KEY_ENUM` (frozen Set: object_property_name_subschema_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` after M80 patternProperties constants. Guards `_guardInputSchemaFirstPropertyPropertyNamesBucketKey` and `_guardInputSchemaFirstPropertyPropertyNamesAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyPropertyNames` confirmed in src/cli.js via `git diff HEAD~1..HEAD`. Implements all seven M81-frozen classification rules: BOOLEAN-FALSE-AS-TYPED (M81-SPECIFIC — boolean false → typed; strongest name constraint; no analog in M77–M80), BOOLEAN-TRUE-AS-UNTYPED (boolean true → untyped; Draft-7 §4.4), ABSENT-AS-UNTYPED (absent/undefined → untyped), NULL-AS-ABSENT (null → untyped), EMPTY-OBJECT-SCHEMA-AS-UNTYPED ({} → untyped), PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED (>=1 key → typed), DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES (other → unknown+6th), TYPE-APPLICABILITY-OBJECT (non-object type → not_applicable), NO-COERCION. All 9 boundary cases pass via synthetic manifest CLI run. PASS.
+
+**5. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 65 (64→65 growth confirmed). `named` confirmed between `most` and `nullable` in help output. `tusq named index --json` on express-sample → exit 0. PASS.
+
+**6. Express fixture test:** `first_property_property_names_states[]` with `untyped` bucket (post_users_users, aggregation_key `object_property_name_subschema_constraint`, capability_count 1) and `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, aggregation_key `not_applicable`, capability_count 2). `typed` and `unknown` buckets absent — TYPE-APPLICABILITY-OBJECT + empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. PASS.
+
+**7. Case-sensitive enforcement + absent-bucket exit 1:** `--named TYPED` → exit 1 ("Unknown input schema first property propertyNames state: TYPED"). `--named typed` on express-sample → exit 1 (absent bucket). `--named untyped` → exit 0 (present bucket). PASS.
+
+**8. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (72 scenarios)`. 46 help-count assertions updated from !==64 to !==65. 18-case M81 smoke matrix confirmed present (M81(a)–M81(r)). PASS.
+
+**9. Package + fixture integrity:** Zero package drift. Zero fixture mutation. Non-persistence confirmed. PASS.
+
+**10. Eval scenarios:** 72 total scenarios (71→72 growth). `input-schema-first-property-property-names-index-determinism` scenario added; handler added to eval-regression.mjs. Byte-identity confirmed by eval harness. PASS.
+
+**11. ROADMAP completeness:** All 18 M81 ROADMAP checkboxes [x] confirmed. PASS.
+
+**12. Objection audit:** OBJ-001 (R6 dead code, medium, non-blocking), OBJ-002 (surface-plan-determinism eval uses synthetic_capabilities, low, non-blocking), OBJ-003 (M31 per-domain flag assertions, low, non-blocking) carried forward unchanged. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. No new blocking objections raised for M81. PASS.
+
+**13. Acceptance criteria count:** 25 new REQs added (REQ-1390–REQ-1414). Total: 1389 → 1414. All pass. Ship verdict: SHIP.
+
+---
+
 ## QA Challenge — turn_09d7e5360bde2580 (role=qa, run_9bd8558c73fb239e, M80 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_64938221e4a6227d, role=dev, HEAD ffd45e7) for run_9bd8558c73fb239e independently rather than rubber-stamping it.

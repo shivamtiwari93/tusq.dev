@@ -1,5 +1,30 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M81 (turn_6e08785ced8500bb, run_367446ff4d285c65, 2026-04-29, HEAD 1af3e1c)
+
+**Milestone:** M81 — Input Schema First Property PropertyNames Object-Property-Name-Subschema Annotation Presence Index (`tusq named index`)
+
+**CLI surface:** 64 → 65 commands. New command `tusq named index` inserted alphabetically between `tusq most index` and `tusq nullable index`.
+
+**New classification axis:** `input_schema.properties[firstKey].propertyNames` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-SUBSCHEMA annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `object_property_name_subschema_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- BOOLEAN-FALSE-AS-TYPED: `propertyNames === false` → `typed` (M81-SPECIFIC RULE — Draft-7 §4.4 boolean false rejects all values; applied to property names this constrains permitted property names to the empty set; the strongest possible name constraint; NO ANALOG in M77–M80 — this is new behavior unique to the propertyNames axis where booleans are valid schema values)
+- PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: `propertyNames` is a plain-object with >= 1 own enumerable keyword → `typed` (JSON-Schema Draft 7 propertyNames is a single sub-schema applied to every property name; any plain-object schema with at least one own keyword like pattern/maxLength/minLength/enum/type/const declares an explicit constraint)
+- BOOLEAN-TRUE-AS-UNTYPED: `propertyNames === true` → `untyped` (Draft-7 §4.4 boolean true equivalent to empty schema; permits all property names)
+- ABSENT-AS-UNTYPED: `propertyNames` absent or `undefined` → `untyped` (Draft-7 default is no name constraint; no propertyNames subschema declared)
+- NULL-AS-ABSENT: `propertyNames === null` → `untyped` (mirrors M55–M80 null-as-absent precedent; null treated as absent)
+- EMPTY-OBJECT-SCHEMA-AS-UNTYPED: `propertyNames: {}` plain-object with zero keys → `untyped` (empty schema is explicit-untyped equivalent of absent or boolean true; provides no actual name constraints)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77/M78/M79/M80 TYPE-APPLICABILITY-OBJECT; propertyNames is only meaningful for object-typed properties; JSON-Schema-Draft-7 defines propertyNames ONLY for type==='object')
+- DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES: any other `propertyNames` value (non-boolean, non-plain-object: string, number, array, Date, RegExp, null already handled) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_property_names_invalid_when_present`
+- NO-COERCION: strict `Object.prototype.toString.call(v) === '[object Object]'` for object case AND strict `v === true || v === false` for boolean case; no duck-typing or type-casting
+
+**Axis relationship:** M81 (propertyNames) is the FIFTH object-axis annotation in the M77+ object-keyword cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling → M80: patternProperties name-pattern-map → M81: propertyNames name-subschema). M81 is the SCHEMA-typed sibling of the MAP-typed M80: both operate on property name constraints, but M80 (patternProperties) uses a regex-keyed map of subschemas while M81 (propertyNames) uses a single subschema applied to all property names. M81 introduces the BOOLEAN-FALSE-AS-TYPED rule, which has no analog in M77–M80 — in those milestones, booleans are not valid values for the annotated keywords.
+
+**Verification results:** `npm test` → exit 0 (72 eval scenarios, smoke tests pass). CLI surface = 65. Express-sample fixture: `untyped` bucket (post_users_users, aggregation_key object_property_name_subschema_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 9 boundary cases verified (BOOLEAN-FALSE-AS-TYPED, PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, BOOLEAN-TRUE-AS-UNTYPED, EMPTY-OBJECT-SCHEMA-AS-UNTYPED, TYPE-APPLICABILITY-OBJECT, DRAFT-7-invalid-str-val, DRAFT-7-invalid-num-val). `--named TYPED` → exit 1 (case-sensitive). `--named typed` on express-sample → exit 1 (absent bucket). `--named untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1390–REQ-1414). Total: 1414 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M80 (turn_09d7e5360bde2580, run_9bd8558c73fb239e, 2026-04-29, HEAD ffd45e7)
 
 **Milestone:** M80 — Input Schema First Property PatternProperties Object-Property-Name-Pattern-Map Annotation Presence Index (`tusq partition index`)
