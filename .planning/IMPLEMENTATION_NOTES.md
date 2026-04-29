@@ -2,6 +2,49 @@
 
 ---
 
+## M72 (run_1cb3a28391fa0f54, turn_453d79c50ae896e2, dev)
+
+**Axis:** `input_schema.properties[firstKey].nullable` — OpenAPI 3.0+/JSON-Schema-aligned boolean null-permissibility annotation
+
+**CLI noun:** `nullable` (inserted between `mime` and `obligation`); CLI surface 55 → 56
+
+**Classifier rules (frozen):**
+- `inputSchema` missing/null/undefined → `unknown` (`input_schema_field_missing`)
+- `inputSchema` not plain non-null object/is array → `unknown` (`input_schema_field_not_object`)
+- `inputSchema.type` missing or non-string → `unknown` (`input_schema_type_missing_or_invalid`)
+- `inputSchema.type` string but not `'object'` → `not_applicable` (no warning)
+- `type === 'object'`, `properties` missing/null/non-plain-object → `unknown` (`input_schema_properties_field_missing_when_type_is_object`)
+- `type === 'object'`, zero-property object → `not_applicable` (no warning)
+- `firstVal` not plain non-null object → `unknown` (`input_schema_properties_first_property_descriptor_invalid` — 5th frozen code)
+- **NO-TYPE-APPLICABILITY**: classifier MUST NOT bucket as `not_applicable` based on `firstVal.type` — nullable applies to ALL JSON-Schema types (mirrors M58/M60/M61)
+- **ABSENT-AS-NOT-NULLABLE**: `nullable` absent or `undefined` → `not_nullable` (mirrors M58/M60/M61 boolean-default-false)
+- **NULL-AS-ABSENT**: `nullable === null` → `not_nullable` (mirrors M55–M71)
+- **BOOLEAN-FALSE-AS-NOT-NULLABLE**: `nullable === false` → `not_nullable` (deliberate; explicit false is operationally identical to absent)
+- **BOOLEAN-TRUE-AS-NULLABLE**: `nullable === true` → `nullable`
+- **DRAFT-7-BOOLEAN-IS-VALID-NULLABLE**: non-boolean non-null non-absent `nullable` (string/number/array/object) → `unknown` WITH 6th code `input_schema_properties_first_property_nullable_invalid_when_present`; NO-COERCION via `Boolean()/!!`
+
+**Bucket iteration order:** `nullable → not_nullable → not_applicable → unknown` (deterministic stable-output convention)
+
+**Result-array field name:** `first_property_nullable_states`
+
+**Per-bucket field name:** `input_schema_first_property_nullable`
+
+**Aggregation_key enum:** `nullability_constraint` | `not_applicable` | `unknown`
+
+**Files changed:**
+- `src/cli.js`: added `INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_*` constants, guard functions, `classifyInputSchemaFirstPropertyNullable`, `buildInputSchemaFirstPropertyNullableIndex`, `formatInputSchemaFirstPropertyNullableIndex`, `cmdNullable`, `cmdNullableIndex`, `parseNullableIndexArgs`; wired `nullable` case between `mime` and `obligation` in dispatch switch; added `nullable` line in `printHelp()`; added `nullable`/`nullable index` entries in `printCommandHelp()`
+- `tests/smoke.mjs`: updated all 37 help-count assertions from `!== 55` to `!== 56`; added 18-case M72 smoke matrix
+- `tests/evals/governed-cli-scenarios.json`: added `input-schema-first-property-nullable-index-determinism` eval scenario (62 → 63 scenarios)
+- `tests/eval-regression.mjs`: added `runInputSchemaFirstPropertyNullableIndexDeterminismScenario` handler
+- `.planning/ROADMAP.md`: all 18 M72 items `[x]`
+- `.planning/SYSTEM_SPEC.md`: M72 Charter Sketch → M72 Materialized
+- `.planning/command-surface.md`: M72 Materialized + `### tusq nullable index` section
+- `website/docs/cli-reference.md`: `## tusq nullable index` section inserted
+
+**Verification:** `npm test` exits 0 with 63 eval scenarios; 56-command CLI surface confirmed; `nullable` between `mime` and `obligation` confirmed; BOOLEAN-TRUE-AS-NULLABLE, ABSENT-AS-NOT-NULLABLE, NULL-AS-ABSENT, BOOLEAN-FALSE-AS-NOT-NULLABLE, NO-TYPE-APPLICABILITY, DRAFT-7-BOOLEAN-IS-VALID-NULLABLE, and 6th warning code all pass.
+
+---
+
 ## M71 (run_033b48ec21830f59, turn_0e713d40d8a2ff10, dev)
 
 **Axis:** `input_schema.properties[firstKey].contentMediaType` — JSON-Schema Draft 7+ IANA media-type annotation per RFC 6838

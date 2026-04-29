@@ -800,6 +800,19 @@ const INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_MEDIA_TYPE_AGGREGATION_KEY_ENUM = Obje
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_MEDIA_TYPE_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
 
+// M72: frozen four-value bucket-key enum. Immutable once M72 ships.
+// nullable/not_nullable/not_applicable are the 'named' buckets. unknown is always appended last.
+const INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_ENUM = Object.freeze(new Set(['nullable', 'not_nullable', 'not_applicable', 'unknown']));
+
+// M72: frozen three-value aggregation_key enum. Immutable once M72 ships.
+// nullable and not_nullable buckets carry 'nullability_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['nullability_constraint', 'not_applicable', 'unknown']));
+
+// M72: closed-enum bucket iteration order (nullable → not_nullable → not_applicable). Unknown appended last.
+// NOT database-NULL-constraint-priority-ranked, NOT ORM-non-nullable-field-strictness-ranked, NOT DTO-serialization-priority-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_BUCKET_ORDER = Object.freeze(['nullable', 'not_nullable', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -980,6 +993,9 @@ function dispatch(argv) {
       return;
     case 'mime':
       cmdMime(args);
+      return;
+    case 'nullable':
+      cmdNullable(args);
       return;
     case 'obligation':
       cmdObligation(args);
@@ -12721,6 +12737,20 @@ function _guardInputSchemaFirstPropertyContentMediaTypeAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyNullableBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_nullable outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyNullableAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -14713,6 +14743,414 @@ function parseMimeIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['mime', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M72: classifyInputSchemaFirstPropertyNullable(inputSchema) → 'nullable'|'not_nullable'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              NO-TYPE-APPLICABILITY rule: nullable applies to ALL JSON-Schema types; MUST NOT bucket as not_applicable based on firstVal.type (mirrors M58/M60/M61)
+//              nullable check (OpenAPI 3.0+/JSON-Schema-aligned boolean null-permissibility annotation):
+//              ABSENT-AS-NOT-NULLABLE: !hasOwn(firstVal, 'nullable') OR nullable===undefined → 'not_nullable' (mirrors M58/M60/M61 boolean-default-false precedent)
+//              NULL-AS-ABSENT: nullable===null → 'not_nullable' (mirrors M55–M71 null-as-absent precedent)
+//              BOOLEAN-FALSE-AS-NOT-NULLABLE: nullable===false → 'not_nullable' (deliberate; explicit false is operationally identical to absent)
+//              BOOLEAN-TRUE-AS-NULLABLE: nullable===true → 'nullable'
+//              DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: non-boolean non-null non-absent nullable → 'unknown' WITH 6th code
+//              NO TRUTHY/FALSY-COERCION via Boolean()/!!
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property nullable beyond the FIRST is NOT walked (reserved for M-Nullable-All-Properties).
+// Nested-object property nullable NOT walked (reserved for M-Nullable-Nested).
+// output_schema first-property nullable is NOT classified (reserved for M-Nullable-Output).
+// input_schema_first_property_nullable MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyNullable(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // NO-TYPE-APPLICABILITY: MUST NOT bucket as not_applicable based on firstVal.type (nullable applies to ALL JSON-Schema types — mirrors M58/M60/M61)
+  // nullable check (OpenAPI 3.0+/JSON-Schema-aligned boolean null-permissibility annotation):
+  const nullableVal = Object.prototype.hasOwnProperty.call(firstVal, 'nullable') ? firstVal.nullable : undefined;
+  // ABSENT-AS-NOT-NULLABLE: nullable absent or undefined → not_nullable
+  if (nullableVal === undefined) {
+    return 'not_nullable';
+  }
+  // NULL-AS-ABSENT: nullable===null → not_nullable (mirrors M55–M71 null-as-absent)
+  if (nullableVal === null) {
+    return 'not_nullable';
+  }
+  // BOOLEAN-FALSE-AS-NOT-NULLABLE: nullable===false → not_nullable (deliberate; explicit false is operationally identical to absent)
+  if (nullableVal === false) {
+    return 'not_nullable';
+  }
+  // BOOLEAN-TRUE-AS-NULLABLE: nullable===true → nullable
+  if (nullableVal === true) {
+    return 'nullable';
+  }
+  // DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: non-boolean non-null non-absent nullable → unknown WITH 6th code; NO-COERCION via Boolean()/!!
+  return 'unknown';
+}
+
+// M72: buildInputSchemaFirstPropertyNullableIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property nullable annotation index from the manifest's capabilities[].
+// Bucket iteration order: nullable → not_nullable → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_nullable MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyNullableIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_nullable_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_nullable.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M72 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M71)
+    //   6. input_schema_properties_first_property_nullable_invalid_when_present (M72-SPECIFIC)
+    //      covers all non-boolean non-null non-absent nullable malformations: string/number/array/object
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else {
+            // NO-TYPE-APPLICABILITY: no type check on firstVal.type — nullable applies to ALL JSON-Schema types
+            // Check nullable for 6th code: present non-null non-boolean value
+            const nullableVal = Object.prototype.hasOwnProperty.call(firstVal, 'nullable') ? firstVal.nullable : undefined;
+            if (nullableVal !== undefined && nullableVal !== null && nullableVal !== true && nullableVal !== false) {
+              warningReason = 'input_schema_properties_first_property_nullable_invalid_when_present';
+            }
+          }
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const nullableClass = classifyInputSchemaFirstPropertyNullable(inputSchema);
+    const isNamedBucket = namedBuckets.has(nullableClass);
+    const bucketKey = isNamedBucket ? nullableClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: nullable → not_nullable → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyNullableStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const nullableKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyNullableBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyNullableBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyNullableAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyNullableAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyNullableAggregationKey('nullability_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_nullable: nullableKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_nullable_states: firstPropertyNullableStates,
+    warnings
+  };
+}
+
+// M72: format input schema first property nullable annotation index as human-readable text
+function formatInputSchemaFirstPropertyNullableIndex(index) {
+  if (index.first_property_nullable_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Nullable Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].nullable OpenAPI 3.0+/JSON-Schema-aligned boolean null-permissibility annotation classification; it does NOT execute capability invocations, validate runtime payloads, enforce database NULL constraints, infer nullability from docs, cross-reference required/default/type annotations, rank ORM non-nullable field strictness, assess DTO serialization priority, or enforce DB column nullability. Bucket order is deterministic stable-output ordering only (NOT database-NULL-constraint-priority-ranked, NOT ORM-non-nullable-field-strictness-ranked, NOT DTO-serialization-priority-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_nullable_states) {
+    lines.push(`[${entry.input_schema_first_property_nullable}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: nullable (firstKey.nullable === true — STRICT-BOOLEAN: must be exactly true; NO truthy coercion via Boolean()/!!) | not_nullable (firstKey.nullable absent, undefined, null, or === false — ABSENT-AS-NOT-NULLABLE: mirrors M58/M60/M61 boolean-default-false precedent; NULL-AS-ABSENT: mirrors M55–M71; BOOLEAN-FALSE-AS-NOT-NULLABLE: explicit false is operationally identical to absent) | not_applicable (input_schema.type !== 'object' or zero-property object — NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types; MUST NOT bucket as not_applicable based on firstVal.type) | unknown (malformed input_schema, firstKey not a plain object, or nullable present non-null non-boolean: string/number/array/object — DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: 6th warning code input_schema_properties_first_property_nullable_invalid_when_present; NO-COERCION via Boolean()/!!).");
+  lines.push('Bucket order: nullable → not_nullable → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M72: tusq nullable — top-level noun dispatcher
+function cmdNullable(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('nullable');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdNullableIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M72: tusq nullable index — handler
+function cmdNullableIndex(args) {
+  const { opts, positionals } = parseNullableIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('nullable index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyNullableIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const nullableFilter = opts['nullable'] || null;
+
+  if (nullableFilter !== null) {
+    // Case-sensitive: lowercase canonical nullable bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_ENUM.has(nullableFilter)) {
+      throw new CliError(`Unknown input schema first property nullable state: ${nullableFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_nullable_states.find(
+      (e) => e.input_schema_first_property_nullable === nullableFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property nullable state: ${nullableFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_nullable_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyNullableIndex(outputIndex));
+}
+
+function parseNullableIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['nullable', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -18616,6 +19054,7 @@ function printHelp() {
   process.stdout.write('  lower              Index capabilities by input schema first property minimum numeric-lower-bound annotation presence for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
   process.stdout.write('  mime               Index capabilities by input schema first property contentMediaType IANA media-type annotation presence for ingestion review\n');
+  process.stdout.write('  nullable           Index capabilities by input schema first property nullable boolean null-permissibility annotation presence for database review\n');
   process.stdout.write('  obligation         Index capabilities by input schema first property required status for planning review\n');
   process.stdout.write('  output             Index capabilities by output schema property count tier for planning review\n');
   process.stdout.write('  parameter          Index capabilities by input schema property count tier for planning review\n');
@@ -19401,6 +19840,40 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown contentMediaType annotation value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime contentMediaType enforcer, MIME-type validator, content-negotiation tool, format-crossref tool, contentEncoding-crossref tool, type-applicability validator, pattern-crossref tool, LLM-contentMediaType-inferrer, or ingestion-pre-decoder; bucket order is deterministic stable-output ordering only (NOT IANA-registry-precedence-ranked, NOT RFC-6838-registration-tier-ranked, NOT content-negotiation-priority-ranked, NOT media-type-strictness-ranked, NOT encoding-crossref-ranked, NOT format-crossref-ranked).'
+    ].join('\n'),
+    nullable: 'Usage: tusq nullable <subcommand>\n  Subcommands: index',
+    'nullable index': [
+      'Usage: tusq nullable index [--nullable <nullable|not_nullable|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --nullable <nullable|not_nullable|not_applicable|unknown>',
+      '                                     Filter to a single input schema first property nullable annotation bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'Nullable annotation rule (applied to input_schema.properties[firstKey].nullable when input_schema.type === "object"):',
+      '  nullable       if properties[firstKey].nullable === true (STRICT-BOOLEAN: must be exactly true; NO truthy coercion via Boolean()/!!)',
+      '  not_nullable   if properties[firstKey].nullable is absent, undefined, null, or === false',
+      '                 (ABSENT-AS-NOT-NULLABLE: mirrors M58/M60/M61 boolean-default-false precedent;',
+      '                 NULL-AS-ABSENT: mirrors M55–M71 null-as-absent precedent;',
+      '                 BOOLEAN-FALSE-AS-NOT-NULLABLE: explicit false is operationally identical to absent)',
+      "  not_applicable if input_schema.type is a string but not 'object' OR zero-property object",
+      "                 (NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types;",
+      "                 classifier MUST NOT bucket as not_applicable based on firstVal.type — mirrors M58/M60/M61)",
+      '  unknown        if input_schema or properties are malformed, firstKey not a plain object,',
+      '                 or nullable is present non-null but not a boolean (string/number/array/object)',
+      '                 (DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: non-boolean triggers 6th warning code',
+      '                 input_schema_properties_first_property_nullable_invalid_when_present;',
+      '                 NO-COERCION via Boolean()/!!)',
+      '',
+      'Bucket iteration order: nullable → not_nullable → not_applicable → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown nullable annotation value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime nullable enforcer, database NULL constraint validator, ORM non-nullable field strictness assessor, DTO serialization priority ranker, DB column nullability enforcer, required-crossref tool, default-crossref tool, type-applicability validator, LLM-nullability-inferrer, or DB-column-crossref tool; bucket order is deterministic stable-output ordering only (NOT database-NULL-constraint-priority-ranked, NOT ORM-non-nullable-field-strictness-ranked, NOT DTO-serialization-priority-ranked).'
     ].join('\n'),
     obligation: 'Usage: tusq obligation <subcommand>\n  Subcommands: index',
     'obligation index': [

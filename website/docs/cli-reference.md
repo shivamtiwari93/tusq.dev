@@ -1252,6 +1252,44 @@ tusq mime index --mime untyped --json
 tusq mime index --out mime-index.json
 ```
 
+## `tusq nullable index`
+
+Emit a deterministic, per-first-input-property-nullable-boolean-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].nullable` is `true` (`nullable`), absent/undefined/null/false (`not_nullable`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`nullable → not_nullable → not_applicable → unknown`). This is a **planning aid, not a runtime nullable enforcer, database NULL constraint validator, ORM non-nullable field assessor, DTO serialization priority ranker, DB column nullability enforcer, required-crossref tool, default-crossref tool, type-applicability validator, LLM-nullability-inferrer, or DB-column-crossref tool**.
+
+**M72-vs-M58/M60/M61 distinctness:** `tusq nullable index` (M72) reads `firstKey.nullable` (null-value permissibility). `tusq legacy index` (M58) reads `firstKey.deprecated` (lifecycle staleness). `tusq seal index` (M60) reads `firstKey.readOnly` (mutability direction — server-write-only). `tusq secret index` (M61) reads `firstKey.writeOnly` (direction — client-input-only). All four are boolean sibling axes per JSON-Schema Draft 7+/OpenAPI 3.0+, but each names a distinct semantic dimension: deprecated=lifecycle, readOnly=direction-out, writeOnly=direction-in, nullable=null-permissibility.
+
+**M72-vs-M50 distinctness:** `tusq nullable index` (M72) reads `firstKey.nullable` (whether the value MAY be JSON `null`). `tusq obligation index` (M50) reads `firstKey ∈ input_schema.required[]` (whether the property is required). Required-and-nullable is a valid composition orthogonal to optional-and-non-null. The two axes are distinct; cross-referencing deferred to `M-Nullable-Required-Crossref-1`.
+
+**NO-TYPE-APPLICABILITY:** Unlike M62/M63/M70/M71 which restrict applicability to string-typed properties via `TYPE-APPLICABILITY-STRING`, M72 explicitly applies to ALL JSON-Schema types. A `firstVal.type === 'integer'` with `nullable: true` is semantically valid — an integer column that may be NULL in the database. The classifier MUST NOT bucket as `not_applicable` based on `firstVal.type`.
+
+**Classification rules:**
+
+| Bucket | Condition |
+|--------|-----------|
+| `nullable` | `firstKey.nullable === true` (STRICT-BOOLEAN: must be exactly `true`; NO truthy coercion via `Boolean()/!!`) |
+| `not_nullable` | `firstKey.nullable` absent, `undefined`, `null`, or `=== false` (ABSENT-AS-NOT-NULLABLE; NULL-AS-ABSENT; BOOLEAN-FALSE-AS-NOT-NULLABLE) |
+| `not_applicable` | `input_schema.type` is a string but not `'object'` OR zero-property object (NO-TYPE-APPLICABILITY: firstVal.type does NOT trigger not_applicable) |
+| `unknown` | malformed `input_schema`, `firstKey` not a plain object, or `nullable` present non-null but not a boolean (DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: 6th warning code `input_schema_properties_first_property_nullable_invalid_when_present`; NO-COERCION via `Boolean()/!!`) |
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--nullable <nullable\|not_nullable\|not_applicable\|unknown>` | all buckets | Filter to single bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file |
+| `--out <path>` | stdout | Write JSON to file |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Example usage:**
+
+```
+tusq nullable index
+tusq nullable index --json
+tusq nullable index --nullable nullable --json
+tusq nullable index --nullable not_nullable --json
+tusq nullable index --out nullable-index.json
+```
+
 ## `tusq wire index`
 
 Emit a deterministic, per-first-input-property-contentEncoding-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].contentEncoding` is a non-empty string (`encoded`), absent/null/empty-string (`unencoded`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal.type is a string other than 'string'), or malformed (`unknown`) in closed-enum order (`encoded → unencoded → not_applicable → unknown`). This is a **planning aid, not a runtime content-encoding enforcer, wire-payload decoder, base64-codec generator, mediaType-crossref tool, format-crossref tool, type-applicability validator, pattern-crossref tool, LLM-contentEncoding-inferrer, or ingestion-pre-decoder**.

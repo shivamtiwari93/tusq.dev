@@ -2095,6 +2095,8 @@ async function run() {
       await runInputSchemaFirstPropertyContentEncodingIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_content_media_type_index_determinism') {
       await runInputSchemaFirstPropertyContentMediaTypeIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_nullable_index_determinism') {
+      await runInputSchemaFirstPropertyNullableIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -5761,6 +5763,156 @@ async function runInputSchemaFirstPropertyContentMediaTypeIndexDeterminismScenar
   // Assert untyped bucket has aggregation_key 'media_type_constraint'
   if (untypedEntry.aggregation_key !== 'media_type_constraint') {
     fail(`${scenario.id}: untyped bucket must have aggregation_key 'media_type_constraint'; got '${untypedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyNullableIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-nullable-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq nullable index --json three times and assert byte-identical output
+  const run1 = runCli(['nullable', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['nullable', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['nullable', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: nullable index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_nullable bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validNullableValues = new Set(scenario.expected_valid_nullable_values);
+  for (const entry of index.first_property_nullable_states) {
+    if (!validNullableValues.has(entry.input_schema_first_property_nullable)) {
+      fail(`${scenario.id}: input_schema_first_property_nullable '${entry.input_schema_first_property_nullable}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_nullable_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_nullable}'`);
+    }
+  }
+
+  // Assert bucket order matches expected
+  const bucketOrder = index.first_property_nullable_states.map((e) => e.input_schema_first_property_nullable).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${scenario.expected_bucket_order}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_nullable must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_nullable')) {
+      fail(`${scenario.id}: input_schema_first_property_nullable must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert BOOLEAN-TRUE-AS-NULLABLE: nullable_cap → nullable bucket (no warning)
+  const nullableEntry = index.first_property_nullable_states.find((e) => e.input_schema_first_property_nullable === 'nullable');
+  if (!nullableEntry || !nullableEntry.capabilities.includes('nullable_cap')) {
+    fail(`${scenario.id}: nullable_cap (firstKey.nullable=true) must be in nullable bucket (BOOLEAN-TRUE-AS-NULLABLE)`);
+  }
+
+  // Assert NO-TYPE-APPLICABILITY: integer_nullable_cap (type='integer', nullable=true) → nullable bucket (no warning)
+  if (!nullableEntry || !nullableEntry.capabilities.includes('integer_nullable_cap')) {
+    fail(`${scenario.id}: integer_nullable_cap (firstKey.type='integer', nullable=true) must be in nullable bucket (NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types)`);
+  }
+
+  // Assert NULL-AS-ABSENT: null_nullable_cap → not_nullable (no warning)
+  const notNullableEntry = index.first_property_nullable_states.find((e) => e.input_schema_first_property_nullable === 'not_nullable');
+  if (!notNullableEntry || !notNullableEntry.capabilities.includes('null_nullable_cap')) {
+    fail(`${scenario.id}: null_nullable_cap (firstKey.nullable=null) must be in not_nullable bucket (NULL-AS-ABSENT)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_nullable_cap')) {
+    fail(`${scenario.id}: null_nullable_cap (NULL-AS-ABSENT → not_nullable) must NOT produce a warning`);
+  }
+
+  // Assert ABSENT-AS-NOT-NULLABLE: absent_nullable_cap → not_nullable (no warning)
+  if (!notNullableEntry || !notNullableEntry.capabilities.includes('absent_nullable_cap')) {
+    fail(`${scenario.id}: absent_nullable_cap (nullable absent) must be in not_nullable bucket (ABSENT-AS-NOT-NULLABLE)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'absent_nullable_cap')) {
+    fail(`${scenario.id}: absent_nullable_cap (ABSENT-AS-NOT-NULLABLE → not_nullable) must NOT produce a warning`);
+  }
+
+  // Assert not_applicable bucket exists (schema_na_cap: input_schema.type='array')
+  const naEntry = index.first_property_nullable_states.find((e) => e.input_schema_first_property_nullable === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('schema_na_cap')) {
+    fail(`${scenario.id}: schema_na_cap (input_schema.type='array') must be in not_applicable bucket`);
+  }
+
+  // Assert unknown bucket exists
+  const unknownEntry = index.first_property_nullable_states.find((e) => e.input_schema_first_property_nullable === 'unknown');
+  if (!unknownEntry) {
+    fail(`${scenario.id}: unknown bucket must be present`);
+  }
+
+  // Assert DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: string_nullable_cap → unknown WITH 6th code
+  if (!unknownEntry.capabilities.includes('string_nullable_cap')) {
+    fail(`${scenario.id}: string_nullable_cap (firstKey.nullable='yes') must be in unknown bucket (DRAFT-7-BOOLEAN-IS-VALID-NULLABLE)`);
+  }
+  const stringNullableWarning = index.warnings.find((w) => w.capability === 'string_nullable_cap');
+  if (!stringNullableWarning || stringNullableWarning.reason !== 'input_schema_properties_first_property_nullable_invalid_when_present') {
+    fail(`${scenario.id}: string_nullable_cap must produce 6th-code warning 'input_schema_properties_first_property_nullable_invalid_when_present'; got: ${JSON.stringify(stringNullableWarning)}`);
+  }
+
+  // Assert nullable bucket has aggregation_key 'nullability_constraint'
+  if (nullableEntry.aggregation_key !== 'nullability_constraint') {
+    fail(`${scenario.id}: nullable bucket must have aggregation_key 'nullability_constraint'; got '${nullableEntry.aggregation_key}'`);
+  }
+
+  // Assert not_nullable bucket has aggregation_key 'nullability_constraint'
+  if (notNullableEntry.aggregation_key !== 'nullability_constraint') {
+    fail(`${scenario.id}: not_nullable bucket must have aggregation_key 'nullability_constraint'; got '${notNullableEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

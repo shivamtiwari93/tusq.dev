@@ -4949,6 +4949,151 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-nullable-index-determinism",
+      "scenario_type": "input_schema_first_property_nullable_index_determinism",
+      "description": "Verifies that tusq nullable index produces byte-identical output across three runs on a synthetic manifest with nullable, not_nullable, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (nullable/not_nullable/not_applicable/unknown), closed three-value aggregation_key enum (nullability_constraint/not_applicable/unknown), bucket order determinism (nullable \u2192 not_nullable \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_nullable non-persistence. ABSENT-AS-NOT-NULLABLE (mirrors M58/M60/M61): nullable absent or undefined \u2192 not_nullable (no warning). NULL-AS-ABSENT (mirrors M55\u2013M71): nullable:null \u2192 not_nullable (no warning). BOOLEAN-FALSE-AS-NOT-NULLABLE: nullable:false \u2192 not_nullable (no warning). BOOLEAN-TRUE-AS-NULLABLE: nullable:true \u2192 nullable (no warning). NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types; classifier MUST NOT bucket as not_applicable based on firstVal.type (mirrors M58/M60/M61). DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: non-boolean non-null nullable (string/number/array/object) \u2192 unknown WITH 6th code input_schema_properties_first_property_nullable_invalid_when_present; NO-COERCION via Boolean()/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "integer_nullable_cap",
+          "method": "POST",
+          "path": "/integer-nullable",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='integer', nullable=true \u2014 lands in nullable bucket (NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "nullable": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "nullable_cap",
+          "method": "POST",
+          "path": "/nullable",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has nullable=true \u2014 lands in nullable bucket (BOOLEAN-TRUE-AS-NULLABLE)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_nullable_cap",
+          "method": "GET",
+          "path": "/null-nullable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has nullable=null \u2014 lands in not_nullable bucket (NULL-AS-ABSENT)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "term": {
+                "type": "string",
+                "nullable": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "string_nullable_cap",
+          "method": "GET",
+          "path": "/string-nullable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has nullable='yes' (string) \u2014 lands in unknown bucket with 6th code (DRAFT-7-BOOLEAN-IS-VALID-NULLABLE)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "string",
+                "nullable": "yes"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "absent_nullable_cap",
+          "method": "GET",
+          "path": "/absent-nullable",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has no nullable field \u2014 lands in not_nullable bucket (ABSENT-AS-NOT-NULLABLE)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              }
+            },
+            "required": []
+          }
+        }
+      ],
+      "expected_valid_nullable_values": [
+        "nullable",
+        "not_nullable",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "nullability_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "nullable,not_nullable,not_applicable,unknown"
     }
   ]
 }
