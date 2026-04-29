@@ -1,5 +1,29 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M73 (turn_1e1d88b98cd9939a, run_8059727c0a95f709, 2026-04-28, HEAD d5bc3b4)
+
+**Milestone:** M73 — Static Capability Input Schema First Property MinItems Array-Cardinality-Floor Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.54
+
+**New command:** `tusq least index` — indexes capabilities by `input_schema.properties[firstKey].minItems` JSON-Schema-Draft-7 array-cardinality-floor non-negative-integer annotation classification.
+
+**CLI surface:** 56 → 57 commands. `least` inserted alphabetically between `items` and `legacy`.
+
+**Bucket-key enum (closed four-value):** `bounded` | `unbounded` | `not_applicable` | `unknown`
+- `bounded`: firstVal.type === 'array' AND minItems is a non-negative integer (Number.isInteger(v) && v>=0, including 0 — PRESENT-AS-PRESENT-ZERO)
+- `unbounded`: firstVal.type === 'array' AND minItems absent/null/undefined (ABSENT-AS-UNBOUNDED + NULL-AS-ABSENT; Draft 7 default is no-floor)
+- `not_applicable`: input_schema.type !== 'object', zero-property object, or firstVal.type is a string but NOT 'array' (TYPE-APPLICABILITY-ARRAY)
+- `unknown`: malformed input_schema, firstVal not a plain object, or minItems present but not a non-negative integer (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID; 6th warning code emitted)
+
+**Six frozen warning reason codes:** `input_schema_field_missing`, `input_schema_field_not_object`, `input_schema_type_missing_or_invalid`, `input_schema_properties_field_missing_when_type_is_object`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_min_items_invalid_when_present`.
+
+**M73-specific rules:** NULL-AS-ABSENT (null→unbounded), ABSENT-AS-UNBOUNDED (absent→unbounded), TYPE-APPLICABILITY-ARRAY (non-array firstVal.type→not_applicable), NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS (non-neg int→bounded), PRESENT-AS-PRESENT-ZERO (minItems:0→bounded), DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID (invalid→unknown+6th code), NO-COERCION via Number()/parseInt()/parseFloat().
+
+**Eval scenarios:** 63 → 64. Added `input-schema-first-property-min-items-index-determinism`.
+
+**Acceptance criteria:** 1189 → 1214 (REQ-1190–REQ-1214 added).
+
+**Verification:** `npm test` → exit 0 (Smoke tests passed, Eval regression harness passed (64 scenarios)). Express-sample fixture: `first_property_min_items_states[]` contains only `not_applicable` bucket (3 capabilities; TYPE-APPLICABILITY-ARRAY rule — first properties are not array-typed). `bounded`/`unbounded` absent (empty-bucket-MUST-NOT-appear invariant confirmed). 8 boundary cases all PASS: minItems:1→bounded, minItems:0→bounded (PRESENT-AS-PRESENT-ZERO), absent→unbounded (ABSENT-AS-UNBOUNDED), null→unbounded (NULL-AS-ABSENT), string-type→not_applicable (TYPE-APPLICABILITY-ARRAY), -1→unknown+6th, 0.5→unknown+6th, '1'→unknown+6th (NO-COERCION). Case-sensitive enforcement (`--least BOUNDED`→exit 1). Absent-bucket enforcement (`--least bounded`→exit 1 on express fixture). Package/fixture zero-drift confirmed. Non-persistence confirmed. Ship verdict: SHIP.
+
 ## QA Verification — M72 (turn_83dc78b4323ebcbd, run_1cb3a28391fa0f54, 2026-04-28, HEAD 1d5c6a2)
 
 **Milestone:** M72 — Static Capability Input Schema First Property Nullable Boolean Null-Permissibility Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.53
