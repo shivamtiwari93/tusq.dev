@@ -2,6 +2,61 @@
 
 ---
 
+## M85 (run_c78dec96e45c4d0c, turn_7d666108b5f79c9b, dev)
+
+**Axis:** `input_schema.properties[firstKey].enum` — JSON-Schema Draft 7 §6.1.2 SET-OF-ALLOWED-VALUES annotation. CLI noun: `allowed` (between `above` and `below`). CLI surface 68→69.
+
+**Constants added** (`src/cli.js`, after M84 const constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_AGGREGATION_KEY_ENUM` = frozen Set `['value_set_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M84 guards):
+- `_guardInputSchemaFirstPropertyEnumBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyEnumAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyAllowed(inputSchema)` (after M84 `classifyInputSchemaFirstPropertyConstant`):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type !== 'object'` → `not_applicable`
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION** (M85-inherited from M84): MUST NOT inspect `firstVal.type` to gate `not_applicable` (Draft-7 §6.1.2 enum applies to ANY type)
+9. **ABSENT-AS-UNTYPED**: own-property `'enum'` NOT present → `untyped` (no warning)
+10. **NULL-AS-ABSENT** (M85-SPECIFIC distinct from M84 NULL-AS-TYPED): `firstVal.enum === null` → `untyped` — null is a single value not a set; cannot be a meaningful enum declaration
+11. **UNDEFINED-EXPLICIT-AS-UNKNOWN**: `firstVal.enum === undefined` (own-property present) → `unknown` WITH 6th code
+12. **NON-ARRAY-AS-UNKNOWN**: `!Array.isArray(firstVal.enum)` → `unknown` WITH 6th code (Draft-7 §6.1.2 MUST be array)
+13. **EMPTY-ARRAY-AS-UNKNOWN** (M85-SPECIFIC distinct from M82 EMPTY-ARRAY-AS-UNTYPED and M84 JSON-ARRAY-AS-TYPED): `Array.isArray && length === 0` → `unknown` WITH 6th code (Draft-7 §6.1.2 SHOULD have at least one element; empty enum is pathological)
+14. **NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED**: every element is `typeof === 'string'` OR `Number.isFinite(v)` OR `typeof === 'boolean'` OR `=== null` OR `Array.isArray(v)` OR `Object.prototype.toString.call(v) === '[object Object]'` → `typed`; nested element shape NOT recursively walked
+15. **ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN**: any element is `undefined`/`NaN`/`Infinity`/`-Infinity`/function/Symbol/BigInt/Date/RegExp etc → `unknown` WITH 6th code
+16. **DRAFT-7-NON-EMPTY-ARRAY-OF-VALID-JSON-VALUES-IS-VALID-ENUM**: NO duplicate-element detection (Draft-7 SHOULD be unique is loose)
+17. **NO-COERCION** throughout
+
+**Build/format/cmd functions** (after M84 `parseConstantIndexArgs`):
+- `buildInputSchemaFirstPropertyEnumIndex(manifest, manifestPath)` — aggregates capabilities into `first_property_enum_states[]` with per-bucket `input_schema_first_property_enum` field
+- `formatInputSchemaFirstPropertyEnumIndex(index)` — plain-text output with bucket headers
+- `cmdAllowed(args)`, `cmdAllowedIndex(args)`, `parseAllowedIndexArgs(args)` — CLI dispatch with `--allowed`, `--manifest`, `--json`, `--out` flags
+
+**Output JSON shape**: `first_property_enum_states[]` with per-bucket field `input_schema_first_property_enum` (typed/untyped/not_applicable/unknown values).
+
+**Smoke tests** (`tests/smoke.mjs`):
+- All `!== 68` help-count assertions updated to `!== 69`
+- 18-case M85 smoke matrix (M85(a)–M85 additional): STRING/NUMBER/BOOLEAN/NULL-ELEMENT/MIXED/ARRAY-ELEMENT/PLAIN-OBJECT-ELEMENT typed cases; ABSENT untyped; NULL-AS-ABSENT (M85-SPECIFIC: enum:null → untyped, distinct from M84 NULL-AS-TYPED); NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (string+number firstVal.type with valid enum → typed); zero-prop/schema-level not_applicable; EMPTY-ARRAY-AS-UNKNOWN (M85-SPECIFIC: enum:[] → unknown WITH 6th code); NON-ARRAY-AS-UNKNOWN (string/object); UNDEFINED-EXPLICIT-AS-UNKNOWN; ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN (NaN element); case-sensitive filter; absent-bucket exit 1; non-persistence; missing manifest exit 1; CLI surface 69; help ordering above<allowed<below; planning-aid framing; unknown subcommand exit 1
+- Note: NaN/Infinity/undefined/function invalid-element cases tested via in-memory JS patch (JSON.stringify drops/converts these values)
+
+**Eval scenario** (`tests/evals/governed-cli-scenarios.json`): `input-schema-first-property-allowed-index-determinism` (75→76 scenarios). Handler `runInputSchemaFirstPropertyEnumIndexDeterminismScenario` in `tests/eval-regression.mjs`.
+
+**Website docs** (`website/docs/cli-reference.md`): `## tusq allowed index` section inserted between `## tusq above index` and `## tusq below index` (alphabetical). Documents NULL-AS-ABSENT M85-SPECIFIC, EMPTY-ARRAY-AS-UNKNOWN M85-SPECIFIC, NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION; M85-vs-M54 and M85-vs-M84 distinctions.
+
+**Key M85 asymmetries vs siblings**:
+- vs M84 const: NULL-AS-ABSENT (M85) vs NULL-AS-TYPED (M84) — `enum:null` cannot be a meaningful set; `const:null` pins to literal null
+- vs M82 required: EMPTY-ARRAY-AS-UNKNOWN (M85) vs EMPTY-ARRAY-AS-UNTYPED (M82) — empty enum rejects all values (pathological); empty required declares no required keys (absence-equivalent)
+- vs M84 const: EMPTY-ARRAY-AS-UNKNOWN (M85) vs JSON-ARRAY-AS-TYPED (M84) — empty enum is SHOULD-violation; `const:[]` pins to the empty-array literal
+
+---
+
 ## M84 (run_91fd37340cef71d1, turn_cc991c7e1fc3d487, dev)
 
 **Axis:** `input_schema.properties[firstKey].const` — JSON-Schema Draft 7 §6.1.3 SINGLE-VALUE-PIN annotation. CLI noun: `constant` (between `confidence` and `crowded`). CLI surface 67→68.

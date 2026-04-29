@@ -2121,6 +2121,8 @@ async function run() {
       await runInputSchemaFirstPropertyDependenciesIndexDeterminismScenario(scenario, tmpRoot);
     } else if (scenario.scenario_type === 'input_schema_first_property_constant_index_determinism') {
       await runInputSchemaFirstPropertyConstantIndexDeterminismScenario(scenario, tmpRoot);
+    } else if (scenario.scenario_type === 'input_schema_first_property_allowed_index_determinism') {
+      await runInputSchemaFirstPropertyAllowedIndexDeterminismScenario(scenario, tmpRoot);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -7811,6 +7813,151 @@ async function runInputSchemaFirstPropertyConstantIndexDeterminismScenario(scena
   // Assert untyped bucket has aggregation_key 'value_pinning_constraint'
   if (untypedEntry.aggregation_key !== 'value_pinning_constraint') {
     fail(`${scenario.id}: untyped bucket must have aggregation_key 'value_pinning_constraint'; got '${untypedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyAllowedIndexDeterminismScenario(scenario, tmpRoot) {
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  // Patch unknown_enum_invalid_cap to have enum:[NaN] (non-JSON value) for 6th-code testing
+  const unknownCap = capabilities.find((c) => c.name === 'unknown_enum_invalid_cap');
+  if (unknownCap && unknownCap.input_schema && unknownCap.input_schema.properties && unknownCap.input_schema.properties.state) {
+    unknownCap.input_schema.properties.state.enum = [NaN];
+  }
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-29T12:00:00.000Z',
+    capabilities
+  };
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  // Write only JSON-serializable capabilities (NaN becomes null in JSON)
+  // We use the in-memory manifest for direct testing below
+  const serializableManifest = {
+    ...manifest,
+    capabilities: capabilities.filter((c) => c.name !== 'unknown_enum_invalid_cap')
+  };
+  await writeJson(manifestPath, serializableManifest);
+
+  // Run tusq allowed index --json three times and assert byte-identical output
+  const run1 = runCli(['allowed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['allowed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['allowed', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: allowed index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_enum bucket-key enum is closed
+  const index = JSON.parse(run1.stdout);
+  const validEnumValues = new Set(scenario.expected_valid_required_values);
+  for (const entry of index.first_property_enum_states) {
+    if (!validEnumValues.has(entry.input_schema_first_property_enum)) {
+      fail(`${scenario.id}: input_schema_first_property_enum '${entry.input_schema_first_property_enum}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_enum_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_enum}'`);
+    }
+  }
+
+  // Assert bucket order matches expected (typed,untyped,not_applicable from serializable manifest)
+  const bucketOrder = index.first_property_enum_states.map((e) => e.input_schema_first_property_enum).join(',');
+  const expectedBucketOrder = 'typed,untyped,not_applicable';
+  if (bucketOrder !== expectedBucketOrder) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${expectedBucketOrder}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_enum must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_enum')) {
+      fail(`${scenario.id}: input_schema_first_property_enum must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED: typed_enum_strings_cap → typed bucket
+  const typedEntry = index.first_property_enum_states.find((e) => e.input_schema_first_property_enum === 'typed');
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_enum_strings_cap')) {
+    fail(`${scenario.id}: typed_enum_strings_cap (enum=['active','inactive','pending']) must be in typed bucket (NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'typed_enum_strings_cap')) {
+    fail(`${scenario.id}: typed_enum_strings_cap (typed enum → typed) must NOT produce a warning`);
+  }
+
+  // Assert null element is valid JSON: typed_enum_null_element_cap → typed bucket
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_enum_null_element_cap')) {
+    fail(`${scenario.id}: typed_enum_null_element_cap (enum=['on',null,'off']) must be in typed bucket (null is valid JSON element)`);
+  }
+
+  // Assert ABSENT-AS-UNTYPED: untyped_enum_absent_cap → untyped bucket
+  const untypedEntry = index.first_property_enum_states.find((e) => e.input_schema_first_property_enum === 'untyped');
+  if (!untypedEntry || !untypedEntry.capabilities.includes('untyped_enum_absent_cap')) {
+    fail(`${scenario.id}: untyped_enum_absent_cap (enum absent) must be in untyped bucket (ABSENT-AS-UNTYPED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'untyped_enum_absent_cap')) {
+    fail(`${scenario.id}: untyped_enum_absent_cap (ABSENT-AS-UNTYPED → untyped) must NOT produce a warning`);
+  }
+
+  // Assert NULL-AS-ABSENT (M85-SPECIFIC): untyped_enum_null_cap → untyped bucket
+  if (!untypedEntry || !untypedEntry.capabilities.includes('untyped_enum_null_cap')) {
+    fail(`${scenario.id}: untyped_enum_null_cap (enum=null) must be in untyped bucket (NULL-AS-ABSENT M85-SPECIFIC: distinct from M84 NULL-AS-TYPED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'untyped_enum_null_cap')) {
+    fail(`${scenario.id}: untyped_enum_null_cap (NULL-AS-ABSENT → untyped) must NOT produce a warning`);
+  }
+
+  // Assert not_applicable bucket exists
+  const naEntry = index.first_property_enum_states.find((e) => e.input_schema_first_property_enum === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('na_enum_string_outer_cap')) {
+    fail(`${scenario.id}: na_enum_string_outer_cap (inputSchema.type='string') must be in not_applicable bucket (outer-schema structural prerequisite)`);
+  }
+
+  // Assert typed bucket has aggregation_key 'value_set_constraint'
+  if (typedEntry.aggregation_key !== 'value_set_constraint') {
+    fail(`${scenario.id}: typed bucket must have aggregation_key 'value_set_constraint'; got '${typedEntry.aggregation_key}'`);
+  }
+
+  // Assert untyped bucket has aggregation_key 'value_set_constraint'
+  if (untypedEntry.aggregation_key !== 'value_set_constraint') {
+    fail(`${scenario.id}: untyped bucket must have aggregation_key 'value_set_constraint'; got '${untypedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

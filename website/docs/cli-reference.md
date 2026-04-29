@@ -1799,6 +1799,48 @@ tusq above index --above lower_exclusive_unbounded --json
 tusq above index --out above-index.json
 ```
 
+## `tusq allowed index`
+
+Emit a deterministic, per-first-input-property-enum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].enum` is a non-empty array of valid JSON elements (`typed`), absent/null (`untyped`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime enum validator, enum-value enforcer, allowed-value distributor, enum-cardinality analyzer, duplicate-value detector, LLM-enum inferrer, embeddable-widget composer, action-widget emitter, command-palette emitter, or select-list renderer**.
+
+**M85-vs-M54 distinction:** `tusq allowed index` (M85) reads `input_schema.properties[firstKey].enum` (the **FIRST input property's** JSON-Schema Draft 7 §6.1.2 `enum` keyword — a **set-of-allowed-values** annotation; classifier result: `typed|untyped|not_applicable|unknown`; aggregation_key: `value_set_constraint`). `tusq choice index` (M54) reads a different field with different bucket names. These are distinct commands that read orthogonal aspects of the input schema.
+
+**M85-vs-M84 distinction:** `tusq allowed index` (M85) reads `firstKey.enum` (a **set** of allowed values — non-empty array required; `enum:null` → untyped **NULL-AS-ABSENT M85-SPECIFIC**: null is a single value not a set; empty `[]` → unknown **EMPTY-ARRAY-AS-UNKNOWN M85-SPECIFIC**). `tusq constant index` (M84) reads `firstKey.const` (a **single** pinned value; `const:null` → typed **NULL-AS-TYPED M84-SPECIFIC**: null is a valid JSON pin). These are orthogonal JSON-Schema keywords; `enum` declares a bounded value-set, `const` pins to exactly one value.
+
+**NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84):** The classifier MUST NOT inspect `firstVal.type` to gate `not_applicable`. JSON-Schema Draft 7 §6.1.2 defines `enum` as applicable to **ANY** type (not just `type: 'object'`). This is distinct from M77–M83 which apply TYPE-APPLICABILITY-OBJECT for their respective object-restricted keywords.
+
+```
+tusq allowed index [--allowed <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--allowed <value>` | Filter to a single enum annotation bucket (case-sensitive lowercase, default: all buckets) |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (rejects paths inside `.tusq/`) |
+| `--json` | Emit machine-readable JSON |
+
+**Bucket rules:**
+
+- `typed` — `firstKey.enum` is a non-empty array with ALL valid JSON elements (string, finite number, boolean, null, array, plain object; nested element shape NOT recursively walked; NO duplicate-element detection — Draft-7 SHOULD is loose); NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: firstVal.type does NOT gate not_applicable
+- `untyped` — `firstKey.enum` own-property NOT present (ABSENT-AS-UNTYPED: Draft-7 default no value set; no warning), OR `firstKey.enum === null` (NULL-AS-ABSENT M85-SPECIFIC: null is a single value, not a set; distinct from M84 NULL-AS-TYPED; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR first property descriptor is not a plain object
+- `unknown` — malformed `input_schema`; OR `firstKey.enum` own-property present but value is JavaScript `undefined` (UNDEFINED-EXPLICIT-AS-UNKNOWN); OR not an array (NON-ARRAY-AS-UNKNOWN: Draft-7 §6.1.2 MUST be array); OR empty array `[]` (EMPTY-ARRAY-AS-UNKNOWN M85-SPECIFIC: Draft-7 §6.1.2 SHOULD have at least one element; distinct from M82 EMPTY-ARRAY-AS-UNTYPED for `required`; distinct from M84 JSON-ARRAY-AS-TYPED for `const`); OR non-empty array with any invalid element (NaN, Infinity, -Infinity, undefined, function, Symbol, BigInt, Date, RegExp)
+
+**Exit codes:** `0` = index produced; `1` = missing/invalid manifest, unknown flag, unknown enum state, `--out` path error, or unknown subcommand
+
+**Examples:**
+
+```
+tusq allowed index
+tusq allowed index --json
+tusq allowed index --allowed typed
+tusq allowed index --allowed untyped --json
+tusq allowed index --out allowed-index.json
+```
+
 ## `tusq unique index`
 
 Emit a deterministic, per-first-input-property-uniqueItems-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].uniqueItems` is strictly `true` (`unique`), absent/`null`/`false` (`not_unique`), non-applicable (`not_applicable` — non-object input, zero-property object, or `firstVal.type` is not `'array'`), or malformed (`unknown`). This is a **planning aid, not a runtime array-element-uniqueness enforcer, DTO-distinctness validator, static-understanding-coverage-tier-aggregator, route-extraction-quality-validator, framework-detection-strictness-aggregator, validation-layer-uniqueness-validator, minItems-crossref tool, maxItems-crossref tool, items-schema-crossref tool, required-crossref tool, default-crossref tool, doc-contradiction detector, LLM-uniqueItems-inferrer, or statistical aggregator**.

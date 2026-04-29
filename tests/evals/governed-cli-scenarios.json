@@ -6969,6 +6969,129 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-allowed-index-determinism",
+      "scenario_type": "input_schema_first_property_allowed_index_determinism",
+      "description": "Verifies that tusq allowed index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (value_set_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_enum non-persistence. NULL-AS-ABSENT (M85-SPECIFIC): firstVal.enum===null \u2192 untyped (distinct from M84 NULL-AS-TYPED for const; null is a single value not a set). NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84): classifier MUST NOT inspect firstVal.type to gate not_applicable (Draft-7 \u00a76.1.2 defines enum as applicable to ANY type; distinct from M77\u2013M83 TYPE-APPLICABILITY-OBJECT). EMPTY-ARRAY-AS-UNKNOWN (M85-SPECIFIC): enum:[] \u2192 unknown WITH 6th code (distinct from M82 EMPTY-ARRAY-AS-UNTYPED for required and from M84 JSON-ARRAY-AS-TYPED for const). NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED; ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN (NaN/Infinity/function etc.); DRAFT-7-NON-EMPTY-ARRAY-OF-VALID-JSON-VALUES-IS-VALID-ENUM (no duplicate-element detection); NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_enum_strings_cap",
+          "method": "POST",
+          "path": "/typed-enum-strings",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["active", "inactive", "pending"]
+              }
+            }
+          },
+          "description": "First property type='string', enum=['active','inactive','pending'] \u2014 lands in typed bucket (NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: firstVal.type='string' does NOT gate not_applicable)"
+        },
+        {
+          "name": "typed_enum_null_element_cap",
+          "method": "POST",
+          "path": "/typed-enum-null-element",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "enum": ["on", null, "off"]
+              }
+            }
+          },
+          "description": "First property enum=['on',null,'off'] \u2014 lands in typed bucket (null is a valid JSON element)"
+        },
+        {
+          "name": "untyped_enum_absent_cap",
+          "method": "GET",
+          "path": "/untyped-enum-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property has no own-property 'enum' \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED: Draft-7 default no value set, no warning)"
+        },
+        {
+          "name": "untyped_enum_null_cap",
+          "method": "GET",
+          "path": "/untyped-enum-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "enum": null
+              }
+            }
+          },
+          "description": "First property enum=null \u2014 lands in untyped bucket (NULL-AS-ABSENT M85-SPECIFIC: null is a single value not a set; distinct from M84 NULL-AS-TYPED for const; no warning)"
+        },
+        {
+          "name": "na_enum_string_outer_cap",
+          "method": "GET",
+          "path": "/na-enum-string-outer",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "string"
+          },
+          "description": "inputSchema.type='string' \u2014 lands in not_applicable bucket (outer-schema structural prerequisite: no properties to inspect; no warning)"
+        },
+        {
+          "name": "unknown_enum_invalid_cap",
+          "method": "POST",
+          "path": "/unknown-enum-invalid",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property has enum key present (will be patched in handler to [NaN] by eval harness) \u2014 lands in unknown bucket with 6th warning code (ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN: NaN is NOT a valid JSON value)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "value_set_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }
