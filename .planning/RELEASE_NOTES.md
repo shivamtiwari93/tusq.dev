@@ -1,5 +1,26 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M76 (turn_a5a2f476cd0c7e7c, run_7614b689bb195a71, 2026-04-28, HEAD 42e7733)
+
+**Milestone:** M76 — Input Schema First Property Items Annotation Presence Index (`tusq element index`)
+
+**CLI surface:** 59 → 60 commands. New command `tusq element index` inserted alphabetically between `tusq effect index` and `tusq examples index`.
+
+**New classification axis:** `input_schema.properties[firstKey].items` — JSON-Schema Draft 7 array-element-subschema annotation. Bucket-key enum: `declared | undeclared | not_applicable | unknown`. Aggregation-key enum: `array_element_subschema_constraint | not_applicable | unknown`. Bucket iteration order: `declared → undeclared → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- PLAIN-OBJECT-AS-DECLARED: `items` is a plain JSON object (Object.prototype.toString === '[object Object]') → `declared`
+- ARRAY-OF-OBJECTS-AS-DECLARED: `items` is an array where every element is a plain object (includes `[]`) → `declared`
+- ABSENT-AS-UNDECLARED: `items` absent or `undefined` → `undeclared`
+- NULL-AS-ABSENT: `items === null` → `undeclared` (mirrors M55–M75)
+- TYPE-APPLICABILITY-ARRAY: `firstVal.type` is a string but not `'array'` → `not_applicable` (mirrors M73/M74/M75)
+- DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS: any other `items` value → `unknown` WITH 6th frozen code `input_schema_properties_first_property_items_invalid_when_present`
+- NO-COERCION: strict Object.prototype.toString and Array.isArray + every checks; no Object()/Array.from()/JSON.parse(JSON.stringify())/typeof alone
+
+**Verification results:** `npm test` → exit 0 (67 eval scenarios, smoke tests pass). CLI surface = 60. Express-sample fixture: `not_applicable`-only bucket (TYPE-APPLICABILITY-ARRAY; declared/undeclared absent; empty-bucket-MUST-NOT-appear confirmed). 9 boundary cases verified (PLAIN-OBJECT-AS-DECLARED, ARRAY-OF-OBJECTS-AS-DECLARED, empty-[], ABSENT-AS-UNDECLARED, NULL-AS-ABSENT, TYPE-APPLICABILITY-ARRAY, string-items NO-COERCION, bool-items DRAFT-7, mixed-tuple NO-COERCION). Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1265–REQ-1289). Total: 1289 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M75 (turn_d9bc69ea3ea17df2, run_ed87531287b641c8, 2026-04-28, HEAD e3b28ae)
 
 **Milestone:** M75 — Static Capability Input Schema First Property UniqueItems Array-Element-Uniqueness Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.56
