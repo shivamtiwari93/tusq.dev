@@ -2,6 +2,57 @@
 
 ---
 
+## M75 (run_ed87531287b641c8, turn_68fba981954c38ba, dev)
+
+**Axis:** `input_schema.properties[firstKey].uniqueItems` — JSON-Schema Draft 7 array-element-uniqueness BOOLEAN annotation
+
+**CLI noun:** `unique` (inserted between `surface` and `upper`; surface(s=115,u=117)<unique(u=117) at pos 0 (s(115)<u(117)); unique(u=117,n=110)<upper(u=117,p=112) at pos 1 (n(110)<p(112))); CLI surface 58 → 59
+
+**Classifier rules (frozen):**
+- `inputSchema` missing/null/undefined → `unknown` (`input_schema_field_missing`)
+- `inputSchema` not plain non-null object/is array → `unknown` (`input_schema_field_not_object`)
+- `inputSchema.type` missing or non-string → `unknown` (`input_schema_type_missing_or_invalid`)
+- `inputSchema.type` string but not `'object'` → `not_applicable` (no warning)
+- `type === 'object'`, `properties` missing/null/non-plain-object → `unknown` (`input_schema_properties_field_missing_when_type_is_object`)
+- `type === 'object'`, zero-property object → `not_applicable` (no warning)
+- `firstVal` not plain non-null object → `unknown` (`input_schema_properties_first_property_descriptor_invalid` — 5th frozen code)
+- **TYPE-APPLICABILITY-ARRAY**: `firstVal.type` is a string but NOT `'array'` → `not_applicable` (no warning; mirrors M73/M74)
+- **ABSENT-AS-NOT-UNIQUE**: `uniqueItems` absent or `undefined` → `not_unique` (Draft 7 default for uniqueItems is false; no warning)
+- **NULL-AS-ABSENT**: `uniqueItems === null` → `not_unique` (mirrors M55–M74; no warning)
+- **BOOLEAN-FALSE-AS-NOT-UNIQUE**: `uniqueItems === false` → `not_unique` (explicit-false agrees with absence-default; mirrors M72 BOOLEAN-FALSE-AS-NOT-NULLABLE; no warning)
+- **BOOLEAN-TRUE-AS-UNIQUE**: `uniqueItems === true` → `unique` (no warning)
+- **DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS**: non-boolean non-null present value → `unknown` WITH 6th code `input_schema_properties_first_property_unique_items_invalid_when_present`; **NO-COERCION** via `Boolean()/!!/v?true:false` — strict `=== true` / `=== false` only
+
+**Bucket iteration order:** `unique → not_unique → not_applicable → unknown` (deterministic stable-output convention)
+
+**Result-array field name:** `first_property_unique_items_states`
+
+**Per-bucket field name:** `input_schema_first_property_unique_items`
+
+**Aggregation key enum (closed three-value):** `array_element_uniqueness_constraint | not_applicable | unknown`
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_unique_items_invalid_when_present` ← M75 axis-specific
+
+**Files modified:**
+- `src/cli.js`: constants, guard functions, classify/build/format/cmd/parse functions, dispatch switch, printHelp, printCommandHelp
+- `tests/smoke.mjs`: 40 help-count assertions updated (58→59), 18-case M75 smoke matrix added
+- `tests/evals/governed-cli-scenarios.json`: M75 determinism scenario added (65→66 scenarios)
+- `tests/eval-regression.mjs`: M75 handler added
+- `website/docs/cli-reference.md`: `## tusq unique index` section inserted before `## tusq upper index`
+- `.planning/ROADMAP.md`: all 18 M75 items `[x]`
+- `.planning/SYSTEM_SPEC.md`: M75 Materialized prepended
+- `.planning/command-surface.md`: M75 Materialized + tusq unique index section prepended
+
+**npm test result:** exit 0, 66 scenarios
+
+---
+
 ## M74 (run_87db4ac59785126d, turn_c84e347e780b8eb0, dev)
 
 **Axis:** `input_schema.properties[firstKey].maxItems` — JSON-Schema Draft 7 array-cardinality-ceiling non-negative-integer annotation

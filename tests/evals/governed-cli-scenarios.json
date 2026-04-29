@@ -5420,6 +5420,169 @@
         "unknown"
       ],
       "expected_bucket_order": "bounded,unbounded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-unique-items-index-determinism",
+      "scenario_type": "input_schema_first_property_unique_items_index_determinism",
+      "description": "Verifies that tusq unique index produces byte-identical output across three runs on a synthetic manifest with unique, not_unique, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (unique/not_unique/not_applicable/unknown), closed three-value aggregation_key enum (array_element_uniqueness_constraint/not_applicable/unknown), bucket order determinism (unique \u2192 not_unique \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_unique_items non-persistence. ABSENT-AS-NOT-UNIQUE: uniqueItems absent or undefined \u2192 not_unique (no warning). NULL-AS-ABSENT (mirrors M55\u2013M74): uniqueItems:null \u2192 not_unique (no warning). BOOLEAN-FALSE-AS-NOT-UNIQUE: uniqueItems:false \u2192 not_unique (explicit-false agrees with absence-default). BOOLEAN-TRUE-AS-UNIQUE: uniqueItems:true \u2192 unique (no warning). TYPE-APPLICABILITY-ARRAY: firstVal.type is a string but not 'array' \u2192 not_applicable (mirrors M73/M74 TYPE-APPLICABILITY-ARRAY). DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS: non-boolean non-null present value \u2192 unknown WITH 6th code input_schema_properties_first_property_unique_items_invalid_when_present; NO-COERCION via Boolean()/!!/v?true:false.",
+      "synthetic_capabilities": [
+        {
+          "name": "unique_cap",
+          "method": "POST",
+          "path": "/unique",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='array', uniqueItems=true — lands in unique bucket (BOOLEAN-TRUE-AS-UNIQUE)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "not_unique_false_cap",
+          "method": "POST",
+          "path": "/not-unique-false",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property type='array', uniqueItems=false — lands in not_unique bucket (BOOLEAN-FALSE-AS-NOT-UNIQUE: explicit-false agrees with absence-default)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "uniqueItems": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "not_unique_absent_cap",
+          "method": "GET",
+          "path": "/not-unique-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='array', uniqueItems absent — lands in not_unique bucket (ABSENT-AS-NOT-UNIQUE: Draft 7 default for uniqueItems is false)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_unique_items_cap",
+          "method": "GET",
+          "path": "/null-unique-items",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='array', uniqueItems=null — lands in not_unique bucket (NULL-AS-ABSENT: mirrors M55\u2013M74)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "uniqueItems": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/string-type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: uniqueItems only meaningful for array-typed properties)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "string_unique_items_cap",
+          "method": "POST",
+          "path": "/string-unique-items",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='array', uniqueItems='yes' (string) — lands in unknown bucket with 6th-code warning (DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS: non-boolean \u2192 unknown; NO-COERCION)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "uniqueItems": "yes"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "malformed_cap",
+          "method": "GET",
+          "path": "/malformed",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        }
+      ],
+      "expected_valid_unique_items_values": [
+        "unique",
+        "not_unique",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "array_element_uniqueness_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "unique,not_unique,not_applicable,unknown"
     }
   ]
 }

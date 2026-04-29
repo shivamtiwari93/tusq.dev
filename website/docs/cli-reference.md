@@ -1542,6 +1542,73 @@ tusq above index --above lower_exclusive_unbounded --json
 tusq above index --out above-index.json
 ```
 
+## `tusq unique index`
+
+Emit a deterministic, per-first-input-property-uniqueItems-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].uniqueItems` is strictly `true` (`unique`), absent/`null`/`false` (`not_unique`), non-applicable (`not_applicable` — non-object input, zero-property object, or `firstVal.type` is not `'array'`), or malformed (`unknown`). This is a **planning aid, not a runtime array-element-uniqueness enforcer, DTO-distinctness validator, static-understanding-coverage-tier-aggregator, route-extraction-quality-validator, framework-detection-strictness-aggregator, validation-layer-uniqueness-validator, minItems-crossref tool, maxItems-crossref tool, items-schema-crossref tool, required-crossref tool, default-crossref tool, doc-contradiction detector, LLM-uniqueItems-inferrer, or statistical aggregator**.
+
+**M75-vs-M74 (`most` maxItems) distinctness:** `tusq most index` (M74) reads `firstKey.maxItems` (array element-count upper bound / ceiling — a non-negative-integer annotation). `tusq unique index` (M75) reads `firstKey.uniqueItems` (a BOOLEAN annotation — Draft 7 default is `false`). These are orthogonal JSON-Schema Draft 7 array validation keywords; `maxItems` governs cardinality, `uniqueItems` governs pairwise-distinctness regardless of cardinality.
+
+**M75-vs-M73 (`least` minItems) distinctness:** `tusq least index` (M73) reads `firstKey.minItems` (array element-count lower bound / floor — a non-negative-integer annotation). `tusq unique index` (M75) reads `firstKey.uniqueItems` (a BOOLEAN annotation). These are orthogonal array annotations; `minItems` governs cardinality, `uniqueItems` governs pairwise-distinctness.
+
+**M75-vs-M72 (`nullable`) distinctness:** `tusq nullable index` (M72) reads `firstKey.nullable` (a BOOLEAN annotation governing null-permission for the property's value). `tusq unique index` (M75) reads `firstKey.uniqueItems` (a BOOLEAN annotation governing array-element pairwise-distinctness). Both are strict-boolean axes (NO-COERCION, identical `=== true`/`=== false` check), but apply to completely different semantic domains.
+
+```bash
+tusq unique index [--unique <unique|not_unique|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--unique <unique\|not_unique\|not_applicable\|unknown>` | all buckets | Filter to a single uniqueItems annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].uniqueItems` when `input_schema.type === "object"` and `firstVal.type === "array"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `unique` | `properties[firstKey].uniqueItems === true` (**BOOLEAN-TRUE-AS-UNIQUE**: strict `=== true`; NO-COERCION via `Boolean()/!!/v?true:false`) |
+| `not_unique` | `properties[firstKey].uniqueItems === false`, absent, `undefined`, or `null` (**BOOLEAN-FALSE-AS-NOT-UNIQUE**: explicit `false` agrees with absence-default, mirrors M72 BOOLEAN-FALSE-AS-NOT-NULLABLE; **ABSENT-AS-NOT-UNIQUE**: absent/`undefined` → `not_unique` — JSON-Schema Draft 7 default for `uniqueItems` is `false`; **NULL-AS-ABSENT**: `null` → `not_unique`, mirrors M55–M74; no warning in all cases) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` OR zero-property object OR `firstVal.type` is a string but not `"array"` (**TYPE-APPLICABILITY-ARRAY**: mirrors M73/M74 TYPE-APPLICABILITY-ARRAY — `uniqueItems` is JSON-Schema-Draft-7-defined ONLY for array-typed properties) |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].uniqueItems` present non-null but not a boolean (integer `1`/`0`, string `'true'`, array `[]`, plain object `{}`) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_unique_items_invalid_when_present` ← M75 axis-specific code; covers all invalid uniqueItems values: integer, string, array, object; **NO-COERCION** via `Boolean()/!!/v?true:false`
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown uniqueItems value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `unique → not_unique → not_applicable → unknown` (deterministic stable-output convention only — NOT tool-and-skill-compiler-priority-ranked, NOT strict-tool-emitter-readiness-ranked, NOT DTO-distinctness-priority-ranked, NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_unique_items` is NEVER written into the manifest (non-persistence rule).
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- The classifier MUST NOT cross-reference `minItems`, `maxItems`, `items`, `default`, `const`, `enum`, `required`, or any other JSON-Schema annotation.
+- Per-property `uniqueItems` annotation beyond the FIRST is NOT walked (reserved for `M-UniqueItems-All-Properties-Index-1`).
+
+```bash
+# All uniqueItems annotation buckets (human-readable)
+tusq unique index
+
+# All buckets (JSON)
+tusq unique index --json
+
+# Unique capabilities only (uniqueItems === true)
+tusq unique index --unique unique --json
+
+# Non-unique capabilities (uniqueItems false, absent, or null)
+tusq unique index --unique not_unique --json
+
+# Write to file
+tusq unique index --out unique-index.json
+```
+
 ## `tusq upper index`
 
 Emit a deterministic, per-first-input-property-maximum-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].maximum` is a finite number (`upper_bounded`), absent/null/undefined (`upper_unbounded`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`upper_bounded → upper_unbounded → not_applicable → unknown`). This is a **planning aid, not a runtime maximum enforcer, doc-contradiction detector, minimum-crossref tool, exclusiveMaximum-crossref tool, joint-validity-crossref tool, type-applicability validator, LLM-maximum inferrer, data-intelligence-compiler-criticality tier emitter, or statistical aggregator**.
