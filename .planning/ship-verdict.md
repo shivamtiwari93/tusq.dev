@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_dbd0e8f40ced65f3 (role=qa, run_14a2d7109f75b8b8, M82 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_985f297eece43905, role=dev, HEAD 3536102) for run_14a2d7109f75b8b8 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M82 does not modify manifest format — `input_schema_first_property_required` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_ecf66d223469cd45 upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions carried forward correctly: (1) `required` inserted between `request` and `response` (request(r=114,e=101,q=113,u=117,e=101) < required(r=114,e=101,q=113,u=117,i=105) at pos 4 (e(101)<i(105)); required(r=114,e=101,q=113) < response(r=114,e=101,s=115) at pos 2 (q(113)<s(115))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum object_property_required_keys_constraint|not_applicable|unknown three-value; (4) bucket order typed→untyped→not_applicable→unknown; (5) SIX frozen warning codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_required_invalid_when_present`); EMPTY-ARRAY-AS-UNTYPED (M82-SPECIFIC), TYPE-APPLICABILITY-OBJECT, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, NON-EMPTY-STRING-ARRAY-AS-TYPED, DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED, NO-COERCION all correctly carried forward. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_AGGREGATION_KEY_ENUM` (frozen Set: object_property_required_keys_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` after M81 propertyNames constants. Guards `_guardInputSchemaFirstPropertyRequiredBucketKey` and `_guardInputSchemaFirstPropertyRequiredAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyRequired` confirmed in src/cli.js. Implements all M82-frozen classification rules: TYPE-APPLICABILITY-OBJECT (non-object type → not_applicable, mirrors M77/M78/M79/M80/M81), ABSENT-AS-UNTYPED (absent/undefined → untyped), NULL-AS-ABSENT (null → untyped, mirrors M55–M81), EMPTY-ARRAY-AS-UNTYPED (M82-SPECIFIC: `Array.isArray(required) && length===0` → untyped; Draft-7 §5.21 empty array equivalent to absence — LIST-typed analog of M81's EMPTY-OBJECT-SCHEMA-AS-UNTYPED), NON-EMPTY-STRING-ARRAY-AS-TYPED (`Array.isArray && length>=1 && every typeof==='string' && every length>=1` → typed; uniqueness NOT validated), DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED (non-array OR array with failing element → unknown+6th), NO-COERCION (Array.from/Object/JSON-roundtrip/String.split/Boolean/!! all forbidden). All 9 boundary cases pass via synthetic manifest CLI run. PASS.
+
+**5. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 66 (65→66 growth confirmed). `required` confirmed between `request` and `response` in help output. `tusq required index --json` on express-sample → exit 0. PASS.
+
+**6. Express fixture test:** `first_property_required_states[]` with `untyped` bucket (post_users_users, aggregation_key `object_property_required_keys_constraint`, capability_count 1) and `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, aggregation_key `not_applicable`, capability_count 2). `typed` and `unknown` buckets absent — TYPE-APPLICABILITY-OBJECT + empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. PASS.
+
+**7. Case-sensitive enforcement + absent-bucket exit 1:** `--required TYPED` → exit 1 ("Unknown input schema first property required state: TYPED"). `--required typed` on express-sample → exit 1 (absent bucket). `--required untyped` → exit 0 (present bucket). PASS.
+
+**8. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (73 scenarios)`. 47 help-count assertions updated from !==65 to !==66. 18-case M82 smoke matrix confirmed present (M82(a)–M82(r)). PASS.
+
+**9. Package + fixture integrity:** Zero package drift. Zero fixture mutation. Non-persistence confirmed. PASS.
+
+**10. Eval scenarios:** 73 total scenarios (72→73 growth). `input-schema-first-property-required-index-determinism` scenario added; `runInputSchemaFirstPropertyRequiredIndexDeterminismScenario` handler added to eval-regression.mjs. Byte-identity confirmed by eval harness. PASS.
+
+**11. ROADMAP completeness:** All 18 M82 ROADMAP checkboxes [x] confirmed (2 grep hits contain literal text `[ ] → [x]` inside description text, not actual unchecked boxes). PASS.
+
+**12. Objection audit:** OBJ-001 (R6 dead code, medium, non-blocking), OBJ-002 (surface-plan-determinism eval uses synthetic_capabilities, low, non-blocking), OBJ-003 (M31 per-domain flag assertions, low, non-blocking) carried forward unchanged. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. EMPTY-ARRAY-AS-UNTYPED is M82-specific by PM design (DEC-004 of planning turn) — not an objection. No new blocking objections raised for M82. PASS.
+
+**13. Acceptance criteria count:** 25 new REQs added (REQ-1415–REQ-1439). Total: 1414 → 1439. All pass. Ship verdict: SHIP.
+
+---
+
 ## QA Challenge — turn_6e08785ced8500bb (role=qa, run_367446ff4d285c65, M81 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_6ac22b755c1fd5d7, role=dev, HEAD 1af3e1c) for run_367446ff4d285c65 independently rather than rubber-stamping it.

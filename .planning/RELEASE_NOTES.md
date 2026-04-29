@@ -1,5 +1,28 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M82 (turn_dbd0e8f40ced65f3, run_14a2d7109f75b8b8, 2026-04-29, HEAD 3536102)
+
+**Milestone:** M82 — Input Schema First Property Required Keys-List Annotation Presence Index (`tusq required index`)
+
+**CLI surface:** 65 → 66 commands. New command `tusq required index` inserted alphabetically between `tusq request index` and `tusq response index`.
+
+**New classification axis:** `input_schema.properties[firstKey].required` — JSON-Schema Draft 7 §5.21 OBJECT-PROPERTY-REQUIRED-KEYS-LIST annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `object_property_required_keys_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- NON-EMPTY-STRING-ARRAY-AS-TYPED: `required` is an array with length >= 1 AND every element is a non-empty string → `typed` (a valid required keys list is declared; uniqueness NOT validated — Draft-7 leaves uniqueness enforcement to validators; NO integer/boolean/null/empty-string elements permitted)
+- ABSENT-AS-UNTYPED: `required` absent or `undefined` → `untyped` (Draft-7 default is no required constraint; no keys-list declared)
+- NULL-AS-ABSENT: `required === null` → `untyped` (mirrors M55–M81 null-as-absent precedent; null treated as absent)
+- EMPTY-ARRAY-AS-UNTYPED (M82-SPECIFIC): `Array.isArray(required) && required.length === 0` → `untyped` (Draft-7 §5.21 empty array is semantically equivalent to absent; provides no actual required-key constraints — M82-SPECIFIC LIST-typed analog of M81's EMPTY-OBJECT-SCHEMA-AS-UNTYPED; no analog in M77–M81)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77/M78/M79/M80/M81 TYPE-APPLICABILITY-OBJECT; `required` keys-list is only meaningful for object-typed properties; JSON-Schema-Draft-7 §5.21 defines `required` ONLY for type==='object')
+- DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED: any other value (non-array, or array whose any element is not a non-empty string — integer, boolean, null, empty string, mixed-bad) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_required_invalid_when_present`
+- NO-COERCION: MUST NOT use `Array.from` / `Object` / `JSON.parse(JSON.stringify(...))` / `String.split` / `Boolean` / `!!` to coerce values into valid arrays
+
+**Axis relationship:** M82 (required) is the SIXTH object-axis annotation in the M77+ object-keyword cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling → M80: patternProperties name-pattern-map → M81: propertyNames name-subschema → M82: required keys-list). M82 is the LIST-typed sibling — the array-of-strings axis distinct from M77's boolean/schema, M78/M79's non-negative-integer, M80's regex-keyed-map, and M81's single-schema-on-every-name. M82 introduces EMPTY-ARRAY-AS-UNTYPED, which is the LIST-typed analog of M81's EMPTY-OBJECT-SCHEMA-AS-UNTYPED (both treat the "empty equivalent" of the annotation type as semantically untyped).
+
+**Verification results:** `npm test` → exit 0 (73 eval scenarios, smoke tests pass). CLI surface = 66. Express-sample fixture: `untyped` bucket (post_users_users, aggregation_key object_property_required_keys_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 9 boundary cases verified (NON-EMPTY-STRING-ARRAY-AS-TYPED, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, EMPTY-ARRAY-AS-UNTYPED, TYPE-APPLICABILITY-OBJECT, DRAFT-7-invalid-non-array, DRAFT-7-invalid-int-element, DRAFT-7-invalid-empty-string-element, DRAFT-7-invalid-null-element). `--required TYPED` → exit 1 (case-sensitive). `--required typed` on express-sample → exit 1 (absent bucket). `--required untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1415–REQ-1439). Total: 1439 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M81 (turn_6e08785ced8500bb, run_367446ff4d285c65, 2026-04-29, HEAD 1af3e1c)
 
 **Milestone:** M81 — Input Schema First Property PropertyNames Object-Property-Name-Subschema Annotation Presence Index (`tusq named index`)
