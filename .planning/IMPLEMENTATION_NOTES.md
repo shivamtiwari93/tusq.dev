@@ -2,6 +2,62 @@
 
 ---
 
+## M86 (run_083e290f5ee318f4, turn_fc4027d5c8789062, dev)
+
+**Axis:** `input_schema.properties[firstKey].default` — JSON-Schema Draft 7 §10.2 SAMPLE-INSTANCE-VALUE annotation. CLI noun: `prefill` (between `policy` and `preset`). CLI surface 69→70.
+
+**Constants added** (`src/cli.js`, after M85 const constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_AGGREGATION_KEY_ENUM` = frozen Set `['sample_instance_value', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M85 guards):
+- `_guardInputSchemaFirstPropertyPrefillBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyPrefillAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyPrefill(inputSchema)` (after M85 `parseAllowedIndexArgs`, before M55):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type !== 'object'` → `not_applicable`
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION** (inherited from M84/M85): MUST NOT inspect `firstVal.type` to gate `not_applicable` (Draft-7 §10.2 default applies to ANY type)
+9. **ABSENT-AS-UNTYPED**: `!Object.prototype.hasOwnProperty.call(firstVal, 'default')` → `untyped` (MUST use hasOwnProperty — protects 0/false/null/''/[]/{} from falsy mis-classification)
+10. **UNDEFINED-EXPLICIT-AS-UNKNOWN**: `firstVal.default === undefined` (own-property present) → `unknown` WITH 6th code
+11. **NULL-AS-TYPED** (M86-INHERITED-FROM-M84, distinct from M85 NULL-AS-ABSENT): `firstVal.default === null` → `typed`
+12. **JSON-STRING-AS-TYPED**: `typeof firstVal.default === 'string'` → `typed`
+13. **JSON-FINITE-NUMBER-AS-TYPED**: finite number → `typed`; NaN/Infinity/-Infinity → `unknown` WITH 6th code
+14. **JSON-BOOLEAN-AS-TYPED**: `typeof firstVal.default === 'boolean'` → `typed` (both true AND false — NO falsy-coercion)
+15. **JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY**: `Array.isArray(firstVal.default)` → `typed` (incl. `[]` — M86-DISTINCT-FROM-M82/M85)
+16. **JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY**: `[object Object]` → `typed` (incl. `{}` — M86-DISTINCT-FROM-M81)
+17. Other (function/Symbol/BigInt/Date/RegExp/etc.) → `unknown` WITH 6th code; NO-COERCION
+
+**6th warning code:** `input_schema_properties_first_property_default_invalid_when_present`
+
+**Key asymmetries vs M84/M85:**
+| Rule | M84 (const) | M85 (enum) | M86 (default) |
+|------|-------------|------------|---------------|
+| null handling | NULL-AS-TYPED | NULL-AS-ABSENT (→ untyped) | NULL-AS-TYPED (inherited from M84) |
+| empty array | JSON-ARRAY-AS-TYPED ([] → typed) | EMPTY-ARRAY-AS-UNKNOWN | JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY ([] → typed) |
+| empty object | JSON-PLAIN-OBJECT-AS-TYPED ({} → typed) | N/A | JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY ({} → typed) |
+| aggregate key | value_pinning_constraint | value_set_constraint | sample_instance_value |
+
+**Build/format/cmd:** `buildInputSchemaFirstPropertyPrefillIndex`, `formatInputSchemaFirstPropertyPrefillIndex`, `cmdPrefill`, `cmdPrefillIndex`, `parsePrefillIndexArgs` — inserted after M85's `parseAllowedIndexArgs`, before M55's `classifyInputSchemaFirstPropertyDefaultValue`. Result-array: `first_property_default_states[]`. Per-bucket: `input_schema_first_property_default`.
+
+**Smoke tests** (`tests/smoke.mjs`): 18-case M86 matrix inserted after M85 block, before M44. Covers all key rules: NULL-AS-TYPED, JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY (empty [] → typed), JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY (empty {} → typed), JSON-BOOLEAN-AS-TYPED (false → typed), NO falsy-coercion (0/'' → typed), ABSENT-AS-UNTYPED, NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION, CLI surface 70, position between policy and preset.
+
+**Eval scenario** (`tests/evals/governed-cli-scenarios.json`): `input-schema-first-property-prefill-index-determinism` (scenario_type: `input_schema_first_property_prefill_index_determinism`). Handler patched for NaN 6th-code via `unknown_default_invalid_cap`.
+
+**Eval handler** (`tests/eval-regression.mjs`): `runInputSchemaFirstPropertyPrefillIndexDeterminismScenario` appended at end (before `run()` call). Dispatch: else-if added after M85 handler.
+
+**Website docs** (`website/docs/cli-reference.md`): `## tusq prefill index` section inserted between `tusq allowed index` end and `tusq preset index`.
+
+**Command-surface.md**: M86 Materialized blockquote added after title (before M85 Materialized).
+
+---
+
 ## M85 (run_c78dec96e45c4d0c, turn_7d666108b5f79c9b, dev)
 
 **Axis:** `input_schema.properties[firstKey].enum` — JSON-Schema Draft 7 §6.1.2 SET-OF-ALLOWED-VALUES annotation. CLI noun: `allowed` (between `above` and `below`). CLI surface 68→69.

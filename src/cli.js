@@ -1094,6 +1094,36 @@ const INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_AGGREGATION_KEY_ENUM = Object.freeze(n
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
 
+// M86: frozen four-value bucket-key enum for input schema first property default (sample-instance-value) annotation.
+// typed   — firstVal.default is any valid JSON value: null (NULL-AS-TYPED — M86-INHERITED-FROM-M84, distinct from M85 NULL-AS-ABSENT),
+//           string (JSON-STRING-AS-TYPED), finite number (JSON-FINITE-NUMBER-AS-TYPED),
+//           boolean (JSON-BOOLEAN-AS-TYPED: both true and false — NO falsy-coercion),
+//           array including empty [] (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M82/M85),
+//           plain object including empty {} (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M81)
+//           NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85): MUST NOT inspect firstVal.type to gate not_applicable
+//           (Draft-7 §10.2 default applies to ANY type — distinct from M77–M83 TYPE-APPLICABILITY-OBJECT)
+// untyped — own-property 'default' NOT present on firstVal (ABSENT-AS-UNTYPED: Draft-7 default no sample-instance-value)
+//           MUST use Object.prototype.hasOwnProperty.call(firstVal, 'default') ownership detection;
+//           protects 0/''/false/null/[]/{} from being mis-classified as falsy
+// not_applicable — inputSchema.type is a string but not 'object', zero-property object, or firstVal not a plain object
+// unknown — malformed input_schema; firstVal.default own-property present but value is JavaScript undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN);
+//           OR firstVal.default is a non-JSON value: NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, Set, Map, etc.
+//           (6th code: input_schema_properties_first_property_default_invalid_when_present;
+//            DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!)
+// Immutable once M86 ships.
+const INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_ENUM = Object.freeze(new Set(['typed', 'untyped', 'not_applicable', 'unknown']));
+
+// M86: frozen three-value aggregation_key enum. Immutable once M86 ships.
+// typed/untyped buckets carry 'sample_instance_value'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['sample_instance_value', 'not_applicable', 'unknown']));
+
+// M86: closed-enum bucket iteration order (typed → untyped → not_applicable). Unknown appended last.
+// NOT tool-dry-run-ranked, NOT MCP-tool-listing-ranked, NOT embeddable-widget-initial-state-ranked,
+// NOT marketplace-example-prompts-ranked, NOT form-prefill-emitter-ranked, NOT const-crossref-ranked,
+// NOT enum-crossref-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1325,6 +1355,9 @@ function dispatch(argv) {
       return;
     case 'policy':
       cmdPolicy(args);
+      return;
+    case 'prefill':
+      cmdPrefill(args);
       return;
     case 'preset':
       cmdPreset(args);
@@ -13253,6 +13286,20 @@ function _guardInputSchemaFirstPropertyAllowedAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyPrefillBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_default outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyPrefillAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -21277,6 +21324,459 @@ function parseAllowedIndexArgs(args) {
   return { opts, positionals };
 }
 
+// M86: classifyInputSchemaFirstPropertyPrefill(inputSchema) → 'typed'|'untyped'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (outer-schema structural prerequisite — without object outer there is no first property to inspect)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85): MUST NOT inspect firstVal.type to gate not_applicable
+//                (Draft-7 §10.2 default applies to ANY type — distinct from M77–M83 TYPE-APPLICABILITY-OBJECT)
+//              own-property 'default' NOT present on firstVal → 'untyped' (ABSENT-AS-UNTYPED; no warning)
+//                MUST use Object.prototype.hasOwnProperty.call(firstVal, 'default') — protects 0/''/false/null/[]/{} from falsy mis-classification
+//              firstVal.default === undefined (own-property present but value is JS undefined) → 'unknown' WITH 6th code
+//                (UNDEFINED-EXPLICIT-AS-UNKNOWN: JavaScript undefined is NOT a JSON value)
+//              firstVal.default === null → 'typed' (NULL-AS-TYPED — M86-INHERITED-FROM-M84, distinct from M85 NULL-AS-ABSENT for enum)
+//              typeof firstVal.default === 'string' → 'typed' (JSON-STRING-AS-TYPED)
+//              typeof firstVal.default === 'number' AND Number.isFinite(firstVal.default) → 'typed' (JSON-FINITE-NUMBER-AS-TYPED)
+//              typeof firstVal.default === 'number' AND !Number.isFinite(firstVal.default) → 'unknown' WITH 6th code (NaN/Infinity/-Infinity NOT JSON values)
+//              typeof firstVal.default === 'boolean' → 'typed' (JSON-BOOLEAN-AS-TYPED; both true AND false — NO falsy-coercion)
+//              Array.isArray(firstVal.default) → 'typed' (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY; default:[] → typed — M86-DISTINCT-FROM-M82/M85)
+//              Object.prototype.toString.call(firstVal.default) === '[object Object]' → 'typed' (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY; default:{} → typed — M86-DISTINCT-FROM-M81)
+//              any other value (function, Symbol, BigInt, Date, RegExp, Set, Map, etc.) → 'unknown' WITH 6th code
+//              (DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property default beyond the FIRST is NOT walked (reserved for M-Prefill-All-Properties).
+// Nested-object property default NOT walked (reserved for M-Prefill-Nested).
+// output_schema first-property default is NOT classified (reserved for M-Prefill-Output).
+// input_schema_first_property_default MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyPrefill(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85): MUST NOT check firstVal.type to gate not_applicable.
+  // Draft-7 §10.2 default applies to ANY type.
+  // ABSENT-AS-UNTYPED: own-property 'default' not present → untyped
+  // MUST use hasOwnProperty — protects 0/''/false/null/[]/{} from falsy mis-classification (NO truthy/falsy short-circuit)
+  if (!Object.prototype.hasOwnProperty.call(firstVal, 'default')) {
+    return 'untyped';
+  }
+  const defaultVal = firstVal.default;
+  // UNDEFINED-EXPLICIT-AS-UNKNOWN: own-property present but value is JavaScript undefined
+  if (defaultVal === undefined) {
+    return 'unknown';
+  }
+  // NULL-AS-TYPED (M86-INHERITED-FROM-M84): default:null → typed (distinct from M85 NULL-AS-ABSENT for enum)
+  // Draft-7 §10.2 permits default:null as meaningful sample-instance-value pinning the pre-fill to literal JSON null
+  if (defaultVal === null) {
+    return 'typed';
+  }
+  // JSON-STRING-AS-TYPED
+  if (typeof defaultVal === 'string') {
+    return 'typed';
+  }
+  // JSON-FINITE-NUMBER-AS-TYPED / NaN+Infinity → unknown
+  if (typeof defaultVal === 'number') {
+    if (Number.isFinite(defaultVal)) {
+      return 'typed';
+    }
+    // NaN, Infinity, -Infinity are NOT valid JSON values → unknown WITH 6th code
+    return 'unknown';
+  }
+  // JSON-BOOLEAN-AS-TYPED (both true AND false — NO falsy-coercion)
+  if (typeof defaultVal === 'boolean') {
+    return 'typed';
+  }
+  // JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY (default:[] → typed — M86-DISTINCT-FROM-M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN)
+  if (Array.isArray(defaultVal)) {
+    return 'typed';
+  }
+  // JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY (default:{} → typed — M86-DISTINCT-FROM-M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)
+  if (Object.prototype.toString.call(defaultVal) === '[object Object]') {
+    return 'typed';
+  }
+  // DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT: any other value (function, Symbol, BigInt, Date, etc.) → unknown WITH 6th code
+  // NO-COERCION: MUST NOT use Array.from/Object/JSON.parse(JSON.stringify(...))/String/Number/Boolean/!!
+  return 'unknown';
+}
+
+// M86: buildInputSchemaFirstPropertyPrefillIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property default annotation index from the manifest's capabilities[].
+// Bucket iteration order: typed → untyped → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_default MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyPrefillIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_default_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_default.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M86 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M85)
+    //   6. input_schema_properties_first_property_default_invalid_when_present (M86-SPECIFIC)
+    //      covers: firstVal.default own-property present but value is JavaScript undefined;
+    //      NaN/Infinity/-Infinity; function/Symbol/BigInt/Date/RegExp/Set/Map/typed-array/custom-class;
+    //      NO-COERCION
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const propKeys = Object.keys(props);
+        if (propKeys.length > 0) {
+          const firstKey = propKeys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else {
+            // NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: do NOT check firstVal.type
+            // Check default value for 6th code conditions
+            if (Object.prototype.hasOwnProperty.call(firstVal, 'default')) {
+              const defaultVal = firstVal.default;
+              if (defaultVal === undefined) {
+                warningReason = 'input_schema_properties_first_property_default_invalid_when_present';
+              } else if (typeof defaultVal === 'number' && !Number.isFinite(defaultVal)) {
+                warningReason = 'input_schema_properties_first_property_default_invalid_when_present';
+              } else if (
+                defaultVal !== null &&
+                typeof defaultVal !== 'string' &&
+                typeof defaultVal !== 'boolean' &&
+                !Array.isArray(defaultVal) &&
+                !(typeof defaultVal === 'number' && Number.isFinite(defaultVal)) &&
+                Object.prototype.toString.call(defaultVal) !== '[object Object]'
+              ) {
+                warningReason = 'input_schema_properties_first_property_default_invalid_when_present';
+              }
+            }
+          }
+        }
+        // propKeys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: inputSchema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const defaultClass = classifyInputSchemaFirstPropertyPrefill(inputSchema);
+    const isNamedBucket = namedBuckets.has(defaultClass);
+    const bucketKey = isNamedBucket ? defaultClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: typed → untyped → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyDefaultStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const defaultKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPrefillBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyPrefillBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPrefillAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyPrefillAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyPrefillAggregationKey('sample_instance_value');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_default: defaultKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_default_states: firstPropertyDefaultStates,
+    warnings
+  };
+}
+
+// M86: format input schema first property default annotation index as human-readable text
+function formatInputSchemaFirstPropertyPrefillIndex(index) {
+  if (index.first_property_default_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Default Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].default JSON-Schema-Draft-7 §10.2 sample-instance-value annotation classification; it does NOT execute capability invocations, validate runtime default applicability, enforce default contracts, cross-reference const/enum/required/dependencies/propertyNames/patternProperties/additionalProperties annotations, emit tool-dry-run payloads, emit form-prefill values, rank marketplace-example-prompts, or assess embeddable-widget-initial-state readiness. Bucket order is deterministic stable-output ordering only (NOT tool-dry-run-ranked, NOT MCP-tool-listing-ranked, NOT embeddable-widget-initial-state-ranked, NOT marketplace-example-prompts-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_default_states) {
+    lines.push(`[${entry.input_schema_first_property_default}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: typed (firstKey.default is a valid JSON value: null (NULL-AS-TYPED — M86-INHERITED-FROM-M84: default:null pins pre-fill to literal JSON null, distinct from M85 NULL-AS-ABSENT for enum), string (JSON-STRING-AS-TYPED), finite number (JSON-FINITE-NUMBER-AS-TYPED: NaN/Infinity/-Infinity → unknown), boolean including false (JSON-BOOLEAN-AS-TYPED — NO falsy-coercion), array including empty [] (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN), plain object including empty {} (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)) | untyped (firstKey.default own-property NOT present — ABSENT-AS-UNTYPED: Draft-7 default no sample-instance-value; no warning; ownership check via hasOwnProperty protects 0/false/null/''/{}/[] from falsy mis-classification) | not_applicable (inputSchema.type !== 'object' or zero-property object or firstVal not a plain object; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type to gate not_applicable — Draft-7 §10.2 default applies to ANY type, distinct from M77–M83 TYPE-APPLICABILITY-OBJECT) | unknown (malformed input_schema, firstKey not a plain object, OR firstVal.default own-property present with a JavaScript value that is not a valid JSON value: undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN), NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, Set, Map, typed-array, custom class — DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT: 6th warning code input_schema_properties_first_property_default_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!).");
+  lines.push('Bucket order: typed → untyped → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M86: tusq prefill — top-level noun dispatcher
+function cmdPrefill(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('prefill');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdPrefillIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M86: tusq prefill index — handler
+function cmdPrefillIndex(args) {
+  const { opts, positionals } = parsePrefillIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('prefill index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyPrefillIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const prefillFilter = opts['prefill'] || null;
+
+  if (prefillFilter !== null) {
+    // Case-sensitive: lowercase canonical default bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_ENUM.has(prefillFilter)) {
+      throw new CliError(`Unknown input schema first property default state: ${prefillFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_default_states.find(
+      (e) => e.input_schema_first_property_default === prefillFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property default state: ${prefillFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_default_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyPrefillIndex(outputIndex));
+}
+
+function parsePrefillIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['prefill', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
 // M55: classifyInputSchemaFirstPropertyDefaultValue(inputSchema) → 'defaulted'|'undefaulted'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -25174,6 +25674,7 @@ function printHelp() {
   process.stdout.write('  path               Index capabilities by path segment count tier for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
+  process.stdout.write('  prefill            Index capabilities by input schema first property default sample-instance-value annotation presence for tools review\n');
   process.stdout.write('  preset             Index capabilities by input schema first property default value presence for planning review\n');
   process.stdout.write('  redaction          Review redaction field-name hints and categories\n');
   process.stdout.write('  regex              Index capabilities by input schema first property pattern regex annotation presence for planning review\n');
@@ -26615,6 +27116,55 @@ function printCommandHelp(command) {
     policy: 'Usage: tusq policy <subcommand>\n  Subcommands: init, verify',
     'policy init': 'Usage: tusq policy init [--mode <describe-only|dry-run>] [--reviewer <id>] [--allowed-capabilities <name,...>] [--out <path>] [--force] [--dry-run] [--json] [--verbose]',
     'policy verify': 'Usage: tusq policy verify [--policy <path>] [--strict [--manifest <path>]] [--json] [--verbose]',
+    prefill: 'Usage: tusq prefill <subcommand>\n  Subcommands: index',
+    'prefill index': [
+      'Usage: tusq prefill index [--prefill <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --prefill <value>     Filter to a single input schema first property default bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].default; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type to gate not_applicable — Draft-7 §10.2 defines default as applicable to ANY type):',
+      '  typed        if firstKey.default is any valid JSON value:',
+      '               null (NULL-AS-TYPED — M86-INHERITED-FROM-M84: default:null pins pre-fill to literal JSON null; distinct from M85 NULL-AS-ABSENT for enum)',
+      '               string (JSON-STRING-AS-TYPED)',
+      '               finite number (JSON-FINITE-NUMBER-AS-TYPED: NaN/Infinity/-Infinity → unknown)',
+      '               boolean including false (JSON-BOOLEAN-AS-TYPED — NO falsy-coercion)',
+      '               array including empty [] (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN)',
+      '               plain object including empty {} (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY — M86-DISTINCT-FROM-M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)',
+      '               DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!',
+      '  untyped      if own-property "default" NOT present on firstKey (ABSENT-AS-UNTYPED: Draft-7 default no sample-instance-value; no warning)',
+      '               Ownership check via Object.prototype.hasOwnProperty.call(firstVal, "default") — protects 0/false/null/\'\'/{}/[] from falsy mis-classification',
+      '  not_applicable  if input_schema.type is a string but not "object" (no first property to inspect — outer-schema structural prerequisite)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '               OR if the first property descriptor is not a plain object.',
+      '               NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT check firstVal.type to gate not_applicable.',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or firstVal.default own-property present but value is JavaScript undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN);',
+      '               or firstVal.default is a non-JSON value: NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, Set, Map, typed-array, or custom class',
+      '               (DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT: 6th warning code input_schema_properties_first_property_default_invalid_when_present;',
+      '               NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property default beyond the FIRST are NOT walked (reserved for M-Prefill-All-Properties).',
+      '               Nested-object property default NOT walked (reserved for M-Prefill-Nested).',
+      '               output_schema first-property default NOT classified here.',
+      '               Distinct from M55 tusq preset index (M55 uses defaulted/undefaulted classification — presence-only, FALSY-DEFAULT-COUNTS-AS-DEFAULTED),',
+      '               M84 tusq constant index (const single-value-pin vs default sample-instance-value; NULL-AS-TYPED shared),',
+      '               M85 tusq allowed index (enum set-of-allowed-values vs default sample-instance-value; NULL-AS-ABSENT vs NULL-AS-TYPED).',
+      '',
+      'Bucket iteration order: typed → untyped → not_applicable → unknown',
+      '  (deterministic stable-output convention only — NOT tool-dry-run-ranked, NOT MCP-tool-listing-ranked, NOT embeddable-widget-initial-state-ranked, NOT marketplace-example-prompts-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown default state, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime default validator, form-prefill emitter, tool-dry-run executor, marketplace-example-prompts emitter, embeddable-widget-initial-state emitter, or default-vs-const coherence validator; default states are deterministic stable-output ordering only (NOT tool-dry-run-ranked, NOT MCP-tool-listing-ranked, NOT marketplace-example-prompts-ranked).'
+    ].join('\n'),
     preset: 'Usage: tusq preset <subcommand>\n  Subcommands: index',
     'preset index': [
       'Usage: tusq preset index [--preset <value>] [--manifest <path>] [--out <path>] [--json]',

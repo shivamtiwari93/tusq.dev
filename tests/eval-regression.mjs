@@ -2123,6 +2123,8 @@ async function run() {
       await runInputSchemaFirstPropertyConstantIndexDeterminismScenario(scenario, tmpRoot);
     } else if (scenario.scenario_type === 'input_schema_first_property_allowed_index_determinism') {
       await runInputSchemaFirstPropertyAllowedIndexDeterminismScenario(scenario, tmpRoot);
+    } else if (scenario.scenario_type === 'input_schema_first_property_prefill_index_determinism') {
+      await runInputSchemaFirstPropertyPrefillIndexDeterminismScenario(scenario, tmpRoot);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -7958,6 +7960,153 @@ async function runInputSchemaFirstPropertyAllowedIndexDeterminismScenario(scenar
   // Assert untyped bucket has aggregation_key 'value_set_constraint'
   if (untypedEntry.aggregation_key !== 'value_set_constraint') {
     fail(`${scenario.id}: untyped bucket must have aggregation_key 'value_set_constraint'; got '${untypedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyPrefillIndexDeterminismScenario(scenario, tmpRoot) {
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  // Patch unknown_default_invalid_cap to have default:NaN (non-JSON value) for 6th-code testing
+  const unknownCap = capabilities.find((c) => c.name === 'unknown_default_invalid_cap');
+  if (unknownCap && unknownCap.input_schema && unknownCap.input_schema.properties && unknownCap.input_schema.properties.rate) {
+    unknownCap.input_schema.properties.rate.default = NaN;
+  }
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-29T12:00:00.000Z',
+    capabilities
+  };
+  const project = path.join(tmpRoot, scenario.id);
+  await fs.mkdir(project, { recursive: true });
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  // Write only JSON-serializable capabilities (NaN becomes null in JSON)
+  // We use the in-memory manifest for direct testing below
+  const serializableManifest = {
+    ...manifest,
+    capabilities: capabilities.filter((c) => c.name !== 'unknown_default_invalid_cap')
+  };
+  await writeJson(manifestPath, serializableManifest);
+
+  // Run tusq prefill index --json three times and assert byte-identical output
+  const run1 = runCli(['prefill', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['prefill', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['prefill', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: prefill index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_default bucket-key enum is closed
+  const index = JSON.parse(run1.stdout);
+  const validEnumValues = new Set(scenario.expected_valid_required_values);
+  for (const entry of index.first_property_default_states) {
+    if (!validEnumValues.has(entry.input_schema_first_property_default)) {
+      fail(`${scenario.id}: input_schema_first_property_default '${entry.input_schema_first_property_default}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_default_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_default}'`);
+    }
+  }
+
+  // Assert bucket order matches expected (typed,untyped,not_applicable from serializable manifest)
+  const bucketOrder = index.first_property_default_states.map((e) => e.input_schema_first_property_default).join(',');
+  const expectedBucketOrder = 'typed,untyped,not_applicable';
+  if (bucketOrder !== expectedBucketOrder) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${expectedBucketOrder}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_default must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_default')) {
+      fail(`${scenario.id}: input_schema_first_property_default must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert NULL-AS-TYPED (M86-INHERITED-FROM-M84): typed_default_null_cap → typed bucket
+  const typedEntry = index.first_property_default_states.find((e) => e.input_schema_first_property_default === 'typed');
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_default_null_cap')) {
+    fail(`${scenario.id}: typed_default_null_cap (default=null) must be in typed bucket (NULL-AS-TYPED M86-INHERITED-FROM-M84: distinct from M85 NULL-AS-ABSENT for enum)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'typed_default_null_cap')) {
+    fail(`${scenario.id}: typed_default_null_cap (NULL-AS-TYPED → typed) must NOT produce a warning`);
+  }
+
+  // Assert JSON-BOOLEAN-AS-TYPED (NO falsy-coercion): typed_default_false_cap → typed bucket
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_default_false_cap')) {
+    fail(`${scenario.id}: typed_default_false_cap (default=false) must be in typed bucket (JSON-BOOLEAN-AS-TYPED; NO falsy-coercion)`);
+  }
+
+  // Assert JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY: typed_default_empty_arr_cap → typed bucket
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_default_empty_arr_cap')) {
+    fail(`${scenario.id}: typed_default_empty_arr_cap (default=[]) must be in typed bucket (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY M86-DISTINCT-FROM-M82/M85)`);
+  }
+
+  // Assert JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY: typed_default_empty_obj_cap → typed bucket
+  if (!typedEntry || !typedEntry.capabilities.includes('typed_default_empty_obj_cap')) {
+    fail(`${scenario.id}: typed_default_empty_obj_cap (default={}) must be in typed bucket (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY M86-DISTINCT-FROM-M81)`);
+  }
+
+  // Assert ABSENT-AS-UNTYPED: untyped_default_absent_cap → untyped bucket
+  const untypedEntry = index.first_property_default_states.find((e) => e.input_schema_first_property_default === 'untyped');
+  if (!untypedEntry || !untypedEntry.capabilities.includes('untyped_default_absent_cap')) {
+    fail(`${scenario.id}: untyped_default_absent_cap (default absent) must be in untyped bucket (ABSENT-AS-UNTYPED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'untyped_default_absent_cap')) {
+    fail(`${scenario.id}: untyped_default_absent_cap (ABSENT-AS-UNTYPED → untyped) must NOT produce a warning`);
+  }
+
+  // Assert not_applicable bucket exists
+  const naEntry = index.first_property_default_states.find((e) => e.input_schema_first_property_default === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('na_default_string_outer_cap')) {
+    fail(`${scenario.id}: na_default_string_outer_cap (inputSchema.type='string') must be in not_applicable bucket (outer-schema structural prerequisite)`);
+  }
+
+  // Assert typed bucket has aggregation_key 'sample_instance_value'
+  if (typedEntry.aggregation_key !== 'sample_instance_value') {
+    fail(`${scenario.id}: typed bucket must have aggregation_key 'sample_instance_value'; got '${typedEntry.aggregation_key}'`);
+  }
+
+  // Assert untyped bucket has aggregation_key 'sample_instance_value'
+  if (untypedEntry.aggregation_key !== 'sample_instance_value') {
+    fail(`${scenario.id}: untyped bucket must have aggregation_key 'sample_instance_value'; got '${untypedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

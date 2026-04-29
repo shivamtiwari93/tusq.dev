@@ -2414,6 +2414,60 @@ tusq choice index --choice unenumerated --json
 tusq choice index --out choice-index.json
 ```
 
+## `tusq prefill index`
+
+Emit a deterministic, per-first-input-property-default-annotation-type capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].default` is a valid JSON value (`typed`), absent (`untyped`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime default validator, form-prefill emitter, tool-dry-run executor, marketplace-example-prompts emitter, embeddable-widget-initial-state emitter, or default-vs-const coherence validator**.
+
+**M86-vs-M55 distinction:** `tusq prefill index` (M86) reads `firstKey.default` and classifies **what kind of JSON value** the default is (`typed|untyped|not_applicable|unknown`; aggregation_key: `sample_instance_value`). `tusq preset index` (M55) reads `firstKey.default` and classifies **presence-only** (`defaulted|undefaulted|not_applicable|unknown`; aggregation_key: `default_value`). These produce different bucket names and different classification semantics — M86 distinguishes 0/false/null/[]/{} as `typed` (valid JSON values), while M55 uses `FALSY-DEFAULT-COUNTS-AS-DEFAULTED` as a simple presence check.
+
+**M86-vs-M84 distinction:** `tusq prefill index` (M86) reads `firstKey.default` (a **SAMPLE-INSTANCE-VALUE** annotation; Draft-7 §10.2). `tusq constant index` (M84) reads `firstKey.const` (a **single-value-pin** constraint; Draft-7 §6.1.3). Both share `NULL-AS-TYPED` (null → typed) and `JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY` / `JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY` invariants, but serve different purposes: `default` is the pre-fill suggestion, `const` is the enforced constraint.
+
+**M86-vs-M85 distinction:** `tusq prefill index` (M86) reads `firstKey.default`. `tusq allowed index` (M85) reads `firstKey.enum`. Key asymmetry: **NULL-AS-TYPED** (M86, inherited from M84: `default:null` → `typed`) vs **NULL-AS-ABSENT** (M85-SPECIFIC: `enum:null` → `untyped`). Also: **JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY** (M86: `default:[]` → `typed`) vs **EMPTY-ARRAY-AS-UNKNOWN** (M85-SPECIFIC: `enum:[]` → `unknown`).
+
+**NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85):** The classifier MUST NOT inspect `firstVal.type` to gate `not_applicable`. JSON-Schema Draft 7 §10.2 defines `default` as applicable to **ANY** type (not just `type: 'object'`). Distinct from M77–M83 TYPE-APPLICABILITY-OBJECT pattern.
+
+```
+tusq prefill index [--prefill <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--prefill <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single default annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write JSON index to a file path; suppresses stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]`) |
+
+**Exit codes:**
+- `0` — index produced (or empty-capabilities manifest)
+- `1` — missing/invalid manifest, unknown flag, unknown default state, `--out` path error, or unknown subcommand
+
+**Bucket rules:**
+- `typed` — `firstKey.default` is any valid JSON value: `null` (NULL-AS-TYPED M86-INHERITED-FROM-M84), `string`, finite `number`, `boolean` (including `false` — NO falsy-coercion), `array` including `[]` (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY), `plain object` including `{}` (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY)
+- `untyped` — `firstKey.default` own-property NOT present (ABSENT-AS-UNTYPED); ownership check via `hasOwnProperty` protects `0`/`false`/`null`/`''`/`{}`/`[]` from falsy mis-classification
+- `not_applicable` — `inputSchema.type` is not `'object'`, or zero-property object, or first property descriptor is not a plain object; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION applies
+- `unknown` — malformed `input_schema`; or `firstKey.default` own-property present but JavaScript `undefined` (UNDEFINED-EXPLICIT-AS-UNKNOWN); or non-JSON value (`NaN`, `Infinity`, `-Infinity`, `function`, `Symbol`, `BigInt`, etc.) — 6th warning code: `input_schema_properties_first_property_default_invalid_when_present`
+
+**Aggregation keys:** `sample_instance_value` (typed/untyped buckets) | `not_applicable` | `unknown`
+
+**Result fields:** `first_property_default_states[]` array; per-bucket `input_schema_first_property_default` field
+
+```bash
+# All default annotation buckets (human-readable)
+tusq prefill index
+
+# All default annotation buckets (JSON)
+tusq prefill index --json
+
+# Filter to capabilities with a typed default value
+tusq prefill index --prefill typed
+
+# Capabilities with no default value (untyped)
+tusq prefill index --prefill untyped --json
+
+# Write to file
+tusq prefill index --out prefill-index.json
+```
+
 ## `tusq preset index`
 
 Emit a deterministic, per-first-input-property-default-value-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].default` is present with any JSON value (`defaulted`), absent or `undefined` (`undefaulted`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`defaulted → undefaulted → not_applicable → unknown`). This is a **planning aid, not a runtime payload validator, doc-contradiction detector, default-value-type distributor, default-value-cardinality-tier distributor, LLM inferrer, SDK pre-fill generator, or voice-confirmation-policy enforcer**.

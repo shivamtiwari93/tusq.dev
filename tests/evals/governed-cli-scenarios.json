@@ -7092,6 +7092,169 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-prefill-index-determinism",
+      "scenario_type": "input_schema_first_property_prefill_index_determinism",
+      "description": "Verifies that tusq prefill index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (sample_instance_value/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_default non-persistence. NULL-AS-TYPED (M86-INHERITED-FROM-M84): firstVal.default===null \u2192 typed (distinct from M85 NULL-AS-ABSENT for enum; Draft-7 \u00a710.2 permits default:null as meaningful sample-instance-value). NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85): classifier MUST NOT inspect firstVal.type to gate not_applicable (Draft-7 \u00a710.2 defines default as applicable to ANY type; distinct from M77\u2013M83 TYPE-APPLICABILITY-OBJECT). JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY: default:[] \u2192 typed (M86-DISTINCT-FROM-M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN). JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY: default:{} \u2192 typed (M86-DISTINCT-FROM-M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED). JSON-BOOLEAN-AS-TYPED: both true and false \u2192 typed (NO falsy-coercion; 0/'' also typed). ABSENT-AS-UNTYPED; UNDEFINED-EXPLICIT-AS-UNKNOWN; DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_default_string_cap",
+          "method": "POST",
+          "path": "/typed-default-string",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "default": "anonymous"
+              }
+            }
+          },
+          "description": "First property type='string', default='anonymous' \u2014 lands in typed bucket (JSON-STRING-AS-TYPED; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: firstVal.type='string' does NOT gate not_applicable)"
+        },
+        {
+          "name": "typed_default_null_cap",
+          "method": "POST",
+          "path": "/typed-default-null",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "cursor": {
+                "default": null
+              }
+            }
+          },
+          "description": "First property default===null \u2014 lands in typed bucket (NULL-AS-TYPED M86-INHERITED-FROM-M84: distinct from M85 NULL-AS-ABSENT for enum)"
+        },
+        {
+          "name": "typed_default_false_cap",
+          "method": "POST",
+          "path": "/typed-default-false",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "description": "First property default===false \u2014 lands in typed bucket (JSON-BOOLEAN-AS-TYPED; NO falsy-coercion: false is a valid JSON value)"
+        },
+        {
+          "name": "typed_default_empty_arr_cap",
+          "method": "POST",
+          "path": "/typed-default-empty-arr",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "type": "array",
+                "default": []
+              }
+            }
+          },
+          "description": "First property default=[] \u2014 lands in typed bucket (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY M86-DISTINCT-FROM-M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN)"
+        },
+        {
+          "name": "typed_default_empty_obj_cap",
+          "method": "POST",
+          "path": "/typed-default-empty-obj",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "type": "object",
+                "default": {}
+              }
+            }
+          },
+          "description": "First property default={} \u2014 lands in typed bucket (JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY M86-DISTINCT-FROM-M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)"
+        },
+        {
+          "name": "untyped_default_absent_cap",
+          "method": "GET",
+          "path": "/untyped-default-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property has no 'default' own-property \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED)"
+        },
+        {
+          "name": "na_default_string_outer_cap",
+          "method": "GET",
+          "path": "/na-default-string-outer",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "string"
+          },
+          "description": "inputSchema.type='string' \u2014 lands in not_applicable bucket (outer-schema structural prerequisite; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type)"
+        },
+        {
+          "name": "unknown_default_invalid_cap",
+          "method": "POST",
+          "path": "/unknown-default-invalid",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "type": "number",
+                "default": "_NaN_placeholder_"
+              }
+            }
+          },
+          "description": "First property default is patched to NaN at test time (non-JSON value) \u2014 lands in unknown bucket (6th code: input_schema_properties_first_property_default_invalid_when_present)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "sample_instance_value",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }
