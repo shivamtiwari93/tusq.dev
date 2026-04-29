@@ -5583,6 +5583,189 @@
         "unknown"
       ],
       "expected_bucket_order": "unique,not_unique,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-items-index-determinism",
+      "scenario_type": "input_schema_first_property_items_index_determinism",
+      "description": "Verifies that tusq element index produces byte-identical output across three runs on a synthetic manifest with declared, undeclared, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (declared/undeclared/not_applicable/unknown), closed three-value aggregation_key enum (array_element_subschema_constraint/not_applicable/unknown), bucket order determinism (declared \u2192 undeclared \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_items non-persistence. ABSENT-AS-UNDECLARED: items absent or undefined \u2192 undeclared (no warning). NULL-AS-ABSENT (mirrors M55\u2013M75): items:null \u2192 undeclared (no warning). PLAIN-OBJECT-AS-DECLARED: Object.prototype.toString.call(items)==='[object Object]' \u2192 declared (Draft-7 primary form). ARRAY-OF-OBJECTS-AS-DECLARED: Array.isArray(items) && every element is a plain object \u2192 declared (Draft-7 tuple form, including empty []). TYPE-APPLICABILITY-ARRAY: firstVal.type is a string but not 'array' \u2192 not_applicable (mirrors M73/M74/M75 TYPE-APPLICABILITY-ARRAY). DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS: non-plain-object non-null non-all-plain-object-array present value \u2192 unknown WITH 6th code input_schema_properties_first_property_items_invalid_when_present; NO-COERCION via Object()/Array.from()/JSON.parse(JSON.stringify())/typeof v==='object' alone.",
+      "synthetic_capabilities": [
+        {
+          "name": "declared_plain_cap",
+          "method": "POST",
+          "path": "/declared-plain",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='array', items={type:'string'} — lands in declared bucket (PLAIN-OBJECT-AS-DECLARED: Draft-7 primary form)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "declared_tuple_cap",
+          "method": "POST",
+          "path": "/declared-tuple",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": false,
+          "description": "First property type='array', items=[{type:'string'},{type:'integer'}] — lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: Draft-7 tuple form)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "pair": {
+                "type": "array",
+                "items": [{ "type": "string" }, { "type": "integer" }]
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "declared_empty_tuple_cap",
+          "method": "GET",
+          "path": "/declared-empty-tuple",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='array', items=[] — lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: empty tuple is valid Draft-7 zero-element tuple)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "empty": {
+                "type": "array",
+                "items": []
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "undeclared_absent_cap",
+          "method": "GET",
+          "path": "/undeclared-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='array', items absent — lands in undeclared bucket (ABSENT-AS-UNDECLARED: Draft 7 default is no-element-shape-constraint)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "type": "array"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "undeclared_null_cap",
+          "method": "GET",
+          "path": "/undeclared-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='array', items=null — lands in undeclared bucket (NULL-AS-ABSENT: mirrors M55\u2013M75)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "type": "array",
+                "items": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/string-type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: items only meaningful for array-typed properties)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "string_items_cap",
+          "method": "POST",
+          "path": "/string-items",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='array', items='string' (string) — lands in unknown bucket with 6th-code warning (DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS: string \u2192 unknown; NO-COERCION)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "type": "array",
+                "items": "string"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "malformed_cap",
+          "method": "GET",
+          "path": "/malformed",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        }
+      ],
+      "expected_valid_items_values": [
+        "declared",
+        "undeclared",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "array_element_subschema_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "declared,undeclared,not_applicable,unknown"
     }
   ]
 }

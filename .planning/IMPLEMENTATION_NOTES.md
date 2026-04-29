@@ -2,6 +2,45 @@
 
 ---
 
+## M76 (run_7614b689bb195a71, turn_81676e2d9987b70c, dev)
+
+**Axis:** `input_schema.properties[firstKey].items` — JSON-Schema Draft 7 array-element-subschema annotation. CLI noun: `element` (between `effect` and `examples`). CLI surface 59→60.
+
+**Constants added** (`src/cli.js`, after M75 uniqueItems constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_ITEMS_ENUM` = frozen Set `['declared', 'undeclared', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ITEMS_AGGREGATION_KEY_ENUM` = frozen Set `['array_element_subschema_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ITEMS_BUCKET_ORDER` = frozen array `['declared', 'undeclared', 'not_applicable']`
+
+**Guard functions** (after M75 guards):
+- `_guardInputSchemaFirstPropertyItemsBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyItemsAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier** `classifyInputSchemaFirstPropertyItems(inputSchema)`:
+1. null/undefined/non-plain-object inputSchema → `unknown` (reason: `input_schema_field_missing` or `input_schema_field_not_object`)
+2. missing/non-string `type` → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+3. `type !== 'object'` → `not_applicable`
+4. `properties` missing/null/non-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+5. zero-property object → `not_applicable`
+6. `firstVal` not a plain object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid` — FIFTH frozen code)
+7. **TYPE-APPLICABILITY-ARRAY**: `firstVal.type` string but NOT `'array'` → `not_applicable` (mirrors M73/M74/M75)
+8. **ABSENT-AS-UNDECLARED**: `items` absent/undefined → `undeclared` (Draft-7 default: no-element-shape-constraint; no warning)
+9. **NULL-AS-ABSENT**: `items === null` → `undeclared` (mirrors M55–M75; no warning)
+10. **PLAIN-OBJECT-AS-DECLARED**: `Object.prototype.toString.call(items) === '[object Object]'` → `declared` (Draft-7 primary form; no warning)
+11. **ARRAY-OF-OBJECTS-AS-DECLARED**: `Array.isArray(items) && items.every(e => Object.prototype.toString.call(e) === '[object Object]')` → `declared` (Draft-7 tuple form including empty `[]`; no warning)
+12. **DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS**: any other value → `unknown` WITH 6th code `input_schema_properties_first_property_items_invalid_when_present`; **NO-COERCION** via `Object()`/`Array.from()`/`JSON.parse(JSON.stringify())`/`typeof v === 'object'` alone
+
+**Build/format/cmd functions:** `buildInputSchemaFirstPropertyItemsIndex`, `formatInputSchemaFirstPropertyItemsIndex`, `cmdElement`/`cmdElementIndex`/`parseElementIndexArgs`
+
+**Dispatch:** `'element'` case between `'effect'` and `'examples'` in main switch; `'element'` line between `'effect'` and `'examples'` in `printHelp()`; `element` and `element index` entries in `printCommandHelp()`
+
+**Tests:** 41 `!== 59` assertions in `tests/smoke.mjs` updated to `!== 60`; 18-case M76 smoke matrix added; `input-schema-first-property-items-index-determinism` eval scenario added (66→67 scenarios); `runInputSchemaFirstPropertyItemsIndexDeterminismScenario` added in `tests/eval-regression.mjs`
+
+**Bucket iteration order:** `declared → undeclared → not_applicable → unknown` (deterministic stable-output only — NOT surface-generator-priority-ranked)
+
+**Non-persistence rule:** `input_schema_first_property_items` MUST NOT be written into `tusq.manifest.json`
+
+**Verification:** `npm test` exits 0 with 67 scenarios; CLI surface = 60; `element` between `effect` and `examples` confirmed
+
 ## M75 (run_ed87531287b641c8, turn_68fba981954c38ba, dev)
 
 **Axis:** `input_schema.properties[firstKey].uniqueItems` — JSON-Schema Draft 7 array-element-uniqueness BOOLEAN annotation

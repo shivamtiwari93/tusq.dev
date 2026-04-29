@@ -1144,6 +1144,51 @@ tusq path index [--tier <none|low|medium|high|unknown>] [--manifest <path>] [--o
 
 **Planning aid notice:** This command is a planning aid, not a runtime URL router, path validator, route-registry validator, path-contradiction detector, URL generator, or route-registration certifier. Tiers are deterministic stable-output ordering only (NOT sprawl-risk-ranked, NOT blast-radius-ranked, NOT depth-ranked).
 
+## `tusq element index`
+
+**M76-vs-M75 (`unique` uniqueItems) distinctness:** `tusq unique index` (M75) reads `firstKey.uniqueItems` (array element pairwise-distinctness — a BOOLEAN annotation). `tusq element index` (M76) reads `firstKey.items` (array element subschema — a JSON Schema object or tuple array). These are orthogonal JSON-Schema Draft 7 array annotations; `uniqueItems` governs pairwise-distinctness, `items` governs per-element shape regardless of distinctness.
+
+**M76-vs-M74 (`most` maxItems) distinctness:** `tusq most index` (M74) reads `firstKey.maxItems` (array cardinality ceiling — a non-negative-integer annotation). `tusq element index` (M76) reads `firstKey.items` (array element subschema). These are orthogonal array annotations; `maxItems` counts cardinality, `items` declares per-element shape regardless of cardinality.
+
+**M76-vs-M73 (`least` minItems) distinctness:** `tusq least index` (M73) reads `firstKey.minItems` (array cardinality floor — a non-negative-integer annotation). `tusq element index` (M76) reads `firstKey.items` (array element subschema). Orthogonal — `minItems` governs cardinality, `items` governs per-element shape.
+
+```
+tusq element index [--element <declared|undeclared|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--element <value>` | Filter to a single bucket (`declared`, `undeclared`, `not_applicable`, `unknown`). Case-sensitive lowercase. Exits 1 if the value is unknown or the bucket is absent. |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index JSON to file instead of stdout. Rejected if path is inside `.tusq/`. |
+| `--json` | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**Bucket rules** (applied to `input_schema.properties[firstKey].items` when `input_schema.type === "object"` and `firstVal.type === "array"`):
+
+| Bucket | Rule |
+|--------|------|
+| `declared` | `items` is a plain object (`Object.prototype.toString.call(items) === '[object Object]'` — Draft-7 primary form: single schema applied to every element) OR `items` is an array where every element is a plain object (`Array.isArray(items) && items.every(e => ...)` — Draft-7 tuple form: per-position schemas; empty `[]` is also `declared`) |
+| `undeclared` | `items` is absent, `undefined`, or `null` (ABSENT-AS-UNDECLARED: Draft 7 default is no-element-shape-constraint; NULL-AS-ABSENT: mirrors M55–M75) |
+| `not_applicable` | `input_schema.type` is a string but not `'object'`, or zero-property object, or `firstVal.type` is a non-empty string other than `'array'` (TYPE-APPLICABILITY-ARRAY: `items` only meaningful for array-typed properties) |
+| `unknown` | Malformed `input_schema`, `firstKey` not a plain object, or `items` present non-null but not a plain object and not an all-plain-object array (string, number, boolean, mixed tuple, Date/RegExp/Set). 6th warning code: `input_schema_properties_first_property_items_invalid_when_present`. NO-COERCION. |
+
+**Bucket iteration order:** `declared → undeclared → not_applicable → unknown` (deterministic stable-output convention only — NOT surface-generator-priority-ranked, NOT widget-rendering-readiness-ranked, NOT DTO-element-deserialization-priority-ranked)
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown items annotation value, `--out` path error, or unknown subcommand
+
+**Examples:**
+```sh
+tusq element index
+tusq element index --json
+tusq element index --element declared --json
+tusq element index --element undeclared --json
+tusq element index --out element-index.json
+```
+
+**Planning aid notice:** This command is a planning aid, not a runtime array-element-shape validator, runtime element-coercer, DTO-element-deserializer, surface-generator-widget-emitter, array-input-control-renderer, strict-tool-element-emitter, MCP-server-output-element-validator, marketplace-package-element-validator, minItems-crossref tool, maxItems-crossref tool, uniqueItems-crossref tool, required-crossref tool, default-crossref tool, doc-contradiction detector, LLM-items-inferrer, or statistical aggregator. Bucket order is deterministic stable-output ordering only.
+
 ## `tusq examples index`
 
 Emit a deterministic, per-examples-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from the cardinality of their `examples[]` array in closed-enum order (`none → low → medium → high → unknown`), with a special `unknown` bucket for capabilities whose `examples` field is missing, `null`, not an array, or contains a `null`, array, or non-object element. This is a **planning aid, not a runtime examples validator, documentation-completeness enforcer, or compliance certifier**.
