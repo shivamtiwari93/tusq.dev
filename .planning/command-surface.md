@@ -1,6 +1,59 @@
 # Site Surface — tusq.dev Docs & Website Platform
 
-> **M73 Charter Sketch Reservation — 2026-04-28, run_8059727c0a95f709, turn_ccb6a63025133ef5, PM attempt 1, HEAD prior to PM edits at `605a6c3`.** Reserves a future `### tusq least index` entry for the planning-phase M73 charter. CLI surface 56 → 57 with new noun `least` inserted between `items` and `legacy` (`items` (i=105) < `least` (l=108) at position 0 (`i` (105) < `l` (108)); `least` (l=108, e=101, a=97) < `legacy` (l=108, e=101, g=103) at position 2 (`a` (97) < `g` (103))). Axis: `input_schema.properties[firstKey].minItems` (JSON-Schema-Draft-7-aligned non-negative-integer annotation governing whether the array property's runtime payload MUST contain at least N elements). Bucket-key enum (closed four-value): `bounded | unbounded | not_applicable | unknown`. Aggregation_key enum (closed three-value): `array_cardinality_floor_constraint | not_applicable | unknown`. Six frozen warning reason codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_min_items_invalid_when_present`). Flags: `--manifest`, `--json`, `--out`, `--least` (case-sensitive lowercase). Bucket iteration order: `bounded → unbounded → not_applicable → unknown`. Result-array field name: `first_property_min_items_states[]`. Per-bucket field name: `input_schema_first_property_min_items`. Read-only invariants: 43 prior peer index commands byte-identical pre/post; non-persistence rule. Rules: NULL-AS-ABSENT (`minItems: null` → `unbounded`); ABSENT-AS-UNBOUNDED (own property absent OR `minItems: undefined` → `unbounded`); TYPE-APPLICABILITY-ARRAY (`firstVal.type` string but NOT `'array'` → `not_applicable`); NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS; PRESENT-AS-PRESENT-ZERO (`minItems: 0` → `bounded`); DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID (non-integer / negative / non-finite / NaN / Infinity / string / boolean / array / object → `unknown` WITH 6th code; NO-COERCION). The full `### tusq least index` section will be materialized by the dev role's implementation phase per the M27–M72 PM-vs-dev ownership split. M73 is implementation-ready planned work, not shipped.
+> **M73 Materialized — 2026-04-28, run_8059727c0a95f709, turn_f038ff1cc17f467d, dev attempt 1.** `tusq least index` implemented. CLI surface 56→57. `least` between `items` and `legacy` (items(i=105)<least(l=108) at pos 0; least(l=108,e=101,a=97)<legacy(l=108,e=101,g=103) at pos 2). Flags: `--manifest`, `--json`, `--out`, `--least` (case-sensitive, closed four-value enum `bounded|unbounded|not_applicable|unknown`). Output: `first_property_min_items_states[]` with 8-field per-bucket shape. Six frozen warning reason codes: 5 baseline + axis-specific 6th `input_schema_properties_first_property_min_items_invalid_when_present`. TYPE-APPLICABILITY-ARRAY: firstVal.type string but NOT 'array'→not_applicable (mirrors M62 TYPE-APPLICABILITY-STRING). ABSENT-AS-UNBOUNDED: minItems absent/undefined→unbounded. NULL-AS-ABSENT: minItems:null→unbounded (mirrors M55–M72). NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS: Number.isInteger(v)&&v>=0→bounded. PRESENT-AS-PRESENT-ZERO: minItems:0→bounded (explicit-zero distinct from absent). DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: non-integer/negative/non-finite/NaN/Infinity/-Infinity/string/boolean/array/object→unknown WITH 6th code; NO-COERCION via Number()/parseInt()/parseFloat(). Bucket iteration order: bounded→unbounded→not_applicable→unknown. npm test exits 0 (64 scenarios). See IMPLEMENTATION_NOTES.md § M73 for full detail.
+
+### tusq least index
+
+**Synopsis:** `tusq least index [--least <bounded|unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]`
+
+**Axis:** `input_schema.properties[firstKey].minItems` — JSON-Schema Draft 7 array-cardinality-floor non-negative-integer annotation
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--least <value>` | Filter to a single bucket (case-sensitive lowercase; closed four-value enum) |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (no stdout on success; rejects `.tusq/` paths) |
+| `--json` | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**Output shape (JSON):**
+```json
+{
+  "manifest_path": "...",
+  "manifest_version": 1,
+  "generated_at": "...",
+  "first_property_min_items_states": [
+    {
+      "input_schema_first_property_min_items": "bounded",
+      "aggregation_key": "array_cardinality_floor_constraint",
+      "capability_count": 1,
+      "capabilities": ["bulk_create_users"],
+      "approved_count": 1,
+      "gated_count": 0,
+      "has_destructive_side_effect": false,
+      "has_restricted_or_confidential_sensitivity": false
+    }
+  ],
+  "warnings": []
+}
+```
+
+**Bucket rules:**
+- `bounded`: `Number.isInteger(firstKey.minItems) && firstKey.minItems >= 0` (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS; PRESENT-AS-PRESENT-ZERO: minItems:0→bounded)
+- `unbounded`: `firstKey.minItems` absent, null, or undefined (ABSENT-AS-UNBOUNDED; NULL-AS-ABSENT)
+- `not_applicable`: `input_schema.type !== 'object'` OR zero-property object OR `firstVal.type` string but NOT `'array'` (TYPE-APPLICABILITY-ARRAY)
+- `unknown`: malformed `input_schema`, `firstKey` not a plain object, or `minItems` present non-null but not a non-negative integer (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID; NO-COERCION)
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (deterministic stable-output convention; NOT schema-extraction-confidence-priority-ranked)
+
+**Exit codes:**
+- `0`: Index produced (or empty-capabilities manifest)
+- `1`: Missing/invalid manifest, unknown flag, unknown minItems value, `--out` path error, or unknown subcommand
+
+**Read-only invariants:** 43 peer index commands byte-identical pre/post (non-persistence rule: `input_schema_first_property_min_items` MUST NOT be written into `tusq.manifest.json`)
+
+**Axis distinctness:** M73 `minItems` (array-cardinality-floor) is SIBLING-but-ORTHOGONAL to M62 `minLength` (`floor`, string-length-floor), M65 `minimum` (`lower`, numeric-lower-bound), M67 `exclusiveMinimum` (`above`, exclusive-numeric-lower-bound) — each reads a distinct JSON-Schema keyword on the same firstVal.
 
 > **M72 Materialized — 2026-04-28, run_1cb3a28391fa0f54, turn_453d79c50ae896e2, dev attempt 1.** `tusq nullable index` implemented. CLI surface 55→56. `nullable` between `mime` and `obligation` (mime(m=109,i=105)<nullable(n=110) at pos 0; nullable(n=110)<obligation(o=111) at pos 0). Flags: `--manifest`, `--json`, `--out`, `--nullable` (case-sensitive, closed four-value enum `nullable|not_nullable|not_applicable|unknown`). Output: `first_property_nullable_states[]` with 8-field per-bucket shape. Six frozen warning reason codes: 5 baseline + axis-specific 6th `input_schema_properties_first_property_nullable_invalid_when_present`. ABSENT-AS-NOT-NULLABLE: nullable absent/undefined→not_nullable. NULL-AS-ABSENT: nullable:null→not_nullable. BOOLEAN-FALSE-AS-NOT-NULLABLE: nullable:false→not_nullable. BOOLEAN-TRUE-AS-NULLABLE: nullable:true→nullable. DRAFT-7-BOOLEAN-IS-VALID-NULLABLE: non-boolean→unknown WITH 6th code; NO-COERCION. NO-TYPE-APPLICABILITY: nullable applies to ALL JSON-Schema types; MUST NOT bucket as not_applicable based on firstVal.type. Bucket iteration order: nullable→not_nullable→not_applicable→unknown. npm test exits 0 (63 scenarios). See IMPLEMENTATION_NOTES.md § M72 for full detail.
 

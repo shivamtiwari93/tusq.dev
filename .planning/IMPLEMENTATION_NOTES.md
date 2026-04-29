@@ -2,6 +2,57 @@
 
 ---
 
+## M73 (run_8059727c0a95f709, turn_f038ff1cc17f467d, dev)
+
+**Axis:** `input_schema.properties[firstKey].minItems` — JSON-Schema Draft 7 array-cardinality-floor non-negative-integer annotation
+
+**CLI noun:** `least` (inserted between `items` and `legacy`; items(i=105)<least(l=108) at pos 0; least(l=108,e=101,a=97)<legacy(l=108,e=101,g=103) at pos 2); CLI surface 56 → 57
+
+**Classifier rules (frozen):**
+- `inputSchema` missing/null/undefined → `unknown` (`input_schema_field_missing`)
+- `inputSchema` not plain non-null object/is array → `unknown` (`input_schema_field_not_object`)
+- `inputSchema.type` missing or non-string → `unknown` (`input_schema_type_missing_or_invalid`)
+- `inputSchema.type` string but not `'object'` → `not_applicable` (no warning)
+- `type === 'object'`, `properties` missing/null/non-plain-object → `unknown` (`input_schema_properties_field_missing_when_type_is_object`)
+- `type === 'object'`, zero-property object → `not_applicable` (no warning)
+- `firstVal` not plain non-null object → `unknown` (`input_schema_properties_first_property_descriptor_invalid` — 5th frozen code)
+- **TYPE-APPLICABILITY-ARRAY**: `firstVal.type` is a string but NOT `'array'` → `not_applicable` (no warning; minItems only meaningful for array-typed properties; mirrors M62 TYPE-APPLICABILITY-STRING for minLength)
+- **ABSENT-AS-UNBOUNDED**: `minItems` absent or `undefined` → `unbounded` (Draft 7 default is no-floor; no warning)
+- **NULL-AS-ABSENT**: `minItems === null` → `unbounded` (mirrors M55–M72; no warning)
+- **NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS + PRESENT-AS-PRESENT-ZERO**: `Number.isInteger(v) && v >= 0` → `bounded` (includes `minItems: 0` — explicit-zero is semantically distinct from absent; no warning)
+- **DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID**: non-integer / negative integer / non-finite / NaN / Infinity / -Infinity / string / boolean / array / object → `unknown` WITH 6th code `input_schema_properties_first_property_min_items_invalid_when_present`; NO-COERCION via `Number()/parseInt()/parseFloat()`
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (deterministic stable-output convention)
+
+**Result-array field name:** `first_property_min_items_states`
+
+**Per-bucket field name:** `input_schema_first_property_min_items`
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (carried from M55–M72)
+6. `input_schema_properties_first_property_min_items_invalid_when_present` (M73-SPECIFIC)
+
+**Aggregation_key enum (closed three-value):** `array_cardinality_floor_constraint | not_applicable | unknown`
+- `bounded` + `unbounded` buckets → `array_cardinality_floor_constraint`
+- `not_applicable` bucket → `not_applicable`
+- `unknown` bucket → `unknown`
+
+**Implementation:** `classifyInputSchemaFirstPropertyMinItems` (pure function; TYPE-APPLICABILITY-ARRAY; ABSENT-AS-UNBOUNDED; NULL-AS-ABSENT; NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS; PRESENT-AS-PRESENT-ZERO; DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID; NO-COERCION), `buildInputSchemaFirstPropertyMinItemsIndex`, `formatInputSchemaFirstPropertyMinItemsIndex`, `cmdLeast`/`cmdLeastIndex`/`parseLeastIndexArgs` in `src/cli.js`; guard functions `_guardInputSchemaFirstPropertyMinItemsBucketKey` and `_guardInputSchemaFirstPropertyMinItemsAggregationKey`; 18-case M73 smoke matrix; eval scenario `input-schema-first-property-min-items-index-determinism` (63→64 scenarios) with `runInputSchemaFirstPropertyMinItemsIndexDeterminismScenario` handler; all 38 `!== 56` help-count assertions updated to `!== 57`.
+
+**Non-persistence rule:** `input_schema_first_property_min_items` MUST NOT be written into `tusq.manifest.json`.
+
+**Constraint 66:** non-runtime-array-cardinality-floor-validator / non-runtime-array-element-counter / non-DTO-array-length-validator / non-static-understanding-coverage-tier-aggregator / non-route-extraction-quality-validator / non-framework-detection-strictness-aggregator / non-validation-layer-array-shape-validator / non-required-crossref / non-default-crossref / non-const-crossref / non-maxItems-crossref / non-uniqueItems-crossref / non-items-schema-crossref / non-doc-contradiction-detector / non-LLM-min-items-inferrer / non-statistical-aggregator.
+
+**Axis distinctness:** M73 `minItems` (array-cardinality-floor) is SIBLING-but-ORTHOGONAL to M62 `minLength` (string-length-floor), M65 `minimum` (numeric-lower-bound), M67 `exclusiveMinimum` (exclusive-numeric-lower-bound) — each reads a distinct JSON-Schema keyword on the same firstVal.
+
+**npm test:** exits 0 with 64 scenarios (Smoke tests passed + Eval regression harness passed).
+
+---
+
 ## M72 (run_1cb3a28391fa0f54, turn_453d79c50ae896e2, dev)
 
 **Axis:** `input_schema.properties[firstKey].nullable` — OpenAPI 3.0+/JSON-Schema-aligned boolean null-permissibility annotation

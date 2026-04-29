@@ -813,6 +813,24 @@ const INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_AGGREGATION_KEY_ENUM = Object.freeze(
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_NULLABLE_BUCKET_ORDER = Object.freeze(['nullable', 'not_nullable', 'not_applicable']);
 
+// M73: frozen four-value bucket-key enum for input_schema.properties[firstKey].minItems (JSON-Schema Draft 7 array-cardinality-floor non-negative-integer annotation).
+// bounded — minItems is a non-negative integer (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS: Number.isInteger(v) && v>=0 → bounded; PRESENT-AS-PRESENT-ZERO: minItems:0 → bounded)
+// unbounded — minItems is absent, null, or undefined (NULL-AS-ABSENT: null→unbounded; ABSENT-AS-UNBOUNDED: absent/undefined→unbounded — Draft 7 default is no-floor)
+// not_applicable — input_schema.type is not 'object' OR zero-property object OR firstVal.type is a string but not 'array' (TYPE-APPLICABILITY-ARRAY rule)
+// unknown — malformed input_schema, missing properties, firstVal not a plain object, OR minItems is non-null non-integer non-absent value (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: non-integer/negative-integer/non-finite/NaN/Infinity/-Infinity/string/boolean/array/object → unknown WITH 6th code)
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_ENUM = Object.freeze(new Set(['bounded', 'unbounded', 'not_applicable', 'unknown']));
+
+// M73: frozen three-value aggregation_key enum. Immutable once M73 ships.
+// bounded/unbounded buckets carry 'array_cardinality_floor_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['array_cardinality_floor_constraint', 'not_applicable', 'unknown']));
+
+// M73: closed-enum bucket iteration order (bounded → unbounded → not_applicable). Unknown appended last.
+// NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked, NOT route-extraction-quality-tier-ranked,
+// NOT validation-layer-strictness-priority-ranked, NOT DTO-cardinality-floor-priority-ranked, NOT runtime-payload-shape-tolerance-ranked,
+// NOT array-element-count-significance-ranked, NOT framework-detection-strictness-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_BUCKET_ORDER = Object.freeze(['bounded', 'unbounded', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -981,6 +999,9 @@ function dispatch(argv) {
       return;
     case 'items':
       cmdItems(args);
+      return;
+    case 'least':
+      cmdLeast(args);
       return;
     case 'legacy':
       cmdLegacy(args);
@@ -12751,6 +12772,20 @@ function _guardInputSchemaFirstPropertyNullableAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyMinItemsBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_min_items outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyMinItemsAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -15151,6 +15186,415 @@ function parseNullableIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['nullable', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M73: classifyInputSchemaFirstPropertyMinItems(inputSchema) → 'bounded'|'unbounded'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              TYPE-APPLICABILITY-ARRAY rule (M73-SPECIFIC, mirrors M62 TYPE-APPLICABILITY-STRING):
+//              if typeof firstVal.type === 'string' && firstVal.type !== 'array' → 'not_applicable' (no warning; minItems only meaningful for array-typed properties)
+//              minItems check (JSON-Schema Draft 7 array-cardinality-floor non-negative-integer annotation):
+//              ABSENT-AS-UNBOUNDED: !hasOwn(firstVal, 'minItems') OR minItems===undefined → 'unbounded' (Draft 7 default is no-floor)
+//              NULL-AS-ABSENT: minItems===null → 'unbounded' (mirrors M55–M72 null-as-absent precedent)
+//              NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS: Number.isInteger(v) && v>=0 → 'bounded'
+//              PRESENT-AS-PRESENT-ZERO: minItems===0 → 'bounded' (explicit-zero is semantically distinct from absent)
+//              DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: non-integer / negative integer / non-finite / NaN / Infinity / -Infinity / string / boolean / array / object → 'unknown' WITH 6th code
+//              NO-COERCION via Number()/parseInt()/parseFloat()
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property minItems beyond the FIRST is NOT walked (reserved for M-MinItems-All-Properties).
+// Nested-object property minItems NOT walked (reserved for M-MinItems-Nested).
+// output_schema first-property minItems is NOT classified (reserved for M-MinItems-Output).
+// input_schema_first_property_min_items MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyMinItems(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // TYPE-APPLICABILITY-ARRAY: if firstVal.type is a string but not 'array' → not_applicable (minItems only meaningful for array-typed properties)
+  if (typeof firstVal.type === 'string' && firstVal.type !== 'array') {
+    return 'not_applicable';
+  }
+  // minItems check:
+  const minItemsVal = Object.prototype.hasOwnProperty.call(firstVal, 'minItems') ? firstVal.minItems : undefined;
+  // ABSENT-AS-UNBOUNDED: minItems absent or undefined → unbounded
+  if (minItemsVal === undefined) {
+    return 'unbounded';
+  }
+  // NULL-AS-ABSENT: minItems===null → unbounded (mirrors M55–M72 null-as-absent)
+  if (minItemsVal === null) {
+    return 'unbounded';
+  }
+  // NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS + PRESENT-AS-PRESENT-ZERO: Number.isInteger(v) && v>=0 → bounded (includes 0)
+  if (Number.isInteger(minItemsVal) && minItemsVal >= 0) {
+    return 'bounded';
+  }
+  // DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: non-integer/negative-integer/non-finite/NaN/Infinity/-Infinity/string/boolean/array/object → unknown WITH 6th code; NO-COERCION
+  return 'unknown';
+}
+
+// M73: buildInputSchemaFirstPropertyMinItemsIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property minItems annotation index from the manifest's capabilities[].
+// Bucket iteration order: bounded → unbounded → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_min_items MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyMinItemsIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_min_items_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_min_items.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M73 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M72)
+    //   6. input_schema_properties_first_property_min_items_invalid_when_present (M73-SPECIFIC)
+    //      covers non-integer / negative-integer / non-finite / NaN / Infinity / -Infinity / string / boolean / array / object minItems
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (!(typeof firstVal.type === 'string' && firstVal.type !== 'array')) {
+            // TYPE-APPLICABILITY-ARRAY: only check minItems for non-typed or array-typed firstVal
+            // Check minItems for 6th code: present non-null value that is not a non-negative integer
+            const minItemsVal = Object.prototype.hasOwnProperty.call(firstVal, 'minItems') ? firstVal.minItems : undefined;
+            if (minItemsVal !== undefined && minItemsVal !== null && !(Number.isInteger(minItemsVal) && minItemsVal >= 0)) {
+              warningReason = 'input_schema_properties_first_property_min_items_invalid_when_present';
+            }
+          }
+          // else: TYPE-APPLICABILITY-ARRAY → not_applicable, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const minItemsClass = classifyInputSchemaFirstPropertyMinItems(inputSchema);
+    const isNamedBucket = namedBuckets.has(minItemsClass);
+    const bucketKey = isNamedBucket ? minItemsClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: bounded → unbounded → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyMinItemsStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const minItemsKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMinItemsBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyMinItemsBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyMinItemsAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyMinItemsAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyMinItemsAggregationKey('array_cardinality_floor_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_min_items: minItemsKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_min_items_states: firstPropertyMinItemsStates,
+    warnings
+  };
+}
+
+// M73: format input schema first property minItems annotation index as human-readable text
+function formatInputSchemaFirstPropertyMinItemsIndex(index) {
+  if (index.first_property_min_items_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property MinItems Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].minItems JSON-Schema-Draft-7 array-cardinality-floor non-negative-integer annotation classification; it does NOT execute capability invocations, validate runtime array payloads, enforce array-element-count contracts, infer minItems from docs, cross-reference maxItems/uniqueItems/items/default/const annotations, rank DTO-cardinality-floor strictness, assess route-extraction quality, assess framework-detection strictness, or rank static-understanding coverage. Bucket order is deterministic stable-output ordering only (NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked, NOT route-extraction-quality-tier-ranked, NOT validation-layer-strictness-priority-ranked, NOT DTO-cardinality-floor-priority-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_min_items_states) {
+    lines.push(`[${entry.input_schema_first_property_min_items}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: bounded (Number.isInteger(firstKey.minItems) && firstKey.minItems >= 0 — NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS: any non-negative integer including 0 → bounded; PRESENT-AS-PRESENT-ZERO: minItems:0 is explicit-zero semantically distinct from absent — operator asserted floor was considered and set to zero; NO-COERCION via Number()/parseInt()/parseFloat()) | unbounded (firstKey.minItems absent, null, or undefined — ABSENT-AS-UNBOUNDED: absent/undefined → unbounded (Draft 7 default is no-floor); NULL-AS-ABSENT: null → unbounded (mirrors M55–M72)) | not_applicable (input_schema.type !== 'object' or zero-property object or firstVal.type is a non-empty string other than 'array' — TYPE-APPLICABILITY-ARRAY: minItems only meaningful for array-typed properties; mirrors M62 TYPE-APPLICABILITY-STRING for minLength) | unknown (malformed input_schema, firstKey not a plain object, or minItems present non-null but not a non-negative integer: negative-integer/-1, fractional/0.5/1.5, NaN, Infinity, -Infinity, string/'1', boolean/true/false, array/[1], object/{} — DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: 6th warning code input_schema_properties_first_property_min_items_invalid_when_present; NO-COERCION via Number()/parseInt()/parseFloat()).");
+  lines.push('Bucket order: bounded → unbounded → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M73: tusq least — top-level noun dispatcher
+function cmdLeast(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('least');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdLeastIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M73: tusq least index — handler
+function cmdLeastIndex(args) {
+  const { opts, positionals } = parseLeastIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('least index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyMinItemsIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const minItemsFilter = opts['least'] || null;
+
+  if (minItemsFilter !== null) {
+    // Case-sensitive: lowercase canonical minItems bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_MIN_ITEMS_ENUM.has(minItemsFilter)) {
+      throw new CliError(`Unknown input schema first property min items state: ${minItemsFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_min_items_states.find(
+      (e) => e.input_schema_first_property_min_items === minItemsFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property min items state: ${minItemsFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_min_items_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyMinItemsIndex(outputIndex));
+}
+
+function parseLeastIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['least', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -19050,6 +19494,7 @@ function printHelp() {
   process.stdout.write('  hint               Index capabilities by input schema first property format hint presence for planning review\n');
   process.stdout.write('  input              Index capabilities by required input field count tier for planning review\n');
   process.stdout.write('  items              Index capabilities by output schema items type for planning review\n');
+  process.stdout.write('  least              Index capabilities by input schema first property minItems array-cardinality-floor annotation presence for planning review\n');
   process.stdout.write('  legacy             Index capabilities by input schema first property deprecated annotation presence for planning review\n');
   process.stdout.write('  lower              Index capabilities by input schema first property minimum numeric-lower-bound annotation presence for planning review\n');
   process.stdout.write('  method             Index capabilities by HTTP method for planning review\n');
@@ -19664,6 +20109,44 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown items type, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime response validator, frontend component generator, rendering completeness certifier, or JSON-Schema items-contract enforcer; items types are deterministic stable-output ordering only (NOT UI-rendering-precedence-ranked, NOT frontend-blast-radius-ranked, NOT table-vs-list-priority-ranked).'
+    ].join('\n'),
+    least: 'Usage: tusq least <subcommand>\n  Subcommands: index',
+    'least index': [
+      'Usage: tusq least index [--least <bounded|unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --least <bounded|unbounded|not_applicable|unknown>',
+      '                                     Filter to a single input schema first property minItems annotation bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'MinItems annotation rule (applied to input_schema.properties[firstKey].minItems when input_schema.type === "object"):',
+      '  bounded        if Number.isInteger(properties[firstKey].minItems) && properties[firstKey].minItems >= 0',
+      '                 (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS: any non-negative integer including 0 → bounded;',
+      '                 PRESENT-AS-PRESENT-ZERO: minItems:0 → bounded — explicit-zero is semantically distinct from absent;',
+      '                 NO-COERCION via Number()/parseInt()/parseFloat())',
+      '  unbounded      if properties[firstKey].minItems is absent, undefined, or null',
+      '                 (ABSENT-AS-UNBOUNDED: absent/undefined → unbounded (Draft 7 default is no-floor);',
+      '                 NULL-AS-ABSENT: null → unbounded (mirrors M55–M72 null-as-absent precedent))',
+      "  not_applicable if input_schema.type is a string but not 'object' OR zero-property object",
+      "                 OR firstVal.type is a non-empty string other than 'array'",
+      '                 (TYPE-APPLICABILITY-ARRAY: minItems only meaningful for array-typed properties;',
+      '                 mirrors M62 TYPE-APPLICABILITY-STRING for minLength)',
+      '  unknown        if input_schema or properties are malformed, firstKey not a plain object,',
+      '                 or minItems is present non-null but not a non-negative integer',
+      '                 (negative-integer/-1, fractional/0.5/1.5, NaN, Infinity, -Infinity, string/\'1\', boolean/true/false, array/[1], object/{})',
+      '                 (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: non-negative-integer triggers 6th warning code',
+      '                 input_schema_properties_first_property_min_items_invalid_when_present;',
+      '                 NO-COERCION via Number()/parseInt()/parseFloat())',
+      '',
+      'Bucket iteration order: bounded → unbounded → not_applicable → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown minItems annotation value, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime array-cardinality-floor validator, runtime array-element-counter, DTO-array-length-validator, static-understanding-coverage-tier-aggregator, route-extraction-quality-validator, framework-detection-strictness-aggregator, validation-layer-array-shape-validator, maxItems-crossref tool, uniqueItems-crossref tool, items-schema-crossref tool, required-crossref tool, default-crossref tool, doc-contradiction detector, LLM-min-items-inferrer, or statistical aggregator; bucket order is deterministic stable-output ordering only (NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked, NOT route-extraction-quality-tier-ranked, NOT validation-layer-strictness-priority-ranked, NOT DTO-cardinality-floor-priority-ranked).'
     ].join('\n'),
     legacy: 'Usage: tusq legacy <subcommand>\n  Subcommands: index',
     'legacy index': [

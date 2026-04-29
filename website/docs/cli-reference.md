@@ -837,6 +837,69 @@ tusq items index --items-type integer --json
 tusq items index --out items-type-index.json
 ```
 
+## `tusq least index`
+
+Emit a deterministic, per-first-input-property-minItems-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].minItems` is a non-negative integer (`bounded`), absent or `null` (`unbounded`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal type is not `array`), or malformed (`unknown`). This is a **planning aid, not a runtime array-cardinality-floor validator, runtime array-element-counter, DTO-array-length-validator, static-understanding-coverage-tier-aggregator, route-extraction-quality-validator, framework-detection-strictness-aggregator, validation-layer-array-shape-validator, maxItems-crossref tool, uniqueItems-crossref tool, items-schema-crossref tool, doc-contradiction detector, LLM-min-items-inferrer, or statistical aggregator**.
+
+**M73-vs-M62 (`floor` minLength) / M73-vs-M65 (`lower` minimum) / M73-vs-M67 (`above` exclusiveMinimum) distinctness:** `tusq floor index` (M62) reads `firstKey.minLength` (string Unicode-codepoint-count lower bound). `tusq lower index` (M65) reads `firstKey.minimum` (numeric value lower bound). `tusq above index` (M67) reads `firstKey.exclusiveMinimum` (exclusive numeric value lower bound). `tusq least index` (M73) reads `firstKey.minItems` (array element-count lower bound). All four are SIBLING-but-ORTHOGONAL bounded-range annotations on the same firstVal — each names a distinct JSON-Schema Draft 7 keyword covering a different data-type cardinality dimension.
+
+```bash
+tusq least index [--least <bounded|unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--least <bounded\|unbounded\|not_applicable\|unknown>` | all buckets | Filter to a single minItems annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].minItems` when `input_schema.type === "object"` and `firstVal.type === "array"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `bounded` | `Number.isInteger(properties[firstKey].minItems) && properties[firstKey].minItems >= 0` (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS; **PRESENT-AS-PRESENT-ZERO**: `minItems: 0` → `bounded` — explicit-zero is semantically distinct from absent: the operator asserted the floor was considered and set to zero; NO-COERCION via `Number()`/`parseInt()`/`parseFloat()`) |
+| `unbounded` | `properties[firstKey].minItems` is absent, `undefined`, or `null` (**ABSENT-AS-UNBOUNDED**: absent/undefined → `unbounded` — JSON-Schema Draft 7 default is no-floor; **NULL-AS-ABSENT**: `null` → `unbounded`, mirrors M55–M72; no warning in both cases) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` OR zero-property object OR `firstVal.type` is a string but not `"array"` (**TYPE-APPLICABILITY-ARRAY**: mirrors M62 TYPE-APPLICABILITY-STRING for minLength — minItems is JSON-Schema-Draft-7-defined ONLY for array-typed properties) |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].minItems` present non-null but not a non-negative integer (negative integer `-1`, fractional `0.5`/`1.5`, `NaN`, `Infinity`, `-Infinity`, string `'1'`, boolean `true`/`false`, array `[1]`, plain object `{}`) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_min_items_invalid_when_present` ← M73 axis-specific code; covers all invalid minItems values: negative-integer, fractional, NaN, Infinity, -Infinity, string, boolean, array, object; **NO-COERCION** via `Number()`/`parseInt()`/`parseFloat()`
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown minItems value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (deterministic stable-output convention only — NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked, NOT route-extraction-quality-tier-ranked, NOT validation-layer-strictness-priority-ranked, NOT DTO-cardinality-floor-priority-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_min_items` is NEVER written into the manifest (non-persistence rule).
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- The classifier MUST NOT cross-reference `maxItems`, `uniqueItems`, `items`, `default`, `const`, `enum`, `required`, or any other JSON-Schema annotation.
+- Per-property `minItems` annotation beyond the FIRST is NOT walked (reserved for `M-MinItems-All-Properties-Index-1`).
+
+```bash
+# All minItems annotation buckets (human-readable)
+tusq least index
+
+# All buckets (JSON)
+tusq least index --json
+
+# Bounded capabilities only (minItems is a non-negative integer)
+tusq least index --least bounded --json
+
+# Unbounded capabilities (minItems absent, null, or undefined)
+tusq least index --least unbounded --json
+
+# Write to file
+tusq least index --out least-index.json
+```
+
 ## `tusq regex index`
 
 Emit a deterministic, per-first-input-property-pattern-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].pattern` is a non-empty string (`patterned`), absent or `null` (`unpatterned`), non-applicable (`not_applicable`), or malformed (`unknown`). This is a **planning aid, not a runtime regex validator, regex compiler, regex-syntax-error detector, doc-contradiction detector, LLM-pattern-inferrer, or pattern-format-crossref**.
