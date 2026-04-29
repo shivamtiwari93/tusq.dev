@@ -218,6 +218,48 @@ tusq binding index --source request_body --json
 tusq binding index --out binding-index.json
 ```
 
+## `tusq crowded index`
+
+Emit a deterministic, per-`maxProperties`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-property-count-ceiling annotation on `input_schema.properties[firstKey].maxProperties` (the first input property descriptor), in closed-enum order (`bounded → unbounded → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `maxProperties` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime object-property-count-ceiling validator, runtime object-key-count enforcer, DTO property-count-ceiling validator, evals-and-regression strictness aggregator, or MCP-server-max-properties validator**.
+
+**Distinct from `tusq most index` (M74):** `tusq most index` reads `input_schema.properties[firstKey].maxItems` (array-cardinality-ceiling — ARRAY-axis annotation on type:'array' properties). `tusq crowded index` reads `input_schema.properties[firstKey].maxProperties` (object-property-count-ceiling — OBJECT-axis annotation on type:'object' properties). Same mathematical ceiling shape (non-negative integer), different type domains.
+
+**Distinct from `tusq sparse index` (M78):** `tusq sparse index` reads `firstKey.minProperties` (object-property-count-floor — minimum declared key count). `tusq crowded index` reads `firstKey.maxProperties` (object-property-count-ceiling — maximum declared key count). Numeric mirror on the same firstVal slot: floor-vs-ceiling.
+
+**Distinct from `tusq open index` (M77):** `tusq open index` reads `firstKey.additionalProperties` (object-extension-control — boolean/schema). `tusq crowded index` reads `firstKey.maxProperties` (non-negative-integer). Orthogonal field semantics on the same object-axis.
+
+```bash
+tusq crowded index [--crowded <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--crowded <bounded\|unbounded\|not_applicable\|unknown>` | all buckets | Filter to a single maxProperties annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**MaxProperties classification rule** (applied to `input_schema.properties[firstKey].maxProperties` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+- `bounded` — `Number.isInteger(firstKey.maxProperties) && firstKey.maxProperties >= 0` (**NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES**; **PRESENT-AS-PRESENT-ZERO**: `maxProperties: 0` → `bounded` — explicit zero is a valid declared ceiling; mirrors M74 `maxItems: 0` and M78 `minProperties: 0`; no warning)
+- `unbounded` — `firstKey.maxProperties` is absent/undefined (**ABSENT-AS-UNBOUNDED**: Draft-7 default is no ceiling; no warning), OR `=== null` (**NULL-AS-ABSENT**: mirrors M55–M78 null-as-absent precedent; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR `firstVal.type` is a non-empty string other than `'object'` (**TYPE-APPLICABILITY-OBJECT**: `maxProperties` only meaningful for object-typed properties; JSON-Schema-Draft-7 defines `maxProperties` ONLY for `type === 'object'`; mirrors M77/M78 TYPE-APPLICABILITY-OBJECT; no warning)
+- `unknown` — `input_schema` or `properties` are malformed, `firstKey` not a plain object, OR `maxProperties` is present non-null non-non-negative-integer (negative integer `-1`, non-integer `0.5`/`1.5`, `NaN`, `Infinity`, string `'1'`/`'0'`, boolean `true`/`false`, array `[1]`, plain object `{}`) (**DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES**: triggers 6th warning code `input_schema_properties_first_property_max_properties_invalid_when_present`; **NO-COERCION** via `Number()`/`parseInt()`/`parseFloat()`/`Boolean()`/`!!`/`v?true:false` — strict `Number.isInteger(v) && v >= 0` only)
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT evals-and-regression-priority-ranked, NOT schema-drift-detection-priority-ranked, NOT golden-task-coverage-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown maxProperties state, `--out` path error, or unknown subcommand
+
+```bash
+tusq crowded index
+tusq crowded index --json
+tusq crowded index --crowded bounded
+tusq crowded index --crowded not_applicable --json
+tusq crowded index --out crowded-index.json
+```
+
 ## `tusq confidence index`
 
 Emit a deterministic, per-confidence-tier capability index from manifest evidence. Groups capabilities by a tier derived from their numeric `confidence` field using frozen thresholds (`high` ≥ 0.85, `medium` in [0.6, 0.85), `low` < 0.6, `unknown` for null/undefined/missing/non-numeric/out-of-[0,1]), in closed-enum order (`high → medium → low → unknown`). This is a **planning aid, not a runtime confidence gate, evidence-quality scoring engine, or automated re-classifier**.

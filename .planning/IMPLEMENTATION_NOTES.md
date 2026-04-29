@@ -2,6 +2,62 @@
 
 ---
 
+## M79 (run_73dd78f172735547, turn_f703b2d7af03a903, dev)
+
+**Axis:** `input_schema.properties[firstKey].maxProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-CEILING annotation. CLI noun: `crowded` (between `confidence` and `description`). CLI surface 62→63.
+
+**Constants added** (`src/cli.js`, after M78 minProperties constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_MAX_PROPERTIES_ENUM` = frozen Set `['bounded', 'unbounded', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_MAX_PROPERTIES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_count_ceiling_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_MAX_PROPERTIES_BUCKET_ORDER` = frozen array `['bounded', 'unbounded', 'not_applicable']`
+
+**Guard functions** (after M78 guards):
+- `_guardInputSchemaFirstPropertyMaxPropertiesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyMaxPropertiesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyMaxProperties(inputSchema)` (after `classifyInputSchemaFirstPropertyMinProperties`):
+1. `inputSchema` null/undefined → `unknown` (reason: `input_schema_field_missing`)
+2. `inputSchema` not plain object / is Array → `unknown` (reason: `input_schema_field_not_object`)
+3. `inputSchema.type` missing or non-string → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+4. `inputSchema.type` is a string but not `'object'` → `not_applicable` (non-object input has no first property; no warning)
+5. `properties` missing/null/not-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+6. `Object.keys(properties).length === 0` → `not_applicable` (zero-property object; no warning)
+7. `firstVal` not a plain non-null object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid` — FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT**: `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (mirrors M77/M78)
+9. **ABSENT-AS-UNBOUNDED**: `maxProperties` absent/undefined → `unbounded` (Draft-7 default no ceiling)
+10. **NULL-AS-ABSENT**: `maxProperties === null` → `unbounded` (mirrors M55–M78)
+11. **NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES**: `Number.isInteger(v) && v >= 0` → `bounded` (**PRESENT-AS-PRESENT-ZERO**: `maxProperties:0` → `bounded`; mirrors M74 maxItems:0 and M78 minProperties:0)
+12. **DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES**: any other value → `unknown` WITH 6th code; **NO-COERCION**
+
+**Index builder:** `buildInputSchemaFirstPropertyMaxPropertiesIndex(manifest, manifestPath)` (after `parseSparseIndexArgs`):
+- Six frozen warning reason codes (codes 1–5 carried from M55–M78; 6th: `input_schema_properties_first_property_max_properties_invalid_when_present`)
+- Result array field: `first_property_max_properties_states`
+- Per-bucket field: `input_schema_first_property_max_properties`
+- Aggregation key: `object_property_count_ceiling_constraint` (bounded/unbounded), `not_applicable`, `unknown`
+- Bucket iteration order: `bounded → unbounded → not_applicable → unknown`
+- Non-persistence: `input_schema_first_property_max_properties` MUST NOT be written into `tusq.manifest.json`
+
+**Formatter:** `formatInputSchemaFirstPropertyMaxPropertiesIndex(index)` — human-readable text output.
+
+**Command wiring:**
+- `cmdCrowded(args)` — top-level noun dispatcher for `tusq crowded`
+- `cmdCrowdedIndex(args)` — `tusq crowded index` handler with full flag parsing, manifest reading, filter enforcement, `--out`/`--json` modes
+- `parseCrowdedIndexArgs(args)` — known flags: `['crowded', 'manifest', 'out', 'json']`
+- Dispatch switch: `case 'crowded': cmdCrowded(args)` inserted between `'confidence'` and `'description'`
+- `printHelp()`: `'  crowded ...'` line inserted between `'confidence'` and `'description'`
+- `printCommandHelp()`: `crowded` and `'crowded index'` entries inserted before `confidence` entry
+
+**Tests updated:**
+- `tests/smoke.mjs`: all 44 `!== 62` assertions updated to `!== 63`; M79 18-case smoke matrix added (M79(a)–M79(r))
+- `tests/eval-regression.mjs`: `runInputSchemaFirstPropertyMaxPropertiesIndexDeterminismScenario` handler added; dispatch case `'input_schema_first_property_max_properties_index_determinism'` wired
+- `tests/evals/governed-cli-scenarios.json`: scenario `input-schema-first-property-max-properties-index-determinism` appended (69 → 70 scenarios)
+
+**Website:** `website/docs/cli-reference.md`: `## tusq crowded index` section inserted before `## tusq confidence index`.
+
+**npm test result:** `Smoke tests passed` + `Eval regression harness passed (70 scenarios)` — exit 0.
+
+---
+
 ## M78 (run_b2c5d5143ed0e344, turn_5f19567fcdd8fb6c, dev)
 
 **Axis:** `input_schema.properties[firstKey].minProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-FLOOR annotation. CLI noun: `sparse` (between `signature` and `strictness`). CLI surface 61→62.
