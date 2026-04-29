@@ -1,5 +1,28 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M80 (turn_09d7e5360bde2580, run_9bd8558c73fb239e, 2026-04-29, HEAD ffd45e7)
+
+**Milestone:** M80 — Input Schema First Property PatternProperties Object-Property-Name-Pattern-Map Annotation Presence Index (`tusq partition index`)
+
+**CLI surface:** 63 → 64 commands. New command `tusq partition index` inserted alphabetically between `tusq parameter index` and `tusq path index`.
+
+**New classification axis:** `input_schema.properties[firstKey].patternProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-PATTERN-MAP annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `object_property_pattern_map_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: `patternProperties` is a plain-object with >= 1 key AND every value is boolean OR plain-object → `typed` (a valid patternProperties map is declared, providing property-name-pattern constraints)
+- ABSENT-AS-UNTYPED: `patternProperties` absent or `undefined` → `untyped` (Draft-7 default is no patternProperties; no name-pattern constraints declared)
+- NULL-AS-ABSENT: `patternProperties === null` → `untyped` (mirrors M55–M79 null-as-absent precedent; null treated as absent)
+- EMPTY-MAP-AS-UNTYPED: `patternProperties: {}` plain-object with zero keys → `untyped` (empty map provides no actual pattern constraints; semantically equivalent to absent)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77/M78/M79 TYPE-APPLICABILITY-OBJECT; patternProperties is only meaningful for object-typed properties; JSON-Schema-Draft-7 defines patternProperties ONLY for type==='object')
+- DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: any other `patternProperties` value (non-plain-object, or plain-object whose any value is not boolean and not plain-object) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_pattern_properties_invalid_when_present`
+- NO-COERCION: strict `Object.prototype.toString.call()` checks for `'[object Object]'`; no coercion via type-casting or duck-typing
+
+**Axis relationship:** M80 (patternProperties) is the fourth object-axis annotation in the M77+ object-keyword cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling → M80: patternProperties name-pattern-map). M80 completes the post-M77 object-keyword cluster. Unlike M77–M79 (which use numeric or boolean-presence axes), M80 uses a structural-map axis: the bucket classification depends on the shape and content of the patternProperties map value.
+
+**Verification results:** `npm test` → exit 0 (71 eval scenarios, smoke tests pass). CLI surface = 64. Express-sample fixture: `untyped` bucket (post_users_users, aggregation_key object_property_pattern_map_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 9 boundary cases verified (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED×2, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, EMPTY-MAP-AS-UNTYPED, TYPE-APPLICABILITY-OBJECT, DRAFT-7-invalid-str-val, DRAFT-7-invalid-num-val, DRAFT-7-invalid-null-val). Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1365–REQ-1389). Total: 1389 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M79 (turn_a44f405a4bae76ab, run_73dd78f172735547, 2026-04-29, HEAD 1df35e3)
 
 **Milestone:** M79 — Input Schema First Property MaxProperties Object-Property-Count-Ceiling Annotation Presence Index (`tusq crowded index`)
