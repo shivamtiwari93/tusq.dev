@@ -1422,6 +1422,60 @@ tusq examples index --tier unknown --json
 tusq examples index --out examples-index.json
 ```
 
+## `tusq extra index`
+
+Emit a deterministic, per-first-input-property-additionalItems-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 `additionalItems` annotation on `input_schema.properties[firstKey]` (the first input property descriptor), in closed-enum order (`typed → untyped → not_applicable → unknown`). Requires `firstVal.type === 'array'` AND `Array.isArray(firstVal.items)` (TUPLE-ITEMS-PREREQUISITE — Draft-7 §6.4.2 defines `additionalItems` as relevant only for array-typed schemas with a tuple `items` declaration). This is a **planning aid, not a runtime array-tail validator, SDK variadic-tuple emitter, TypeScript variadic-tuple renderer, API tool schema emitter, integration test fixture emitter, eval fixture emitter, drift report emitter, migration plan emitter, changelog emitter, marketplace validation report emitter, or local development fixture emitter**.
+
+**TYPE-APPLICABILITY-ARRAY-RESTRICTION (M87-SPECIFIC):** Distinct from M77–M83 `TYPE-APPLICABILITY-OBJECT` (firstVal.type !== 'object' → not_applicable) and from M84/M85/M86 `NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION` (applies to ANY type). For M87: `firstVal.type !== 'array'` → `not_applicable`. Draft-7 §6.4.2 defines `additionalItems` as meaningful **only** on array-typed schemas.
+
+**TUPLE-ITEMS-PREREQUISITE (M87-SPECIFIC):** `firstVal.items` absent OR `!Array.isArray(firstVal.items)` → `not_applicable`. Draft-7 §6.4.2 explicitly states `additionalItems` is **ignored** when `items` is a single schema (non-array) or absent — without an array-tuple `items` declaration there is no tail-validation slot to classify.
+
+**M87-vs-M77 distinction:** `tusq extra index` (M87) reads `firstKey.additionalItems` (ARRAY-TAIL-ITEMS-SCHEMA — boolean or object subschema controlling additional tuple positions). `tusq open index` (M77) reads `firstKey.additionalProperties` (OBJECT-EXTENSION-CONTROL — boolean or object schema controlling additional object keys). Orthogonal axes on different property shapes (array vs object).
+
+**M87-vs-M71 distinction:** `tusq extra index` (M87) reads `firstKey.additionalItems` (Draft-7 §6.4.2 — array-tail-items-schema annotation). `tusq element index` (M71) reads `firstKey.items` (Draft-7 §6.4.1 — items subschema annotation, which can be a single schema OR a tuple-array). The `items` axis covers all array items; the `additionalItems` axis covers only the TAIL positions beyond the leading tuple.
+
+```
+tusq extra index [--extra <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--extra <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single additionalItems annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write JSON index to a file path; suppresses stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]`) |
+
+**Exit codes:**
+- `0` — index produced (or empty-capabilities manifest)
+- `1` — missing/invalid manifest, unknown flag, unknown additional items state, `--out` path error, or unknown subcommand
+
+**Bucket rules:**
+- `typed` — `firstVal.additionalItems` is a boolean (`true` or `false`) — BOOLEAN-SCHEMA-AS-TYPED (Draft-7 §4.4 defines boolean schemas as valid; `true` permits all extra items, `false` forbids extra items; mirrors M77 BOOLEAN-AS-TYPED for `additionalProperties`); OR a non-empty plain-object subschema (NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED; subschema NOT recursively walked)
+- `untyped` — `firstVal.additionalItems` own-property NOT present (ABSENT-AS-UNTYPED; Draft-7 §6.4.2 default is unrestricted; no warning); OR `additionalItems` is an empty plain-object schema `{}` (EMPTY-OBJECT-SCHEMA-AS-UNTYPED M87-INHERITED-FROM-M81: empty `{}` declares no constraint; distinct from M84/M86 EMPTY-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY for value-axes where `{}` is the empty-object VALUE not a schema)
+- `not_applicable` — outer `inputSchema.type` is not `'object'`; OR zero-property object; OR first property descriptor not a plain object; OR TYPE-APPLICABILITY-ARRAY-RESTRICTION: `firstVal.type !== 'array'`; OR TUPLE-ITEMS-PREREQUISITE: `firstVal.items` absent OR `!Array.isArray(firstVal.items)`
+- `unknown` — malformed `input_schema`; OR `firstVal.additionalItems` own-property present with invalid value: `undefined` (UNDEFINED-EXPLICIT-AS-UNKNOWN); `null` (NULL-AS-UNKNOWN M87-SPECIFIC: Draft-7 schemas are boolean-or-object; null is neither; **distinct from M86 NULL-AS-TYPED** for `default`); array (ARRAY-AS-UNKNOWN M87-SPECIFIC: Draft-7 §6.4.2 MUST be boolean OR single object subschema, NOT an array of schemas; **distinct from `items`** which CAN be a tuple-array); any other non-boolean non-plain-object value — 6th warning code: `input_schema_properties_first_property_additional_items_invalid_when_present`
+
+**Aggregation keys:** `array_tail_items_schema` (typed/untyped buckets) | `not_applicable` | `unknown`
+
+**Result fields:** `first_property_additional_items_states[]` array; per-bucket `input_schema_first_property_additional_items` field
+
+```bash
+# All additionalItems annotation buckets (human-readable)
+tusq extra index
+
+# All additionalItems annotation buckets (JSON)
+tusq extra index --json
+
+# Filter to capabilities with a typed additionalItems schema
+tusq extra index --extra typed
+
+# Capabilities with no additionalItems annotation (untyped)
+tusq extra index --extra untyped --json
+
+# Write to file
+tusq extra index --out extra-index.json
+```
+
 ## `tusq fixed index`
 
 Emit a deterministic, per-first-input-property-const-single-allowed-value-pin-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].const` is present with a non-`undefined` value (`pinned`), absent or `undefined` (`unpinned`), non-applicable (`not_applicable` — non-object input or zero-property object), or structurally malformed (`unknown`) in closed-enum order (`pinned → unpinned → not_applicable → unknown`). This is a **planning aid, not a runtime const enforcer, marketplace-pin-generator, MCP-server-output-generator, marketplace-package-generator, MCP-server-tool-call-wrapper-pin-enforcer, doc-contradiction detector, enum-aggregator, default-aggregator, value-type-distributor, value-cardinality-tier-distributor, joint-validity-validator, type-applicability validator, LLM-const-inferrer, or statistical aggregator**.

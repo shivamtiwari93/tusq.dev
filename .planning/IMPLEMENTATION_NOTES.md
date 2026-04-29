@@ -2,6 +2,65 @@
 
 ---
 
+## M87 (run_1073dd9a1aacf17f, turn_8491a1464c5bda92, dev)
+
+**Axis:** `input_schema.properties[firstKey].additionalItems` — JSON-Schema Draft 7 §6.4.2 ARRAY-TAIL-ITEMS-SCHEMA annotation. CLI noun: `extra` (between `examples` and `fixed`). CLI surface 70→71.
+
+**Constants added** (`src/cli.js`, after M86 prefill constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_ITEMS_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_ITEMS_AGGREGATION_KEY_ENUM` = frozen Set `['array_tail_items_schema', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_ITEMS_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M86 guards):
+- `_guardInputSchemaFirstPropertyAdditionalItemsBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyAdditionalItemsAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyAdditionalItems(inputSchema)`. Rule order (frozen):
+1. inputSchema null/undefined/not-plain-object → `unknown`
+2. inputSchema.type not string → `unknown`
+3. inputSchema.type !== 'object' → `not_applicable` (outer-schema prerequisite)
+4. properties missing/null/not-plain-object → `unknown`
+5. properties empty → `not_applicable`
+6. firstVal not plain object → `unknown`
+7. **TYPE-APPLICABILITY-ARRAY-RESTRICTION** (M87-SPECIFIC): `firstVal.type !== 'array'` → `not_applicable` (distinct from M77–M83 TYPE-APPLICABILITY-OBJECT and M84/M85/M86 NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION)
+8. **TUPLE-ITEMS-PREREQUISITE** (M87-SPECIFIC): `firstVal.items` absent OR `!Array.isArray(firstVal.items)` → `not_applicable`
+9. `!hasOwnProperty('additionalItems')` → `untyped` (ABSENT-AS-UNTYPED)
+10. `additionalItems === undefined` → `unknown` (UNDEFINED-EXPLICIT-AS-UNKNOWN, 6th code)
+11. `additionalItems === null` → `unknown` (NULL-AS-UNKNOWN M87-SPECIFIC, 6th code; distinct from M86 NULL-AS-TYPED)
+12. `typeof additionalItems === 'boolean'` → `typed` (BOOLEAN-SCHEMA-AS-TYPED; both true and false)
+13. `Array.isArray(additionalItems)` → `unknown` (ARRAY-AS-UNKNOWN M87-SPECIFIC, 6th code)
+14. `toString === '[object Object]' && keys.length === 0` → `untyped` (EMPTY-OBJECT-SCHEMA-AS-UNTYPED, M87-INHERITED-FROM-M81)
+15. `toString === '[object Object]' && keys.length >= 1` → `typed` (NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED)
+16. else → `unknown` (NO-COERCION, 6th code)
+
+**Key M87 asymmetries vs prior cluster milestones:**
+
+| Rule | M87 | M86 (prefill) | M84 (const) | M81 (propertyNames) |
+|------|-----|---------------|-------------|---------------------|
+| null | unknown (NULL-AS-UNKNOWN) | typed (NULL-AS-TYPED) | typed (NULL-AS-TYPED) | unknown |
+| empty `{}` | untyped (EMPTY-OBJECT-SCHEMA-AS-UNTYPED) | typed (value-axis: {} is JSON value) | typed (value-axis) | untyped |
+| boolean | typed (BOOLEAN-SCHEMA-AS-TYPED) | typed (JSON-BOOLEAN-AS-TYPED) | typed | typed |
+| array | unknown (ARRAY-AS-UNKNOWN M87-SPECIFIC) | typed (JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY) | typed | N/A |
+| type gate | TYPE-APPLICABILITY-ARRAY-RESTRICTION (firstVal.type='array' required) | NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION | NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION | TYPE-APPLICABILITY-OBJECT |
+
+**Build function:** `buildInputSchemaFirstPropertyAdditionalItemsIndex(manifest, manifestPath)` — mirrors M86 build, 6th warning code `input_schema_properties_first_property_additional_items_invalid_when_present`.
+
+**Format function:** `formatInputSchemaFirstPropertyAdditionalItemsIndex(index)` — standard planning-aid header.
+
+**Cmd functions:** `cmdExtra(args)`, `cmdExtraIndex(args)`, `parseExtraIndexArgs(args)`. Filter flag: `--extra`.
+
+**Dispatch:** `'extra'` case wired between `'examples'` and `'fixed'`.
+
+**Smoke tests** (`tests/smoke.mjs`): 18 assertions M87(a)–M87(r). All 52 `!== 70` help-count assertions updated to `!== 71`. Fixture manifest: 13 capabilities covering typed (3), untyped (2), not_applicable (5), unknown (3).
+
+**Eval scenario** (`tests/evals/governed-cli-scenarios.json`): `input-schema-first-property-additional-items-index-determinism` (78th scenario). Handler: `runInputSchemaFirstPropertyAdditionalItemsIndexDeterminismScenario` in `tests/eval-regression.mjs`.
+
+**Website docs** (`website/docs/cli-reference.md`): `## tusq extra index` section added between `## tusq examples index` and `## tusq fixed index`.
+
+**Verification:** `npm test` exits 0 — Smoke tests passed + Eval regression harness passed (78 scenarios). CLI surface: 71. `extra` between `examples` and `fixed`. express-sample `extra index --json`: `first_property_additional_items_states[]` with only `not_applicable` bucket (no typed/untyped/unknown — empty-bucket-MUST-NOT-appear invariant confirmed). Non-persistence: `input_schema_first_property_additional_items` NOT written into manifest. Zero package drift; zero fixture mutation.
+
+---
+
 ## M86 (run_083e290f5ee318f4, turn_fc4027d5c8789062, dev)
 
 **Axis:** `input_schema.properties[firstKey].default` — JSON-Schema Draft 7 §10.2 SAMPLE-INSTANCE-VALUE annotation. CLI noun: `prefill` (between `policy` and `preset`). CLI surface 69→70.
