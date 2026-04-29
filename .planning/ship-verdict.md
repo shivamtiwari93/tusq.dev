@@ -2,6 +2,40 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_648db536cd074a54 (role=qa, run_c78dec96e45c4d0c, M85 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_7d666108b5f79c9b, role=dev, HEAD 42d0dae) for run_c78dec96e45c4d0c independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M85 does not modify manifest format — `input_schema_first_property_enum` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_fa7c922678a9a76c upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions correctly carried forward: (1) `allowed` inserted between `above` and `below` (above(a=97,b=98) < allowed(a=97,l=108) at pos 1 (b(98)<l(108)); allowed(a=97) < below(b=98) at pos 0 (a(97)<b(98))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum value_set_constraint|not_applicable|unknown three-value; (4) NULL-AS-ABSENT M85-SPECIFIC (firstVal.enum===null → untyped, distinct from M84 NULL-AS-TYPED); (5) EMPTY-ARRAY-AS-UNKNOWN M85-SPECIFIC (enum:[] → unknown WITH 6th code, distinct from M82 EMPTY-ARRAY-AS-UNTYPED and M84 JSON-ARRAY-AS-TYPED); (6) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION inherited from M84. PASS.
+
+**3. Attempt-1 failure root cause validation (dev DEC-002):** Dev correctly diagnosed attempt-1 failure as subprocess exited code 143 (SIGTERM/timeout) before writing turn-result.json. Attempt 1 successfully implemented all M85 source code but was killed before completing planning artifact updates. Attempt 2 completed the missing planning artifacts and wrote the staging turn result. PASS.
+
+**4. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_AGGREGATION_KEY_ENUM` (frozen Set: value_set_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_ALLOWED_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` after M84 constant constants. Guards `_guardInputSchemaFirstPropertyEnumBucketKey` and `_guardInputSchemaFirstPropertyEnumAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**5. Classifier verification:** `classifyInputSchemaFirstPropertyAllowed` confirmed in src/cli.js. Implements all M85-frozen classification rules: NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M85-inherited from M84 — MUST NOT inspect firstVal.type to gate not_applicable; Draft-7 §6.1.2 enum applies to ANY type); NULL-AS-ABSENT (M85-SPECIFIC — enum:null → untyped, null is not a meaningful set; distinct from M84 NULL-AS-TYPED); ABSENT-AS-UNTYPED (enum own-property absent → untyped); UNDEFINED-EXPLICIT-AS-UNKNOWN (JavaScript undefined → unknown+6th); NON-ARRAY-AS-UNKNOWN (non-array enum → unknown+6th; Draft-7 §6.1.2 MUST be array); EMPTY-ARRAY-AS-UNKNOWN (M85-SPECIFIC — enum:[] → unknown+6th; distinct from M82 EMPTY-ARRAY-AS-UNTYPED and M84 JSON-ARRAY-AS-TYPED); NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED (null/string/boolean/finite-number/Array/plain-object elements; nested shape NOT recursively walked); ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN (undefined/NaN/Infinity/function/Symbol/BigInt/Date/RegExp → unknown+6th); DRAFT-7-NON-EMPTY-ARRAY-OF-VALID-JSON-VALUES-IS-VALID-ENUM (NO duplicate detection); NO-COERCION. Boundary verification confirmed via synthetic 15-cap manifest CLI run (8 typed, 2 untyped, 2 not_applicable, 3 unknown). PASS.
+
+**6. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 69 (68→69 growth confirmed). `allowed` confirmed between `above` and `below` in help output. `tusq allowed index --json --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 0. PASS.
+
+**7. Filter flag verification:** `--allowed TYPED` → exit 1 (case-sensitive: "Unknown input schema first property enum state: TYPED"). `--allowed typed` on express-sample → exit 1 (absent bucket: "No capabilities found for input schema first property enum state: typed"). `--allowed untyped` → exit 0 (present bucket). PASS.
+
+**8. Express-sample fixture verification:** `first_property_enum_states[]` with `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `value_set_constraint`, capability_count 2) and `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1). `typed` and `unknown` buckets absent. `warnings: []`. PASS.
+
+**9. Package drift and fixture mutation:** `git diff --quiet -- package.json package-lock.json tests/fixtures/` → exit 0. Zero package drift. Zero fixture mutation. PASS.
+
+**10. Test suite:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (76 scenarios)` (75→76 from M85 eval scenario `input-schema-first-property-allowed-index-determinism`). PASS.
+
+**11. Planning artifact verification:** All 18 M85 ROADMAP checkboxes [x] confirmed. IMPLEMENTATION_NOTES.md M85 section prepended. SYSTEM_SPEC.md M85 Materialized blockquote prepended. command-surface.md M85 Materialized blockquote prepended. `website/docs/cli-reference.md` `## tusq allowed index` section inserted between `## tusq above index` and `## tusq below index`. PASS.
+
+**12. M85-specific invariant verification (boundary classification):** All 15 boundary cases PASS via synthetic CLI manifest run: NON_EMPTY_STRING_ARRAY (typed), NON_EMPTY_FINITE_NUM_ARRAY (typed), NON_EMPTY_BOOL_ARRAY (typed), NON_EMPTY_NULL_ELEMENT (typed; null as array-element is valid JSON — distinct from NULL-AS-ABSENT), NON_EMPTY_MIXED_VALID (typed), NON_EMPTY_ARRAY_ELEMENT (typed; nested array shape NOT recursively walked), NON_EMPTY_PLAIN_OBJ_ELEMENT (typed; nested object shape NOT recursively walked), NO_TYPE_APPLICABILITY_STR (typed; firstVal.type:'string' AND enum=['a','b'] → typed, NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION confirmed), ABSENT_AS_UNTYPED (untyped), NULL_AS_ABSENT (untyped; M85-SPECIFIC: enum:null → untyped), OUTER_NOT_OBJECT (not_applicable), ZERO_PROPERTY (not_applicable), EMPTY_ARRAY_AS_UNKNOWN (unknown+6th; M85-SPECIFIC: enum:[] → unknown, distinct from M82 and M84), NON_ARRAY_STRING_OUTER (unknown+6th), NON_ARRAY_OBJ_OUTER (unknown+6th). PASS.
+
+**13. Objections carried forward:** OBJ-001 (medium, non-blocking): R6 (auth_required===false → auth_scheme:'none') remains dead code in automated pipeline. OBJ-002 (low, non-blocking): surface-plan-determinism eval uses synthetic_capabilities rather than scanned fixture. OBJ-003 (low, non-blocking): M31 per-domain flag value assertions not independently smoke-asserted; M32–M85 close their own analogs. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. M85-SPECIFIC NULL-AS-ABSENT, EMPTY-ARRAY-AS-UNKNOWN, and NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION are by PM design (M85 DEC-003/DEC-004) — not objections. No new blocking objections raised for M85. PASS.
+
+**Verdict: SHIP** — M85 implementation verified. 76 eval scenarios pass. 1514 acceptance criteria (REQ-001–REQ-1514) pass. CLI surface 68→69. Ship verdict remains SHIP. Phase transition requested: launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_e45757e967179a5a (role=qa, run_91fd37340cef71d1, M84 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_cc991c7e1fc3d487, role=dev, HEAD 95931d1) for run_91fd37340cef71d1 independently rather than rubber-stamping it.

@@ -1,5 +1,39 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M85 (turn_648db536cd074a54, run_c78dec96e45c4d0c, 2026-04-29, HEAD 42d0dae)
+
+**Milestone:** M85 — Input Schema First Property Enum Set-Of-Allowed-Values Annotation Presence Index (`tusq allowed index`)
+
+**CLI surface:** 68 → 69 commands. New command `tusq allowed index` inserted alphabetically between `tusq above index` and `tusq below index`.
+
+**New classification axis:** `input_schema.properties[firstKey].enum` — JSON-Schema Draft 7 §6.1.2 SET-OF-ALLOWED-VALUES annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `value_set_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen) — TWO M85-SPECIFIC asymmetries vs M77–M84 + ONE inheritance from M84:**
+
+**(1) NULL-AS-ABSENT (M85-SPECIFIC):** `firstVal.enum === null` → `untyped`. `null` is a single value, not a set — `enum: null` cannot declare a meaningful value-set. This is the M85-SPECIFIC distinction from M84's NULL-AS-TYPED for `const` (where `const: null` is a valid pin to literal JSON null). Inherits M55–M83 NULL-AS-ABSENT pattern.
+
+**(2) EMPTY-ARRAY-AS-UNKNOWN (M85-SPECIFIC):** `Array.isArray(firstVal.enum) && firstVal.enum.length === 0` → `unknown` WITH 6th code `input_schema_properties_first_property_enum_invalid_when_present`. Draft-7 §6.1.2 SHOULD have at least one element — an empty `enum` is pathological because it would reject every value. This is the M85-SPECIFIC distinction from M82's EMPTY-ARRAY-AS-UNTYPED for `required` (where `required: []` ≡ absence) and from M84's JSON-ARRAY-AS-TYPED for `const` (where `const: []` pins to the literal empty-array value).
+
+**(3) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M85-inherited from M84):** Classifier MUST NOT inspect `firstVal.type` to gate `not_applicable`. Draft-7 §6.1.2 defines `enum` as applicable to ANY type — a `enum` annotation on a first property with `type: "string"` is valid and fully meaningful. This is M85-inherited distinction from M77–M83 where TYPE-APPLICABILITY-OBJECT gated `not_applicable` on `firstVal.type !== 'object'`.
+
+**All other classification rules:**
+- NON-EMPTY-ARRAY-WITH-ALL-VALID-JSON-ELEMENTS-AS-TYPED: non-empty array where every element is null, string, finite number, boolean, Array (nested shape NOT recursively walked), or plain object (nested shape NOT recursively walked) → `typed`
+- ARRAY-WITH-INVALID-ELEMENT-AS-UNKNOWN: any element that is undefined, NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, etc. → `unknown` WITH 6th code
+- NON-ARRAY-AS-UNKNOWN: non-array `enum` value → `unknown` WITH 6th code (Draft-7 §6.1.2 MUST be array)
+- ABSENT-AS-UNTYPED: `enum` own-property absent → `untyped` (Draft-7 default no value-set declared; no warning)
+- UNDEFINED-EXPLICIT-AS-UNKNOWN: JavaScript `undefined` (not a valid JSON value) → `unknown` WITH 6th code
+- DRAFT-7-NON-EMPTY-ARRAY-OF-VALID-JSON-VALUES-IS-VALID-ENUM: NO duplicate-element detection (Draft-7 §6.1.2 SHOULD be unique is loose — reserved for future M-Allowed-Uniqueness-Checker)
+- NO-COERCION: MUST NOT use `Array.from` / `Object` / `JSON.parse(JSON.stringify(...))` / `String` / `Number` / `Boolean` / `!!`
+- `not_applicable` conditions: `inputSchema.type` is a string but not `'object'` (outer schema structural prerequisite); OR `inputSchema.type === 'object'` and zero properties; OR firstVal not a plain object
+
+**Axis relationship:** M85 (enum) is the NINTH first-property axis annotation in the M77+ first-property cluster (M77: additionalProperties → M78: minProperties → M79: maxProperties → M80: patternProperties → M81: propertyNames → M82: required → M83: dependencies → M84: const → M85: enum). M85 is the SECOND in the cluster whose Draft-7 keyword is NOT restricted to type==='object' schemas. M85 introduces the FIRST instance of EMPTY-ARRAY-AS-UNKNOWN in the cluster. M85 introduces the FIRST instance of a value-SET axis (enum declares multiple allowed values) after M84's value-PIN axis (const declares a single pinned value). VISION primary citation: lines 218–227 (§ Embeddable Widgets And Command Surfaces) — enumerates action-widget verbs (refund/assign/create/update/upgrade/suspend/invite) and prescribes framework-agnostic embeddable surfaces. A capability whose first input property declares `enum: ['refund','assign','create']` is the strongest pre-runtime signal for action-widget palette generation, command-palette completion, and select-list rendering.
+
+**Attempt-1 context:** Attempt 1 (sub-process SIGTERM exit code 143) successfully implemented all M85 source code but was killed before completing planning artifact updates and writing the staging turn result. Attempt 2 (this turn's dev work) completed the missing planning artifacts without re-implementing already-working source. No source bugs in M85 (unlike M84 which had three attempt-1 bugs requiring fixes).
+
+**Verification results:** `npm test` → exit 0 (76 eval scenarios, smoke tests pass). CLI surface = 69. Express-sample fixture: `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `value_set_constraint`, capability_count 2) + `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 15 boundary cases verified (8 typed: string-array, finite-num-array, bool-array, null-element, mixed-valid, nested-array-element, nested-obj-element, no-type-applicability-str; 2 untyped: absent-as-untyped, null-as-absent-M85-SPECIFIC; 2 not_applicable: outer-not-object, zero-property; 3 unknown+6th: empty-array-M85-SPECIFIC, non-array-string, non-array-obj). `--allowed TYPED` → exit 1 (case-sensitive). `--allowed typed` on express-sample → exit 1 (absent bucket). `--allowed untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1490–REQ-1514). Total: 1514 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M84 (turn_e45757e967179a5a, run_91fd37340cef71d1, 2026-04-29, HEAD 95931d1)
 
 **Milestone:** M84 — Input Schema First Property Const Single-Value-Pin Annotation Presence Index (`tusq constant index`)
