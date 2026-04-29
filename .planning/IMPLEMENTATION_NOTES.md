@@ -2,6 +2,61 @@
 
 ---
 
+## M83 (run_4be2c82d93272ed2, turn_57cac3046689ed6e, dev)
+
+**Axis:** `input_schema.properties[firstKey].dependencies` — JSON-Schema Draft 7 §6.5.7 OBJECT-PROPERTY-DEPENDENCIES-HETEROGENEOUS-MAP annotation. CLI noun: `dependent` (between `crowded` and `divisor`). CLI surface 66→67.
+
+**Constants added** (`src/cli.js`, after M82 required constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_dependencies_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M82 guards):
+- `_guardInputSchemaFirstPropertyDependenciesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyDependenciesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyDependencies(inputSchema)` (after `classifyInputSchemaFirstPropertyRequired`):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type` is a string but not `'object'` → `not_applicable`
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT**: `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (mirrors M77/M78/M79/M80/M81/M82)
+9. **ABSENT-AS-UNTYPED**: `dependencies` absent/undefined → `untyped`
+10. **NULL-AS-ABSENT**: `dependencies === null` → `untyped` (mirrors M55–M82)
+11. `dependencies` not a plain object (`Object.prototype.toString.call(v) !== '[object Object]'`) → `unknown` WITH 6th code
+12. **EMPTY-MAP-AS-UNTYPED**: plain object with zero own keys `{}` → `untyped` (Draft-7 §6.5.7 empty map equivalent to absence — M83-SPECIFIC)
+13. **NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED** (M83-SPECIFIC): plain object with >=1 keys AND every value is EITHER:
+    - (a) `Array.isArray(v)` AND every element `typeof === 'string'` AND every element `.length >= 1` (LIST form; empty array `[]` PERMITTED — M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED)
+    - (b) `Object.prototype.toString.call(v) === '[object Object]'` (SCHEMA form; empty `{}` permitted)
+    → `typed`
+14. Any value failing (a) or (b) → `unknown` WITH 6th code (DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES)
+
+**Key M83-SPECIFIC asymmetry**: Empty array `[]` is a VALID LIST entry (typed), unlike M82 where `[]` at top-level is UNTYPED. The empty-array-as-untyped rule in M82 applies to `required: []` (the array IS the value), but in M83 `dependencies: { "prop": [] }` means the array is a *value* in the map, and an empty dependency list is a valid (though trivial) LIST-form dependency.
+
+**Build function:** `buildInputSchemaFirstPropertyDependenciesIndex(manifest, manifestPath)` — six frozen warning codes including M83-SPECIFIC 6th: `input_schema_properties_first_property_dependencies_invalid_when_present`.
+
+**Format function:** `formatInputSchemaFirstPropertyDependenciesIndex(index)` — human-readable text output.
+
+**CMD functions:** `cmdDependent(args)`, `cmdDependentIndex(args)`, `parseDependentIndexArgs(args)`.
+
+**Dispatch:** `case 'dependent'` wired between `crowded` and `description` in dispatch switch (alphabetically correct; crowded < dependent < description < divisor).
+
+**printHelp:** `dependent` line added between `crowded` and `divisor` output lines.
+
+**printCommandHelp:** `dependent` and `dependent index` entries added before `divisor` entry.
+
+**Tests updated:**
+- `tests/smoke.mjs`: All 48 `!== 66` → `!== 67` assertions. M83 smoke matrix (M83(a)–M83(r)) covering all 18 classification boundary cases including M83-SPECIFIC empty `[]` LIST entry (typed) and EMPTY-MAP-AS-UNTYPED `{}` (untyped).
+- `tests/evals/governed-cli-scenarios.json`: Added `input-schema-first-property-dependencies-index-determinism` eval scenario (73→74 scenarios).
+- `tests/eval-regression.mjs`: Added `runInputSchemaFirstPropertyDependenciesIndexDeterminismScenario` handler.
+
+**Verification:** `npm test` exits 0 with "Smoke tests passed" and "Eval regression harness passed (74 scenarios)". CLI surface 66→67 confirmed (`node bin/tusq.js help | grep -cE '^  [a-z]'` → 67). `dependent` appears between `crowded` and `divisor` in help output.
+
+---
+
 ## M82 (run_14a2d7109f75b8b8, turn_985f297eece43905, dev)
 
 **Axis:** `input_schema.properties[firstKey].required` — JSON-Schema Draft 7 §5.21 OBJECT-PROPERTY-REQUIRED-KEYS-LIST annotation. CLI noun: `required` (between `request` and `response`). CLI surface 65→66.

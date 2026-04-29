@@ -6675,6 +6675,176 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-dependencies-index-determinism",
+      "scenario_type": "input_schema_first_property_dependencies_index_determinism",
+      "description": "Verifies that tusq dependent index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (object_property_dependencies_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_dependencies non-persistence. NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED (M83-SPECIFIC): outer plain-object MAP with >=1 own keys AND every value is EITHER a valid LIST form (Array.isArray AND every element typeof==='string' AND every element.length>=1; empty array [] PERMITTED) OR a valid SCHEMA form (Object.prototype.toString.call(v)==='[object Object]'; empty schema {} permitted) \u2192 typed (no warning). ABSENT-AS-UNTYPED: dependencies absent/undefined \u2192 untyped (Draft-7 default no conditional dependency, no warning). NULL-AS-ABSENT (mirrors M55\u2013M82): dependencies:null \u2192 untyped (no warning). EMPTY-MAP-AS-UNTYPED (M83-SPECIFIC): dependencies:{} \u2192 untyped (Draft-7 \u00a76.5.7 empty map equivalent to absence, no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M77/M78/M79/M80/M81/M82 TYPE-APPLICABILITY-OBJECT). DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: non-plain-object or map entry that is neither valid LIST nor SCHEMA \u2192 unknown WITH 6th code input_schema_properties_first_property_dependencies_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String.split/Boolean/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_dep_list_cap",
+          "method": "POST",
+          "path": "/typed-dep-list",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": { "prop": ["other"] }
+              }
+            }
+          },
+          "description": "First property type='object', dependencies={ prop: ['other'] } (LIST form) \u2014 lands in typed bucket (NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED)"
+        },
+        {
+          "name": "typed_dep_schema_cap",
+          "method": "POST",
+          "path": "/typed-dep-schema",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": { "prop": {} }
+              }
+            }
+          },
+          "description": "First property type='object', dependencies={ prop: {} } (SCHEMA form, empty schema permitted) \u2014 lands in typed bucket"
+        },
+        {
+          "name": "typed_dep_empty_list_cap",
+          "method": "POST",
+          "path": "/typed-dep-empty-list",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": { "prop": [] }
+              }
+            }
+          },
+          "description": "First property type='object', dependencies={ prop: [] } (LIST form, empty array PERMITTED \u2014 M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED) \u2014 lands in typed bucket"
+        },
+        {
+          "name": "untyped_dep_absent_cap",
+          "method": "GET",
+          "path": "/untyped-dep-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "First property type='object', dependencies absent \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED)"
+        },
+        {
+          "name": "untyped_dep_null_cap",
+          "method": "GET",
+          "path": "/untyped-dep-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": null
+              }
+            }
+          },
+          "description": "First property type='object', dependencies:null \u2014 lands in untyped bucket (NULL-AS-ABSENT, mirrors M55\u2013M82)"
+        },
+        {
+          "name": "untyped_dep_empty_map_cap",
+          "method": "GET",
+          "path": "/untyped-dep-empty-map",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": {}
+              }
+            }
+          },
+          "description": "First property type='object', dependencies:{} empty map \u2014 lands in untyped bucket (EMPTY-MAP-AS-UNTYPED, M83-SPECIFIC)"
+        },
+        {
+          "name": "na_dep_string_type_cap",
+          "method": "GET",
+          "path": "/na-dep-string-type",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string",
+                "dependencies": { "prop": ["x"] }
+              }
+            }
+          },
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT: dependencies only meaningful for object-typed properties)"
+        },
+        {
+          "name": "unknown_dep_invalid_cap",
+          "method": "POST",
+          "path": "/unknown-dep-invalid",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "dependencies": "not-an-object"
+              }
+            }
+          },
+          "description": "First property type='object', dependencies='not-an-object' (non-plain-object value) \u2014 lands in unknown bucket (DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: 6th code)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_dependencies_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }

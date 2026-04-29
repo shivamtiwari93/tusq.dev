@@ -304,6 +304,53 @@ tusq crowded index --crowded not_applicable --json
 tusq crowded index --out crowded-index.json
 ```
 
+## `tusq dependent index`
+
+Emit a deterministic, per-`dependencies`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 §6.5.7 object-property-dependencies-heterogeneous-map annotation on `input_schema.properties[firstKey].dependencies` (the first input property descriptor), in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime conditional-required validator, runtime dependency enforcer, doc-contradiction detector, LLM-inferrer, or statistical aggregator**.
+
+**M83 HETEROGENEOUS-VALUE-MAP rule (unique among M77–M83 object-axis cluster):** The `dependencies` keyword's outer MAP value permits TWO fundamentally different value types per entry — the LIST/`dependentRequired` form (array of co-required property names) OR the SCHEMA/`dependentSchemas` form (a Draft-7 sub-schema applied to the object when the trigger key is present). This bifurcation is the reason Draft-2019-09 split `dependencies` into two separate keywords (`dependentRequired` for LIST-only, `dependentSchemas` for SCHEMA-only). M83 reads Draft-7's combined `dependencies` keyword and classifies both forms uniformly as `typed`. Per-form disaggregation is deferred.
+
+**Distinct from `tusq required index` (M82):** `tusq required index` reads `firstKey.required` — an **unconditional** flat array of NAME strings declaring keys that MUST always be present at runtime. `tusq dependent index` reads `firstKey.dependencies` — a **conditional** trigger-keyed MAP whose values are heterogeneous (LIST or SCHEMA) declaring keys/schemas that apply ONLY WHEN the trigger key is present. M82 governs unconditional presence; M83 governs conditional co-presence.
+
+**Distinct from `tusq named index` (M81):** `tusq named index` reads `firstKey.propertyNames` — a single SCHEMA applied uniformly to EVERY property name, governing what names are PERMITTED. `tusq dependent index` reads `firstKey.dependencies` — a per-trigger-name MAP governing CONDITIONAL co-presence and co-shape requirements.
+
+**Distinct from `tusq partition index` (M80):** `tusq partition index` reads `firstKey.patternProperties` — a regex-keyed MAP applying SCHEMA constraints to keys whose names match a regex. `tusq dependent index` reads `firstKey.dependencies` — a literal-name-keyed MAP applying CONDITIONAL co-required-keys-or-sub-schemas triggered by the literal key's presence.
+
+```bash
+tusq dependent index [--dependent <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--dependent <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single dependencies annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**Dependencies classification rule** (applied to `input_schema.properties[firstKey].dependencies` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+- `typed` — `firstKey.dependencies` is a plain object (`Object.prototype.toString.call(v) === '[object Object]'`) with `Object.keys(v).length >= 1` AND every value is EITHER:
+  - (a) **LIST form**: `Array.isArray(value)` AND every element `typeof === 'string'` AND every element `length >= 1` (empty array `[]` **PERMITTED** as a LIST entry — M83-SPECIFIC; contrast with M82 EMPTY-ARRAY-AS-UNTYPED where a top-level `required: []` is `untyped`; a `dependencies` MAP entry's PRESENCE is itself the constraint declaration, even when the list is empty)
+  - (b) **SCHEMA form**: `Object.prototype.toString.call(value) === '[object Object]'` (any plain-object Draft-7 sub-schema; empty `{}` permitted; keyword coherence NOT validated)
+  (**NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED**)
+- `untyped` — `firstKey.dependencies` is absent/undefined (**ABSENT-AS-UNTYPED**: Draft-7 default no conditional dependency; no warning), OR `=== null` (**NULL-AS-ABSENT**: mirrors M55–M82; no warning), OR plain object with zero own keys `{}` (**EMPTY-MAP-AS-UNTYPED**: Draft-7 §6.5.7 empty map equivalent to absence; no constraint)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR `firstVal.type` is a non-empty string other than `'object'` (**TYPE-APPLICABILITY-OBJECT**: `dependencies` only meaningful for object-typed properties; JSON-Schema-Draft-7 §6.5.7 defines `dependencies` ONLY for `type === 'object'`; mirrors M77/M78/M79/M80/M81/M82; no warning)
+- `unknown` — `input_schema` or `properties` are malformed, `firstKey` not a plain object, OR `dependencies` is present non-null but NOT a plain object, OR plain object MAP with any entry that is neither a valid LIST form nor a valid SCHEMA form (**DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES**: triggers 6th warning code `input_schema_properties_first_property_dependencies_invalid_when_present`; **NO-COERCION** via `Array.from()`/`Object()`/`JSON.parse(JSON.stringify())`/`String(v).split(...)`/`Boolean(v)`/`!!v` — strict `Object.prototype.toString.call(v) === '[object Object]'` for outer MAP AND strict per-value classification)
+
+**Bucket iteration order:** `typed → untyped → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT ecosystem-bots-priority-ranked, NOT Slack-emit-readiness-ranked, NOT Teams-emit-ranked, NOT conditional-required-validator-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown dependencies state, `--out` path error, or unknown subcommand
+
+```bash
+tusq dependent index
+tusq dependent index --json
+tusq dependent index --dependent typed
+tusq dependent index --dependent untyped --json
+tusq dependent index --out dependent-index.json
+```
+
 ## `tusq confidence index`
 
 Emit a deterministic, per-confidence-tier capability index from manifest evidence. Groups capabilities by a tier derived from their numeric `confidence` field using frozen thresholds (`high` ≥ 0.85, `medium` in [0.6, 0.85), `low` < 0.6, `unknown` for null/undefined/missing/non-numeric/out-of-[0,1]), in closed-enum order (`high → medium → low → unknown`). This is a **planning aid, not a runtime confidence gate, evidence-quality scoring engine, or automated re-classifier**.

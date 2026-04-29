@@ -1013,6 +1013,32 @@ const INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_AGGREGATION_KEY_ENUM = Object.freeze(
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
 
+// M83: frozen four-value bucket-key enum for input_schema.properties[firstKey].dependencies (JSON-Schema-Draft-7 §6.5.7 OBJECT-PROPERTY-DEPENDENCIES-HETEROGENEOUS-MAP).
+// typed — firstVal.dependencies is a plain object with >=1 own keys AND every value is EITHER:
+//           (a) Array.isArray AND every element typeof==='string' AND every element.length>=1 (LIST form; empty array [] PERMITTED — M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED)
+//           OR (b) Object.prototype.toString.call(value)==='[object Object]' (SCHEMA form; empty schema {} permitted)
+//           (NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED)
+// untyped — firstVal.dependencies absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no conditional dependency)
+//           OR null (NULL-AS-ABSENT: mirrors M55–M82)
+//           OR empty plain object {} (EMPTY-MAP-AS-UNTYPED: Draft-7 §6.5.7 empty map equivalent to absence)
+// not_applicable — firstVal.type is a string but NOT 'object' (TYPE-APPLICABILITY-OBJECT, mirrors M77/M78/M79/M80/M81/M82)
+//                  OR zero-property object
+// unknown — malformed input_schema, firstVal not a plain object, OR dependencies present non-null non-empty with any invalid value
+//           (DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: any other → unknown WITH 6th code; NO-COERCION)
+// Immutable once M83 ships.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_ENUM = Object.freeze(new Set(['typed', 'untyped', 'not_applicable', 'unknown']));
+
+// M83: frozen three-value aggregation_key enum. Immutable once M83 ships.
+// typed/untyped buckets carry 'object_property_dependencies_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['object_property_dependencies_constraint', 'not_applicable', 'unknown']));
+
+// M83: closed-enum bucket iteration order (typed → untyped → not_applicable). Unknown appended last.
+// NOT ecosystem-bots-priority-ranked, NOT Slack-emit-readiness-ranked, NOT Teams-emit-ranked, NOT Zendesk-readiness-ranked,
+// NOT Intercom-workflow-ranked, NOT Salesforce-copilot-ranked, NOT HubSpot-copilot-ranked, NOT Gainsight-CSM-ranked,
+// NOT admin-console-embed-ranked, NOT integration-config-completeness-ranked, NOT conditional-required-validator-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1148,6 +1174,9 @@ function dispatch(argv) {
       return;
     case 'crowded':
       cmdCrowded(args);
+      return;
+    case 'dependent':
+      cmdDependent(args);
       return;
     case 'description':
       cmdDescription(args);
@@ -13121,6 +13150,20 @@ function _guardInputSchemaFirstPropertyRequiredAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyDependenciesBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_dependencies outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyDependenciesAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -17353,6 +17396,112 @@ function classifyInputSchemaFirstPropertyRequired(inputSchema) {
   return 'typed';
 }
 
+// M83: classifyInputSchemaFirstPropertyDependencies(inputSchema) → 'typed'|'untyped'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              TYPE-APPLICABILITY-OBJECT rule (M83, mirrors M77/M78/M79/M80/M81/M82 TYPE-APPLICABILITY-OBJECT):
+//              if typeof firstVal.type === 'string' && firstVal.type !== 'object' → 'not_applicable' (no warning; dependencies only meaningful for object-typed properties)
+//              dependencies check (JSON-Schema Draft 7 §6.5.7 object-property-dependencies-heterogeneous-map annotation):
+//              ABSENT-AS-UNTYPED: !hasOwn(firstVal, 'dependencies') OR dependencies===undefined → 'untyped' (Draft-7 default no conditional dependency)
+//              NULL-AS-ABSENT: dependencies===null → 'untyped' (mirrors M55–M82 null-as-absent precedent)
+//              dependencies must be a plain object (Object.prototype.toString.call(v)==='[object Object]') to proceed
+//              EMPTY-MAP-AS-UNTYPED: dependencies is plain object with zero own keys → 'untyped' (Draft-7 §6.5.7 empty map equivalent to absence)
+//              NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED (M83-SPECIFIC):
+//                dependencies is plain object with >=1 own keys AND every value is EITHER:
+//                  (a) Array.isArray(v) AND every element typeof==='string' AND every element.length>=1
+//                      (LIST form; empty array [] PERMITTED — M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED)
+//                  OR (b) Object.prototype.toString.call(v)==='[object Object]'
+//                      (SCHEMA form; empty schema {} permitted)
+//                → 'typed'
+//              DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: any other → 'unknown' WITH 6th code
+//              NO-COERCION: MUST NOT use Array.from/Object/JSON-roundtrip/String.split/Boolean/!! to coerce values
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property dependencies beyond the FIRST is NOT walked (reserved for M-Dependencies-All-Properties).
+// Nested-object property dependencies NOT walked (reserved for M-Dependencies-Nested).
+// output_schema first-property dependencies is NOT classified (reserved for M-Dependencies-Output-First-Property-Index).
+// input_schema_first_property_dependencies MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyDependencies(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // TYPE-APPLICABILITY-OBJECT: if firstVal.type is a string but not 'object' → not_applicable (dependencies only meaningful for object-typed properties)
+  if (typeof firstVal.type === 'string' && firstVal.type !== 'object') {
+    return 'not_applicable';
+  }
+  // dependencies check:
+  const depVal = Object.prototype.hasOwnProperty.call(firstVal, 'dependencies') ? firstVal.dependencies : undefined;
+  // ABSENT-AS-UNTYPED: dependencies absent or undefined → untyped (Draft-7 default no conditional dependency)
+  if (depVal === undefined) {
+    return 'untyped';
+  }
+  // NULL-AS-ABSENT: dependencies===null → untyped (mirrors M55–M82 null-as-absent)
+  if (depVal === null) {
+    return 'untyped';
+  }
+  // Must be a plain object for any typed/untyped/valid path
+  if (Object.prototype.toString.call(depVal) !== '[object Object]') {
+    // DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: non-plain-object → unknown WITH 6th code
+    return 'unknown';
+  }
+  // EMPTY-MAP-AS-UNTYPED: empty plain object equivalent to absence (Draft-7 §6.5.7)
+  const depKeys = Object.keys(depVal);
+  if (depKeys.length === 0) {
+    return 'untyped';
+  }
+  // NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED (M83-SPECIFIC):
+  // Every value must be EITHER a valid LIST form OR a valid SCHEMA form
+  for (const depKey of depKeys) {
+    const v = depVal[depKey];
+    if (Array.isArray(v)) {
+      // LIST form: every element must be a non-empty string (empty array [] IS permitted — M83-SPECIFIC)
+      for (const elem of v) {
+        if (typeof elem !== 'string' || elem.length === 0) {
+          // Invalid LIST element → unknown WITH 6th code
+          return 'unknown';
+        }
+      }
+    } else if (Object.prototype.toString.call(v) === '[object Object]') {
+      // SCHEMA form: plain object (including empty schema {}) is valid
+      // no further checks needed
+    } else {
+      // Neither LIST nor SCHEMA form → unknown WITH 6th code
+      return 'unknown';
+    }
+  }
+  return 'typed';
+}
+
 // M76: buildInputSchemaFirstPropertyItemsIndex(manifest, manifestPath) → index object
 // Builds a full unfiltered input schema first property items annotation index from the manifest's capabilities[].
 // Bucket iteration order: declared → undeclared → not_applicable (closed-enum order), then unknown last.
@@ -19721,6 +19870,370 @@ function parseRequiredIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['required', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M83: buildInputSchemaFirstPropertyDependenciesIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property dependencies annotation index from the manifest's capabilities[].
+// Bucket iteration order: typed → untyped → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_dependencies MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyDependenciesIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_dependencies_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_dependencies.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M83 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M82)
+    //   6. input_schema_properties_first_property_dependencies_invalid_when_present (M83-SPECIFIC)
+    //      covers: non-plain-object outer value; or plain object with any entry that is neither a valid LIST form
+    //      (Array.isArray + every element typeof==='string' + every element.length>=1) nor a valid SCHEMA form
+    //      (Object.prototype.toString.call(v)==='[object Object]'); NO-COERCION
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (!(typeof firstVal.type === 'string' && firstVal.type !== 'object')) {
+            // TYPE-APPLICABILITY-OBJECT: only check dependencies for non-typed or object-typed firstVal
+            const depVal = Object.prototype.hasOwnProperty.call(firstVal, 'dependencies') ? firstVal.dependencies : undefined;
+            if (depVal !== undefined && depVal !== null) {
+              if (Object.prototype.toString.call(depVal) !== '[object Object]') {
+                // Non-plain-object → 6th code
+                warningReason = 'input_schema_properties_first_property_dependencies_invalid_when_present';
+              } else {
+                // Plain object: check each value is either a valid LIST or SCHEMA
+                const depKeys = Object.keys(depVal);
+                for (const depKey of depKeys) {
+                  const v = depVal[depKey];
+                  if (Array.isArray(v)) {
+                    // LIST form: every element must be a non-empty string (empty array [] is OK — M83-SPECIFIC)
+                    let listInvalid = false;
+                    for (const elem of v) {
+                      if (typeof elem !== 'string' || elem.length === 0) {
+                        listInvalid = true;
+                        break;
+                      }
+                    }
+                    if (listInvalid) {
+                      warningReason = 'input_schema_properties_first_property_dependencies_invalid_when_present';
+                      break;
+                    }
+                  } else if (Object.prototype.toString.call(v) === '[object Object]') {
+                    // SCHEMA form: valid
+                  } else {
+                    warningReason = 'input_schema_properties_first_property_dependencies_invalid_when_present';
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          // else: TYPE-APPLICABILITY-OBJECT → not_applicable, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const depClass = classifyInputSchemaFirstPropertyDependencies(inputSchema);
+    const isNamedBucket = namedBuckets.has(depClass);
+    const bucketKey = isNamedBucket ? depClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: typed → untyped → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyDependenciesStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const depKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDependenciesBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyDependenciesBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyDependenciesAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyDependenciesAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyDependenciesAggregationKey('object_property_dependencies_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_dependencies: depKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_dependencies_states: firstPropertyDependenciesStates,
+    warnings
+  };
+}
+
+// M83: format input schema first property dependencies annotation index as human-readable text
+function formatInputSchemaFirstPropertyDependenciesIndex(index) {
+  if (index.first_property_dependencies_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Dependencies Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].dependencies JSON-Schema-Draft-7 §6.5.7 object-property-dependencies-heterogeneous-map annotation classification; it does NOT execute capability invocations, validate runtime dependency presence, enforce dependency contracts, cross-reference patternProperties/propertyNames/additionalProperties/minProperties/maxProperties/required annotations, rank ecosystem-bots-priority, assess Slack-emit-readiness, or rank Teams-emit-priority. Bucket order is deterministic stable-output ordering only (NOT ecosystem-bots-priority-ranked, NOT Slack-emit-readiness-ranked, NOT conditional-required-validator-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_dependencies_states) {
+    lines.push(`[${entry.input_schema_first_property_dependencies}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: typed (firstKey.dependencies is a plain object with >=1 own keys AND every value is EITHER a valid LIST form (Array.isArray AND every element typeof==='string' AND every element.length>=1; empty array [] PERMITTED as LIST entry — M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED) OR a valid SCHEMA form (Object.prototype.toString.call(v)==='[object Object]'; empty schema {} permitted) — NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED) | untyped (firstKey.dependencies absent/undefined — ABSENT-AS-UNTYPED: Draft-7 default no conditional dependency; OR null — NULL-AS-ABSENT: null defers to Draft-7 default; mirrors M55–M82; OR empty plain object {} — EMPTY-MAP-AS-UNTYPED: Draft-7 §6.5.7 empty map equivalent to absence) | not_applicable (input_schema.type !== 'object' or zero-property object or firstVal.type is a non-empty string other than 'object' — TYPE-APPLICABILITY-OBJECT: dependencies only meaningful for object-typed properties; JSON-Schema-Draft-7 §6.5.7 defines dependencies ONLY for type==='object'; mirrors M77/M78/M79/M80/M81/M82 TYPE-APPLICABILITY-OBJECT) | unknown (malformed input_schema, firstKey not a plain object, dependencies present non-null with any value that is not a valid heterogeneous map: non-plain-object outer, or map entry that is neither a valid LIST nor SCHEMA — DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: 6th warning code input_schema_properties_first_property_dependencies_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String.split/Boolean/!!).");
+  lines.push('Bucket order: typed → untyped → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M83: tusq dependent — top-level noun dispatcher
+function cmdDependent(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('dependent');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdDependentIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M83: tusq dependent index — handler
+function cmdDependentIndex(args) {
+  const { opts, positionals } = parseDependentIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('dependent index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyDependenciesIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const dependentFilter = opts['dependent'] || null;
+
+  if (dependentFilter !== null) {
+    // Case-sensitive: lowercase canonical dependent bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_ENUM.has(dependentFilter)) {
+      throw new CliError(`Unknown input schema first property dependencies state: ${dependentFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_dependencies_states.find(
+      (e) => e.input_schema_first_property_dependencies === dependentFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property dependencies state: ${dependentFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_dependencies_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyDependenciesIndex(outputIndex));
+}
+
+function parseDependentIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['dependent', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -23609,6 +24122,7 @@ function printHelp() {
   process.stdout.write('  choice             Index capabilities by input schema first property enum constraint presence for planning review\n');
   process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
   process.stdout.write('  crowded            Index capabilities by input schema first property maxProperties object-property-count-ceiling annotation presence for evals-and-regression review\n');
+  process.stdout.write('  dependent          Index capabilities by input schema first property dependencies object-property-dependencies-heterogeneous-map annotation presence for ecosystem-bots review\n');
   process.stdout.write('  description        Index capabilities by description word count tier for planning review\n');
   process.stdout.write('  diff               Compare manifest versions and generate a review queue\n');
   process.stdout.write('  divisor            Index capabilities by input schema first property multipleOf numeric-divisibility annotation presence for planning review\n');
@@ -23954,6 +24468,54 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown maxProperties state, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime object-property-count-ceiling validator, runtime object-key-count enforcer, DTO property-count-ceiling validator, or evals-and-regression strictness aggregator; maxProperties states are deterministic stable-output ordering only (NOT evals-and-regression-priority-ranked, NOT schema-drift-detection-priority-ranked, NOT golden-task-coverage-ranked).'
+    ].join('\n'),
+    dependent: 'Usage: tusq dependent <subcommand>\n  Subcommands: index',
+    'dependent index': [
+      'Usage: tusq dependent index [--dependent <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --dependent <value>   Filter to a single input schema first property dependencies bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].dependencies when input_schema.type === "object" and firstVal.type === "object"):',
+      '  typed        if firstKey.dependencies is a plain object (Object.prototype.toString.call(v)==="[object Object]") with >=1 own keys AND every value is EITHER:',
+      '               (a) a valid LIST form: Array.isArray AND every element typeof==="string" AND every element.length>=1',
+      '                   (empty array [] PERMITTED as a LIST entry — M83-SPECIFIC asymmetry vs M82 EMPTY-ARRAY-AS-UNTYPED at top-level)',
+      '               OR (b) a valid SCHEMA form: Object.prototype.toString.call(v)==="[object Object]"',
+      '                   (empty schema {} permitted)',
+      '               (NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED)',
+      '  untyped      if firstKey.dependencies absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no conditional dependency)',
+      '               OR null (NULL-AS-ABSENT: null defers to Draft-7 default; mirrors M55–M82)',
+      '               OR empty plain object {} (EMPTY-MAP-AS-UNTYPED: Draft-7 §6.5.7 empty map equivalent to absence)',
+      '  not_applicable  if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '               OR if firstKey.type is a string but not "object" (TYPE-APPLICABILITY-OBJECT: dependencies only meaningful for object-typed properties; JSON-Schema-Draft-7 §6.5.7 defines dependencies ONLY for type==="object")',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or the first property descriptor is not a plain object.',
+      '               or dependencies present non-null but not a plain object;',
+      '               or dependencies is a plain object with any entry that is neither a valid LIST form nor a valid SCHEMA form',
+      '               (DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: 6th warning code input_schema_properties_first_property_dependencies_invalid_when_present;',
+      '               NO-COERCION via Array.from/Object/JSON-roundtrip/String.split/Boolean/!!).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property dependencies beyond the FIRST are NOT walked (reserved for M-Dependencies-All-Properties).',
+      '               Nested-object property dependencies NOT walked (reserved for M-Dependencies-Nested).',
+      '               output_schema first-property dependencies NOT classified here.',
+      '               Distinct from M82 tusq required index (required — unconditional flat array of strings vs conditional trigger-keyed MAP of LIST/SCHEMA),',
+      '               M81 tusq named index (propertyNames — single SCHEMA on every name vs heterogeneous-value MAP),',
+      '               M80 tusq pattern index (patternProperties — regex-keyed-MAP vs trigger-keyed-MAP of LIST/SCHEMA).',
+      '',
+      'Bucket iteration order: typed → untyped → not_applicable → unknown',
+      '  (deterministic stable-output convention only — NOT ecosystem-bots-priority-ranked, NOT Slack-emit-readiness-ranked, NOT Teams-emit-ranked, NOT conditional-required-validator-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown dependencies state, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime dependency enforcer, doc-contradiction detector, conditional-required validator, LLM-inferrer, or statistical aggregator; dependencies states are deterministic stable-output ordering only (NOT ecosystem-bots-priority-ranked, NOT Slack-emit-readiness-ranked, NOT integration-config-completeness-ranked).'
     ].join('\n'),
     confidence: 'Usage: tusq confidence <subcommand>\n  Subcommands: index',
     'confidence index': [
