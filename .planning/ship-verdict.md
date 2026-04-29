@@ -2,6 +2,40 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_f3e829f2485a7cee (role=qa, run_083e290f5ee318f4, M86 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_fc4027d5c8789062, role=dev, HEAD ce2518e) for run_083e290f5ee318f4 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~2..HEAD --name-only` → exactly 9 dev-owned files changed across two commits: `tests/smoke.mjs` (commit 8da9793); `src/cli.js`, `tests/eval-regression.mjs`, `tests/evals/governed-cli-scenarios.json`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md` (commit ce2518e). Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M86 does not modify manifest format — `input_schema_first_property_default` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_2e58a486f97550ec upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions correctly carried forward: (1) `prefill` inserted between `policy` and `preset` (policy(p=112,o=111) < prefill(p=112,r=114) at pos 1 (o(111)<r(114)); prefill(p=112,r=114,e=101,f=102) < preset(p=112,r=114,e=101,s=115) at pos 3 (f(102)<s(115))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum sample_instance_value|not_applicable|unknown three-value; (4) NULL-AS-TYPED M86-INHERITED-FROM-M84 (firstVal.default===null → typed, distinct from M85 NULL-AS-ABSENT); (5) JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY M86-DISTINCT (default:[] → typed, distinct from M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN); (6) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION inherited from M84/M85. PASS.
+
+**3. Attempt-1 failure root cause validation (dev DEC-002):** Dev correctly diagnosed attempt-1 failure as subprocess exited code 143 (SIGTERM/timeout) before writing turn-result.json. Attempt 1 successfully implemented all M86 source code but was killed before completing smoke test command-count updates and writing the staging turn result. Attempt 2 fixed the single remaining gap (51 `!== 69` → `!== 70` in smoke.mjs) and wrote the staging turn result. PASS.
+
+**4. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_AGGREGATION_KEY_ENUM` (frozen Set: sample_instance_value/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_PREFILL_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` (line 1114: PREFILL_ENUM, line 1118: PREFILL_AGGREGATION_KEY_ENUM, line 1125: PREFILL_BUCKET_ORDER). Guards `_guardInputSchemaFirstPropertyDefaultBucketKey` (line 13290) and `_guardInputSchemaFirstPropertyDefaultAggregationKey` (line 13297) confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**5. Classifier verification:** `classifyInputSchemaFirstPropertyDefault` confirmed in src/cli.js (3 occurrences). Implements all M86-frozen rules: NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (inherited from M84/M85); NULL-AS-TYPED (M86-INHERITED-FROM-M84: default:null → typed; distinct from M85 NULL-AS-ABSENT); ABSENT-AS-UNTYPED (hasOwnProperty ownership detection protects 0/false/null/''/[]/{} from falsy mis-classification); JSON-STRING-AS-TYPED; JSON-FINITE-NUMBER-AS-TYPED (NaN/Infinity/-Infinity → unknown+6th); JSON-BOOLEAN-AS-TYPED (both true and false — NO falsy short-circuit); JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY (M86-DISTINCT: default:[] → typed); JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY (M86-DISTINCT: default:{} → typed); DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT+NO-COERCION. Boundary verification: 11-cap synthetic manifest → 8 typed, 1 untyped, 2 not_applicable, 0 unknown. ALL 11 BOUNDARY CASES PASS. PASS.
+
+**6. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 70 (69→70 growth confirmed). `prefill` confirmed between `policy` and `preset` in help output. `tusq prefill index` on express-sample → exit 0. `## tusq prefill index` section in website/docs/cli-reference.md at line 2417, between policy sections (line 615) and `## tusq preset index` (line 2471). PASS.
+
+**7. Filter flag verification:** `--prefill TYPED` → exit 1 (case-sensitive). `--prefill typed` on express-sample → exit 1 (absent bucket). `--prefill untyped` → exit 0 (present bucket). PASS.
+
+**8. Express-sample fixture verification:** `first_property_default_states[]` with `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `sample_instance_value`, capability_count 2) and `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1). `typed` and `unknown` buckets absent (empty-bucket-MUST-NOT-appear invariant confirmed). `warnings: []`. PASS.
+
+**9. Package drift and fixture mutation:** `git diff --quiet -- package.json package-lock.json` → exit 0. `git diff --quiet -- tests/fixtures/` → exit 0. PASS.
+
+**10. Test suite:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (77 scenarios)` (76→77 from M86 eval scenario `input-schema-first-property-prefill-index-determinism`). All 52 `!== 70` help-count assertions in smoke.mjs confirmed. PASS.
+
+**11. Planning artifact verification:** All 18 M86 ROADMAP checkboxes [x] confirmed. IMPLEMENTATION_NOTES.md M86 section present. SYSTEM_SPEC.md M86 Materialized blockquote present. command-surface.md M86 Materialized blockquote present. `website/docs/cli-reference.md` `## tusq prefill index` section at line 2417. PASS.
+
+**12. M86-specific invariant verification:** 11 boundary cases PASS: NULL_AS_TYPED (M86-INHERITED-FROM-M84: default:null → typed), JSON_BOOL_FALSE_AS_TYPED (default:false → typed; NO falsy-coercion), JSON_ARRAY_TYPED_INCLUDING_EMPTY (M86-DISTINCT: default:[] → typed; distinct from M82 EMPTY-ARRAY-AS-UNTYPED and M85 EMPTY-ARRAY-AS-UNKNOWN), JSON_PLAIN_OBJECT_TYPED_INCLUDING_EMPTY (M86-DISTINCT: default:{} → typed; distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED), NO_TYPE_APPLICABILITY_STR (firstVal.type:'string' AND default:'create' → typed; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION M86-inherited), ABSENT_AS_UNTYPED (hasOwnProperty ownership detection), OUTER_NOT_OBJECT (not_applicable), ZERO_PROPERTY (not_applicable). PASS.
+
+**13. Objections carried forward:** OBJ-001 (medium, non-blocking): R6 dead code. OBJ-002 (low, non-blocking): synthetic eval capabilities. OBJ-003 (low, non-blocking): M31 per-domain assertions. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. M86-INHERITED NULL-AS-TYPED, JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY, JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY, and NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION are by PM design — not objections. No new blocking objections raised for M86. PASS.
+
+**Verdict: SHIP** — M86 implementation verified. 77 eval scenarios pass. 1539 acceptance criteria (REQ-001–REQ-1539) pass. CLI surface 69→70. Ship verdict remains SHIP. Phase transition requested: launch (auto_approve policy).
+
+---
+
 ## QA Challenge — turn_648db536cd074a54 (role=qa, run_c78dec96e45c4d0c, M85 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_7d666108b5f79c9b, role=dev, HEAD 42d0dae) for run_c78dec96e45c4d0c independently rather than rubber-stamping it.

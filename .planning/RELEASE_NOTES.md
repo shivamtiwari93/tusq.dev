@@ -1,5 +1,35 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M86 (turn_f3e829f2485a7cee, run_083e290f5ee318f4, 2026-04-29, HEAD ce2518e)
+
+**Milestone:** M86 — Input Schema First Property Default Sample-Instance-Value Annotation Presence Index (`tusq prefill index`)
+
+**CLI surface:** 69 → 70 commands. New command `tusq prefill index` inserted alphabetically between `tusq policy` commands and `tusq preset index`.
+
+**New classification axis:** `input_schema.properties[firstKey].default` — JSON-Schema Draft 7 §10.2 SAMPLE-INSTANCE-VALUE annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `sample_instance_value | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen) — TWO M86-INHERITED-FROM-M84 asymmetries + TWO M86-DISTINCT-FROM-M82/M85/M81 asymmetries:**
+
+**(1) NULL-AS-TYPED (M86-INHERITED-FROM-M84):** `firstVal.default === null` → `typed`. Draft-7 §10.2 explicitly permits `default: null` as a meaningful sample-instance-value pinning the pre-fill to literal JSON null. This is the M86-INHERITED distinction from M85's NULL-AS-ABSENT for enum (where `enum: null` cannot encode a value-set) and from M55–M83's NULL-AS-ABSENT pattern.
+
+**(2) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M86-inherited from M84/M85):** Classifier MUST NOT inspect `firstVal.type` to gate `not_applicable`. Draft-7 §10.2 defines `default` as applicable to ANY type.
+
+**(3) JSON-ARRAY-AS-TYPED-INCLUDING-EMPTY (M86-DISTINCT):** `Array.isArray(firstVal.default)` → `typed` for BOTH `[]` and non-empty arrays. `default: []` literal pins the pre-fill to the empty-array VALUE. Distinct from M82 EMPTY-ARRAY-AS-UNTYPED for required (where `required: []` ≡ absence) and from M85 EMPTY-ARRAY-AS-UNKNOWN for enum (where `enum: []` is pathological Draft-7 SHOULD-violation).
+
+**(4) JSON-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY (M86-DISTINCT):** `Object.prototype.toString.call(firstVal.default) === '[object Object]'` → `typed` for BOTH `{}` and non-empty plain-objects. Distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED for propertyNames.
+
+**ABSENT-AS-UNTYPED ownership detection:** `'default' in firstVal` (hasOwnProperty) MUST be used — NOT truthiness check. Protects `0`, `false`, `null`, `''`, `[]`, `{}` from falsy mis-classification as untyped when they are valid typed defaults.
+
+**All other classification rules:** JSON-STRING-AS-TYPED; JSON-FINITE-NUMBER-AS-TYPED (NaN/Infinity/-Infinity → unknown+6th); JSON-BOOLEAN-AS-TYPED (both true AND false — NO falsy short-circuit); UNDEFINED-EXPLICIT-AS-UNKNOWN (own-property present, value is JavaScript `undefined` → unknown+6th); DRAFT-7-ANY-JSON-VALUE-IS-VALID-DEFAULT (function/Symbol/BigInt/Date/RegExp/etc. → unknown+6th); NO-COERCION (MUST NOT use Array.from/Object/JSON.parse(JSON.stringify(...))/String/Number/Boolean/!!/+v/nullish-coalesce).
+
+**Axis relationships:** M86 (default) is the TENTH first-property axis annotation in the M77+ first-property cluster (M77: additionalProperties → M78: minProperties → M79: maxProperties → M80: patternProperties → M81: propertyNames → M82: required → M83: dependencies → M84: const → M85: enum → M86: default). M86 is the THIRD in the cluster whose Draft-7 keyword is NOT restricted to type==='object' schemas and the SECOND in the post-M84 sub-cluster of NULL-AS-TYPED inheritance. M86 is the AXIS-DISTINCT sibling of M84 const: BOTH axes accept ANY JSON value and apply identical structural classification rules, BUT const is a CONSTRAINT (narrows accepted runtime values to exactly one) whereas default is a SAMPLE (suggests pre-fill, does NOT constrain). VISION primary citation: lines 164–174 (§ Tools, in ## What We Output).
+
+**Attempt-1 context:** Attempt 1 (sub-process SIGTERM exit code 143) successfully implemented all M86 source code but was killed before completing smoke test command-count updates and writing the staging turn result. Attempt 2 (dev work, accepted turn) fixed the single remaining gap (51 `!== 69` → `!== 70` in tests/smoke.mjs) without re-implementing already-working source. No source bugs in M86 (unlike M84 which had three attempt-1 bugs requiring fixes).
+
+**Verification results:** `npm test` → exit 0 (77 eval scenarios, smoke tests pass). CLI surface = 70. Express-sample fixture: `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `sample_instance_value`, capability_count 2) + `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 11 boundary cases verified (8 typed: null/string/number/bool-false/empty-array/nonempty-array/empty-obj/no-type-applicability-str; 1 untyped: absent; 2 not_applicable: outer-not-object/zero-property; unknown=0 in JSON deserialization context). `--prefill TYPED` → exit 1 (case-sensitive). `--prefill typed` on express-sample → exit 1 (absent bucket). `--prefill untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1515–REQ-1539). Total: 1539 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M85 (turn_648db536cd074a54, run_c78dec96e45c4d0c, 2026-04-29, HEAD 42d0dae)
 
 **Milestone:** M85 — Input Schema First Property Enum Set-Of-Allowed-Values Annotation Presence Index (`tusq allowed index`)
