@@ -1315,6 +1315,69 @@ tusq mime index --mime untyped --json
 tusq mime index --out mime-index.json
 ```
 
+## `tusq most index`
+
+Emit a deterministic, per-first-input-property-maxItems-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].maxItems` is a non-negative integer (`bounded`), absent or `null` (`unbounded`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal type is not `array`), or malformed (`unknown`). This is a **planning aid, not a runtime array-cardinality-ceiling validator, runtime array-element-counter, DTO-array-length-validator, static-understanding-coverage-tier-aggregator, route-extraction-quality-validator, framework-detection-strictness-aggregator, validation-layer-array-shape-validator, minItems-crossref tool, uniqueItems-crossref tool, items-schema-crossref tool, doc-contradiction detector, LLM-max-items-inferrer, or statistical aggregator**.
+
+**M74-vs-M73 (`least` minItems) distinctness:** `tusq least index` (M73) reads `firstKey.minItems` (array element-count lower bound / floor). `tusq most index` (M74) reads `firstKey.maxItems` (array element-count upper bound / ceiling). Both are JSON-Schema Draft 7 non-negative-integer annotations. The `least`/`most` pair mirrors the established `lower`/`upper` (M65/M66 numeric bounds), `floor`/`ceiling` (M62/M63 string-length bounds), and `above`/`below` (M67/M68 exclusive numeric bounds) noun-pair convention for bounded-range axes. Joint `minItems + maxItems` cross-reference distribution deferred to `M-MaxItems-MinItems-Crossref-1`.
+
+```bash
+tusq most index [--most <bounded|unbounded|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--most <bounded\|unbounded\|not_applicable\|unknown>` | all buckets | Filter to a single maxItems annotation bucket; **case-sensitive lowercase only** |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema` or invalid first-property descriptor) |
+
+**Classifier rule** (applied to `input_schema.properties[firstKey].maxItems` when `input_schema.type === "object"` and `firstVal.type === "array"`):
+
+| Outcome | Condition |
+|---------|-----------|
+| `bounded` | `Number.isInteger(properties[firstKey].maxItems) && properties[firstKey].maxItems >= 0` (NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS; **PRESENT-AS-PRESENT-ZERO**: `maxItems: 0` → `bounded` — empty-array-only ceiling; NO-COERCION via `Number()`/`parseInt()`/`parseFloat()`) |
+| `unbounded` | `properties[firstKey].maxItems` is absent, `undefined`, or `null` (**ABSENT-AS-UNBOUNDED**: absent/undefined → `unbounded` — JSON-Schema Draft 7 default is no-ceiling; **NULL-AS-ABSENT**: `null` → `unbounded`, mirrors M55–M73; no warning in both cases) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` OR zero-property object OR `firstVal.type` is a string but not `"array"` (**TYPE-APPLICABILITY-ARRAY**: mirrors M73 TYPE-APPLICABILITY-ARRAY for minItems — maxItems is JSON-Schema-Draft-7-defined ONLY for array-typed properties) |
+| `unknown` | `input_schema` missing/null/not-a-plain-object; `input_schema.type` missing or non-string; `input_schema.type === "object"` but `properties` missing/null/not-a-plain-object; `properties[firstKey]` not a plain object; OR `properties[firstKey].maxItems` present non-null but not a non-negative integer (negative integer `-1`, fractional `0.5`/`1.5`, `NaN`, `Infinity`, `-Infinity`, string `'5'`, boolean `true`/`false`, array `[5]`, plain object `{}`) |
+
+**Six frozen warning reason codes** (only `unknown` bucket emits warnings):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_max_items_invalid_when_present` ← M74 axis-specific code; covers all invalid maxItems values: negative-integer, fractional, NaN, Infinity, -Infinity, string, boolean, array, object; **NO-COERCION** via `Number()`/`parseInt()`/`parseFloat()`
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown maxItems value, `--out` path error, or unknown subcommand
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (deterministic stable-output convention only — NOT schema-extraction-confidence-priority-ranked, NOT static-understanding-coverage-ranked, NOT route-extraction-quality-tier-ranked, NOT validation-layer-strictness-priority-ranked, NOT DTO-cardinality-ceiling-priority-ranked). Empty buckets do not appear.
+
+**Invariants:**
+- `tusq.manifest.json` is never modified; `input_schema_first_property_max_items` is NEVER written into the manifest (non-persistence rule).
+- Object.keys insertion-order is used to determine `firstKey`; keys are NOT sorted or reordered.
+- The classifier MUST NOT cross-reference `minItems`, `uniqueItems`, `items`, `default`, `const`, `enum`, `required`, or any other JSON-Schema annotation.
+- Per-property `maxItems` annotation beyond the FIRST is NOT walked (reserved for `M-MaxItems-All-Properties-Index-1`).
+
+```bash
+# All maxItems annotation buckets (human-readable)
+tusq most index
+
+# All buckets (JSON)
+tusq most index --json
+
+# Bounded capabilities only (maxItems is a non-negative integer)
+tusq most index --most bounded --json
+
+# Unbounded capabilities (maxItems absent, null, or undefined)
+tusq most index --most unbounded --json
+
+# Write to file
+tusq most index --out most-index.json
+```
+
 ## `tusq nullable index`
 
 Emit a deterministic, per-first-input-property-nullable-boolean-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].nullable` is `true` (`nullable`), absent/undefined/null/false (`not_nullable`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`nullable → not_nullable → not_applicable → unknown`). This is a **planning aid, not a runtime nullable enforcer, database NULL constraint validator, ORM non-nullable field assessor, DTO serialization priority ranker, DB column nullability enforcer, required-crossref tool, default-crossref tool, type-applicability validator, LLM-nullability-inferrer, or DB-column-crossref tool**.

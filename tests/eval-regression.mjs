@@ -2099,6 +2099,8 @@ async function run() {
       await runInputSchemaFirstPropertyNullableIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_min_items_index_determinism') {
       await runInputSchemaFirstPropertyMinItemsIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_max_items_index_determinism') {
+      await runInputSchemaFirstPropertyMaxItemsIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -6065,6 +6067,156 @@ async function runInputSchemaFirstPropertyMinItemsIndexDeterminismScenario(tmpRo
   // Assert unbounded bucket has aggregation_key 'array_cardinality_floor_constraint'
   if (unboundedEntry.aggregation_key !== 'array_cardinality_floor_constraint') {
     fail(`${scenario.id}: unbounded bucket must have aggregation_key 'array_cardinality_floor_constraint'; got '${unboundedEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyMaxItemsIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-max-items-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq most index --json three times and assert byte-identical output
+  const run1 = runCli(['most', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['most', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['most', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: most index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_max_items bucket-key enum is closed — every key is one of the four valid values
+  const index = JSON.parse(run1.stdout);
+  const validMaxItemsValues = new Set(scenario.expected_valid_max_items_values);
+  for (const entry of index.first_property_max_items_states) {
+    if (!validMaxItemsValues.has(entry.input_schema_first_property_max_items)) {
+      fail(`${scenario.id}: input_schema_first_property_max_items '${entry.input_schema_first_property_max_items}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_max_items_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_max_items}'`);
+    }
+  }
+
+  // Assert bucket order matches expected
+  const bucketOrder = index.first_property_max_items_states.map((e) => e.input_schema_first_property_max_items).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${scenario.expected_bucket_order}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_max_items must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_max_items')) {
+      fail(`${scenario.id}: input_schema_first_property_max_items must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS: bounded_cap (maxItems=5) → bounded bucket
+  const boundedEntry = index.first_property_max_items_states.find((e) => e.input_schema_first_property_max_items === 'bounded');
+  if (!boundedEntry || !boundedEntry.capabilities.includes('bounded_cap')) {
+    fail(`${scenario.id}: bounded_cap (firstKey.maxItems=5) must be in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS)`);
+  }
+
+  // Assert PRESENT-AS-PRESENT-ZERO: zero_bounded_cap (maxItems=0) → bounded bucket
+  if (!boundedEntry || !boundedEntry.capabilities.includes('zero_bounded_cap')) {
+    fail(`${scenario.id}: zero_bounded_cap (firstKey.maxItems=0) must be in bounded bucket (PRESENT-AS-PRESENT-ZERO: explicit-zero → bounded)`);
+  }
+
+  // Assert ABSENT-AS-UNBOUNDED: unbounded_cap (maxItems absent) → unbounded bucket
+  const unboundedEntry = index.first_property_max_items_states.find((e) => e.input_schema_first_property_max_items === 'unbounded');
+  if (!unboundedEntry || !unboundedEntry.capabilities.includes('unbounded_cap')) {
+    fail(`${scenario.id}: unbounded_cap (maxItems absent) must be in unbounded bucket (ABSENT-AS-UNBOUNDED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'unbounded_cap')) {
+    fail(`${scenario.id}: unbounded_cap (ABSENT-AS-UNBOUNDED → unbounded) must NOT produce a warning`);
+  }
+
+  // Assert NULL-AS-ABSENT: null_max_items_cap (maxItems=null) → unbounded bucket
+  if (!unboundedEntry || !unboundedEntry.capabilities.includes('null_max_items_cap')) {
+    fail(`${scenario.id}: null_max_items_cap (firstKey.maxItems=null) must be in unbounded bucket (NULL-AS-ABSENT)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_max_items_cap')) {
+    fail(`${scenario.id}: null_max_items_cap (NULL-AS-ABSENT → unbounded) must NOT produce a warning`);
+  }
+
+  // Assert TYPE-APPLICABILITY-ARRAY: string_type_na_cap (type='string') → not_applicable bucket
+  const naEntry = index.first_property_max_items_states.find((e) => e.input_schema_first_property_max_items === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('string_type_na_cap')) {
+    fail(`${scenario.id}: string_type_na_cap (firstKey.type='string') must be in not_applicable bucket (TYPE-APPLICABILITY-ARRAY)`);
+  }
+
+  // Assert unknown bucket exists
+  const unknownEntry = index.first_property_max_items_states.find((e) => e.input_schema_first_property_max_items === 'unknown');
+  if (!unknownEntry) {
+    fail(`${scenario.id}: unknown bucket must be present`);
+  }
+
+  // Assert DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: negative_max_items_cap (maxItems=-1) → unknown WITH 6th code
+  if (!unknownEntry.capabilities.includes('negative_max_items_cap')) {
+    fail(`${scenario.id}: negative_max_items_cap (firstKey.maxItems=-1) must be in unknown bucket (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID)`);
+  }
+  const negativeWarning = index.warnings.find((w) => w.capability === 'negative_max_items_cap');
+  if (!negativeWarning || negativeWarning.reason !== 'input_schema_properties_first_property_max_items_invalid_when_present') {
+    fail(`${scenario.id}: negative_max_items_cap must produce 6th-code warning 'input_schema_properties_first_property_max_items_invalid_when_present'; got: ${JSON.stringify(negativeWarning)}`);
+  }
+
+  // Assert bounded bucket has aggregation_key 'array_cardinality_ceiling_constraint'
+  if (boundedEntry.aggregation_key !== 'array_cardinality_ceiling_constraint') {
+    fail(`${scenario.id}: bounded bucket must have aggregation_key 'array_cardinality_ceiling_constraint'; got '${boundedEntry.aggregation_key}'`);
+  }
+
+  // Assert unbounded bucket has aggregation_key 'array_cardinality_ceiling_constraint'
+  if (unboundedEntry.aggregation_key !== 'array_cardinality_ceiling_constraint') {
+    fail(`${scenario.id}: unbounded bucket must have aggregation_key 'array_cardinality_ceiling_constraint'; got '${unboundedEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

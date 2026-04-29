@@ -2,6 +2,48 @@
 
 ---
 
+## M74 (run_87db4ac59785126d, turn_c84e347e780b8eb0, dev)
+
+**Axis:** `input_schema.properties[firstKey].maxItems` — JSON-Schema Draft 7 array-cardinality-ceiling non-negative-integer annotation
+
+**CLI noun:** `most` (inserted between `mime` and `nullable`; mime(m=109,i=105)<most(m=109,o=111) at pos 1 (i(105)<o(111)); most(m=109)<nullable(n=110) at pos 0 (m(109)<n(110))); CLI surface 57 → 58
+
+**Classifier rules (frozen):**
+- `inputSchema` missing/null/undefined → `unknown` (`input_schema_field_missing`)
+- `inputSchema` not plain non-null object/is array → `unknown` (`input_schema_field_not_object`)
+- `inputSchema.type` missing or non-string → `unknown` (`input_schema_type_missing_or_invalid`)
+- `inputSchema.type` string but not `'object'` → `not_applicable` (no warning)
+- `type === 'object'`, `properties` missing/null/non-plain-object → `unknown` (`input_schema_properties_field_missing_when_type_is_object`)
+- `type === 'object'`, zero-property object → `not_applicable` (no warning)
+- `firstVal` not plain non-null object → `unknown` (`input_schema_properties_first_property_descriptor_invalid` — 5th frozen code)
+- **TYPE-APPLICABILITY-ARRAY**: `firstVal.type` is a string but NOT `'array'` → `not_applicable` (no warning; maxItems only meaningful for array-typed properties; mirrors M73 TYPE-APPLICABILITY-ARRAY for minItems)
+- **ABSENT-AS-UNBOUNDED**: `maxItems` absent or `undefined` → `unbounded` (Draft 7 default is no-ceiling; no warning)
+- **NULL-AS-ABSENT**: `maxItems === null` → `unbounded` (mirrors M55–M73; no warning)
+- **NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS + PRESENT-AS-PRESENT-ZERO**: `Number.isInteger(v) && v >= 0` → `bounded` (includes `maxItems: 0` — empty-array-only ceiling, explicit-zero is semantically distinct from absent; no warning)
+- **DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID**: non-integer / negative integer / non-finite / NaN / Infinity / -Infinity / string / boolean / array / object → `unknown` WITH 6th code `input_schema_properties_first_property_max_items_invalid_when_present`; NO-COERCION via `Number()/parseInt()/parseFloat()`
+
+**Bucket iteration order:** `bounded → unbounded → not_applicable → unknown` (deterministic stable-output convention)
+
+**Result-array field name:** `first_property_max_items_states`
+
+**Per-bucket field name:** `input_schema_first_property_max_items`
+
+**Aggregation_key enum (three-value):** `array_cardinality_ceiling_constraint | not_applicable | unknown`
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (5th frozen code, M55–M74)
+6. `input_schema_properties_first_property_max_items_invalid_when_present` (M74-specific)
+
+**Eval scenario:** `input-schema-first-property-max-items-index-determinism` (64 → 65 scenarios)
+
+**npm test:** exits 0 with 65 scenarios
+
+---
+
 ## M73 (run_8059727c0a95f709, turn_f038ff1cc17f467d, dev)
 
 **Axis:** `input_schema.properties[firstKey].minItems` — JSON-Schema Draft 7 array-cardinality-floor non-negative-integer annotation
