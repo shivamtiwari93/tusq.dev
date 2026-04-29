@@ -5108,7 +5108,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', minItems=1 — lands in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS)",
+          "description": "First property type='array', minItems=1 \u2014 lands in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MIN-ITEMS)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5128,7 +5128,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": false,
-          "description": "First property type='array', minItems=0 — lands in bounded bucket (PRESENT-AS-PRESENT-ZERO: explicit-zero is bounded, not unbounded)",
+          "description": "First property type='array', minItems=0 \u2014 lands in bounded bucket (PRESENT-AS-PRESENT-ZERO: explicit-zero is bounded, not unbounded)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5148,7 +5148,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', minItems absent — lands in unbounded bucket (ABSENT-AS-UNBOUNDED)",
+          "description": "First property type='array', minItems absent \u2014 lands in unbounded bucket (ABSENT-AS-UNBOUNDED)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5167,7 +5167,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', minItems=null — lands in unbounded bucket (NULL-AS-ABSENT: mirrors M55\u2013M72)",
+          "description": "First property type='array', minItems=null \u2014 lands in unbounded bucket (NULL-AS-ABSENT: mirrors M55\u2013M72)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5187,7 +5187,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: minItems only meaningful for array-typed properties)",
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: minItems only meaningful for array-typed properties)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5206,7 +5206,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "description": "input_schema.type='array' (top-level) \u2014 lands in not_applicable bucket (non-object input has no first property)",
           "input_schema": {
             "type": "array",
             "items": {
@@ -5222,7 +5222,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', minItems=-1 — lands in unknown bucket with 6th-code warning (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: negative integer \u2192 unknown)",
+          "description": "First property type='array', minItems=-1 \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: negative integer \u2192 unknown)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5271,7 +5271,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', maxItems=5 — lands in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS)",
+          "description": "First property type='array', maxItems=5 \u2014 lands in bounded bucket (NON-NEGATIVE-INTEGER-IS-VALID-MAX-ITEMS)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5291,7 +5291,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": false,
-          "description": "First property type='array', maxItems=0 — lands in bounded bucket (PRESENT-AS-PRESENT-ZERO: empty-array-only ceiling)",
+          "description": "First property type='array', maxItems=0 \u2014 lands in bounded bucket (PRESENT-AS-PRESENT-ZERO: empty-array-only ceiling)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5311,7 +5311,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', maxItems absent — lands in unbounded bucket (ABSENT-AS-UNBOUNDED)",
+          "description": "First property type='array', maxItems absent \u2014 lands in unbounded bucket (ABSENT-AS-UNBOUNDED)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5330,7 +5330,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', maxItems=null — lands in unbounded bucket (NULL-AS-ABSENT: mirrors M55\u2013M73)",
+          "description": "First property type='array', maxItems=null \u2014 lands in unbounded bucket (NULL-AS-ABSENT: mirrors M55\u2013M73)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5350,7 +5350,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: maxItems only meaningful for array-typed properties)",
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: maxItems only meaningful for array-typed properties)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5369,7 +5369,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "description": "input_schema.type='array' (top-level) \u2014 lands in not_applicable bucket (non-object input has no first property)",
           "input_schema": {
             "type": "array",
             "items": {
@@ -5385,7 +5385,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', maxItems=-1 — lands in unknown bucket with 6th-code warning (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: negative integer \u2192 unknown)",
+          "description": "First property type='array', maxItems=-1 \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID: negative integer \u2192 unknown)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5434,7 +5434,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', uniqueItems=true — lands in unique bucket (BOOLEAN-TRUE-AS-UNIQUE)",
+          "description": "First property type='array', uniqueItems=true \u2014 lands in unique bucket (BOOLEAN-TRUE-AS-UNIQUE)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5454,7 +5454,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": false,
-          "description": "First property type='array', uniqueItems=false — lands in not_unique bucket (BOOLEAN-FALSE-AS-NOT-UNIQUE: explicit-false agrees with absence-default)",
+          "description": "First property type='array', uniqueItems=false \u2014 lands in not_unique bucket (BOOLEAN-FALSE-AS-NOT-UNIQUE: explicit-false agrees with absence-default)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5474,7 +5474,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', uniqueItems absent — lands in not_unique bucket (ABSENT-AS-NOT-UNIQUE: Draft 7 default for uniqueItems is false)",
+          "description": "First property type='array', uniqueItems absent \u2014 lands in not_unique bucket (ABSENT-AS-NOT-UNIQUE: Draft 7 default for uniqueItems is false)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5493,7 +5493,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', uniqueItems=null — lands in not_unique bucket (NULL-AS-ABSENT: mirrors M55\u2013M74)",
+          "description": "First property type='array', uniqueItems=null \u2014 lands in not_unique bucket (NULL-AS-ABSENT: mirrors M55\u2013M74)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5513,7 +5513,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: uniqueItems only meaningful for array-typed properties)",
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: uniqueItems only meaningful for array-typed properties)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5532,7 +5532,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "description": "input_schema.type='array' (top-level) \u2014 lands in not_applicable bucket (non-object input has no first property)",
           "input_schema": {
             "type": "array",
             "items": {
@@ -5548,7 +5548,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', uniqueItems='yes' (string) — lands in unknown bucket with 6th-code warning (DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS: non-boolean \u2192 unknown; NO-COERCION)",
+          "description": "First property type='array', uniqueItems='yes' (string) \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS: non-boolean \u2192 unknown; NO-COERCION)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5597,13 +5597,15 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', items={type:'string'} — lands in declared bucket (PLAIN-OBJECT-AS-DECLARED: Draft-7 primary form)",
+          "description": "First property type='array', items={type:'string'} \u2014 lands in declared bucket (PLAIN-OBJECT-AS-DECLARED: Draft-7 primary form)",
           "input_schema": {
             "type": "object",
             "properties": {
               "tags": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "required": []
@@ -5617,13 +5619,20 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": false,
-          "description": "First property type='array', items=[{type:'string'},{type:'integer'}] — lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: Draft-7 tuple form)",
+          "description": "First property type='array', items=[{type:'string'},{type:'integer'}] \u2014 lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: Draft-7 tuple form)",
           "input_schema": {
             "type": "object",
             "properties": {
               "pair": {
                 "type": "array",
-                "items": [{ "type": "string" }, { "type": "integer" }]
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
               }
             },
             "required": []
@@ -5637,7 +5646,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', items=[] — lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: empty tuple is valid Draft-7 zero-element tuple)",
+          "description": "First property type='array', items=[] \u2014 lands in declared bucket (ARRAY-OF-OBJECTS-AS-DECLARED: empty tuple is valid Draft-7 zero-element tuple)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5657,7 +5666,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', items absent — lands in undeclared bucket (ABSENT-AS-UNDECLARED: Draft 7 default is no-element-shape-constraint)",
+          "description": "First property type='array', items absent \u2014 lands in undeclared bucket (ABSENT-AS-UNDECLARED: Draft 7 default is no-element-shape-constraint)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5676,7 +5685,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='array', items=null — lands in undeclared bucket (NULL-AS-ABSENT: mirrors M55\u2013M75)",
+          "description": "First property type='array', items=null \u2014 lands in undeclared bucket (NULL-AS-ABSENT: mirrors M55\u2013M75)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5696,7 +5705,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "First property type='string' — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: items only meaningful for array-typed properties)",
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY: items only meaningful for array-typed properties)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5715,7 +5724,7 @@
           "side_effect_class": "read",
           "sensitivity_class": "public",
           "approved": true,
-          "description": "input_schema.type='array' (top-level) — lands in not_applicable bucket (non-object input has no first property)",
+          "description": "input_schema.type='array' (top-level) \u2014 lands in not_applicable bucket (non-object input has no first property)",
           "input_schema": {
             "type": "array",
             "items": {
@@ -5731,7 +5740,7 @@
           "side_effect_class": "write",
           "sensitivity_class": "internal",
           "approved": true,
-          "description": "First property type='array', items='string' (string) — lands in unknown bucket with 6th-code warning (DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS: string \u2192 unknown; NO-COERCION)",
+          "description": "First property type='array', items='string' (string) \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-OBJECT-OR-OBJECT-ARRAY-IS-VALID-ITEMS: string \u2192 unknown; NO-COERCION)",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -5766,6 +5775,184 @@
         "unknown"
       ],
       "expected_bucket_order": "declared,undeclared,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-additional-properties-index-determinism",
+      "scenario_type": "input_schema_first_property_additional_properties_index_determinism",
+      "description": "Verifies that tusq open index produces byte-identical output across three runs on a synthetic manifest with closed, open, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (closed/open/not_applicable/unknown), closed three-value aggregation_key enum (object_property_extension_constraint/not_applicable/unknown), bucket order determinism (closed \u2192 open \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_additional_properties non-persistence. BOOLEAN-FALSE-AS-CLOSED: additionalProperties === false \u2192 closed (no warning). ABSENT-AS-OPEN: additionalProperties absent/undefined \u2192 open (Draft-7 default is open, no warning). NULL-AS-ABSENT (mirrors M55\u2013M76): additionalProperties:null \u2192 open (no warning). BOOLEAN-TRUE-AS-OPEN: additionalProperties === true \u2192 open (Draft-7 default expressed explicitly, no warning). PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==='[object Object]' \u2192 open (Draft-7 schema-form: extra keys permitted, value shape restricted, still semantically OPEN; no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY). DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: non-boolean non-null non-plain-object present value \u2192 unknown WITH 6th code input_schema_properties_first_property_additional_properties_invalid_when_present; NO-COERCION via Boolean()/!!/v?true:false/Object() \u2014 strict ===true/===false and Object.prototype.toString checks only.",
+      "synthetic_capabilities": [
+        {
+          "name": "boolean_false_cap",
+          "method": "POST",
+          "path": "/boolean-false",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='object', additionalProperties=false \u2014 lands in closed bucket (BOOLEAN-FALSE-AS-CLOSED: explicit-false closes the object to extra keys)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "name": "boolean_true_cap",
+          "method": "GET",
+          "path": "/boolean-true",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='object', additionalProperties=true \u2014 lands in open bucket (BOOLEAN-TRUE-AS-OPEN: explicit-true is Draft-7 default expressed explicitly)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        {
+          "name": "absent_cap",
+          "method": "GET",
+          "path": "/absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='object', additionalProperties absent \u2014 lands in open bucket (ABSENT-AS-OPEN: Draft-7 default is open)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "params": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "name": "null_cap",
+          "method": "GET",
+          "path": "/null-ap",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property type='object', additionalProperties=null \u2014 lands in open bucket (NULL-AS-ABSENT: mirrors M55\u2013M76)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": null
+              }
+            }
+          }
+        },
+        {
+          "name": "plain_object_schema_cap",
+          "method": "PUT",
+          "path": "/plain-object-schema",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='object', additionalProperties={type:'string'} \u2014 lands in open bucket (PLAIN-OBJECT-SCHEMA-AS-OPEN: extra keys permitted, value shape restricted, still semantically OPEN)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/string-type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT: additionalProperties only meaningful for object-typed properties)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "input_schema.type='array' (top-level) \u2014 lands in not_applicable bucket (non-object input has no first property)",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "string_ap_cap",
+          "method": "POST",
+          "path": "/string-ap",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property type='object', additionalProperties='extra' (string) \u2014 lands in unknown bucket with 6th-code warning (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: string \u2192 unknown; NO-COERCION)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "additionalProperties": "extra"
+              }
+            }
+          }
+        },
+        {
+          "name": "malformed_cap",
+          "method": "GET",
+          "path": "/malformed",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        }
+      ],
+      "expected_valid_additional_properties_values": [
+        "closed",
+        "open",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_extension_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "closed,open,not_applicable,unknown"
     }
   ]
 }

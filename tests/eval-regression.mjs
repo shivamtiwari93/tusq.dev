@@ -2105,6 +2105,8 @@ async function run() {
       await runInputSchemaFirstPropertyUniqueItemsIndexDeterminismScenario(tmpRoot, scenario);
     } else if (scenario.scenario_type === 'input_schema_first_property_items_index_determinism') {
       await runInputSchemaFirstPropertyItemsIndexDeterminismScenario(tmpRoot, scenario);
+    } else if (scenario.scenario_type === 'input_schema_first_property_additional_properties_index_determinism') {
+      await runInputSchemaFirstPropertyAdditionalPropertiesIndexDeterminismScenario(tmpRoot, scenario);
     } else {
       fail(`Unknown eval scenario: ${scenario.id}`);
     }
@@ -6526,6 +6528,170 @@ async function runInputSchemaFirstPropertyItemsIndexDeterminismScenario(tmpRoot,
   // Assert undeclared bucket has aggregation_key 'array_element_subschema_constraint'
   if (undeclaredEntry.aggregation_key !== 'array_element_subschema_constraint') {
     fail(`${scenario.id}: undeclared bucket must have aggregation_key 'array_element_subschema_constraint'; got '${undeclaredEntry.aggregation_key}'`);
+  }
+
+  // Assert not_applicable bucket has aggregation_key 'not_applicable'
+  if (naEntry.aggregation_key !== 'not_applicable') {
+    fail(`${scenario.id}: not_applicable bucket must have aggregation_key 'not_applicable'; got '${naEntry.aggregation_key}'`);
+  }
+
+  // Assert unknown bucket has aggregation_key 'unknown'
+  if (unknownEntry.aggregation_key !== 'unknown') {
+    fail(`${scenario.id}: unknown bucket must have aggregation_key 'unknown'; got '${unknownEntry.aggregation_key}'`);
+  }
+}
+
+async function runInputSchemaFirstPropertyAdditionalPropertiesIndexDeterminismScenario(tmpRoot, scenario) {
+  const project = await fs.mkdtemp(path.join(tmpRoot, 'input-schema-first-property-additional-properties-'));
+
+  // Build capabilities from synthetic_capabilities descriptors
+  const capabilities = scenario.synthetic_capabilities.map((cap) => {
+    const obj = {
+      name: cap.name,
+      method: cap.method,
+      path: cap.path,
+      domain: cap.domain,
+      side_effect_class: cap.side_effect_class,
+      sensitivity_class: cap.sensitivity_class,
+      approved: cap.approved
+    };
+    if (Object.prototype.hasOwnProperty.call(cap, 'description')) {
+      obj.description = cap.description;
+    }
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema')) {
+      obj.input_schema = cap.input_schema;
+    }
+    return obj;
+  });
+
+  const manifest = {
+    schema_version: '1.0',
+    manifest_version: 1,
+    generated_at: '2026-04-28T12:00:00.000Z',
+    capabilities
+  };
+  const manifestPath = path.join(project, 'tusq.manifest.json');
+  await writeJson(manifestPath, manifest);
+
+  // Run tusq open index --json three times and assert byte-identical output
+  const run1 = runCli(['open', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run2 = runCli(['open', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+  const run3 = runCli(['open', 'index', '--manifest', manifestPath, '--json'], { cwd: project });
+
+  if (run1.stdout !== run2.stdout || run2.stdout !== run3.stdout) {
+    fail(`${scenario.id}: open index --json output is not byte-identical across three runs`);
+  }
+
+  // Assert input_schema_first_property_additional_properties bucket-key enum is closed
+  const index = JSON.parse(run1.stdout);
+  const validApValues = new Set(scenario.expected_valid_additional_properties_values);
+  for (const entry of index.first_property_additional_properties_states) {
+    if (!validApValues.has(entry.input_schema_first_property_additional_properties)) {
+      fail(`${scenario.id}: input_schema_first_property_additional_properties '${entry.input_schema_first_property_additional_properties}' is outside the closed four-value enum`);
+    }
+  }
+
+  // Assert aggregation_key closed three-value enum
+  const validAggKeys = new Set(scenario.expected_valid_aggregation_keys);
+  for (const entry of index.first_property_additional_properties_states) {
+    if (!validAggKeys.has(entry.aggregation_key)) {
+      fail(`${scenario.id}: aggregation_key '${entry.aggregation_key}' is outside the closed three-value enum for bucket '${entry.input_schema_first_property_additional_properties}'`);
+    }
+  }
+
+  // Assert bucket order matches expected
+  const bucketOrder = index.first_property_additional_properties_states.map((e) => e.input_schema_first_property_additional_properties).join(',');
+  if (bucketOrder !== scenario.expected_bucket_order) {
+    fail(`${scenario.id}: bucket order '${bucketOrder}' does not match expected '${scenario.expected_bucket_order}'`);
+  }
+
+  // Assert warnings[] always present
+  if (!Array.isArray(index.warnings)) {
+    fail(`${scenario.id}: warnings[] must always be present in index output`);
+  }
+
+  // Assert manifest is not mutated (input_schema_first_property_additional_properties must NOT be written into manifest)
+  const manifestAfter = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const cap of manifestAfter.capabilities) {
+    if (Object.prototype.hasOwnProperty.call(cap, 'input_schema_first_property_additional_properties')) {
+      fail(`${scenario.id}: input_schema_first_property_additional_properties must NOT be written into tusq.manifest.json; found on capability '${cap.name}'`);
+    }
+  }
+
+  // Assert BOOLEAN-FALSE-AS-CLOSED: boolean_false_cap (additionalProperties=false) → closed bucket
+  const closedEntry = index.first_property_additional_properties_states.find((e) => e.input_schema_first_property_additional_properties === 'closed');
+  if (!closedEntry || !closedEntry.capabilities.includes('boolean_false_cap')) {
+    fail(`${scenario.id}: boolean_false_cap (additionalProperties=false) must be in closed bucket (BOOLEAN-FALSE-AS-CLOSED)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'boolean_false_cap')) {
+    fail(`${scenario.id}: boolean_false_cap (BOOLEAN-FALSE-AS-CLOSED → closed) must NOT produce a warning`);
+  }
+
+  // Assert BOOLEAN-TRUE-AS-OPEN: boolean_true_cap → open bucket
+  const openEntry = index.first_property_additional_properties_states.find((e) => e.input_schema_first_property_additional_properties === 'open');
+  if (!openEntry || !openEntry.capabilities.includes('boolean_true_cap')) {
+    fail(`${scenario.id}: boolean_true_cap (additionalProperties=true) must be in open bucket (BOOLEAN-TRUE-AS-OPEN)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'boolean_true_cap')) {
+    fail(`${scenario.id}: boolean_true_cap (BOOLEAN-TRUE-AS-OPEN → open) must NOT produce a warning`);
+  }
+
+  // Assert ABSENT-AS-OPEN: absent_cap → open bucket
+  if (!openEntry || !openEntry.capabilities.includes('absent_cap')) {
+    fail(`${scenario.id}: absent_cap (additionalProperties absent) must be in open bucket (ABSENT-AS-OPEN)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'absent_cap')) {
+    fail(`${scenario.id}: absent_cap (ABSENT-AS-OPEN → open) must NOT produce a warning`);
+  }
+
+  // Assert NULL-AS-ABSENT: null_cap → open bucket
+  if (!openEntry || !openEntry.capabilities.includes('null_cap')) {
+    fail(`${scenario.id}: null_cap (additionalProperties=null) must be in open bucket (NULL-AS-ABSENT)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'null_cap')) {
+    fail(`${scenario.id}: null_cap (NULL-AS-ABSENT → open) must NOT produce a warning`);
+  }
+
+  // Assert PLAIN-OBJECT-SCHEMA-AS-OPEN: plain_object_schema_cap → open bucket
+  if (!openEntry || !openEntry.capabilities.includes('plain_object_schema_cap')) {
+    fail(`${scenario.id}: plain_object_schema_cap (additionalProperties={type:'string'}) must be in open bucket (PLAIN-OBJECT-SCHEMA-AS-OPEN)`);
+  }
+  if (index.warnings.some((w) => w.capability === 'plain_object_schema_cap')) {
+    fail(`${scenario.id}: plain_object_schema_cap (PLAIN-OBJECT-SCHEMA-AS-OPEN → open) must NOT produce a warning`);
+  }
+
+  // Assert TYPE-APPLICABILITY-OBJECT: string_type_na_cap → not_applicable bucket
+  const naEntry = index.first_property_additional_properties_states.find((e) => e.input_schema_first_property_additional_properties === 'not_applicable');
+  if (!naEntry) {
+    fail(`${scenario.id}: not_applicable bucket must be present`);
+  }
+  if (!naEntry.capabilities.includes('string_type_na_cap')) {
+    fail(`${scenario.id}: string_type_na_cap (firstKey.type='string') must be in not_applicable bucket (TYPE-APPLICABILITY-OBJECT)`);
+  }
+
+  // Assert unknown bucket exists
+  const unknownEntry = index.first_property_additional_properties_states.find((e) => e.input_schema_first_property_additional_properties === 'unknown');
+  if (!unknownEntry) {
+    fail(`${scenario.id}: unknown bucket must be present`);
+  }
+
+  // Assert DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: string_ap_cap (additionalProperties='extra') → unknown WITH 6th code
+  if (!unknownEntry.capabilities.includes('string_ap_cap')) {
+    fail(`${scenario.id}: string_ap_cap (additionalProperties='extra') must be in unknown bucket (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES)`);
+  }
+  const stringApWarning = index.warnings.find((w) => w.capability === 'string_ap_cap');
+  if (!stringApWarning || stringApWarning.reason !== 'input_schema_properties_first_property_additional_properties_invalid_when_present') {
+    fail(`${scenario.id}: string_ap_cap must produce 6th-code warning 'input_schema_properties_first_property_additional_properties_invalid_when_present'; got: ${JSON.stringify(stringApWarning)}`);
+  }
+
+  // Assert closed bucket has aggregation_key 'object_property_extension_constraint'
+  if (closedEntry.aggregation_key !== 'object_property_extension_constraint') {
+    fail(`${scenario.id}: closed bucket must have aggregation_key 'object_property_extension_constraint'; got '${closedEntry.aggregation_key}'`);
+  }
+
+  // Assert open bucket has aggregation_key 'object_property_extension_constraint'
+  if (openEntry.aggregation_key !== 'object_property_extension_constraint') {
+    fail(`${scenario.id}: open bucket must have aggregation_key 'object_property_extension_constraint'; got '${openEntry.aggregation_key}'`);
   }
 
   // Assert not_applicable bucket has aggregation_key 'not_applicable'

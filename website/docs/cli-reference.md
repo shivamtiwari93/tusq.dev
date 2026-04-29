@@ -2689,6 +2689,48 @@ tusq obligation index --status not_applicable --json
 tusq obligation index --out obligation-index.json
 ```
 
+## `tusq open index`
+
+Emit a deterministic, per-`additionalProperties`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-extension-control annotation on `input_schema.properties[firstKey].additionalProperties` (the first input property descriptor), in closed-enum order (`closed → open → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `additionalProperties` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime object-extension validator, extra-property rejector, property stripper, DTO-extension validator, governance-rollout strictness aggregator, strict-tool-emitter-additional-properties validator, or MCP-server-additional-properties validator**.
+
+**Distinct from `tusq strictness index` (M40):** `tusq strictness index` reads `output_schema.additionalProperties` (top-level output schema — the SIBLING input-vs-output axis pair). `tusq open index` reads `input_schema.properties[firstKey].additionalProperties` (first input property — different schema slot and different type domain). These two commands are orthogonal and form the input-vs-output `additionalProperties` axis pair, analogous to M44/M47 input-vs-output property-count tier and M48/M49 output-vs-input first-property type pairs.
+
+**Distinct from `tusq obligation index` (M50):** `tusq obligation index` reads `firstKey ∈ input_schema.required[]` (required-status — whether the property must be present). `tusq open index` reads `firstKey.additionalProperties` (extension-control — whether the object permits extra keys). These are orthogonal fields on the same firstVal descriptor.
+
+**Distinct from `tusq element index` (M76):** `tusq element index` reads `firstKey.items` (array-element-subschema — ARRAY-axis annotation). `tusq open index` reads `firstKey.additionalProperties` (object-extension-control — OBJECT-axis annotation). Different type domains: `items` is only meaningful for array-typed properties; `additionalProperties` is only meaningful for object-typed properties.
+
+```bash
+tusq open index [--open <closed|open|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--open <closed\|open\|not_applicable\|unknown>` | all buckets | Filter to a single additionalProperties annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**AdditionalProperties classification rule** (applied to `input_schema.properties[firstKey].additionalProperties` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+- `closed` — `firstKey.additionalProperties === false` (**BOOLEAN-FALSE-AS-CLOSED**: explicit-false closes the object to extra keys; no warning)
+- `open` — `firstKey.additionalProperties` is absent/undefined (**ABSENT-AS-OPEN**: Draft-7 default is `additionalProperties: true` / open; no warning), OR `=== null` (**NULL-AS-ABSENT**: mirrors M55–M76 null-as-absent precedent; no warning), OR `=== true` (**BOOLEAN-TRUE-AS-OPEN**: Draft-7 default expressed explicitly; no warning), OR a plain-object schema (**PLAIN-OBJECT-SCHEMA-AS-OPEN**: `Object.prototype.toString.call(v) === '[object Object]'` — extra keys permitted with value-shape restriction, still semantically OPEN; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR `firstVal.type` is a non-empty string other than `'object'` (**TYPE-APPLICABILITY-OBJECT**: `additionalProperties` only meaningful for object-typed properties; mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY; no warning)
+- `unknown` — `input_schema` or `properties` are malformed, `firstKey` not a plain object, OR `additionalProperties` is present non-null non-boolean non-plain-object (string, number, Array, Date, RegExp, Set, Map) (**DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES**: triggers 6th warning code `input_schema_properties_first_property_additional_properties_invalid_when_present`; **NO-COERCION** via `Boolean()`/`!!`/`v?true:false`/`Object()` — strict `===true`/`===false` and `Object.prototype.toString` checks only)
+
+**Bucket iteration order:** `closed → open → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT governance-rollout-priority-ranked, NOT strictness-readiness-ranked, NOT DTO-extension-constraint-priority-ranked, NOT MCP-server-strictness-tier-ranked, NOT marketplace-package-strictness-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown additionalProperties annotation value, `--out` path error, or unknown subcommand
+
+```bash
+tusq open index
+tusq open index --json
+tusq open index --open closed
+tusq open index --open not_applicable --json
+tusq open index --out open-index.json
+```
+
 ## `tusq strictness index`
 
 Emit a deterministic, per-strictness capability index from manifest evidence. Groups capabilities by whether their `output_schema.additionalProperties` boolean is `false` (closed-key contract) or `true` (unspecified-field-tolerant) for object-typed responses, in closed-enum order (`strict → permissive → not_applicable → unknown`). Non-object responses bucket as `not_applicable` (no warning). Malformed or missing `output_schema` or non-boolean `additionalProperties` buckets as `unknown` with a warning. This is a **planning aid, not a runtime response validator, strict-schema middleware generator, or schema enforceability certifier**.

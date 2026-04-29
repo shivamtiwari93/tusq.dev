@@ -2,6 +2,69 @@
 
 ---
 
+## M77 (run_23513ac80f87e34e, turn_57319dfd22963098, dev)
+
+**Axis:** `input_schema.properties[firstKey].additionalProperties` — JSON-Schema Draft 7 OBJECT-EXTENSION-CONTROL annotation. CLI noun: `open` (between `obligation` and `output`). CLI surface 60→61.
+
+**Constants added** (`src/cli.js`, after M76 items constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_ENUM` = frozen Set `['closed', 'open', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_extension_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER` = frozen array `['closed', 'open', 'not_applicable']`
+
+**Guard functions** (after M76 guards):
+- `_guardInputSchemaFirstPropertyAdditionalPropertiesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier** `classifyInputSchemaFirstPropertyAdditionalProperties(inputSchema)`:
+1. null/undefined/non-plain-object inputSchema → `unknown` (reason: `input_schema_field_missing` or `input_schema_field_not_object`)
+2. missing/non-string `type` → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+3. `type !== 'object'` → `not_applicable`
+4. `properties` missing/null/non-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+5. zero-property object → `not_applicable`
+6. `firstVal` not a plain object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid` — FIFTH frozen code)
+7. **TYPE-APPLICABILITY-OBJECT**: `firstVal.type` string but NOT `'object'` → `not_applicable` (mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY; different type domain — object-axis vs array-axis)
+8. **ABSENT-AS-OPEN**: `additionalProperties` absent/undefined → `open` (Draft-7 default is open; no warning)
+9. **NULL-AS-ABSENT**: `additionalProperties === null` → `open` (mirrors M55–M76; no warning)
+10. **BOOLEAN-FALSE-AS-CLOSED**: `additionalProperties === false` → `closed` (explicit-false closes object to extra keys; no warning)
+11. **BOOLEAN-TRUE-AS-OPEN**: `additionalProperties === true` → `open` (Draft-7 default expressed explicitly; no warning)
+12. **PLAIN-OBJECT-SCHEMA-AS-OPEN**: `Object.prototype.toString.call(additionalProperties) === '[object Object]'` → `open` (Draft-7 schema-form: extra keys permitted, value shape restricted, still semantically OPEN; no warning)
+13. **DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES**: any other value → `unknown` WITH 6th code `input_schema_properties_first_property_additional_properties_invalid_when_present`; **NO-COERCION** via `Boolean()`/`!!`/`v?true:false`/`Object()`
+
+**Six frozen warning reason codes** (M77 PM DEC-003):
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid` (FIFTH frozen code, carried forward from M55–M76)
+6. `input_schema_properties_first_property_additional_properties_invalid_when_present` (M77-SPECIFIC: non-boolean non-null non-plain-object present `additionalProperties`)
+
+**Builder/formatter/cmd** (`src/cli.js`):
+- `buildInputSchemaFirstPropertyAdditionalPropertiesIndex(manifest, manifestPath)` — iterates capabilities, classifies, buckets, emits non-empty buckets in closed order
+- `formatInputSchemaFirstPropertyAdditionalPropertiesIndex(index)` — plain-text output
+- `cmdOpen(args)` / `cmdOpenIndex(args)` / `parseOpenIndexArgs(args)` — dispatch, handler, arg parser
+
+**Dispatch wiring**: `'open'` case wired between `'obligation'` and `'output'` in main switch. `printHelp()` line added between obligation and output. `printCommandHelp()` entries added for `'open'` and `'open index'`.
+
+**Tests updated** (`tests/smoke.mjs`):
+- All 42 `!== 60` help-count assertions updated to `!== 61`
+- 18-case M77 smoke matrix added covering: BOOLEAN-FALSE-AS-CLOSED, BOOLEAN-TRUE-AS-OPEN, ABSENT-AS-OPEN, NULL-AS-ABSENT, PLAIN-OBJECT-SCHEMA-AS-OPEN, TYPE-APPLICABILITY-OBJECT (string type, array type), zero-property, schema-level non-object, NO-COERCION (string/number-0/number-1/array additionalProperties), case-sensitivity (--open OPEN→exit 1), absent-bucket enforcement (--open closed on open-only manifest→exit 1), non-persistence, help enumeration (obligation<open<output), planning-aid framing, unknown subcommand exit 1
+
+**Eval scenario** (`tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`):
+- Added `input-schema-first-property-additional-properties-index-determinism` scenario (67→68 scenarios)
+- Handler `runInputSchemaFirstPropertyAdditionalPropertiesIndexDeterminismScenario` added to `eval-regression.mjs`
+- Covers: byte-identity across 3 runs, closed four-value bucket-key enum, closed three-value aggregation_key enum, bucket order determinism, warnings[] always present, manifest non-mutation, non-persistence, BOOLEAN-FALSE-AS-CLOSED, BOOLEAN-TRUE-AS-OPEN, ABSENT-AS-OPEN, NULL-AS-ABSENT, PLAIN-OBJECT-SCHEMA-AS-OPEN, TYPE-APPLICABILITY-OBJECT, DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES
+
+**Express-sample fixture**: `open index --json` on canonical fixture → `open` bucket (post_users_users, 1 cap) + `not_applicable` bucket (get_users_users + get_users_api_v1_users_id, 2 caps); `closed` and `unknown` buckets absent (TYPE-APPLICABILITY-OBJECT applies for non-object-typed first properties; empty-bucket-MUST-NOT-appear invariant confirmed); `warnings=[]`.
+
+**Distinctness from M40/M50/M76**:
+- M40 (`strictness`): output schema TOP-LEVEL `additionalProperties` — SIBLING but orthogonal input-vs-output axis pair
+- M50 (`obligation`): firstKey `required`-status — different field semantic: required vs extension-control
+- M76 (`element`): firstKey `items` array-element-subschema — ARRAY-axis vs OBJECT-axis; different type domain
+
+**npm test**: exits 0 with 68 eval scenarios.
+
+---
+
 ## M76 (run_7614b689bb195a71, turn_81676e2d9987b70c, dev)
 
 **Axis:** `input_schema.properties[firstKey].items` — JSON-Schema Draft 7 array-element-subschema annotation. CLI noun: `element` (between `effect` and `examples`). CLI surface 59→60.

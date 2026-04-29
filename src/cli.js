@@ -886,6 +886,26 @@ const INPUT_SCHEMA_FIRST_PROPERTY_ITEMS_AGGREGATION_KEY_ENUM = Object.freeze(new
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_ITEMS_BUCKET_ORDER = Object.freeze(['declared', 'undeclared', 'not_applicable']);
 
+// M77: frozen four-value bucket-key enum for input_schema.properties[firstKey].additionalProperties (JSON-Schema Draft 7 OBJECT-EXTENSION-CONTROL annotation).
+// closed — additionalProperties === false (BOOLEAN-FALSE-AS-CLOSED: explicit-false closes the object to extra keys)
+// open   — additionalProperties absent/undefined (ABSENT-AS-OPEN: Draft-7 default is open), null (NULL-AS-ABSENT),
+//           true (BOOLEAN-TRUE-AS-OPEN), or a plain-object schema (PLAIN-OBJECT-SCHEMA-AS-OPEN: extra keys permitted)
+// not_applicable — firstVal.type is a string but not 'object' (TYPE-APPLICABILITY-OBJECT), OR zero-property object
+// unknown — malformed input_schema, firstVal not a plain object, OR additionalProperties present non-null non-boolean non-plain-object
+//           (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: any other value → unknown WITH 6th code)
+const INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_ENUM = Object.freeze(new Set(['closed', 'open', 'not_applicable', 'unknown']));
+
+// M77: frozen three-value aggregation_key enum. Immutable once M77 ships.
+// closed/open buckets carry 'object_property_extension_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['object_property_extension_constraint', 'not_applicable', 'unknown']));
+
+// M77: closed-enum bucket iteration order (closed → open → not_applicable). Unknown appended last.
+// NOT governance-rollout-priority-ranked, NOT strictness-readiness-ranked, NOT DTO-extension-constraint-priority-ranked,
+// NOT MCP-server-strictness-tier-ranked, NOT marketplace-package-strictness-ranked, NOT runtime-payload-shape-tolerance-ranked,
+// NOT object-extra-key-shape-significance-ranked, NOT validation-layer-strictness-tier-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER = Object.freeze(['closed', 'open', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1081,6 +1101,9 @@ function dispatch(argv) {
       return;
     case 'obligation':
       cmdObligation(args);
+      return;
+    case 'open':
+      cmdOpen(args);
       return;
     case 'output':
       cmdOutput(args);
@@ -12892,6 +12915,20 @@ function _guardInputSchemaFirstPropertyItemsAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyAdditionalPropertiesBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_additional_properties outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -16625,6 +16662,89 @@ function classifyInputSchemaFirstPropertyItems(inputSchema) {
   return 'unknown';
 }
 
+// M77: classifyInputSchemaFirstPropertyAdditionalProperties(inputSchema) → 'closed'|'open'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; additionalProperties only meaningful for object-typed input)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              TYPE-APPLICABILITY-OBJECT rule (M77, mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY):
+//              if typeof firstVal.type === 'string' && firstVal.type !== 'object' → 'not_applicable' (no warning; additionalProperties only meaningful for object-typed properties)
+//              additionalProperties check (JSON-Schema Draft 7 object-extension-control annotation):
+//              ABSENT-AS-OPEN: !hasOwn(firstVal, 'additionalProperties') OR additionalProperties===undefined → 'open' (Draft 7 default is additionalProperties: true / open)
+//              NULL-AS-ABSENT: additionalProperties===null → 'open' (mirrors M55–M76 null-as-absent precedent)
+//              BOOLEAN-FALSE-AS-CLOSED: additionalProperties === false → 'closed' (explicit-false closes object to extra keys)
+//              BOOLEAN-TRUE-AS-OPEN: additionalProperties === true → 'open' (explicit-true is the Draft-7 default expressed explicitly)
+//              PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==='[object Object]' → 'open' (Draft-7 schema-form: extra keys permitted, value shape restricted, still semantically OPEN)
+//              DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: any other value → 'unknown' WITH 6th code; NO-COERCION
+//              NO-COERCION: MUST NOT use Boolean(v)/!!v/v?true:false/Object(); MUST use strict ===true/===false and Object.prototype.toString
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property additionalProperties beyond the FIRST is NOT walked (reserved for M-AdditionalProperties-All-Properties).
+// Nested-object property additionalProperties NOT walked (reserved for M-AdditionalProperties-Nested).
+// output_schema first-property additionalProperties is NOT classified (reserved for M-AdditionalProperties-Output-First-Property-Index).
+// input_schema_first_property_additional_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyAdditionalProperties(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // TYPE-APPLICABILITY-OBJECT: if firstVal.type is a string but not 'object' → not_applicable (additionalProperties only meaningful for object-typed properties)
+  if (typeof firstVal.type === 'string' && firstVal.type !== 'object') {
+    return 'not_applicable';
+  }
+  // additionalProperties check:
+  const apVal = Object.prototype.hasOwnProperty.call(firstVal, 'additionalProperties') ? firstVal.additionalProperties : undefined;
+  // ABSENT-AS-OPEN: additionalProperties absent or undefined → open (Draft-7 default is open)
+  if (apVal === undefined) {
+    return 'open';
+  }
+  // NULL-AS-ABSENT: additionalProperties===null → open (mirrors M55–M76 null-as-absent)
+  if (apVal === null) {
+    return 'open';
+  }
+  // BOOLEAN-FALSE-AS-CLOSED: additionalProperties === false → closed
+  if (apVal === false) {
+    return 'closed';
+  }
+  // BOOLEAN-TRUE-AS-OPEN: additionalProperties === true → open
+  if (apVal === true) {
+    return 'open';
+  }
+  // PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==='[object Object]' → open (Draft-7 schema-form)
+  if (Object.prototype.toString.call(apVal) === '[object Object]') {
+    return 'open';
+  }
+  // DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION
+  return 'unknown';
+}
+
 // M76: buildInputSchemaFirstPropertyItemsIndex(manifest, manifestPath) → index object
 // Builds a full unfiltered input schema first property items annotation index from the manifest's capabilities[].
 // Bucket iteration order: declared → undeclared → not_applicable (closed-enum order), then unknown last.
@@ -16942,6 +17062,345 @@ function parseElementIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['element', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M77: buildInputSchemaFirstPropertyAdditionalPropertiesIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property additionalProperties annotation index from the manifest's capabilities[].
+// Bucket iteration order: closed → open → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_additional_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyAdditionalPropertiesIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_additional_properties_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_additional_properties.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M77 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M76)
+    //   6. input_schema_properties_first_property_additional_properties_invalid_when_present (M77-SPECIFIC)
+    //      covers non-boolean non-null non-plain-object present additionalProperties;
+    //      NO-COERCION via Boolean()/!!/v?true:false/Object() — strict ===true/===false and Object.prototype.toString checks only
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (!(typeof firstVal.type === 'string' && firstVal.type !== 'object')) {
+            // TYPE-APPLICABILITY-OBJECT: only check additionalProperties for non-typed or object-typed firstVal
+            // Check additionalProperties for 6th code: present non-null value that is not boolean and not a plain object
+            const apVal = Object.prototype.hasOwnProperty.call(firstVal, 'additionalProperties') ? firstVal.additionalProperties : undefined;
+            if (apVal !== undefined && apVal !== null && apVal !== true && apVal !== false) {
+              const isPlainObject = Object.prototype.toString.call(apVal) === '[object Object]';
+              if (!isPlainObject) {
+                warningReason = 'input_schema_properties_first_property_additional_properties_invalid_when_present';
+              }
+            }
+          }
+          // else: TYPE-APPLICABILITY-OBJECT → not_applicable, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const apClass = classifyInputSchemaFirstPropertyAdditionalProperties(inputSchema);
+    const isNamedBucket = namedBuckets.has(apClass);
+    const bucketKey = isNamedBucket ? apClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: closed → open → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyAdditionalPropertiesStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const apKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyAdditionalPropertiesBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyAdditionalPropertiesBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey('object_property_extension_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_additional_properties: apKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_additional_properties_states: firstPropertyAdditionalPropertiesStates,
+    warnings
+  };
+}
+
+// M77: format input schema first property additionalProperties annotation index as human-readable text
+function formatInputSchemaFirstPropertyAdditionalPropertiesIndex(index) {
+  if (index.first_property_additional_properties_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property AdditionalProperties Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].additionalProperties JSON-Schema-Draft-7 object-extension-control annotation classification; it does NOT execute capability invocations, validate runtime extra-key presence, enforce object-extension contracts, infer additionalProperties from docs, cross-reference required/properties-count/minProperties/maxProperties/patternProperties/propertyNames annotations, rank DTO-extension-constraint strictness, assess governance-rollout strictness, or rank MCP-server-strictness. Bucket order is deterministic stable-output ordering only (NOT governance-rollout-priority-ranked, NOT strictness-readiness-ranked, NOT DTO-extension-constraint-priority-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_additional_properties_states) {
+    lines.push(`[${entry.input_schema_first_property_additional_properties}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: closed (firstKey.additionalProperties === false — BOOLEAN-FALSE-AS-CLOSED: explicit-false closes the object to extra keys) | open (firstKey.additionalProperties absent/undefined — ABSENT-AS-OPEN: Draft-7 default is open; OR null — NULL-AS-ABSENT: null defers to Draft-7 default open; OR true — BOOLEAN-TRUE-AS-OPEN: explicit-true is Draft-7 default expressed explicitly; OR a plain-object schema — PLAIN-OBJECT-SCHEMA-AS-OPEN: extra keys permitted with value-shape restriction, still semantically OPEN) | not_applicable (input_schema.type !== 'object' or zero-property object or firstVal.type is a non-empty string other than 'object' — TYPE-APPLICABILITY-OBJECT: additionalProperties only meaningful for object-typed properties; mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY) | unknown (malformed input_schema, firstKey not a plain object, or additionalProperties present non-null non-boolean non-plain-object: string/'string', number/42, Array/[{}], Date/RegExp/Set — DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: 6th warning code input_schema_properties_first_property_additional_properties_invalid_when_present; NO-COERCION via Boolean()/!!/v?true:false/Object()).");
+  lines.push('Bucket order: closed → open → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M77: tusq open — top-level noun dispatcher
+function cmdOpen(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('open');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdOpenIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M77: tusq open index — handler
+function cmdOpenIndex(args) {
+  const { opts, positionals } = parseOpenIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('open index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyAdditionalPropertiesIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const openFilter = opts['open'] || null;
+
+  if (openFilter !== null) {
+    // Case-sensitive: lowercase canonical additionalProperties bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_ENUM.has(openFilter)) {
+      throw new CliError(`Unknown input schema first property additionalProperties state: ${openFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_additional_properties_states.find(
+      (e) => e.input_schema_first_property_additional_properties === openFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property additionalProperties state: ${openFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_additional_properties_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyAdditionalPropertiesIndex(outputIndex));
+}
+
+function parseOpenIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['open', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -20850,6 +21309,7 @@ function printHelp() {
   process.stdout.write('  most               Index capabilities by input schema first property maxItems array-cardinality-ceiling annotation presence for planning review\n');
   process.stdout.write('  nullable           Index capabilities by input schema first property nullable boolean null-permissibility annotation presence for database review\n');
   process.stdout.write('  obligation         Index capabilities by input schema first property required status for planning review\n');
+  process.stdout.write('  open               Index capabilities by input schema first property additionalProperties object-extension-control annotation presence for governance-and-rollout review\n');
   process.stdout.write('  output             Index capabilities by output schema property count tier for planning review\n');
   process.stdout.write('  parameter          Index capabilities by input schema property count tier for planning review\n');
   process.stdout.write('  path               Index capabilities by path segment count tier for planning review\n');
@@ -21857,6 +22317,51 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown status value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime request validator, action-execution policy enforcer, SDK call-site generator, or runtime conformance detector; required-status is deterministic stable-output ordering only (NOT runtime-execution-safety-ranked, NOT call-site-strictness-ranked, NOT destructive-action-priority-ranked, NOT action-policy-precedence-ranked).'
+    ].join('\n'),
+    open: 'Usage: tusq open <subcommand>\n  Subcommands: index',
+    'open index': [
+      'Usage: tusq open index [--open <closed|open|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --open <closed|open|not_applicable|unknown>',
+      '                                     Filter to a single input schema first property additionalProperties annotation bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>                  Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>                       Write index to file (no stdout on success)',
+      '  --json                             Emit machine-readable JSON (includes warnings[] for malformed input_schema)',
+      '',
+      'AdditionalProperties annotation rule (applied to input_schema.properties[firstKey].additionalProperties when input_schema.type === "object" and firstVal.type === "object"):',
+      '  closed         if properties[firstKey].additionalProperties === false',
+      '                 (BOOLEAN-FALSE-AS-CLOSED: explicit-false closes the object to extra keys — no warning)',
+      '  open           if properties[firstKey].additionalProperties is absent, undefined, or null',
+      '                 (ABSENT-AS-OPEN: absent/undefined → open (Draft-7 default is additionalProperties: true / open);',
+      '                 NULL-AS-ABSENT: null → open (mirrors M55–M76 null-as-absent precedent))',
+      '                 OR if properties[firstKey].additionalProperties === true',
+      '                 (BOOLEAN-TRUE-AS-OPEN: explicit-true is the Draft-7 default expressed explicitly)',
+      '                 OR if properties[firstKey].additionalProperties is a plain object (schema form)',
+      '                 (PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==="[object Object]" — extra keys permitted',
+      '                 with value-shape restriction, still semantically OPEN because extra-key existence is allowed)',
+      "  not_applicable if input_schema.type is a string but not 'object' OR zero-property object",
+      "                 OR firstVal.type is a non-empty string other than 'object'",
+      '                 (TYPE-APPLICABILITY-OBJECT: additionalProperties only meaningful for object-typed properties;',
+      '                 mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY)',
+      '  unknown        if input_schema or properties are malformed, firstKey not a plain object,',
+      '                 or additionalProperties is present non-null non-boolean non-plain-object',
+      "                 (string/'string', number/42, Array/[{}], Date/RegExp/Set/Map)",
+      '                 (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: triggers 6th warning code',
+      '                 input_schema_properties_first_property_additional_properties_invalid_when_present;',
+      "                 NO-COERCION via Boolean()/!!/v?true:false/Object() — strict ===true/===false and Object.prototype.toString checks only)",
+      '',
+      'Bucket iteration order: closed → open → not_applicable → unknown (closed-enum order, not manifest first-appearance)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown additionalProperties annotation value, --out path error, or unknown subcommand',
+      '',
+      'Distinct from tusq strictness index (M40 — output schema top-level additionalProperties, SIBLING input-vs-output axis pair)',
+      'Distinct from tusq obligation index (M50 — firstKey required-status, different field semantic)',
+      'Distinct from tusq element index (M76 — firstKey items array-element-subschema, array-axis vs object-axis)',
+      '',
+      'This is a planning aid, not a runtime object-extension validator, runtime extra-property rejector, runtime property stripper, DTO-extension validator, governance-rollout strictness aggregator, strict-tool-emitter-additional-properties validator, MCP-server-additional-properties validator, marketplace-package-additional-properties validator, or validation-layer-additional-properties validator; bucket order is deterministic stable-output ordering only (NOT governance-rollout-priority-ranked, NOT strictness-readiness-ranked, NOT DTO-extension-constraint-priority-ranked, NOT MCP-server-strictness-tier-ranked, NOT marketplace-package-strictness-ranked).'
     ].join('\n'),
     output: 'Usage: tusq output <subcommand>\n  Subcommands: index',
     'output index': [
