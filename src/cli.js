@@ -1039,6 +1039,33 @@ const INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_AGGREGATION_KEY_ENUM = Object.fre
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
 
+// M84: frozen four-value bucket-key enum for input_schema.properties[firstKey].const (JSON-Schema-Draft-7 §6.1.3 SINGLE-VALUE-PIN).
+// typed — firstVal.const is any valid JSON value: null, string, finite number, boolean, array (including empty []), plain object (including empty {})
+//           (NULL-AS-TYPED: const:null → typed — M84-SPECIFIC, distinct from M55–M83 NULL-AS-ABSENT)
+//           (JSON-ARRAY-AS-TYPED: const:[] → typed — M84-distinct from M82 EMPTY-ARRAY-AS-UNTYPED)
+//           (JSON-PLAIN-OBJECT-AS-TYPED: const:{} → typed — M84-distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)
+//           (JSON-FINITE-NUMBER-AS-TYPED: finite number only; NaN/Infinity/-Infinity → unknown WITH 6th code)
+// untyped — own-property 'const' NOT present on firstVal (ABSENT-AS-UNTYPED: Draft-7 default no value pin; no warning)
+// not_applicable — inputSchema.type !== 'object' OR zero-property object OR firstVal not a plain object
+//                  NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type to gate not_applicable
+//                  (Draft-7 §6.1.3 defines const as applicable to ANY type — distinct from M77–M83 TYPE-APPLICABILITY-OBJECT)
+// unknown — malformed input_schema; firstVal.const own-property present but value is JavaScript undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN);
+//           OR NaN/Infinity/-Infinity; OR function/Symbol/BigInt/Date/RegExp/Set/Map/typed-array/custom-class-instance
+//           (6th code: input_schema_properties_first_property_const_invalid_when_present; NO-COERCION)
+// Immutable once M84 ships.
+const INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_ENUM = Object.freeze(new Set(['typed', 'untyped', 'not_applicable', 'unknown']));
+
+// M84: frozen three-value aggregation_key enum. Immutable once M84 ships.
+// typed/untyped buckets carry 'value_pinning_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['value_pinning_constraint', 'not_applicable', 'unknown']));
+
+// M84: closed-enum bucket iteration order (typed → untyped → not_applicable). Unknown appended last.
+// NOT workflow-state-machine-priority-ranked, NOT state-transition-graph-emitter-priority-ranked,
+// NOT stuck-state-detector-ranked, NOT status-field-extraction-ranked, NOT enum-extractor-ranked,
+// NOT workflow-checkpoint-emitter-ranked, NOT discrete-state-lexicon-emitter-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1171,6 +1198,9 @@ function dispatch(argv) {
       return;
     case 'confidence':
       cmdConfidence(args);
+      return;
+    case 'constant':
+      cmdConstant(args);
       return;
     case 'crowded':
       cmdCrowded(args);
@@ -13164,6 +13194,20 @@ function _guardInputSchemaFirstPropertyDependenciesAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyConstantBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_const outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyConstantAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -17502,6 +17546,108 @@ function classifyInputSchemaFirstPropertyDependencies(inputSchema) {
   return 'typed';
 }
 
+// M84: classifyInputSchemaFirstPropertyConstant(inputSchema) → 'typed'|'untyped'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (outer-schema structural prerequisite — without object outer there is no first property to inspect)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M84-SPECIFIC): MUST NOT inspect firstVal.type to gate not_applicable
+//                (Draft-7 §6.1.3 defines const as applicable to ANY type — distinct from M77–M83 TYPE-APPLICABILITY-OBJECT pattern)
+//              own-property 'const' NOT present on firstVal → 'untyped' (ABSENT-AS-UNTYPED; no warning)
+//              firstVal.const === undefined (own-property present but value is JS undefined) → 'unknown' WITH 6th code
+//                (UNDEFINED-EXPLICIT-AS-UNKNOWN: JavaScript undefined is NOT a JSON value)
+//              firstVal.const === null → 'typed' (NULL-AS-TYPED — M84-SPECIFIC, distinct from M55–M83 NULL-AS-ABSENT)
+//              typeof firstVal.const === 'string' → 'typed' (JSON-STRING-AS-TYPED)
+//              typeof firstVal.const === 'number' AND Number.isFinite(firstVal.const) → 'typed' (JSON-FINITE-NUMBER-AS-TYPED)
+//              typeof firstVal.const === 'number' AND !Number.isFinite(firstVal.const) → 'unknown' WITH 6th code (NaN/Infinity/-Infinity NOT JSON values)
+//              typeof firstVal.const === 'boolean' → 'typed' (JSON-BOOLEAN-AS-TYPED)
+//              Array.isArray(firstVal.const) → 'typed' (JSON-ARRAY-AS-TYPED; includes empty [])
+//              Object.prototype.toString.call(firstVal.const) === '[object Object]' → 'typed' (JSON-PLAIN-OBJECT-AS-TYPED; includes empty {})
+//              any other value (function, Symbol, BigInt, Date, RegExp, Set, Map, etc.) → 'unknown' WITH 6th code
+//              (DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!)
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property const beyond the FIRST is NOT walked (reserved for M-Const-All-Properties).
+// Nested-object property const NOT walked (reserved for M-Const-Nested).
+// output_schema first-property const is NOT classified (reserved for M-Const-Output).
+// input_schema_first_property_const MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyConstant(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M84-SPECIFIC): MUST NOT check firstVal.type to gate not_applicable.
+  // Draft-7 §6.1.3 defines const as applicable to ANY type.
+  // const check:
+  // ABSENT-AS-UNTYPED: own-property 'const' not present → untyped (Draft-7 default no value pin)
+  if (!Object.prototype.hasOwnProperty.call(firstVal, 'const')) {
+    return 'untyped';
+  }
+  const constVal = firstVal.const;
+  // UNDEFINED-EXPLICIT-AS-UNKNOWN: own-property present but value is JavaScript undefined
+  if (constVal === undefined) {
+    return 'unknown';
+  }
+  // NULL-AS-TYPED (M84-SPECIFIC): const:null → typed (Draft-7 §6.1.3 permits null as valid pin)
+  if (constVal === null) {
+    return 'typed';
+  }
+  // JSON-STRING-AS-TYPED
+  if (typeof constVal === 'string') {
+    return 'typed';
+  }
+  // JSON-FINITE-NUMBER-AS-TYPED / NaN+Infinity → unknown
+  if (typeof constVal === 'number') {
+    if (Number.isFinite(constVal)) {
+      return 'typed';
+    }
+    // NaN, Infinity, -Infinity are NOT valid JSON values → unknown WITH 6th code
+    return 'unknown';
+  }
+  // JSON-BOOLEAN-AS-TYPED
+  if (typeof constVal === 'boolean') {
+    return 'typed';
+  }
+  // JSON-ARRAY-AS-TYPED (includes empty [])
+  if (Array.isArray(constVal)) {
+    return 'typed';
+  }
+  // JSON-PLAIN-OBJECT-AS-TYPED (includes empty {})
+  if (Object.prototype.toString.call(constVal) === '[object Object]') {
+    return 'typed';
+  }
+  // DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST: any other value (function, Symbol, BigInt, Date, etc.) → unknown WITH 6th code
+  // NO-COERCION: MUST NOT use Array.from/Object/JSON.parse(JSON.stringify(...))/String/Number/Boolean/!!
+  return 'unknown';
+}
+
 // M76: buildInputSchemaFirstPropertyItemsIndex(manifest, manifestPath) → index object
 // Builds a full unfiltered input schema first property items annotation index from the manifest's capabilities[].
 // Bucket iteration order: declared → undeclared → not_applicable (closed-enum order), then unknown last.
@@ -20234,6 +20380,355 @@ function parseDependentIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['dependent', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M84: buildInputSchemaFirstPropertyConstantIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property const annotation index from the manifest's capabilities[].
+// Bucket iteration order: typed → untyped → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_const MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyConstantIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_const_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_const.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M84 PM DEC-004):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M83)
+    //   6. input_schema_properties_first_property_const_invalid_when_present (M84-SPECIFIC)
+    //      covers: firstVal.const own-property present but value is JavaScript undefined;
+    //      NaN/Infinity/-Infinity; function/Symbol/BigInt/Date/RegExp/Set/Map/typed-array/custom-class;
+    //      NO-COERCION
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else {
+            // NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: do NOT check firstVal.type
+            // Check const value for 6th code conditions
+            if (Object.prototype.hasOwnProperty.call(firstVal, 'const')) {
+              const constVal = firstVal.const;
+              if (constVal === undefined) {
+                warningReason = 'input_schema_properties_first_property_const_invalid_when_present';
+              } else if (typeof constVal === 'number' && !Number.isFinite(constVal)) {
+                warningReason = 'input_schema_properties_first_property_const_invalid_when_present';
+              } else if (
+                constVal !== null &&
+                typeof constVal !== 'string' &&
+                typeof constVal !== 'boolean' &&
+                !Array.isArray(constVal) &&
+                !(typeof constVal === 'number' && Number.isFinite(constVal)) &&
+                Object.prototype.toString.call(constVal) !== '[object Object]'
+              ) {
+                warningReason = 'input_schema_properties_first_property_const_invalid_when_present';
+              }
+            }
+          }
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: inputSchema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const constClass = classifyInputSchemaFirstPropertyConstant(inputSchema);
+    const isNamedBucket = namedBuckets.has(constClass);
+    const bucketKey = isNamedBucket ? constClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: typed → untyped → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyConstStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const constKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyConstantBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyConstantBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyConstantAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyConstantAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyConstantAggregationKey('value_pinning_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_const: constKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_const_states: firstPropertyConstStates,
+    warnings
+  };
+}
+
+// M84: format input schema first property const annotation index as human-readable text
+function formatInputSchemaFirstPropertyConstantIndex(index) {
+  if (index.first_property_const_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property Const Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].const JSON-Schema-Draft-7 §6.1.3 single-value-pin annotation classification; it does NOT execute capability invocations, validate runtime value equality, enforce const contracts, cross-reference enum/default/required/dependencies/propertyNames/patternProperties/additionalProperties annotations, rank workflow-state-machine-priority, assess state-transition-graph-emitter readiness, emit stuck-state detection signals, extract status-field lexicon, or rank workflow-checkpoint coverage. Bucket order is deterministic stable-output ordering only (NOT workflow-state-machine-priority-ranked, NOT state-transition-graph-emitter-priority-ranked, NOT workflow-checkpoint-emitter-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_const_states) {
+    lines.push(`[${entry.input_schema_first_property_const}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: typed (firstKey.const is a valid JSON value: null (NULL-AS-TYPED — M84-SPECIFIC: const:null pins to literal JSON null, distinct from M55–M83 NULL-AS-ABSENT), string (JSON-STRING-AS-TYPED), finite number (JSON-FINITE-NUMBER-AS-TYPED: NaN/Infinity/-Infinity → unknown), boolean (JSON-BOOLEAN-AS-TYPED), array including empty [] (JSON-ARRAY-AS-TYPED — M84-distinct from M82 EMPTY-ARRAY-AS-UNTYPED), plain object including empty {} (JSON-PLAIN-OBJECT-AS-TYPED — M84-distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)) | untyped (firstKey.const own-property NOT present — ABSENT-AS-UNTYPED: Draft-7 default no value pin; no warning) | not_applicable (inputSchema.type !== 'object' or zero-property object or firstVal not a plain object; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type to gate not_applicable — Draft-7 §6.1.3 defines const as applicable to ANY type, distinct from M77–M83 TYPE-APPLICABILITY-OBJECT) | unknown (malformed input_schema, firstKey not a plain object, OR firstVal.const own-property present with a JavaScript value that is not a valid JSON value: undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN), NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, Set, Map, typed-array, custom class — DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST: 6th warning code input_schema_properties_first_property_const_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!).");
+  lines.push('Bucket order: typed → untyped → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M84: tusq constant — top-level noun dispatcher
+function cmdConstant(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('constant');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdConstantIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M84: tusq constant index — handler
+function cmdConstantIndex(args) {
+  const { opts, positionals } = parseConstantIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('constant index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyConstantIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const constantFilter = opts['constant'] || null;
+
+  if (constantFilter !== null) {
+    // Case-sensitive: lowercase canonical const bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_ENUM.has(constantFilter)) {
+      throw new CliError(`Unknown input schema first property const state: ${constantFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_const_states.find(
+      (e) => e.input_schema_first_property_const === constantFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property const state: ${constantFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_const_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyConstantIndex(outputIndex));
+}
+
+function parseConstantIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['constant', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -24121,6 +24616,7 @@ function printHelp() {
   process.stdout.write('  ceiling            Index capabilities by input schema first property maxLength string-length-ceiling annotation presence for planning review\n');
   process.stdout.write('  choice             Index capabilities by input schema first property enum constraint presence for planning review\n');
   process.stdout.write('  confidence         Index capabilities by confidence tier for planning review\n');
+  process.stdout.write('  constant           Index capabilities by input schema first property const single-value-pin annotation presence for workflow-and-state inference review\n');
   process.stdout.write('  crowded            Index capabilities by input schema first property maxProperties object-property-count-ceiling annotation presence for evals-and-regression review\n');
   process.stdout.write('  dependent          Index capabilities by input schema first property dependencies object-property-dependencies-heterogeneous-map annotation presence for ecosystem-bots review\n');
   process.stdout.write('  description        Index capabilities by description word count tier for planning review\n');
@@ -24426,6 +24922,56 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown choice value, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime enum validator, enum-value distributor, enum-cardinality analyzer, LLM enum inferrer, or SDK picker generator; per-FIRST-property enum constraint presence is deterministic stable-output ordering only (NOT widget-composition-readiness-ranked, NOT reviewer-priority-ranked).'
+    ].join('\n'),
+    constant: 'Usage: tusq constant <subcommand>\n  Subcommands: index',
+    'constant index': [
+      'Usage: tusq constant index [--constant <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --constant <value>    Filter to a single input schema first property const bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].const; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT inspect firstVal.type to gate not_applicable — Draft-7 §6.1.3 defines const as applicable to ANY type):',
+      '  typed        if firstKey.const is any valid JSON value:',
+      '               const:null → typed (NULL-AS-TYPED — M84-SPECIFIC: Draft-7 §6.1.3 permits null as a valid pin to literal JSON null; distinct from M55–M83 NULL-AS-ABSENT)',
+      '               const:<string> → typed (JSON-STRING-AS-TYPED)',
+      '               const:<finite number> → typed (JSON-FINITE-NUMBER-AS-TYPED: NaN/Infinity/-Infinity → unknown with 6th code)',
+      '               const:true/false → typed (JSON-BOOLEAN-AS-TYPED)',
+      '               const:[] → typed (JSON-ARRAY-AS-TYPED including empty [] — M84-distinct from M82 EMPTY-ARRAY-AS-UNTYPED)',
+      '               const:{} → typed (JSON-PLAIN-OBJECT-AS-TYPED including empty {} — M84-distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)',
+      '  untyped      if own-property "const" NOT present on firstKey (ABSENT-AS-UNTYPED: Draft-7 default no value pin; no warning)',
+      '  not_applicable  if input_schema.type is a string but not "object" (no first property to inspect — outer-schema structural prerequisite)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '               OR if the first property descriptor is not a plain object.',
+      '               NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: MUST NOT check firstVal.type to gate not_applicable.',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or firstVal.const own-property present but value is JavaScript undefined (UNDEFINED-EXPLICIT-AS-UNKNOWN);',
+      '               or firstVal.const is NaN, Infinity, or -Infinity (JSON-FINITE-NUMBER-AS-TYPED: non-finite numbers are NOT valid JSON values);',
+      '               or firstVal.const is a function, Symbol, BigInt, Date, RegExp, Set, Map, typed-array, or custom class instance',
+      '               (DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST: 6th warning code input_schema_properties_first_property_const_invalid_when_present;',
+      '               NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property const beyond the FIRST are NOT walked (reserved for M-Const-All-Properties).',
+      '               Nested-object property const NOT walked (reserved for M-Const-Nested).',
+      '               output_schema first-property const NOT classified here.',
+      '               Distinct from M69 tusq fixed index (pinned/unpinned semantics vs typed/untyped; different aggregation_key: single_value_constraint vs value_pinning_constraint),',
+      '               M54 tusq choice index (enum — closed set of allowed values vs single pinned value),',
+      '               M55 tusq preset index (default — default-value fallback annotation, not a pin constraint),',
+      '               M82 tusq required index (required — key-presence list, not value pinning),',
+      '               M83 tusq dependent index (dependencies — conditional co-presence MAP, not value pinning).',
+      '',
+      'Bucket iteration order: typed → untyped → not_applicable → unknown',
+      '  (deterministic stable-output convention only — NOT workflow-state-machine-priority-ranked, NOT state-transition-graph-emitter-priority-ranked, NOT workflow-checkpoint-emitter-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown const state, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime value-pin validator, runtime value-equality rejector, runtime state checker, DTO-const validator, state-machine emitter, state-transition graph emitter, stuck-state detector, workflow-checkpoint emitter, or discrete-state-lexicon emitter; const states are deterministic stable-output ordering only (NOT workflow-state-machine-priority-ranked).'
     ].join('\n'),
     crowded: 'Usage: tusq crowded <subcommand>\n  Subcommands: index',
     'crowded index': [

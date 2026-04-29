@@ -411,6 +411,50 @@ tusq confidence index --tier unknown --json
 tusq confidence index --out confidence-index.json
 ```
 
+## `tusq constant index`
+
+Emit a deterministic, per-`const`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 §6.1.3 single-value-pin annotation on `input_schema.properties[firstKey].const` (the first input property descriptor), in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime value-equality enforcer, value-pin validator, DTO-const-validator, or automated re-classifier**.
+
+**M84 NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (unique among M77–M84 first-property cluster):** Draft-7 §6.1.3 defines `const` as applicable to **ANY** type — a `firstVal` with `type: 'string'` and `const: 'fixed'`, `type: 'number'` and `const: 42`, `type: 'boolean'` and `const: true`, `type: 'null'` and `const: null`, `type: 'array'` and `const: [1,2,3]`, `type: 'object'` and `const: {a:1}`, AND `firstVal` with NO declared `type` are ALL valid hosts for a `const` annotation. The classifier MUST NOT inspect `firstVal.type` to gate `not_applicable` (distinct from M77–M83 TYPE-APPLICABILITY-OBJECT pattern).
+
+**M84 NULL-AS-TYPED (distinct from M55–M83 NULL-AS-ABSENT):** `firstVal.const === null` → `typed`. Draft-7 §6.1.3 explicitly permits `const: null` as a meaningful pin to the literal JSON `null` value.
+
+**Distinct from `tusq required index` (M82):** `tusq required index` reads `firstKey.required` — an **unconditional** flat array of NAME strings declaring keys that MUST always be present. `tusq constant index` reads `firstKey.const` — a **single-value pin** locking the first property's value to exactly one specific JSON value.
+
+**Distinct from `tusq dependent index` (M83):** `tusq dependent index` reads `firstKey.dependencies` — a **conditional** trigger-keyed MAP of co-required-keys-or-sub-schemas. `tusq constant index` reads `firstKey.const` — a single unconditional locked value (any JSON type; no key-or-schema mapping).
+
+```bash
+tusq constant index [--constant <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--constant <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single const annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**Const classification rule** (applied to `input_schema.properties[firstKey].const` when `input_schema.type === "object"` and `input_schema.properties` is a non-empty plain object and `firstVal` is a plain object):
+
+- `typed` — `firstKey.const` is present (own-property) and is one of: `=== null` (**NULL-AS-TYPED** — M84-SPECIFIC), `typeof === 'string'` (**JSON-STRING-AS-TYPED**), `typeof === 'number' && Number.isFinite` (**JSON-FINITE-NUMBER-AS-TYPED**; non-finite NaN/Infinity/-Infinity → `unknown`), `typeof === 'boolean'` (**JSON-BOOLEAN-AS-TYPED**), `Array.isArray` (**JSON-ARRAY-AS-TYPED**; empty `[]` **PERMITTED** — pins to the literal empty-array value, distinct from M82 EMPTY-ARRAY-AS-UNTYPED), `Object.prototype.toString.call(v) === '[object Object]'` (**JSON-PLAIN-OBJECT-AS-TYPED**; empty `{}` **PERMITTED** — pins to the literal empty-object value, distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)
+- `untyped` — own-property `'const'` NOT present on `firstVal` (**ABSENT-AS-UNTYPED**: Draft-7 default no value pin; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'` (no first property to inspect), OR zero-property object (no warning); **NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION**: `firstVal.type` is NOT inspected to gate `not_applicable`
+- `unknown` — `input_schema` or `properties` are malformed, `firstVal` not a plain object, `firstVal.const` is an own-property but value is JavaScript `undefined` (**UNDEFINED-EXPLICIT-AS-UNKNOWN**), `firstVal.const` is present but a non-JSON value (NaN, Infinity, -Infinity, function, Symbol, BigInt, Date, RegExp, Set, Map, etc.) — triggers 6th warning code `input_schema_properties_first_property_const_invalid_when_present`; **NO-COERCION** via `Array.from()`/`Object()`/`JSON.parse(JSON.stringify())`/`String(v)`/`Number(v)`/`Boolean(v)`/`!!v`
+
+**Bucket iteration order:** `typed → untyped → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT workflow-priority-ranked, NOT state-machine-readiness-ranked, NOT state-transition-graph-emit-priority-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown const state, `--out` path error, or unknown subcommand
+
+```bash
+tusq constant index
+tusq constant index --json
+tusq constant index --constant typed
+tusq constant index --constant untyped --json
+tusq constant index --out constant-index.json
+```
+
 ## `tusq description index`
 
 Emit a deterministic, per-description-word-count-tier capability index from manifest evidence. Groups capabilities by a tier derived from their `description` field's whitespace-token count using frozen thresholds (`low` for ≤7 tokens, `medium` for 8–14 tokens, `high` for ≥15 tokens, `unknown` for null/missing/non-string/empty-after-trim), in closed-enum order (`low → medium → high → unknown`). Tokenization is purely whitespace-based using `description.trim().split(/\s+/u).length` — markdown is NOT stripped, HTML tags are NOT stripped, numbers are NOT stripped, Unicode whitespace is handled by the `/u` flag. This is a **planning aid, not a runtime doc-quality enforcer, doc-contradiction detector, claim-richness certifier, or public-doc compliance auditor**.

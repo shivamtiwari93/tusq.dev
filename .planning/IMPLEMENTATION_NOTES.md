@@ -2,6 +2,68 @@
 
 ---
 
+## M84 (run_91fd37340cef71d1, turn_cc991c7e1fc3d487, dev)
+
+**Axis:** `input_schema.properties[firstKey].const` — JSON-Schema Draft 7 §6.1.3 SINGLE-VALUE-PIN annotation. CLI noun: `constant` (between `confidence` and `crowded`). CLI surface 67→68.
+
+**Constants added** (`src/cli.js`, after M83 dependencies constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_AGGREGATION_KEY_ENUM` = frozen Set `['value_pinning_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+Note: JS variable names use `CONSTANT` (not `CONST`) to avoid collision with M69's existing `INPUT_SCHEMA_FIRST_PROPERTY_CONST_*` constants (M69 uses `pinned/unpinned` bucket keys; M84 uses `typed/untyped`).
+
+**Guard functions** (after M83 guards):
+- `_guardInputSchemaFirstPropertyConstantBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyConstantAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyConstant(inputSchema)` (after M83 `classifyInputSchemaFirstPropertyDependencies`):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type !== 'object'` → `not_applicable` (outer-schema structural prerequisite)
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION** (M84-SPECIFIC): MUST NOT inspect `firstVal.type` to gate `not_applicable` (Draft-7 §6.1.3 const applies to ANY type)
+9. **ABSENT-AS-UNTYPED**: own-property `'const'` NOT present → `untyped` (no warning)
+10. **UNDEFINED-EXPLICIT-AS-UNKNOWN**: `firstVal.const === undefined` (own-property present, value undefined) → `unknown` WITH 6th code
+11. **NULL-AS-TYPED** (M84-SPECIFIC): `firstVal.const === null` → `typed` (distinct from M55–M83 NULL-AS-ABSENT)
+12. **JSON-STRING-AS-TYPED**: `typeof firstVal.const === 'string'` → `typed`
+13. **JSON-FINITE-NUMBER-AS-TYPED**: `typeof firstVal.const === 'number' && Number.isFinite` → `typed`; NaN/Infinity/-Infinity → `unknown` WITH 6th code
+14. **JSON-BOOLEAN-AS-TYPED**: `typeof firstVal.const === 'boolean'` → `typed`
+15. **JSON-ARRAY-AS-TYPED**: `Array.isArray(firstVal.const)` → `typed` (including empty `[]`)
+16. **JSON-PLAIN-OBJECT-AS-TYPED**: `Object.prototype.toString.call(firstVal.const) === '[object Object]'` → `typed` (including empty `{}`)
+17. **DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST**: any other (function, Symbol, BigInt, Date, RegExp, etc.) → `unknown` WITH 6th code
+18. **NO-COERCION** throughout (no `Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!`)
+
+**Build/format/cmd functions** (after M83 `parseDependentIndexArgs`):
+- `buildInputSchemaFirstPropertyConstantIndex(manifest, manifestPath)` — aggregates capabilities into `first_property_const_states[]` with per-bucket `input_schema_first_property_const` field
+- `formatInputSchemaFirstPropertyConstantIndex(index)` — plain-text output with bucket headers
+- `cmdConstant(args)`, `cmdConstantIndex(args)`, `parseConstantIndexArgs(args)` — CLI dispatch with `--constant`, `--manifest`, `--json`, `--out` flags
+
+**Output JSON shape**: `first_property_const_states[]` with per-bucket field `input_schema_first_property_const` (same field name as M69's `fixed` command but with `typed/untyped` values instead of `pinned/unpinned`).
+
+**Smoke tests** (`tests/smoke.mjs`):
+- All 49 `!== 67` help-count assertions updated to `!== 68`
+- 18-case M84 smoke matrix (M84(a)–M84 additional): STRING/NUMBER/BOOLEAN/NULL/ARRAY/OBJECT typed cases; ABSENT untyped; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (string+number firstVal.type); zero-prop/schema-level not_applicable; UNDEFINED/NaN/Infinity/function unknown; case-sensitive filter; absent-bucket exit 1; non-persistence; missing manifest exit 1; CLI surface 68; help ordering confidence<constant<crowded; planning-aid framing; unknown subcommand exit 1
+- Note: NaN/Infinity/undefined/function cases tested via in-memory JS patch (not via JSON file since JSON.stringify drops/converts these values)
+
+**Eval tests**: `input-schema-first-property-const-index-determinism` scenario added (74→75 scenarios). Handler `runInputSchemaFirstPropertyConstIndexDeterminismScenario` validates byte-identity, closed enums, bucket order, warnings[], manifest non-mutation, NULL-AS-TYPED, ABSENT-AS-UNTYPED, not_applicable, aggregation_key values.
+
+**Files changed**:
+- `src/cli.js` — constants, guards, classifier, build/format/cmd, dispatch, printHelp, printCommandHelp
+- `tests/smoke.mjs` — 49 count updates + M84 18-case matrix
+- `tests/evals/governed-cli-scenarios.json` — M84 eval scenario (75 total)
+- `tests/eval-regression.mjs` — M84 handler + dispatch
+- `.planning/IMPLEMENTATION_NOTES.md` — this section
+- `.planning/ROADMAP.md` — M84 items checked
+- `.planning/SYSTEM_SPEC.md` — M84 Materialized prepended
+- `.planning/command-surface.md` — M84 Materialized prepended
+- `website/docs/cli-reference.md` — `## tusq constant index` inserted
+
+---
+
 ## M83 (run_4be2c82d93272ed2, turn_57cac3046689ed6e, dev)
 
 **Axis:** `input_schema.properties[firstKey].dependencies` — JSON-Schema Draft 7 §6.5.7 OBJECT-PROPERTY-DEPENDENCIES-HETEROGENEOUS-MAP annotation. CLI noun: `dependent` (between `crowded` and `divisor`). CLI surface 66→67.

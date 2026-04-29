@@ -6845,6 +6845,130 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-constant-index-determinism",
+      "scenario_type": "input_schema_first_property_constant_index_determinism",
+      "description": "Verifies that tusq constant index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (value_pinning_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_const non-persistence. NULL-AS-TYPED (M84-SPECIFIC): firstVal.const===null \u2192 typed (Draft-7 \u00a76.1.3 permits const:null as valid pin to literal JSON null; distinct from M55\u2013M83 NULL-AS-ABSENT). NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M84-SPECIFIC): classifier MUST NOT inspect firstVal.type to gate not_applicable (Draft-7 \u00a76.1.3 defines const as applicable to ANY type; distinct from M77\u2013M83 TYPE-APPLICABILITY-OBJECT). JSON-STRING-AS-TYPED, JSON-FINITE-NUMBER-AS-TYPED (NaN/Infinity/-Infinity \u2192 unknown WITH 6th code), JSON-BOOLEAN-AS-TYPED, JSON-ARRAY-AS-TYPED including empty [], JSON-PLAIN-OBJECT-AS-TYPED including empty {}. ABSENT-AS-UNTYPED: own-property 'const' not present \u2192 untyped (Draft-7 default no value pin, no warning). DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST: any non-JSON-representable value \u2192 unknown WITH 6th code input_schema_properties_first_property_const_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String/Number/Boolean/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_const_string_cap",
+          "method": "POST",
+          "path": "/typed-const-string",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "const": "pending"
+              }
+            }
+          },
+          "description": "First property type='string', const='pending' \u2014 lands in typed bucket (JSON-STRING-AS-TYPED; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION: firstVal.type='string' does NOT gate not_applicable)"
+        },
+        {
+          "name": "typed_const_null_cap",
+          "method": "POST",
+          "path": "/typed-const-null",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "const": null
+              }
+            }
+          },
+          "description": "First property const=null \u2014 lands in typed bucket (NULL-AS-TYPED \u2014 M84-SPECIFIC: Draft-7 \u00a76.1.3 permits const:null as valid pin to literal JSON null; distinct from M55\u2013M83 NULL-AS-ABSENT)"
+        },
+        {
+          "name": "typed_const_boolean_cap",
+          "method": "POST",
+          "path": "/typed-const-boolean",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "flag": {
+                "type": "boolean",
+                "const": true
+              }
+            }
+          },
+          "description": "First property const=true \u2014 lands in typed bucket (JSON-BOOLEAN-AS-TYPED)"
+        },
+        {
+          "name": "untyped_const_absent_cap",
+          "method": "GET",
+          "path": "/untyped-const-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property has no own-property 'const' \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED: Draft-7 default no value pin, no warning)"
+        },
+        {
+          "name": "na_const_string_outer_cap",
+          "method": "GET",
+          "path": "/na-const-string-outer",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "string"
+          },
+          "description": "inputSchema.type='string' \u2014 lands in not_applicable bucket (outer-schema structural prerequisite: no properties to inspect; no warning)"
+        },
+        {
+          "name": "unknown_const_invalid_cap",
+          "method": "POST",
+          "path": "/unknown-const-invalid",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property has const key present (will be patched in handler to NaN by eval harness) \u2014 lands in unknown bucket with 6th warning code (JSON-FINITE-NUMBER-AS-TYPED: NaN is NOT a valid JSON value)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "value_pinning_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }
