@@ -2,6 +2,57 @@
 
 ---
 
+## M81 (run_367446ff4d285c65, turn_6ac22b755c1fd5d7, dev)
+
+**Axis:** `input_schema.properties[firstKey].propertyNames` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-SUBSCHEMA annotation. CLI noun: `named` (between `most` and `nullable`). CLI surface 64→65.
+
+**Constants added** (`src/cli.js`, after M80 patternProperties constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_name_subschema_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PROPERTY_NAMES_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M80 guards):
+- `_guardInputSchemaFirstPropertyPropertyNamesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyPropertyNamesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyPropertyNames(inputSchema)` (after `classifyInputSchemaFirstPropertyPatternProperties`):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type` is a string but not `'object'` → `not_applicable`
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT**: `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (mirrors M77/M78/M79/M80)
+9. **ABSENT-AS-UNTYPED**: `propertyNames` absent/undefined → `untyped`
+10. **NULL-AS-ABSENT**: `propertyNames === null` → `untyped` (mirrors M55–M80)
+11. **BOOLEAN-TRUE-AS-UNTYPED**: `propertyNames === true` → `untyped` (Draft-7 §4.4 boolean true equivalent to empty schema)
+12. **BOOLEAN-FALSE-AS-TYPED**: `propertyNames === false` → `typed` (Draft-7 §4.4 boolean false rejects all values; M81-SPECIFIC strongest name constraint)
+13. **DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES**: non-boolean non-plain-object → `unknown` WITH 6th code
+14. **EMPTY-OBJECT-SCHEMA-AS-UNTYPED**: plain-object with `Object.keys.length === 0` → `untyped`
+15. **PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED**: plain-object with >= 1 own enumerable keyword → `typed`
+
+**Index/format/cmd functions** (inserted before M55 defaultValue section):
+- `buildInputSchemaFirstPropertyPropertyNamesIndex(manifest, manifestPath)` — full index builder
+- `formatInputSchemaFirstPropertyPropertyNamesIndex(index)` — plain-text formatter
+- `cmdNamed(args)` / `cmdNamedIndex(args)` / `parseNamedIndexArgs(args)` — CLI handlers
+
+**Wiring:** `'named'` case added to dispatch switch between `'most'` and `'nullable'`; `'named'` line added to `printHelp()` between `'most'` and `'nullable'`; `'named'` and `'named index'` entries added to `printCommandHelp()` before `'nullable'`.
+
+**Tests (`tests/smoke.mjs`):** 46 `!== 64` assertions updated to `!== 65`. 18-case M81 smoke matrix (M81(a)–M81(r)) added after M80 cleanup.
+
+**Eval regression:** `input-schema-first-property-property-names-index-determinism` scenario added to `tests/evals/governed-cli-scenarios.json` (71→72 scenarios). `runInputSchemaFirstPropertyPropertyNamesIndexDeterminismScenario` handler added to `tests/eval-regression.mjs`.
+
+**Result fields:**
+- `first_property_property_names_states[]` — result array field name
+- `input_schema_first_property_property_names` — per-bucket field name
+- `aggregation_key: 'object_property_name_subschema_constraint'` for typed/untyped buckets; `'not_applicable'` / `'unknown'` for others
+- Bucket iteration order: `typed → untyped → not_applicable → unknown` (deterministic stable-output convention only)
+
+**Non-persistence rule:** `input_schema_first_property_property_names` MUST NOT be written into `tusq.manifest.json`.
+
+---
+
 ## M80 (run_9bd8558c73fb239e, turn_64938221e4a6227d, dev)
 
 **Axis:** `input_schema.properties[firstKey].patternProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-PATTERN-MAP annotation. CLI noun: `partition` (between `parameter` and `path`). CLI surface 63→64.

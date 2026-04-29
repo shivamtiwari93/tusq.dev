@@ -1509,6 +1509,41 @@ tusq most index --most unbounded --json
 tusq most index --out most-index.json
 ```
 
+## `tusq named index`
+
+Emit a deterministic, per-`propertyNames`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-property-name-subschema annotation on `input_schema.properties[firstKey].propertyNames` (the first input property descriptor), in closed-enum order (`typed → untyped → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `propertyNames` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime property-name validator, runtime key rejector, DTO property-name validator, regex-string compiler, regex-syntax validator, or code-and-API-surface emitter**.
+
+**BOOLEAN-FALSE-AS-TYPED (M81-SPECIFIC):** `propertyNames: false` → `typed`. JSON-Schema Draft 7 §4.4 declares boolean `false` as a schema that rejects all values. Applied to property names, this constrains the object to zero permitted property names — the strongest possible name constraint. No warning emitted. This rule has no analog in M77 (`additionalProperties`), M78 (`minProperties`), M79 (`maxProperties`), or M80 (`patternProperties`).
+
+**Distinct from `tusq partition index` (M80):** `tusq partition index` reads `firstKey.patternProperties` (a MAP `{ <regex>: <subschema>, ... }` constraining keys matching specific regex patterns to specific sub-schemas). `tusq named index` reads `firstKey.propertyNames` (a single SCHEMA applied to EVERY property name uniformly). Orthogonal field semantics and shapes on the same object-axis — the two annotations are frequently combined at validation time but their static annotations are independent.
+
+**Distinct from `tusq regex index` (M59):** `tusq regex index` reads `firstKey.pattern` (a regex constraining the VALUE shape of a string-typed first property — `type:'string'`). `tusq named index` reads `firstKey.propertyNames` (a schema constraining the NAMES of all properties on an object-typed first property — `type:'object'`). Different field semantic AND different type-applicability.
+
+```bash
+tusq named index [--named <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--named <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single propertyNames annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write JSON index to file (no stdout on success) |
+| `--json` | human text | Emit machine-readable JSON |
+
+**Bucket rules:**
+- `typed` — `propertyNames === false` (BOOLEAN-FALSE-AS-TYPED: strongest name constraint — M81-SPECIFIC) OR `propertyNames` is a plain-object with ≥1 own enumerable keyword (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: any keyword like `pattern`/`maxLength`/`minLength`/`enum`/`type`/`const` declares an explicit constraint)
+- `untyped` — `propertyNames` absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no name constraint) OR `null` (NULL-AS-ABSENT: mirrors M55–M80) OR `true` (BOOLEAN-TRUE-AS-UNTYPED: Draft-7 §4.4 boolean true equivalent to empty schema; permits all names) OR `{}` (EMPTY-OBJECT-SCHEMA-AS-UNTYPED: explicit empty schema declares no constraint)
+- `not_applicable` — `input_schema.type` is not `"object"`, zero-property object, or `firstVal.type` is a string other than `"object"` (TYPE-APPLICABILITY-OBJECT: `propertyNames` only meaningful for object-typed properties)
+- `unknown` — malformed `input_schema`, `firstKey` not a plain object, or `propertyNames` is present and non-null with a value that is neither boolean nor a plain-object (string, number, array, Date, RegExp, etc.) (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES: 6th warning code `input_schema_properties_first_property_property_names_invalid_when_present`; NO-COERCION via strict `Object.prototype.toString.call(v)==='[object Object]'` for the object case AND strict `v===true||v===false` for the boolean case)
+
+```bash
+tusq named index
+tusq named index --json
+tusq named index --named typed
+tusq named index --named not_applicable --json
+tusq named index --out named-index.json
+```
+
 ## `tusq nullable index`
 
 Emit a deterministic, per-first-input-property-nullable-boolean-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].nullable` is `true` (`nullable`), absent/undefined/null/false (`not_nullable`), non-applicable (`not_applicable` — non-object input or zero-property object), or malformed (`unknown`) in closed-enum order (`nullable → not_nullable → not_applicable → unknown`). This is a **planning aid, not a runtime nullable enforcer, database NULL constraint validator, ORM non-nullable field assessor, DTO serialization priority ranker, DB column nullability enforcer, required-crossref tool, default-crossref tool, type-applicability validator, LLM-nullability-inferrer, or DB-column-crossref tool**.

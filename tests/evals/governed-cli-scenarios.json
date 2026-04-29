@@ -6375,6 +6375,175 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-property-names-index-determinism",
+      "scenario_type": "input_schema_first_property_property_names_index_determinism",
+      "description": "Verifies that tusq named index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (object_property_name_subschema_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_property_names non-persistence. BOOLEAN-FALSE-AS-TYPED: propertyNames===false \u2192 typed (Draft-7 \u00a74.4 boolean false rejects all values; constrains to zero permitted names \u2014 M81-SPECIFIC, no warning). PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: plain-object with >= 1 own enumerable keyword \u2192 typed (no warning). ABSENT-AS-UNTYPED: propertyNames absent/undefined \u2192 untyped (Draft-7 default no name constraint, no warning). NULL-AS-ABSENT (mirrors M55\u2013M80): propertyNames:null \u2192 untyped (no warning). BOOLEAN-TRUE-AS-UNTYPED: propertyNames===true \u2192 untyped (Draft-7 \u00a74.4 boolean true equivalent to empty schema, no warning). EMPTY-OBJECT-SCHEMA-AS-UNTYPED: propertyNames:{} \u2192 untyped (empty schema is explicit-untyped equivalent of absent or true, no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M77/M78/M79/M80 TYPE-APPLICABILITY-OBJECT). DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES: non-boolean non-plain-object propertyNames \u2192 unknown WITH 6th code input_schema_properties_first_property_property_names_invalid_when_present; NO-COERCION via strict Object.prototype.toString.call(v)==='[object Object]' for object case AND strict v===true||v===false for boolean case.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_false_cap",
+          "method": "POST",
+          "path": "/typed-false",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": false
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames=false \u2014 lands in typed bucket (BOOLEAN-FALSE-AS-TYPED: Draft-7 \u00a74.4 boolean false; strongest name constraint \u2014 M81-SPECIFIC)"
+        },
+        {
+          "name": "typed_obj_cap",
+          "method": "POST",
+          "path": "/typed-obj",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": { "pattern": "^[a-z]+$" }
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames={pattern:'^[a-z]+$'} \u2014 lands in typed bucket (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED)"
+        },
+        {
+          "name": "untyped_absent_cap",
+          "method": "GET",
+          "path": "/untyped-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames absent \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED: Draft-7 default no name constraint)"
+        },
+        {
+          "name": "untyped_null_cap",
+          "method": "GET",
+          "path": "/untyped-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": null
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames=null \u2014 lands in untyped bucket (NULL-AS-ABSENT: mirrors M55\u2013M80)"
+        },
+        {
+          "name": "untyped_true_cap",
+          "method": "GET",
+          "path": "/untyped-true",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": true
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames=true \u2014 lands in untyped bucket (BOOLEAN-TRUE-AS-UNTYPED: Draft-7 \u00a74.4 boolean true equivalent to empty schema; permits all property names)"
+        },
+        {
+          "name": "untyped_empty_schema_cap",
+          "method": "GET",
+          "path": "/untyped-empty",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": {}
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames={} (explicit empty schema) \u2014 lands in untyped bucket (EMPTY-OBJECT-SCHEMA-AS-UNTYPED: empty schema is explicit-untyped equivalent of absent or true)"
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/na-string",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT: propertyNames only meaningful for object-typed properties)"
+        },
+        {
+          "name": "invalid_pn_cap",
+          "method": "POST",
+          "path": "/unknown-invalid-pn",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "propertyNames": "not-a-schema"
+              }
+            }
+          },
+          "description": "First property type='object', propertyNames='not-a-schema' (value is string, not boolean or plain-object) \u2014 lands in unknown bucket (DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-PROPERTY-NAMES: 6th code)"
+        }
+      ],
+      "expected_valid_property_names_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_name_subschema_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }
