@@ -3042,6 +3042,63 @@ tusq request index --source mixed --json
 tusq request index --out request-source-index.json
 ```
 
+## `tusq required index`
+
+Index capabilities by the JSON-Schema Draft 7 §5.21 `required` annotation on their first input schema property (`input_schema.properties[firstKey].required`). Groups capabilities into four buckets (`typed`, `untyped`, `not_applicable`, `unknown`) for domain-workflow planning review. This is a **planning aid, not a runtime required-field enforcer, DTO validator, state-machine eligibility checker, approval-path enforcer, or limits-enforcement tool**.
+
+**Distinct from `tusq obligation index` (M50):** `tusq obligation index` checks whether `firstKey` IS in the parent `input_schema.required[]` (a manifest-level required-membership annotation). `tusq required index` (M82) reads `firstVal.required` — the property-level `required: [<key>, ...]` annotation on the nested object schema describing which of ITS OWN sub-properties MUST be present at runtime. Different field, different slot, different semantic.
+
+**Distinct from `tusq named index` (M81):** `tusq named index` reads `firstVal.propertyNames` (a single SCHEMA applied to EVERY property name uniformly — governs what names are PERMITTED). `tusq required index` reads `firstVal.required` (a LIST of specific keys that MUST be PRESENT — governs name presence). M81 governs name typing; M82 governs name presence.
+
+```bash
+tusq required index [--required <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--required <value>` | all buckets | Filter to a single required-state bucket. Case-sensitive lowercase; `TYPED` exits 1. |
+| `--manifest <path>` | `tusq.manifest.json` | Path to manifest file. |
+| `--out <path>` | stdout | Write JSON output to file. Rejected if inside `.tusq/`. |
+| `--json` | human text | Emit machine-readable JSON with `first_property_required_states[]` and `warnings[]`. |
+
+**Classifier rule** (applied to `input_schema.properties[Object.keys(properties)[0]].required` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+| Bucket | Condition |
+|--------|-----------|
+| `typed` | `required` is a non-empty array of non-empty strings (`Array.isArray` AND `length >= 1` AND every element `typeof === 'string'` AND every element `length >= 1`; uniqueness NOT validated — Draft-7 leaves uniqueness to the validator) |
+| `untyped` | `required` absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no required-keys list); OR `null` (NULL-AS-ABSENT: mirrors M55–M81); OR `[]` (EMPTY-ARRAY-AS-UNTYPED: Draft-7 §5.21 empty array equivalent to absence — M82-SPECIFIC) |
+| `not_applicable` | `input_schema.type` is a string but not `"object"` (non-object input has no first property); OR zero-property object; OR `firstVal.type` is a non-empty string other than `"object"` (TYPE-APPLICABILITY-OBJECT: Draft-7 §5.21 defines `required` ONLY for `type === "object"`) |
+| `unknown` | Malformed `input_schema`, `firstKey` not a plain object, `required` present non-null with any value that is not a valid array of non-empty strings (non-array, array with integer/boolean/null/empty-string element); DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED: 6th warning code `input_schema_properties_first_property_required_invalid_when_present`; NO-COERCION via Array.from/Object/JSON-roundtrip/String.split/Boolean/!! |
+
+**Bucket order:** `typed → untyped → not_applicable → unknown` — deterministic stable-output convention only (NOT domain-workflow-priority-ranked, NOT state-machine-readiness-ranked, NOT approval-path-emit-priority-ranked).
+
+**Warnings** (in `--json` mode, always present even when empty):
+
+| Reason code | When |
+|-------------|------|
+| `input_schema_field_missing` | Capability has no `input_schema` field |
+| `input_schema_field_not_object` | `input_schema` is not a plain object |
+| `input_schema_type_missing_or_invalid` | `input_schema.type` is missing or not a string |
+| `input_schema_properties_field_missing_when_type_is_object` | `input_schema.type === "object"` but `properties` is missing/null/not-a-plain-object |
+| `input_schema_properties_first_property_descriptor_invalid` | First property descriptor is not a plain object |
+| `input_schema_properties_first_property_required_invalid_when_present` | `required` present non-null with invalid value (non-array, or array with non-string/empty-string element) |
+
+**Examples:**
+
+```bash
+# All buckets (human-readable)
+tusq required index
+
+# All buckets (JSON)
+tusq required index --json
+
+# Single bucket
+tusq required index --required typed --json
+
+# Write to file
+tusq required index --out required-index.json
+```
+
 ## `tusq response index`
 
 Index capabilities by the JSON Schema primitive type declared in their `output_schema.type` field. Groups capabilities into seven type buckets (`object`, `array`, `string`, `number`, `boolean`, `null`, `unknown`) for planning review. This is a **planning aid, not a runtime response executor, response-payload validator, data-contract conformance detector, response generator, or data-contract certifier**.

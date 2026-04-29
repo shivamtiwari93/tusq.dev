@@ -6544,6 +6544,137 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-required-index-determinism",
+      "scenario_type": "input_schema_first_property_required_index_determinism",
+      "description": "Verifies that tusq required index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (object_property_required_keys_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_required non-persistence. NON-EMPTY-STRING-ARRAY-AS-TYPED: required is non-empty array of non-empty strings \u2192 typed (no warning). ABSENT-AS-UNTYPED: required absent/undefined \u2192 untyped (Draft-7 default no required constraint, no warning). NULL-AS-ABSENT (mirrors M55\u2013M81): required:null \u2192 untyped (no warning). EMPTY-ARRAY-AS-UNTYPED (M82-SPECIFIC): required:[] \u2192 untyped (Draft-7 \u00a75.21 empty array equivalent to absence, no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M77/M78/M79/M80/M81 TYPE-APPLICABILITY-OBJECT). DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED: non-array value or array with non-string/empty-string element \u2192 unknown WITH 6th code input_schema_properties_first_property_required_invalid_when_present; NO-COERCION via Array.from/Object/JSON-roundtrip/String.split/Boolean/!!.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_req_cap",
+          "method": "POST",
+          "path": "/typed-req",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "required": ["name", "email"]
+              }
+            }
+          },
+          "description": "First property type='object', required=['name','email'] \u2014 lands in typed bucket (NON-EMPTY-STRING-ARRAY-AS-TYPED)"
+        },
+        {
+          "name": "untyped_absent_cap",
+          "method": "GET",
+          "path": "/untyped-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "First property type='object', required absent \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED)"
+        },
+        {
+          "name": "untyped_null_cap",
+          "method": "GET",
+          "path": "/untyped-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "required": null
+              }
+            }
+          },
+          "description": "First property type='object', required=null \u2014 lands in untyped bucket (NULL-AS-ABSENT)"
+        },
+        {
+          "name": "untyped_empty_arr_cap",
+          "method": "GET",
+          "path": "/untyped-empty",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "required": []
+              }
+            }
+          },
+          "description": "First property type='object', required=[] \u2014 lands in untyped bucket (EMPTY-ARRAY-AS-UNTYPED: Draft-7 \u00a75.21 empty array equivalent to absence \u2014 M82-SPECIFIC)"
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/string-type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT)"
+        },
+        {
+          "name": "invalid_req_cap",
+          "method": "POST",
+          "path": "/invalid-req",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": false,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "required": "not-an-array"
+              }
+            }
+          },
+          "description": "First property type='object', required='not-an-array' (non-array value) \u2014 lands in unknown bucket (DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED: 6th code)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_required_keys_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }

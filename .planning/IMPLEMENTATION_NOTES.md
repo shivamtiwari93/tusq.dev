@@ -2,6 +2,59 @@
 
 ---
 
+## M82 (run_14a2d7109f75b8b8, turn_985f297eece43905, dev)
+
+**Axis:** `input_schema.properties[firstKey].required` — JSON-Schema Draft 7 §5.21 OBJECT-PROPERTY-REQUIRED-KEYS-LIST annotation. CLI noun: `required` (between `request` and `response`). CLI surface 65→66.
+
+**Constants added** (`src/cli.js`, after M81 propertyNames constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_required_keys_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_REQUIRED_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M81 guards):
+- `_guardInputSchemaFirstPropertyRequiredBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyRequiredAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyRequired(inputSchema)` (after `classifyInputSchemaFirstPropertyPropertyNames`):
+1. `inputSchema` null/undefined → `unknown`
+2. `inputSchema` not plain object / is Array → `unknown`
+3. `inputSchema.type` missing or non-string → `unknown`
+4. `inputSchema.type` is a string but not `'object'` → `not_applicable`
+5. `properties` missing/null/not-plain-object → `unknown`
+6. `Object.keys(properties).length === 0` → `not_applicable`
+7. `firstVal` not a plain non-null object → `unknown` (FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT**: `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (mirrors M77/M78/M79/M80/M81)
+9. **ABSENT-AS-UNTYPED**: `required` absent/undefined → `untyped`
+10. **NULL-AS-ABSENT**: `required === null` → `untyped` (mirrors M55–M81)
+11. **EMPTY-ARRAY-AS-UNTYPED**: `Array.isArray(required) && required.length === 0` → `untyped` (Draft-7 §5.21 empty array equivalent to absence — M82-SPECIFIC)
+12. Non-array → `unknown` WITH 6th code (DRAFT-7-ARRAY-OF-NON-EMPTY-STRING-IS-VALID-REQUIRED)
+13. **NON-EMPTY-STRING-ARRAY-AS-TYPED**: every element `typeof === 'string' && length >= 1` → `typed`; any element failing → `unknown` WITH 6th code
+14. NO-COERCION: Array.from/Object/JSON-roundtrip/String.split/Boolean/!! forbidden
+
+**Index/format/cmd functions** (inserted before M55 defaultValue section):
+- `buildInputSchemaFirstPropertyRequiredIndex(manifest, manifestPath)` — full index builder
+- `formatInputSchemaFirstPropertyRequiredIndex(index)` — plain-text formatter
+- `cmdRequired(args)` / `cmdRequiredIndex(args)` / `parseRequiredIndexArgs(args)` — CLI handlers
+
+**Wiring:** `'required'` case added to dispatch switch between `'request'` and `'response'`; `'required'` line added to `printHelp()` between `'request'` and `'response'`; `'required'` and `'required index'` entries added to `printCommandHelp()` before `'response'`.
+
+**Six frozen warning reason codes:**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_required_invalid_when_present` (M82-SPECIFIC)
+
+**Tests added:**
+- `tests/smoke.mjs`: all 47 help-count assertions updated from `!== 65` to `!== 66`; 18-case M82 smoke matrix (M82(a)–M82(r)) covering all classification rules
+- `tests/evals/governed-cli-scenarios.json`: `input-schema-first-property-required-index-determinism` scenario (72→73 scenarios)
+- `tests/eval-regression.mjs`: `runInputSchemaFirstPropertyRequiredIndexDeterminismScenario` handler; scenario_type dispatch wired
+
+**Result:** `npm test` exits 0 with 73 eval scenarios. CLI surface 65→66. `required` appears between `request` and `response` in `tusq help`.
+
+---
+
 ## M81 (run_367446ff4d285c65, turn_6ac22b755c1fd5d7, dev)
 
 **Axis:** `input_schema.properties[firstKey].propertyNames` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-SUBSCHEMA annotation. CLI noun: `named` (between `most` and `nullable`). CLI surface 64→65.
