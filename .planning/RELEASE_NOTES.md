@@ -1,5 +1,39 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M84 (turn_e45757e967179a5a, run_91fd37340cef71d1, 2026-04-29, HEAD 95931d1)
+
+**Milestone:** M84 — Input Schema First Property Const Single-Value-Pin Annotation Presence Index (`tusq constant index`)
+
+**CLI surface:** 67 → 68 commands. New command `tusq constant index` inserted alphabetically between `tusq confidence index` and `tusq crowded index`.
+
+**New classification axis:** `input_schema.properties[firstKey].const` — JSON-Schema Draft 7 §6.1.3 SINGLE-VALUE-PIN annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `value_pinning_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen) — TWO M84-SPECIFIC asymmetries vs M77–M83:**
+
+**(1) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M84-SPECIFIC):** Classifier MUST NOT inspect `firstVal.type` to gate `not_applicable`. Draft-7 §6.1.3 defines `const` as applicable to ANY type — a `const` annotation on a first property with `type: "string"` is valid and fully meaningful. This is the M84-SPECIFIC distinction from M77–M83 where TYPE-APPLICABILITY-OBJECT gated `not_applicable` on `firstVal.type !== 'object'`. Impact on express-sample: `get_users_api_v1_users_id` (firstVal.type='string') moves from `not_applicable` (M83) to `untyped` (M84).
+
+**(2) NULL-AS-TYPED (M84-SPECIFIC):** `firstVal.const === null` → `typed`. Draft-7 §6.1.3 explicitly permits `const: null` as a valid single-value pin to the literal JSON null value. This is the M84-SPECIFIC distinction from M55–M83 where NULL-AS-ABSENT treated null as absence.
+
+**All other classification rules:**
+- JSON-STRING-AS-TYPED: any string value → `typed`
+- JSON-FINITE-NUMBER-AS-TYPED: any finite number → `typed`; NaN/Infinity/-Infinity (JavaScript non-JSON values) → `unknown` WITH 6th code
+- JSON-BOOLEAN-AS-TYPED: `true` or `false` → `typed`
+- JSON-ARRAY-AS-TYPED: any array including empty `[]` → `typed` (M84-distinct from M82 EMPTY-ARRAY-AS-UNTYPED where `required: []` → `untyped`)
+- JSON-PLAIN-OBJECT-AS-TYPED: any plain object including empty `{}` → `typed` (M84-distinct from M81 EMPTY-OBJECT-SCHEMA-AS-UNTYPED)
+- ABSENT-AS-UNTYPED: `const` own-property absent or undefined → `untyped` (Draft-7 default no value pin; no warning)
+- UNDEFINED-EXPLICIT-AS-UNKNOWN: JavaScript `undefined` (not a valid JSON value) → `unknown` WITH 6th code
+- DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST: any non-JSON JavaScript value (function, Symbol, BigInt, Date, RegExp, Set, Map, typed-array, custom class) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_const_invalid_when_present`
+- NO-COERCION: MUST NOT use `Array.from` / `Object` / `JSON.parse(JSON.stringify(...))` / `String` / `Number` / `Boolean` / `!!`
+- `not_applicable` conditions: `inputSchema.type` is a string but not `'object'` (outer schema structural prerequisite); OR `inputSchema.type === 'object'` and zero properties; OR firstVal not a plain object
+
+**Axis relationship:** M84 (const) is the EIGHTH first-property axis annotation in the M77+ first-property cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling → M80: patternProperties name-pattern-map → M81: propertyNames name-subschema → M82: required keys-list → M83: dependencies heterogeneous-map → M84: const single-value-pin). M84 is the FIRST in the cluster whose Draft-7 keyword is NOT restricted to type==='object' schemas — Draft-7 §6.1.3 defines `const` as applicable to ANY type. VISION primary citation: lines 424–449 (§ Workflow And State Understanding) — enumerates inputs to workflow inference and prescribes explicit emitted artifacts (.tusq/workflows.json, .tusq/state-machines.json).
+
+**Bug fixes in this increment (attempt-2):** Three attempt-1 bugs identified and fixed by dev: (1) duplicate eval scenario id/scenario_type — M84 scenario now uses `input_schema_first_property_constant_index_determinism` (distinct from M69's `input_schema_first_property_const_index_determinism`); (2) unreachable duplicate dispatch else-if block for M69 removed; (3) duplicate function declaration `runInputSchemaFirstPropertyConstIndexDeterminismScenario` removed; M84 now uses distinct `runInputSchemaFirstPropertyConstantIndexDeterminismScenario`.
+
+**Verification results:** `npm test` → exit 0 (75 eval scenarios, smoke tests pass). CLI surface = 68. Express-sample fixture: `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `value_pinning_constraint`, capability_count 2; NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION confirmed — get_users_api_v1_users_id moved from not_applicable in M83 to untyped in M84) + `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 10 boundary cases verified (NULL-AS-TYPED, JSON-STRING-AS-TYPED+NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION, JSON-BOOLEAN-AS-TYPED, JSON-ARRAY-AS-TYPED empty [], JSON-PLAIN-OBJECT-AS-TYPED empty {}, JSON-FINITE-NUMBER-AS-TYPED, ABSENT-AS-UNTYPED x2, outer-type-not-object not_applicable, zero-property not_applicable). `--constant TYPED` → exit 1 (case-sensitive). `--constant typed` on express-sample → exit 1 (absent bucket). `--constant untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1465–REQ-1489). Total: 1489 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M83 (turn_c4c7016615f47873, run_4be2c82d93272ed2, 2026-04-29, HEAD 018e23b)
 
 **Milestone:** M83 — Input Schema First Property Dependencies Heterogeneous-Map Annotation Presence Index (`tusq dependent index`)

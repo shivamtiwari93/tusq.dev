@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_e45757e967179a5a (role=qa, run_91fd37340cef71d1, M84 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_cc991c7e1fc3d487, role=dev, HEAD 95931d1) for run_91fd37340cef71d1 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M84 does not modify manifest format — `input_schema_first_property_const` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_d96a96af76c22441 upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions correctly carried forward: (1) `constant` inserted between `confidence` and `crowded` (confidence(c=99,o=111,n=110,f=102) < constant(c=99,o=111,n=110,s=115) at pos 3 (f(102)<s(115)); constant(c=99,o=111,n=110,s=115) < crowded(c=99,r=114) at pos 1 (o(111)<r(114))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum value_pinning_constraint|not_applicable|unknown three-value; (4) NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION M84-SPECIFIC (classifier MUST NOT inspect firstVal.type to gate not_applicable); (5) NULL-AS-TYPED M84-SPECIFIC (const:null → typed, distinct from M55–M83 NULL-AS-ABSENT). PASS.
+
+**3. Attempt-1 bug fixes validation (dev DEC-002):** Three attempt-1 bugs correctly identified and fixed: (1) duplicate eval scenario id/scenario_type in governed-cli-scenarios.json — M84 scenario was using same id/type as M69 (`input_schema_first_property_const_index_determinism`) instead of distinct `input_schema_first_property_constant_index_determinism`; (2) duplicate dispatch else-if in eval-regression.mjs adding second M69 block (unreachable); (3) duplicate function declaration `runInputSchemaFirstPropertyConstIndexDeterminismScenario` causing SyntaxError. All three bugs confirmed fixed: `npm test` exits 0 with 75 scenarios (no crash). PASS.
+
+**4. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_AGGREGATION_KEY_ENUM` (frozen Set: value_pinning_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_CONSTANT_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` after M83 dependencies constants. Guards `_guardInputSchemaFirstPropertyConstantBucketKey` and `_guardInputSchemaFirstPropertyConstantAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**5. Classifier verification:** `classifyInputSchemaFirstPropertyConstant` confirmed in src/cli.js. Implements all M84-frozen classification rules: NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (M84-SPECIFIC — MUST NOT inspect firstVal.type to gate not_applicable; Draft-7 §6.1.3 defines const as applicable to ANY type; distinct from M77–M83 TYPE-APPLICABILITY-OBJECT); NULL-AS-TYPED (M84-SPECIFIC — const:null → typed, Draft-7 §6.1.3 permits null as valid pin; distinct from M55–M83 NULL-AS-ABSENT); ABSENT-AS-UNTYPED (const own-property absent/undefined → untyped); UNDEFINED-EXPLICIT-AS-UNKNOWN (JavaScript undefined, not JSON → unknown+6th); JSON-STRING-AS-TYPED; JSON-FINITE-NUMBER-AS-TYPED (NaN/Infinity/-Infinity → unknown+6th); JSON-BOOLEAN-AS-TYPED; JSON-ARRAY-AS-TYPED (empty [] → typed, M84-distinct from M82); JSON-PLAIN-OBJECT-AS-TYPED (empty {} → typed, M84-distinct from M81); DRAFT-7-ANY-JSON-VALUE-IS-VALID-CONST+NO-COERCION. Boundary verification confirmed via synthetic 10-cap manifest CLI run (6 typed, 2 untyped, 2 not_applicable). PASS.
+
+**6. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 68 (67→68 growth confirmed). `constant` confirmed between `confidence` and `crowded` in help output. `tusq constant index --json --manifest tests/fixtures/express-sample/tusq.manifest.json` → exit 0. PASS.
+
+**7. Express fixture test:** `first_property_const_states[]` with `untyped` bucket (get_users_api_v1_users_id, post_users_users; aggregation_key `value_pinning_constraint`, capability_count 2) and `not_applicable` bucket (get_users_users; aggregation_key `not_applicable`, capability_count 1). `typed` and `unknown` buckets absent — empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. M84 NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION confirmed: get_users_api_v1_users_id moved from `not_applicable` (M83) to `untyped` (M84) because firstVal.type is NOT inspected; no const annotation → ABSENT-AS-UNTYPED. PASS.
+
+**8. Case-sensitive enforcement + absent-bucket exit 1:** `--constant TYPED` → exit 1 ("Unknown input schema first property const state: TYPED"). `--constant typed` on express-sample → exit 1 (absent bucket). `--constant untyped` → exit 0 (present bucket). PASS.
+
+**9. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (75 scenarios)`. Help-count assertions updated from !==67 to !==68. 18-case M84 smoke matrix confirmed present. PASS.
+
+**10. Package + fixture integrity:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). Non-persistence confirmed. PASS.
+
+**11. Eval scenarios:** 75 total scenarios (74→75 growth). `input-schema-first-property-constant-index-determinism` scenario added (distinct from M69's `input_schema_first_property_const_index_determinism`); `runInputSchemaFirstPropertyConstantIndexDeterminismScenario` handler added to eval-regression.mjs (distinct from M69's `runInputSchemaFirstPropertyConstIndexDeterminismScenario`). Byte-identity confirmed by eval harness. PASS.
+
+**12. ROADMAP completeness:** All 18 M84 ROADMAP checkboxes [x] confirmed. PASS.
+
+**13. Objections:** OBJ-001 (medium, non-blocking): R6 dead code carried forward. OBJ-002 (low, non-blocking): synthetic eval capabilities carried forward. OBJ-003 (low, non-blocking): M31 per-domain assertions carried forward. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. NULL-AS-TYPED and JSON-ARRAY-AS-TYPED/JSON-PLAIN-OBJECT-AS-TYPED asymmetries vs M55–M83 are by PM design (M84 DEC-004) — not objections. No new blocking objections raised for M84. PASS.
+
+---
+
 ## QA Challenge — turn_c4c7016615f47873 (role=qa, run_4be2c82d93272ed2, M83 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_57cac3046689ed6e, role=dev, HEAD 018e23b) for run_4be2c82d93272ed2 independently rather than rubber-stamping it.
