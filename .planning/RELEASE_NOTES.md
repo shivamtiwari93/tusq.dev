@@ -1,5 +1,30 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M83 (turn_c4c7016615f47873, run_4be2c82d93272ed2, 2026-04-29, HEAD 018e23b)
+
+**Milestone:** M83 — Input Schema First Property Dependencies Heterogeneous-Map Annotation Presence Index (`tusq dependent index`)
+
+**CLI surface:** 66 → 67 commands. New command `tusq dependent index` inserted alphabetically between `tusq crowded index` and `tusq divisor index`.
+
+**New classification axis:** `input_schema.properties[firstKey].dependencies` — JSON-Schema Draft 7 §6.5.7 OBJECT-PROPERTY-DEPENDENCIES-HETEROGENEOUS-MAP annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `object_property_dependencies_constraint | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED: `dependencies` is a plain-object MAP with >= 1 own keys AND every value is EITHER (a) Array.isArray AND every element typeof==='string' AND every element.length>=1 (LIST/dependentRequired form; empty array [] PERMITTED as LIST entry — M83-SPECIFIC asymmetry vs M82's EMPTY-ARRAY-AS-UNTYPED) OR (b) Object.prototype.toString.call(value)==='[object Object]' (SCHEMA/dependentSchemas form; empty schema {} permitted) → `typed` (a valid heterogeneous dependencies map is declared; mixing LIST and SCHEMA values within one map is permitted)
+- ABSENT-AS-UNTYPED: `dependencies` absent or `undefined` → `untyped` (Draft-7 default is no conditional dependency; no heterogeneous map declared)
+- NULL-AS-ABSENT: `dependencies === null` → `untyped` (mirrors M55–M82 null-as-absent precedent; null treated as absent)
+- EMPTY-MAP-AS-UNTYPED: `dependencies: {}` plain-object with zero keys → `untyped` (Draft-7 §6.5.7 empty map equivalent to absence; provides no actual dependency constraints)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77/M78/M79/M80/M81/M82 TYPE-APPLICABILITY-OBJECT; `dependencies` is only meaningful for object-typed properties; JSON-Schema-Draft-7 §6.5.7 defines `dependencies` ONLY for type==='object')
+- DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES: any other value (non-plain-object outer, or map entry that is neither a valid LIST form nor a valid SCHEMA form) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_dependencies_invalid_when_present`
+- NO-COERCION: MUST NOT use `Array.from` / `Object` / `JSON.parse(JSON.stringify(...))` / `String.split` / `Boolean` / `!!` to coerce values
+
+**M83-specific asymmetry vs M82:** In M82 (required), an empty array `required: []` → `untyped` (EMPTY-ARRAY-AS-UNTYPED). In M83 (dependencies), an empty array as a MAP VALUE `dependencies: { "key": [] }` → `typed` (the MAP ITSELF is non-empty and all values satisfy the LIST form criterion; Draft-7 §6.5.7 permits empty dependentRequired arrays at the per-value level). This asymmetry is by PM design (M83 DEC-003) and reflects the two-level structure of the dependencies keyword (outer MAP + inner LIST/SCHEMA per entry).
+
+**Axis relationship:** M83 (dependencies) is the SEVENTH object-axis annotation in the M77+ object-keyword cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling → M80: patternProperties name-pattern-map → M81: propertyNames name-subschema → M82: required keys-list → M83: dependencies heterogeneous-map). M83 is the HETEROGENEOUS-VALUE-MAP-typed sibling — the only object-axis whose value map permits TWO fundamentally different value types per entry (LIST/dependentRequired form OR SCHEMA/dependentSchemas form, the bifurcation Draft-2019-09 split into separate keywords `dependentRequired` and `dependentSchemas`). VISION primary citation: lines 313–325 (§ Ecosystem Bots And Integrations, in § What We Output) — first milestone to use this section as primary aggregation source.
+
+**Verification results:** `npm test` → exit 0 (74 eval scenarios, smoke tests pass). CLI surface = 67. Express-sample fixture: `untyped` bucket (post_users_users, aggregation_key object_property_dependencies_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); typed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 10 boundary cases verified (TYPED LIST, TYPED SCHEMA, TYPED mixed, TYPED empty-array-LIST-entry, ABSENT-AS-UNTYPED, NULL-AS-ABSENT, EMPTY-MAP-AS-UNTYPED, TYPE-APPLICABILITY-OBJECT, DRAFT-7-invalid-string-outer, DRAFT-7-invalid-int-element). `--dependent TYPED` → exit 1 (case-sensitive). `--dependent typed` on express-sample → exit 1 (absent bucket). `--dependent untyped` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1440–REQ-1464). Total: 1464 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M82 (turn_dbd0e8f40ced65f3, run_14a2d7109f75b8b8, 2026-04-29, HEAD 3536102)
 
 **Milestone:** M82 — Input Schema First Property Required Keys-List Annotation Presence Index (`tusq required index`)

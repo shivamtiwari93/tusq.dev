@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c4c7016615f47873 (role=qa, run_4be2c82d93272ed2, M83 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_57cac3046689ed6e, role=dev, HEAD 018e23b) for run_4be2c82d93272ed2 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M83 does not modify manifest format — `input_schema_first_property_dependencies` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_2cf67f4599fb20f8 upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions carried forward correctly: (1) `dependent` inserted between `crowded` and `divisor` (crowded(c=99) < dependent(d=100) at pos 0 (c(99)<d(100)); dependent(d=100,e=101) < divisor(d=100,i=105) at pos 1 (e(101)<i(105))); (2) four-value bucket-key enum typed|untyped|not_applicable|unknown; (3) aggregation_key enum object_property_dependencies_constraint|not_applicable|unknown three-value; (4) bucket order typed→untyped→not_applicable→unknown; (5) SIX frozen warning codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_dependencies_invalid_when_present`); EMPTY-MAP-AS-UNTYPED, NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED (LIST+SCHEMA), ABSENT-AS-UNTYPED, NULL-AS-ABSENT, TYPE-APPLICABILITY-OBJECT, DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES, NO-COERCION all correctly carried forward. M83-SPECIFIC empty-array-as-valid-LIST-entry asymmetry vs M82 correctly implemented. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_ENUM` (frozen Set: typed/untyped/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_AGGREGATION_KEY_ENUM` (frozen Set: object_property_dependencies_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_DEPENDENCIES_BUCKET_ORDER` (frozen array: typed/untyped/not_applicable) confirmed in `src/cli.js` after M82 required constants. Guards `_guardInputSchemaFirstPropertyDependenciesBucketKey` and `_guardInputSchemaFirstPropertyDependenciesAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyDependencies` confirmed in src/cli.js. Implements all M83-frozen classification rules: TYPE-APPLICABILITY-OBJECT (non-object type → not_applicable, mirrors M77/M78/M79/M80/M81/M82), ABSENT-AS-UNTYPED (absent/undefined → untyped), NULL-AS-ABSENT (null → untyped, mirrors M55–M82), EMPTY-MAP-AS-UNTYPED (plain-object with zero keys → untyped; Draft-7 §6.5.7 empty map equivalent to absence), NON-EMPTY-PLAIN-OBJECT-WITH-VALID-HETEROGENEOUS-VALUES-AS-TYPED (outer plain-object with >=1 own keys AND every value is either Array.isArray [LIST form; empty array [] PERMITTED as LIST entry — M83-SPECIFIC asymmetry vs M82] OR Object.prototype.toString.call==='[object Object]' [SCHEMA form] → typed), DRAFT-7-MAP-WITH-VALID-HETEROGENEOUS-VALUES-IS-VALID-DEPENDENCIES (any other → unknown+6th), NO-COERCION. All 10 boundary cases pass via synthetic manifest CLI run. PASS.
+
+**5. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 67 (66→67 growth confirmed). `dependent` confirmed between `crowded` and `divisor` in help output. `tusq dependent index --json` on express-sample → exit 0. PASS.
+
+**6. Express fixture test:** `first_property_dependencies_states[]` with `untyped` bucket (post_users_users, aggregation_key `object_property_dependencies_constraint`, capability_count 1) and `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, aggregation_key `not_applicable`, capability_count 2). `typed` and `unknown` buckets absent — TYPE-APPLICABILITY-OBJECT + empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. PASS.
+
+**7. Case-sensitive enforcement + absent-bucket exit 1:** `--dependent TYPED` → exit 1 ("Unknown input schema first property dependencies state: TYPED"). `--dependent typed` on express-sample → exit 1 (absent bucket). `--dependent untyped` → exit 0 (present bucket). PASS.
+
+**8. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (74 scenarios)`. Help-count assertions updated from !==66 to !==67. 18-case M83 smoke matrix confirmed present (M83(a)–M83(r)). PASS.
+
+**9. Package + fixture integrity:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). Non-persistence confirmed. PASS.
+
+**10. Eval scenarios:** 74 total scenarios (73→74 growth). `input-schema-first-property-dependencies-index-determinism` scenario added; `runInputSchemaFirstPropertyDependenciesIndexDeterminismScenario` handler added to eval-regression.mjs. Byte-identity confirmed by eval harness. PASS.
+
+**11. ROADMAP completeness:** All 18 M83 ROADMAP checkboxes [x] confirmed. PASS.
+
+**12. Objection audit:** OBJ-001 (R6 dead code, medium, non-blocking), OBJ-002 (surface-plan-determinism eval uses synthetic_capabilities, low, non-blocking), OBJ-003 (M31 per-domain flag assertions, low, non-blocking) carried forward unchanged. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. M83-SPECIFIC empty-array-as-valid-LIST-entry asymmetry vs M82 is by PM design (DEC-003 of planning turn) — not an objection. No new blocking objections raised for M83. PASS.
+
+**13. Acceptance criteria count:** 25 new REQs added (REQ-1440–REQ-1464). Total: 1439 → 1464. All pass. Ship verdict: SHIP.
+
+---
+
 ## QA Challenge — turn_dbd0e8f40ced65f3 (role=qa, run_14a2d7109f75b8b8, M82 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_985f297eece43905, role=dev, HEAD 3536102) for run_14a2d7109f75b8b8 independently rather than rubber-stamping it.
