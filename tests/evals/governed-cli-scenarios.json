@@ -4805,6 +4805,150 @@
         "unknown"
       ],
       "expected_bucket_order": "encoded,unencoded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-content-media-type-index-determinism",
+      "scenario_type": "input_schema_first_property_content_media_type_index_determinism",
+      "description": "Verifies that tusq mime index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (media_type_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_content_media_type non-persistence. NULL-AS-ABSENT (mirrors M55\u2013M70): contentMediaType:null \u2192 untyped (no warning). EMPTY-STRING-AS-ABSENT (mirrors M52/M53/M70): contentMediaType:'' \u2192 untyped (empty string names no media type per RFC 6838). ANY-NON-EMPTY-STRING-IS-TYPED: any non-empty string including non-canonical strings \u2192 typed (no warning). TYPE-APPLICABILITY-STRING (mirrors M62/M63/M70): firstVal.type is a non-empty string other than 'string' \u2192 not_applicable. DRAFT-7-STRING-IS-VALID-CONTENT-MEDIA-TYPE: non-string non-null contentMediaType (number/boolean/array/object) \u2192 unknown WITH 6th code input_schema_properties_first_property_content_media_type_invalid_when_present; NO-COERCION via String().",
+      "synthetic_capabilities": [
+        {
+          "name": "no_schema_cap",
+          "method": "GET",
+          "path": "/no-schema",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Missing input_schema \u2014 lands in unknown bucket with input_schema_field_missing warning"
+        },
+        {
+          "name": "schema_na_cap",
+          "method": "GET",
+          "path": "/schema-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "Non-object input schema \u2014 lands in not_applicable bucket with no warning",
+          "input_schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "type_na_cap",
+          "method": "GET",
+          "path": "/type-na",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property type='integer' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-STRING) with no warning",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "typed_cap",
+          "method": "POST",
+          "path": "/typed",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "internal",
+          "approved": true,
+          "description": "First property has contentMediaType='application/json' \u2014 lands in typed bucket (ANY-NON-EMPTY-STRING-IS-TYPED)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "string",
+                "contentMediaType": "application/json"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "null_media_cap",
+          "method": "GET",
+          "path": "/null-media",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has contentMediaType=null \u2014 lands in untyped bucket (NULL-AS-ABSENT)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "term": {
+                "type": "string",
+                "contentMediaType": null
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "false_media_cap",
+          "method": "GET",
+          "path": "/false-media",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": false,
+          "description": "First property has contentMediaType=false (boolean) \u2014 lands in unknown bucket with 6th code (DRAFT-7-STRING-IS-VALID-CONTENT-MEDIA-TYPE)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "string",
+                "contentMediaType": false
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "untyped_cap",
+          "method": "GET",
+          "path": "/untyped",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "description": "First property has no contentMediaType field \u2014 lands in untyped bucket (absent \u2192 untyped)",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              }
+            },
+            "required": []
+          }
+        }
+      ],
+      "expected_valid_content_media_type_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "media_type_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }

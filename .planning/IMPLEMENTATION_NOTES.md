@@ -2,6 +2,67 @@
 
 ---
 
+## M71 (run_033b48ec21830f59, turn_0e713d40d8a2ff10, dev)
+
+**Axis:** `input_schema.properties[firstKey].contentMediaType` — JSON-Schema Draft 7+ IANA media-type annotation per RFC 6838
+**CLI noun:** `mime` (subcommand: `index`), inserted between `method` and `obligation` in printHelp() (CLI surface: 54 → 55)
+**Result array field:** `first_property_content_media_type_states`
+**Per-bucket field:** `input_schema_first_property_content_media_type`
+
+### Constants added (src/cli.js)
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_MEDIA_TYPE_ENUM`: frozen Set — `typed | untyped | not_applicable | unknown`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_MEDIA_TYPE_AGGREGATION_KEY_ENUM`: frozen Set — `media_type_constraint | not_applicable | unknown`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTENT_MEDIA_TYPE_BUCKET_ORDER`: frozen array — `['typed', 'untyped', 'not_applicable']`
+
+### Guard functions added (src/cli.js)
+- `_guardInputSchemaFirstPropertyContentMediaTypeBucketKey`
+- `_guardInputSchemaFirstPropertyContentMediaTypeAggregationKey`
+
+### Classify function: `classifyInputSchemaFirstPropertyContentMediaType`
+Frozen rules:
+- NULL-AS-ABSENT: `contentMediaType:null → untyped` (mirrors M55–M70)
+- EMPTY-STRING-AS-ABSENT: `contentMediaType:'' → untyped` (empty string names no media type per RFC 6838)
+- TYPE-APPLICABILITY-STRING: `firstVal.type` is a string but NOT `'string'` → `not_applicable` (mirrors M62/M63/M70)
+- ANY-NON-EMPTY-STRING-IS-TYPED: non-empty string (including non-canonical strings) → `typed` (no warning)
+- DRAFT-7-STRING-IS-VALID-CONTENT-MEDIA-TYPE: non-string non-null non-absent → `unknown` WITH 6th code; NO-COERCION via String()
+
+### Six frozen warning reason codes
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_content_media_type_invalid_when_present` (M71-specific 6th code)
+
+### Build/format/cmd/parse functions added (src/cli.js)
+- `buildInputSchemaFirstPropertyContentMediaTypeIndex`
+- `formatInputSchemaFirstPropertyContentMediaTypeIndex`
+- `cmdMime` / `cmdMimeIndex` / `parseMimeIndexArgs`
+
+### Dispatch, printHelp, printCommandHelp (src/cli.js)
+- `case 'mime':` wired between `'method'` and `'obligation'` in dispatch switch
+- `'  mime  ...'` line inserted between `method` and `obligation` in `printHelp()`
+- `mime` and `mime index` entries added in `printCommandHelp()` between `method index` and `obligation`
+
+### Tests updated
+- `tests/smoke.mjs`: 36 help-count assertions updated from `!== 54` to `!== 55`; 24-case M71 smoke matrix added (a–x: bucket order, filter flags, case-sensitivity, absent-bucket enforcement, NULL-AS-ABSENT, EMPTY-STRING-AS-ABSENT, ANY-NON-EMPTY-STRING-IS-TYPED, DRAFT-7-6TH-CODE, TYPE-APPLICABILITY-STRING, non-persistence, help enumeration/ordering)
+- `tests/evals/governed-cli-scenarios.json`: `input-schema-first-property-content-media-type-index-determinism` scenario added (62 total)
+- `tests/eval-regression.mjs`: `runInputSchemaFirstPropertyContentMediaTypeIndexDeterminismScenario` handler added
+
+### Planning and docs updated
+- `.planning/ROADMAP.md`: all 18 M71 items checked [x]
+- `.planning/SYSTEM_SPEC.md`: M71 materialized
+- `.planning/command-surface.md`: M71 materialized with `### tusq mime index` section
+- `website/docs/cli-reference.md`: `## tusq mime index` section inserted before `## tusq wire index`
+
+### Verification
+- `npm test` exits 0 with 'Smoke tests passed' and 'Eval regression harness passed (62 scenarios)'
+- CLI surface: 55 commands; `mime` between `method` and `obligation` confirmed
+- Express fixture: `first_property_content_media_type_states[]` with `untyped` + `not_applicable` buckets; `typed` absent (empty-bucket-MUST-NOT-appear confirmed)
+- Filter: `--mime TYPED` → exit 1 (case-sensitive); `--mime typed` → absent bucket exit 1; `--mime untyped` → exit 0
+
+---
+
 ## M70 (run_7aa3510dbb544d16, turn_834a243911a397f0, dev)
 
 **Axis:** `input_schema.properties[firstKey].contentEncoding` — JSON-Schema Draft 7+ string-content-transfer-encoding annotation

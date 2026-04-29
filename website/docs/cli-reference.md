@@ -1204,6 +1204,54 @@ tusq fixed index --fixed unpinned --json
 tusq fixed index --out fixed-index.json
 ```
 
+## `tusq mime index`
+
+Emit a deterministic, per-first-input-property-contentMediaType-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].contentMediaType` is a non-empty string (`typed`), absent/null/empty-string (`untyped`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal.type is a string other than 'string'), or malformed (`unknown`) in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime contentMediaType enforcer, MIME-type validator, content-negotiation tool, format-crossref tool, contentEncoding-crossref tool, type-applicability validator, pattern-crossref tool, LLM-contentMediaType-inferrer, or ingestion-pre-decoder**.
+
+**M71-vs-M70 (wire) distinctness:** `tusq mime index` (M71) reads `input_schema.properties[firstKey].contentMediaType` — the IANA media-type identifier answering "what is the media type of the decoded payload?" (e.g. `application/json`, `text/plain`, `image/png`). `tusq wire index` (M70) reads `input_schema.properties[firstKey].contentEncoding` — the wire-format byte-transfer-encoding scheme answering "how is the byte stream encoded for transmission?" (e.g. `base64`, `quoted-printable`). The two keywords are **sibling but ORTHOGONAL** JSON-Schema Draft 7+ annotations. Joint `contentEncoding + contentMediaType` distribution deferred to `M-Mime-Encoding-Crossref-1`.
+
+**M71-vs-M53 (shape) distinctness:** `tusq mime index` reads `firstKey.contentMediaType` (IANA media-type); `tusq shape index` (M53) reads `output_schema.properties[firstKey].type`. Different schema sides and different keywords.
+
+**M71-vs-M62/M63 distinctness:** `tusq mime index` reads `firstKey.contentMediaType` (IANA annotation); M62 (`tusq format index`) reads `firstKey.format` (JSON-Schema `format` keyword); M63 (`tusq pattern index`) reads `firstKey.pattern`. Three distinct annotation dimensions; none cross-references or subsumes another at this milestone.
+
+**M71-SPECIFIC invariants:**
+- **NULL-AS-ABSENT:** `contentMediaType: null` → `untyped` (no warning) — mirrors M55–M70 null-as-absent precedent; null names no media type.
+- **EMPTY-STRING-AS-ABSENT:** `contentMediaType: ""` → `untyped` (no warning) — empty string names no media type per RFC 6838.
+- **TYPE-APPLICABILITY-STRING:** `firstVal.type` is a string but NOT `"string"` → `not_applicable` (no warning) — `contentMediaType` is only meaningful for string-typed properties (mirrors M62/M63/M70).
+- **ANY-NON-EMPTY-STRING-IS-TYPED:** any non-empty string (including non-canonical / non-IANA / non-RFC-6838-form strings) → `typed` (no warning); IANA/RFC-6838-form validation deferred to `M-Mime-Canonical-Set-Validator-1`.
+- **DRAFT-7-STRING-IS-VALID-CONTENT-MEDIA-TYPE:** non-string non-null non-absent `contentMediaType` (number/boolean/array/object) → `unknown` WITH 6th warning code `input_schema_properties_first_property_content_media_type_invalid_when_present`; NO-COERCION via `String()`.
+
+**Warning reason codes (six frozen):**
+1. `input_schema_field_missing`
+2. `input_schema_field_not_object`
+3. `input_schema_type_missing_or_invalid`
+4. `input_schema_properties_field_missing_when_type_is_object`
+5. `input_schema_properties_first_property_descriptor_invalid`
+6. `input_schema_properties_first_property_content_media_type_invalid_when_present` _(M71-specific — non-string contentMediaType value)_
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--mime <value>` | Filter to a single content-media-type bucket (case-sensitive lowercase; closed four-value enum `typed\|untyped\|not_applicable\|unknown`) |
+| `--manifest <path>` | Manifest file to read (default: `tusq.manifest.json`) |
+| `--out <path>` | Write index to file (no stdout on success; rejects `.tusq/` paths) |
+| `--json` | Emit machine-readable JSON (includes `warnings[]` array) |
+
+**Exit codes:**
+- `0`: Index produced (or empty-capabilities manifest)
+- `1`: Missing/invalid manifest, unknown flag, unknown content-media-type annotation value, `--out` path error, or unknown subcommand
+
+**Invariants:** `input_schema_first_property_content_media_type` is NOT written into the manifest (non-persistence rule). All 41 prior peer index commands remain byte-identical pre/post.
+
+```
+tusq mime index
+tusq mime index --json
+tusq mime index --mime typed --json
+tusq mime index --mime untyped --json
+tusq mime index --out mime-index.json
+```
+
 ## `tusq wire index`
 
 Emit a deterministic, per-first-input-property-contentEncoding-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].contentEncoding` is a non-empty string (`encoded`), absent/null/empty-string (`unencoded`), non-applicable (`not_applicable` — non-object input, zero-property object, or firstVal.type is a string other than 'string'), or malformed (`unknown`) in closed-enum order (`encoded → unencoded → not_applicable → unknown`). This is a **planning aid, not a runtime content-encoding enforcer, wire-payload decoder, base64-codec generator, mediaType-crossref tool, format-crossref tool, type-applicability validator, pattern-crossref tool, LLM-contentEncoding-inferrer, or ingestion-pre-decoder**.
