@@ -3388,6 +3388,52 @@ tusq response index --type unknown --json
 tusq response index --out response-type-index.json
 ```
 
+## `tusq witness index`
+
+Emit a deterministic, per-first-input-property-contains-annotation-presence capability index from manifest evidence. Groups capabilities by whether `input_schema.properties[firstKey].contains` is a valid Draft-7 boolean schema or object subschema (`typed`), absent or an empty object schema (`untyped`), non-applicable (`not_applicable` — non-object input, zero-property object, or `firstVal.type` is not `'array'`), or malformed (`unknown`), in closed-enum order (`typed → untyped → not_applicable → unknown`). This is a **planning aid, not a runtime element-membership validator, existential-quantifier enforcer, element-match type emitter, SDK-element-match-type generator, integration-test-element-constraint tool, or employee-copilot-activation enforcer**.
+
+**Key invariants:**
+- **TYPE-APPLICABILITY-ARRAY-RESTRICTION** (M88-INHERITED-FROM-M87): `firstVal.type !== 'array'` → `not_applicable` (Draft-7 §6.4.6 defines `contains` as meaningful only on array-typed schemas)
+- **NO-TUPLE-ITEMS-PREREQUISITE** (M88-DISTINCT-FROM-M87): MUST NOT gate `not_applicable` on `Array.isArray(firstVal.items)` — Draft-7 §6.4.6 `contains` has **NO interaction** with the `items` keyword; `contains` validates `∃ at least one element matching the subschema` regardless of items shape. This is the critical M88 divergence from M87 (`tusq extra index`).
+
+```bash
+tusq witness index [--witness <typed|untyped|not_applicable|unknown>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--witness <value>` | all buckets | Filter to a single contains annotation bucket (case-sensitive lowercase; closed four-value enum `typed\|untyped\|not_applicable\|unknown`) |
+| `--manifest <path>` | `tusq.manifest.json` | Path to manifest file. |
+| `--out <path>` | stdout | Write JSON output to file. Rejected if inside `.tusq/`. |
+| `--json` | human text | Emit machine-readable JSON with `first_property_contains_states[]` and `warnings[]`. |
+
+**Classification rules** (applied to `input_schema.properties[Object.keys(input_schema.properties)[0]].contains`):
+
+- `typed` — `firstVal.contains` is a boolean (`true` or `false`) — **BOOLEAN-SCHEMA-AS-TYPED** (Draft-7 §4.4: both are valid boolean schemas; mirrors M77 and M87); OR a non-empty plain-object subschema — **NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED** (NOT recursively walked)
+- `untyped` — own-property `contains` NOT present — **ABSENT-AS-UNTYPED** (no warning); OR `contains` is an empty plain-object schema `{}` — **EMPTY-OBJECT-SCHEMA-AS-UNTYPED** (M88-INHERITED-FROM-M81/M87: empty `{}` declares no constraint; distinct from M84/M86 where `{}` is a typed value)
+- `not_applicable` — outer `inputSchema.type !== 'object'`; OR zero-property object; OR `firstVal` not a plain object; OR **TYPE-APPLICABILITY-ARRAY-RESTRICTION** (M88-INHERITED-FROM-M87): `firstVal.type !== 'array'`; **NO-TUPLE-ITEMS-PREREQUISITE** (M88-DISTINCT-FROM-M87): no `items` check — `contains` classifies regardless of `items` shape
+- `unknown` — malformed `input_schema`; OR `firstVal.contains` own-property present but value is: `undefined` — **UNDEFINED-EXPLICIT-AS-UNKNOWN**; `null` — **NULL-AS-UNKNOWN** (M88-INHERITED-FROM-M87; distinct from M86 NULL-AS-TYPED for default); array — **ARRAY-AS-UNKNOWN** (M88-INHERITED-FROM-M87: Draft-7 §6.4.6 `contains` MUST be boolean OR single object subschema, NOT array); any other non-boolean non-plain-object value (6th code: `input_schema_properties_first_property_contains_invalid_when_present`; **NO-COERCION**)
+
+**Bucket iteration order:** `typed → untyped → not_applicable → unknown` (deterministic stable-output convention only — NOT employee-copilots-priority-ranked, NOT copilot-activation-priority-ranked). Empty buckets do not appear.
+
+**Aggregation keys:** `typed` and `untyped` buckets carry `existential_element_match_subschema`; `not_applicable` carries `not_applicable`; `unknown` carries `unknown`.
+
+**Examples:**
+
+```bash
+# All buckets (human-readable)
+tusq witness index
+
+# All buckets (JSON)
+tusq witness index --json
+
+# Single bucket
+tusq witness index --witness typed --json
+
+# Write to file
+tusq witness index --out witness-index.json
+```
+
 ## `tusq version`
 
 Print the current version.

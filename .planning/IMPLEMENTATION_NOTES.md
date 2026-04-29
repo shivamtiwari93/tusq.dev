@@ -2,6 +2,65 @@
 
 ---
 
+## M88 (run_73ffb608f7c8a510, turn_f2827707dfc5e04a, dev)
+
+**Axis:** `input_schema.properties[firstKey].contains` — JSON-Schema Draft 7 §6.4.6 EXISTENTIAL-ELEMENT-MATCH-SUBSCHEMA annotation. CLI noun: `witness` (after `wire`, last in dispatch). CLI surface 71→72.
+
+**Constants added** (`src/cli.js`, after M87 additionalItems constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTAINS_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTAINS_AGGREGATION_KEY_ENUM` = frozen Set `['existential_element_match_subschema', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_CONTAINS_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M87 guards):
+- `_guardInputSchemaFirstPropertyContainsBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyContainsAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyContains(inputSchema)`. Rule order (frozen):
+1. inputSchema null/undefined/not-plain-object → `unknown`
+2. inputSchema.type not string → `unknown`
+3. inputSchema.type !== 'object' → `not_applicable` (outer-schema prerequisite)
+4. properties missing/null/not-plain-object → `unknown`
+5. properties empty → `not_applicable`
+6. firstVal not plain object → `unknown`
+7. **TYPE-APPLICABILITY-ARRAY-RESTRICTION** (M88-INHERITED-FROM-M87): `firstVal.type !== 'array'` → `not_applicable`
+8. **NO-TUPLE-ITEMS-PREREQUISITE** (M88-DISTINCT-FROM-M87): NO check on `Array.isArray(firstVal.items)` — Draft-7 §6.4.6 has NO interaction with items keyword; proceed directly to contains classification
+9. `!hasOwnProperty('contains')` → `untyped` (ABSENT-AS-UNTYPED)
+10. `contains === undefined` → `unknown` (UNDEFINED-EXPLICIT-AS-UNKNOWN, 6th code)
+11. `contains === null` → `unknown` (NULL-AS-UNKNOWN M88-INHERITED-FROM-M87, 6th code; distinct from M86 NULL-AS-TYPED)
+12. `typeof contains === 'boolean'` → `typed` (BOOLEAN-SCHEMA-AS-TYPED; both true and false)
+13. `Array.isArray(contains)` → `unknown` (ARRAY-AS-UNKNOWN M88-INHERITED-FROM-M87, 6th code)
+14. `toString === '[object Object]' && keys.length === 0` → `untyped` (EMPTY-OBJECT-SCHEMA-AS-UNTYPED, M88-INHERITED-FROM-M81/M87)
+15. `toString === '[object Object]' && keys.length >= 1` → `typed` (NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED)
+16. else → `unknown` (NO-COERCION, 6th code)
+
+**Key M88 asymmetries vs M87:**
+
+| Rule | M88 (witness/contains) | M87 (extra/additionalItems) |
+|------|------------------------|------------------------------|
+| items gate | **NONE** — NO-TUPLE-ITEMS-PREREQUISITE | TUPLE-ITEMS-PREREQUISITE: items absent OR !Array.isArray(items) → not_applicable |
+| null | unknown (NULL-AS-UNKNOWN, inherited from M87) | unknown (NULL-AS-UNKNOWN M87-SPECIFIC) |
+| empty `{}` | untyped (EMPTY-OBJECT-SCHEMA-AS-UNTYPED) | untyped (EMPTY-OBJECT-SCHEMA-AS-UNTYPED) |
+| aggregation_key | `existential_element_match_subschema` | `array_tail_items_schema` |
+| VISION citation | lines 285–296 (### Employee Copilots) | lines 342–356 (### Developer Artifacts) |
+
+**Build function:** `buildInputSchemaFirstPropertyContainsIndex(manifest, manifestPath)` — mirrors M87 build, 6th warning code `input_schema_properties_first_property_contains_invalid_when_present`. Warning is only emitted when `firstVal.type === 'array'` (TYPE-APPLICABILITY-ARRAY-RESTRICTION cases produce not_applicable with no warning; NO-TUPLE-ITEMS-PREREQUISITE: no items check in warning logic).
+
+**Format function:** `formatInputSchemaFirstPropertyContainsIndex(index)` — standard planning-aid header.
+
+**Cmd functions:** `cmdWitness(args)`, `cmdWitnessIndex(args)`, `parseWitnessIndexArgs(args)`. Filter flag: `--witness`.
+
+**Dispatch:** `'witness'` case wired after `'wire'` (last noun in dispatch alphabetically).
+
+**Smoke tests** (`tests/smoke.mjs`): 18 assertions M88(a)–M88(q). All 53 `!== 71` help-count assertions updated to `!== 72`. Fixture manifest: 12 capabilities covering typed (4: bool-true, bool-false, obj, no-items), untyped (2: absent, empty-obj), not_applicable (3: outer-string, zero-props, type-string), unknown (3: null, array, string). M88(d) specifically asserts NO-TUPLE-ITEMS-PREREQUISITE: `m88_typed_no_items` (type:'array', NO items, contains:{type:'integer'}) → typed bucket.
+
+**Eval scenario** (`tests/evals/governed-cli-scenarios.json`): `input-schema-first-property-contains-index-determinism` (79th scenario). Handler: `runInputSchemaFirstPropertyContainsIndexDeterminismScenario` in `tests/eval-regression.mjs`. Eval asserts NO-TUPLE-ITEMS-PREREQUISITE via `typed_no_items_cap`.
+
+**Website docs** (`website/docs/cli-reference.md`): `## tusq witness index` section added before `## tusq version`.
+
+**Verification:** `npm test` exits 0 — Smoke tests passed + Eval regression harness passed (79 scenarios). CLI surface: 72. `witness` after `wire` (last noun). express-sample `witness index --json`: `first_property_contains_states[]` with only `not_applicable` bucket (no typed/untyped/unknown — empty-bucket-MUST-NOT-appear invariant confirmed). Non-persistence: `input_schema_first_property_contains` NOT written into manifest. Zero package drift; zero fixture mutation.
+
+---
+
 ## M87 (run_1073dd9a1aacf17f, turn_8491a1464c5bda92, dev)
 
 **Axis:** `input_schema.properties[firstKey].additionalItems` — JSON-Schema Draft 7 §6.4.2 ARRAY-TAIL-ITEMS-SCHEMA annotation. CLI noun: `extra` (between `examples` and `fixed`). CLI surface 70→71.

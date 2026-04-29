@@ -7552,6 +7552,197 @@
         "unknown"
       ],
       "expected_bucket_order": "typed,untyped,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-contains-index-determinism",
+      "scenario_type": "input_schema_first_property_contains_index_determinism",
+      "description": "Verifies that tusq witness index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (existential_element_match_subschema/not_applicable/unknown), bucket order determinism (typed → untyped → not_applicable → unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_contains non-persistence. BOOLEAN-SCHEMA-AS-TYPED (Draft-7 §4.4): contains===true → typed; contains===false → typed (both are valid boolean schemas; mirrors M77 BOOLEAN-AS-TYPED for additionalProperties and M87 BOOLEAN-SCHEMA-AS-TYPED for additionalItems). EMPTY-OBJECT-SCHEMA-AS-UNTYPED (M88-INHERITED-FROM-M81/M87): contains==={} → untyped (empty {} declares no constraint; distinct from M84/M86 EMPTY-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY for value-axes). TYPE-APPLICABILITY-ARRAY-RESTRICTION (M88-INHERITED-FROM-M87): firstVal.type !== 'array' → not_applicable (Draft-7 §6.4.6: contains meaningful ONLY on array-typed schemas). NO-TUPLE-ITEMS-PREREQUISITE (M88-DISTINCT-FROM-M87): MUST NOT gate on Array.isArray(firstVal.items) — Draft-7 §6.4.6 has NO interaction with items keyword; contains classifies regardless of items shape. NULL-AS-UNKNOWN (M88-INHERITED-FROM-M87): contains===null → unknown (Draft-7 schemas are boolean-or-object; null is neither; distinct from M86 NULL-AS-TYPED for default). ARRAY-AS-UNKNOWN (M88-INHERITED-FROM-M87): Array.isArray(contains) → unknown (Draft-7 §6.4.6 MUST be boolean OR single object subschema, NOT array). ABSENT-AS-UNTYPED; NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED; NO-COERCION.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_bool_true_cap",
+          "method": "POST",
+          "path": "/typed-bool-true",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "entries": {
+                "type": "array",
+                "contains": true
+              }
+            }
+          },
+          "description": "First property type='array', contains=true — lands in typed bucket (BOOLEAN-SCHEMA-AS-TYPED: Draft-7 §4.4 defines boolean schemas as valid; true witnesses ∃ element)"
+        },
+        {
+          "name": "typed_bool_false_cap",
+          "method": "POST",
+          "path": "/typed-bool-false",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "array",
+                "contains": false
+              }
+            }
+          },
+          "description": "First property type='array', contains=false — lands in typed bucket (BOOLEAN-SCHEMA-AS-TYPED: false is a valid boolean schema; distinct from falsy coercion)"
+        },
+        {
+          "name": "typed_no_items_cap",
+          "method": "POST",
+          "path": "/typed-no-items",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "arr": {
+                "type": "array",
+                "contains": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "description": "First property type='array', NO items property, contains={type:'integer'} — lands in typed bucket (NO-TUPLE-ITEMS-PREREQUISITE M88-DISTINCT-FROM-M87: contains classifies regardless of items shape; Draft-7 §6.4.6 has NO interaction with items keyword)"
+        },
+        {
+          "name": "untyped_absent_cap",
+          "method": "GET",
+          "path": "/untyped-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "list": {
+                "type": "array"
+              }
+            }
+          },
+          "description": "First property type='array', no contains own-property — lands in untyped bucket (ABSENT-AS-UNTYPED: no warning)"
+        },
+        {
+          "name": "untyped_empty_obj_cap",
+          "method": "GET",
+          "path": "/untyped-empty-obj",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "pair": {
+                "type": "array",
+                "contains": {}
+              }
+            }
+          },
+          "description": "First property type='array', contains={} — lands in untyped bucket (EMPTY-OBJECT-SCHEMA-AS-UNTYPED M88-INHERITED-FROM-M81/M87: empty {} declares no constraint; distinct from M84/M86 EMPTY-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY for value-axes)"
+        },
+        {
+          "name": "na_type_string_cap",
+          "method": "GET",
+          "path": "/na-type-string",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "contains": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "description": "First property type='string', contains={type:'number'} — lands in not_applicable bucket (TYPE-APPLICABILITY-ARRAY-RESTRICTION M88-INHERITED-FROM-M87: firstVal.type !== 'array' → not_applicable)"
+        },
+        {
+          "name": "na_outer_string_cap",
+          "method": "GET",
+          "path": "/na-outer-string",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "string"
+          },
+          "description": "Outer input_schema type='string' — lands in not_applicable bucket (outer structural prerequisite: no first property to inspect)"
+        },
+        {
+          "name": "unknown_null_cap",
+          "method": "POST",
+          "path": "/unknown-null",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "array",
+                "contains": null
+              }
+            }
+          },
+          "description": "First property contains===null — lands in unknown bucket (NULL-AS-UNKNOWN M88-INHERITED-FROM-M87: Draft-7 schemas are boolean-or-object; null is neither; distinct from M86 NULL-AS-TYPED for default; 6th code: input_schema_properties_first_property_contains_invalid_when_present)"
+        },
+        {
+          "name": "unknown_array_cap",
+          "method": "POST",
+          "path": "/unknown-array",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "array",
+                "contains": [
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          "description": "First property contains=[{type:'string'}] (array) — lands in unknown bucket (ARRAY-AS-UNKNOWN M88-INHERITED-FROM-M87: Draft-7 §6.4.6 MUST be boolean OR single object subschema, NOT array; 6th code)"
+        }
+      ],
+      "expected_valid_required_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "existential_element_match_subschema",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }
