@@ -6225,6 +6225,156 @@
         "unknown"
       ],
       "expected_bucket_order": "bounded,unbounded,not_applicable,unknown"
+    },
+    {
+      "id": "input-schema-first-property-pattern-properties-index-determinism",
+      "scenario_type": "input_schema_first_property_pattern_properties_index_determinism",
+      "description": "Verifies that tusq partition index produces byte-identical output across three runs on a synthetic manifest with typed, untyped, not_applicable, and unknown buckets. Also validates closed four-value bucket-key enum (typed/untyped/not_applicable/unknown), closed three-value aggregation_key enum (object_property_pattern_map_constraint/not_applicable/unknown), bucket order determinism (typed \u2192 untyped \u2192 not_applicable \u2192 unknown), warnings[] always present, manifest non-mutation, and input_schema_first_property_pattern_properties non-persistence. PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: plain-object map with >= 1 own key where every value is boolean or plain-object \u2192 typed (no warning). ABSENT-AS-UNTYPED: patternProperties absent/undefined \u2192 untyped (Draft-7 default no regex map, no warning). NULL-AS-ABSENT (mirrors M55\u2013M79): patternProperties:null \u2192 untyped (no warning). EMPTY-MAP-AS-UNTYPED: patternProperties:{} \u2192 untyped (explicit empty map declares no regex-keyed sub-schemas, no warning). TYPE-APPLICABILITY-OBJECT: firstVal.type is a string but not 'object' \u2192 not_applicable (mirrors M77/M78/M79 TYPE-APPLICABILITY-OBJECT). DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: non-plain-object patternProperties or plain-object map with any non-boolean non-plain-object value \u2192 unknown WITH 6th code input_schema_properties_first_property_pattern_properties_invalid_when_present; NO-COERCION via Object.prototype.toString.call() \u2014 strict '[object Object]' checks only.",
+      "synthetic_capabilities": [
+        {
+          "name": "typed_obj_cap",
+          "method": "POST",
+          "path": "/typed-obj",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "patternProperties": { "^x-": { "type": "string" } }
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties={'^x-':{type:'string'}} \u2014 lands in typed bucket (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED)"
+        },
+        {
+          "name": "typed_bool_cap",
+          "method": "POST",
+          "path": "/typed-bool",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "patternProperties": { "^x-": true }
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties={'^x-':true} (boolean subschema) \u2014 lands in typed bucket (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED)"
+        },
+        {
+          "name": "untyped_absent_cap",
+          "method": "GET",
+          "path": "/untyped-absent",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties absent \u2014 lands in untyped bucket (ABSENT-AS-UNTYPED: Draft-7 default no regex map)"
+        },
+        {
+          "name": "untyped_null_cap",
+          "method": "GET",
+          "path": "/untyped-null",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "patternProperties": null
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties=null \u2014 lands in untyped bucket (NULL-AS-ABSENT: mirrors M55\u2013M79)"
+        },
+        {
+          "name": "untyped_empty_map_cap",
+          "method": "GET",
+          "path": "/untyped-empty",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "patternProperties": {}
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties={} (explicit empty map) \u2014 lands in untyped bucket (EMPTY-MAP-AS-UNTYPED: empty map declares no regex-keyed sub-schemas)"
+        },
+        {
+          "name": "string_type_na_cap",
+          "method": "GET",
+          "path": "/na-string",
+          "domain": "test",
+          "side_effect_class": "read",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "First property type='string' \u2014 lands in not_applicable bucket (TYPE-APPLICABILITY-OBJECT: patternProperties only meaningful for object-typed properties)"
+        },
+        {
+          "name": "invalid_val_pp_cap",
+          "method": "POST",
+          "path": "/unknown-invalid-val",
+          "domain": "test",
+          "side_effect_class": "write",
+          "sensitivity_class": "public",
+          "approved": true,
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "patternProperties": { "^x-": "not-a-subschema" }
+              }
+            }
+          },
+          "description": "First property type='object', patternProperties={'^x-':'not-a-subschema'} (value is string, not boolean or plain-object) \u2014 lands in unknown bucket (DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: 6th code)"
+        }
+      ],
+      "expected_valid_pattern_properties_values": [
+        "typed",
+        "untyped",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_valid_aggregation_keys": [
+        "object_property_pattern_map_constraint",
+        "not_applicable",
+        "unknown"
+      ],
+      "expected_bucket_order": "typed,untyped,not_applicable,unknown"
     }
   ]
 }

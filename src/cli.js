@@ -944,6 +944,29 @@ const INPUT_SCHEMA_FIRST_PROPERTY_MAX_PROPERTIES_AGGREGATION_KEY_ENUM = Object.f
 // Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
 const INPUT_SCHEMA_FIRST_PROPERTY_MAX_PROPERTIES_BUCKET_ORDER = Object.freeze(['bounded', 'unbounded', 'not_applicable']);
 
+// M80: frozen four-value bucket-key enum for input_schema.properties[firstKey].patternProperties (JSON-Schema-Draft-7 OBJECT-PROPERTY-NAME-PATTERN-MAP annotation).
+// typed        — patternProperties is a plain-object map with >= 1 own enumerable key, every value is boolean or plain-object subschema
+//                (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: Draft-7 valid regex-keyed subschema map)
+// untyped      — patternProperties absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no regex map), null (NULL-AS-ABSENT: mirrors M55–M79),
+//                OR explicit empty plain-object {} (EMPTY-MAP-AS-UNTYPED: empty map declares no regex-keyed sub-schemas)
+// not_applicable — firstVal.type is a string but not 'object' (TYPE-APPLICABILITY-OBJECT), OR zero-property object
+// unknown      — malformed input_schema, firstVal not a plain object, OR patternProperties present non-null non-plain-object-map,
+//                OR plain-object map with any value that is not boolean and not plain-object
+//                (DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION)
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_ENUM = Object.freeze(new Set(['typed', 'untyped', 'not_applicable', 'unknown']));
+
+// M80: frozen three-value aggregation_key enum. Immutable once M80 ships.
+// typed/untyped buckets carry 'object_property_pattern_map_constraint'; not_applicable carries 'not_applicable'; unknown carries 'unknown'.
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['object_property_pattern_map_constraint', 'not_applicable', 'unknown']));
+
+// M80: closed-enum bucket iteration order (typed → untyped → not_applicable). Unknown appended last.
+// NOT developer-artifacts-priority-ranked, NOT SDK-type-definition-readiness-ranked, NOT API-tool-schema-precision-ranked,
+// NOT integration-test-fuzzing-priority-ranked, NOT eval-fixture-coverage-ranked, NOT drift-report-strictness-ranked,
+// NOT migration-plan-priority-ranked, NOT changelog-entry-priority-ranked, NOT marketplace-validation-strictness-ranked,
+// NOT local-development-fixture-coverage-ranked.
+// Deterministic stable-output convention only. The unknown bucket is always appended last. Empty buckets MUST NOT appear.
+const INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_BUCKET_ORDER = Object.freeze(['typed', 'untyped', 'not_applicable']);
+
 // M33: frozen two-value aggregation_key enum (parallel to M31/M32). Immutable once M33 ships.
 // An implementation-time guard fires if buildSensitivityIndex produces a key outside this set.
 const SENSITIVITY_INDEX_AGGREGATION_KEY_ENUM = Object.freeze(new Set(['class', 'unknown']));
@@ -1151,6 +1174,9 @@ function dispatch(argv) {
       return;
     case 'parameter':
       cmdParameter(args);
+      return;
+    case 'partition':
+      cmdPartition(args);
       return;
     case 'path':
       cmdPath(args);
@@ -13001,6 +13027,20 @@ function _guardInputSchemaFirstPropertyMaxPropertiesAggregationKey(key) {
   return key;
 }
 
+function _guardInputSchemaFirstPropertyPatternPropertiesBucketKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_ENUM.has(key)) {
+    throw new Error(`Internal error: input_schema_first_property_pattern_properties outside closed four-value enum: ${key}`);
+  }
+  return key;
+}
+
+function _guardInputSchemaFirstPropertyPatternPropertiesAggregationKey(key) {
+  if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_AGGREGATION_KEY_ENUM.has(key)) {
+    throw new Error(`Internal error: aggregation_key outside closed three-value enum: ${key}`);
+  }
+  return key;
+}
+
 // M67: classifyInputSchemaFirstPropertyExclusiveMinimum(inputSchema) → 'lower_exclusive_bounded'|'lower_exclusive_unbounded'|'not_applicable'|'unknown'
 // Classification rules (frozen — any change is a governance event):
 //   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
@@ -16967,6 +17007,95 @@ function classifyInputSchemaFirstPropertyMaxProperties(inputSchema) {
   return 'unknown';
 }
 
+// M80: classifyInputSchemaFirstPropertyPatternProperties(inputSchema) → 'typed'|'untyped'|'not_applicable'|'unknown'
+// Classification rules (frozen — any change is a governance event):
+//   inputSchema missing/null/undefined → 'unknown' (reason: input_schema_field_missing)
+//   inputSchema not plain non-null object/is array → 'unknown' (reason: input_schema_field_not_object)
+//   inputSchema.type missing or non-string → 'unknown' (reason: input_schema_type_missing_or_invalid)
+//   inputSchema.type is a string but not 'object' → 'not_applicable' (no warning; non-object input has no first property)
+//   inputSchema.type === 'object', properties missing/null/not-plain-object → 'unknown' (reason: input_schema_properties_field_missing_when_type_is_object)
+//   inputSchema.type === 'object', properties is plain object, Object.keys(properties).length === 0 → 'not_applicable' (no warning)
+//   Otherwise: firstKey = Object.keys(properties)[0]; firstVal = properties[firstKey];
+//              if firstVal is not a plain non-null object → 'unknown' (reason: input_schema_properties_first_property_descriptor_invalid — FIFTH FROZEN CODE)
+//              TYPE-APPLICABILITY-OBJECT rule (M80, mirrors M77/M78/M79 TYPE-APPLICABILITY-OBJECT):
+//              if typeof firstVal.type === 'string' && firstVal.type !== 'object' → 'not_applicable' (no warning; patternProperties only meaningful for object-typed properties)
+//              patternProperties check (JSON-Schema Draft 7 object-property-name-pattern-map annotation):
+//              ABSENT-AS-UNTYPED: !hasOwn(firstVal, 'patternProperties') OR patternProperties===undefined → 'untyped' (Draft 7 default is no regex map)
+//              NULL-AS-ABSENT: patternProperties===null → 'untyped' (mirrors M55–M79 null-as-absent precedent)
+//              EMPTY-MAP-AS-UNTYPED: patternProperties is plain object AND Object.keys.length===0 → 'untyped' (explicit empty map declares no regex-keyed sub-schemas)
+//              PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: patternProperties is plain object AND keys.length>=1 AND every value is boolean or plain-object → 'typed'
+//              DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: any other value → 'unknown' WITH 6th code
+//              NO-COERCION: MUST NOT use typeof v === 'object' alone (accepts arrays+null); MUST use Object.prototype.toString.call(v) === '[object Object]'
+//              for outer map AND for each value; MUST use (typeof value === 'boolean' || Object.prototype.toString.call(value) === '[object Object]')
+// Object.keys insertion-order semantics preserved. MUST NOT sort or re-order property keys.
+// Per-property patternProperties beyond the FIRST is NOT walked (reserved for M-PatternProperties-All-Properties).
+// Nested-object property patternProperties NOT walked (reserved for M-PatternProperties-Nested).
+// output_schema first-property patternProperties is NOT classified (reserved for M-PatternProperties-Output-First-Property-Index).
+// input_schema_first_property_pattern_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function classifyInputSchemaFirstPropertyPatternProperties(inputSchema) {
+  if (inputSchema === null || inputSchema === undefined) {
+    return 'unknown';
+  }
+  if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+    return 'unknown';
+  }
+  const schemaType = inputSchema.type;
+  if (typeof schemaType !== 'string') {
+    return 'unknown';
+  }
+  if (schemaType !== 'object') {
+    return 'not_applicable';
+  }
+  // inputSchema.type === 'object'
+  const properties = inputSchema.properties;
+  if (properties === null || properties === undefined || typeof properties !== 'object' || Array.isArray(properties)) {
+    return 'unknown';
+  }
+  const keys = Object.keys(properties);
+  if (keys.length === 0) {
+    return 'not_applicable';
+  }
+  const firstKey = keys[0];
+  const firstVal = properties[firstKey];
+  if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+    return 'unknown';
+  }
+  // TYPE-APPLICABILITY-OBJECT: if firstVal.type is a string but not 'object' → not_applicable (patternProperties only meaningful for object-typed properties)
+  if (typeof firstVal.type === 'string' && firstVal.type !== 'object') {
+    return 'not_applicable';
+  }
+  // patternProperties check:
+  const ppVal = Object.prototype.hasOwnProperty.call(firstVal, 'patternProperties') ? firstVal.patternProperties : undefined;
+  // ABSENT-AS-UNTYPED: patternProperties absent or undefined → untyped (Draft-7 default is no regex map)
+  if (ppVal === undefined) {
+    return 'untyped';
+  }
+  // NULL-AS-ABSENT: patternProperties===null → untyped (mirrors M55–M79 null-as-absent)
+  if (ppVal === null) {
+    return 'untyped';
+  }
+  // Must be a plain object (not array, not null, not other reference type)
+  if (Object.prototype.toString.call(ppVal) !== '[object Object]') {
+    // DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: not a plain object → unknown WITH 6th code
+    return 'unknown';
+  }
+  const ppKeys = Object.keys(ppVal);
+  // EMPTY-MAP-AS-UNTYPED: explicit empty plain-object map → untyped (explicit empty map declares no regex-keyed sub-schemas)
+  if (ppKeys.length === 0) {
+    return 'untyped';
+  }
+  // PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: each value must be boolean or plain-object subschema
+  for (const ppKey of ppKeys) {
+    const subVal = ppVal[ppKey];
+    if (typeof subVal !== 'boolean' && Object.prototype.toString.call(subVal) !== '[object Object]') {
+      // DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: value not boolean and not plain-object → unknown WITH 6th code
+      return 'unknown';
+    }
+  }
+  // All own enumerable values are boolean or plain-object subschemas
+  return 'typed';
+}
+
 // M76: buildInputSchemaFirstPropertyItemsIndex(manifest, manifestPath) → index object
 // Builds a full unfiltered input schema first property items annotation index from the manifest's capabilities[].
 // Bucket iteration order: declared → undeclared → not_applicable (closed-enum order), then unknown last.
@@ -18300,6 +18429,355 @@ function parseCrowdedIndexArgs(args) {
     let value = eq === -1 ? undefined : raw.slice(eq + 1);
 
     const knownFlags = new Set(['crowded', 'manifest', 'out', 'json']);
+    if (!knownFlags.has(key)) {
+      throw new CliError(`Unknown flag: --${key}`, 1);
+    }
+
+    if (key === 'json') {
+      opts.json = true;
+      continue;
+    }
+
+    if (value === undefined) {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new CliError(`Missing value for --${key}`, 1);
+      }
+      value = next;
+      i += 1;
+    }
+    opts[key] = value;
+  }
+
+  return { opts, positionals };
+}
+
+// M80: buildInputSchemaFirstPropertyPatternPropertiesIndex(manifest, manifestPath) → index object
+// Builds a full unfiltered input schema first property patternProperties annotation index from the manifest's capabilities[].
+// Bucket iteration order: typed → untyped → not_applicable (closed-enum order), then unknown last.
+// Empty buckets MUST NOT appear.
+// input_schema_first_property_pattern_properties MUST NOT be written into tusq.manifest.json (non-persistence rule).
+function buildInputSchemaFirstPropertyPatternPropertiesIndex(manifest, manifestPath) {
+  const manifestVersion = typeof manifest.manifest_version === 'number' ? manifest.manifest_version : null;
+  const generatedAt = typeof manifest.generated_at === 'string' ? manifest.generated_at : null;
+  const capabilities = manifest.capabilities;
+  const warnings = [];
+
+  if (capabilities.length === 0) {
+    return {
+      manifest_path: manifestPath,
+      manifest_version: manifestVersion,
+      generated_at: generatedAt,
+      first_property_pattern_properties_states: [],
+      warnings
+    };
+  }
+
+  // Named (non-unknown) bucket values — the three ordered bucket keys (excludes unknown).
+  const namedBuckets = new Set(INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_BUCKET_ORDER);
+
+  // Collect capabilities into buckets keyed by their input_schema_first_property_pattern_properties.
+  const buckets = Object.create(null); // bucketKey → capability[]
+  let hasUnknownBucket = false;
+
+  for (const capability of capabilities) {
+    const inputSchema = Object.prototype.hasOwnProperty.call(capability, 'input_schema')
+      ? capability.input_schema
+      : undefined;
+
+    // Determine warning reason if input_schema or first-property descriptor is malformed.
+    // Six frozen warning reason codes (M80 PM DEC-003):
+    //   1. input_schema_field_missing
+    //   2. input_schema_field_not_object
+    //   3. input_schema_type_missing_or_invalid
+    //   4. input_schema_properties_field_missing_when_type_is_object
+    //   5. input_schema_properties_first_property_descriptor_invalid (fifth code, carried forward from M55-M79)
+    //   6. input_schema_properties_first_property_pattern_properties_invalid_when_present (M80-SPECIFIC)
+    //      covers: non-plain-object patternProperties; plain-object map with any value not boolean and not plain-object;
+    //      NO-COERCION via Object.prototype.toString.call() checks — strict '[object Object]' only
+    let warningReason = null;
+    if (inputSchema === undefined || inputSchema === null) {
+      warningReason = 'input_schema_field_missing';
+    } else if (typeof inputSchema !== 'object' || Array.isArray(inputSchema)) {
+      warningReason = 'input_schema_field_not_object';
+    } else if (typeof inputSchema.type !== 'string') {
+      warningReason = 'input_schema_type_missing_or_invalid';
+    } else if (inputSchema.type === 'object') {
+      const props = inputSchema.properties;
+      if (props === null || props === undefined || typeof props !== 'object' || Array.isArray(props)) {
+        warningReason = 'input_schema_properties_field_missing_when_type_is_object';
+      } else {
+        const keys = Object.keys(props);
+        if (keys.length > 0) {
+          const firstKey = keys[0];
+          const firstVal = props[firstKey];
+          if (firstVal === null || firstVal === undefined || typeof firstVal !== 'object' || Array.isArray(firstVal)) {
+            warningReason = 'input_schema_properties_first_property_descriptor_invalid';
+          } else if (!(typeof firstVal.type === 'string' && firstVal.type !== 'object')) {
+            // TYPE-APPLICABILITY-OBJECT: only check patternProperties for non-typed or object-typed firstVal
+            // Check patternProperties for 6th code: present non-null value that is not a valid plain-object map
+            const ppVal = Object.prototype.hasOwnProperty.call(firstVal, 'patternProperties') ? firstVal.patternProperties : undefined;
+            if (ppVal !== undefined && ppVal !== null) {
+              if (Object.prototype.toString.call(ppVal) !== '[object Object]') {
+                // Not a plain object → 6th code
+                warningReason = 'input_schema_properties_first_property_pattern_properties_invalid_when_present';
+              } else {
+                // Plain object — check each value is boolean or plain-object
+                const ppKeys = Object.keys(ppVal);
+                for (const ppKey of ppKeys) {
+                  const subVal = ppVal[ppKey];
+                  if (typeof subVal !== 'boolean' && Object.prototype.toString.call(subVal) !== '[object Object]') {
+                    warningReason = 'input_schema_properties_first_property_pattern_properties_invalid_when_present';
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          // else: TYPE-APPLICABILITY-OBJECT → not_applicable, no warning
+        }
+        // keys.length === 0 → not_applicable, no warning
+      }
+    }
+    // Note: input_schema.type is a string but not 'object' → not_applicable, no warning
+
+    if (warningReason !== null) {
+      warnings.push({ capability: capability.name, reason: warningReason });
+    }
+
+    const ppClass = classifyInputSchemaFirstPropertyPatternProperties(inputSchema);
+    const isNamedBucket = namedBuckets.has(ppClass);
+    const bucketKey = isNamedBucket ? ppClass : '__unknown__';
+
+    if (!isNamedBucket) {
+      if (!hasUnknownBucket) {
+        hasUnknownBucket = true;
+        buckets['__unknown__'] = [];
+      }
+      buckets['__unknown__'].push(capability);
+    } else {
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = [];
+      }
+      buckets[bucketKey].push(capability);
+    }
+  }
+
+  // Iterate in closed-enum order: typed → untyped → not_applicable, then unknown last.
+  // Empty buckets MUST NOT appear.
+  const orderedBucketKeys = [
+    ...INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_BUCKET_ORDER.filter((k) => buckets[k]),
+    ...(hasUnknownBucket ? ['__unknown__'] : [])
+  ];
+
+  const firstPropertyPatternPropertiesStates = orderedBucketKeys.map((bucketKey) => {
+    const isUnknownBucket = bucketKey === '__unknown__';
+    const isNotApplicableBucket = bucketKey === 'not_applicable';
+    const ppKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPatternPropertiesBucketKey('unknown')
+      : _guardInputSchemaFirstPropertyPatternPropertiesBucketKey(bucketKey);
+    const aggregationKey = isUnknownBucket
+      ? _guardInputSchemaFirstPropertyPatternPropertiesAggregationKey('unknown')
+      : isNotApplicableBucket
+        ? _guardInputSchemaFirstPropertyPatternPropertiesAggregationKey('not_applicable')
+        : _guardInputSchemaFirstPropertyPatternPropertiesAggregationKey('object_property_pattern_map_constraint');
+    const caps = buckets[bucketKey];
+    const capabilityNames = caps.map((c) => c.name);
+    const approvedCount = caps.filter((c) => c.approved === true).length;
+    const gatedCount = caps.length - approvedCount;
+    const hasDestructiveSideEffect = caps.some((c) => c.side_effect_class === 'destructive');
+    const hasRestrictedOrConfidentialSensitivity = caps.some(
+      (c) => c.sensitivity_class === 'restricted' || c.sensitivity_class === 'confidential'
+    );
+
+    return {
+      input_schema_first_property_pattern_properties: ppKey,
+      aggregation_key: aggregationKey,
+      capability_count: caps.length,
+      capabilities: capabilityNames,
+      approved_count: approvedCount,
+      gated_count: gatedCount,
+      has_destructive_side_effect: hasDestructiveSideEffect,
+      has_restricted_or_confidential_sensitivity: hasRestrictedOrConfidentialSensitivity
+    };
+  });
+
+  return {
+    manifest_path: manifestPath,
+    manifest_version: manifestVersion,
+    generated_at: generatedAt,
+    first_property_pattern_properties_states: firstPropertyPatternPropertiesStates,
+    warnings
+  };
+}
+
+// M80: format input schema first property patternProperties annotation index as human-readable text
+function formatInputSchemaFirstPropertyPatternPropertiesIndex(index) {
+  if (index.first_property_pattern_properties_states.length === 0) {
+    return 'No capabilities in manifest — nothing to index.\n';
+  }
+
+  const version = index.manifest_version === null ? 'unknown' : String(index.manifest_version);
+  const generatedAt = index.generated_at === null ? 'unknown' : index.generated_at;
+  const lines = [
+    `Input Schema First Property PatternProperties Index: ${index.manifest_path}`,
+    `manifest_version: ${version}`,
+    `generated_at: ${generatedAt}`,
+    "Planning aid: this index reports per-capability input_schema.properties[firstKey].patternProperties JSON-Schema-Draft-7 object-property-name-pattern-map annotation classification; it does NOT execute capability invocations, validate runtime regex-keyed payloads, enforce regex-key-pattern-map contracts, compile regex strings, validate regex syntax, cross-reference additionalProperties/minProperties/maxProperties/propertyNames annotations, rank developer-artifacts-emitter readiness, assess SDK-type-definition precision, or rank MCP-server-pattern-properties strictness. Bucket order is deterministic stable-output ordering only (NOT developer-artifacts-priority-ranked, NOT SDK-type-definition-readiness-ranked, NOT API-tool-schema-precision-ranked).",
+    ''
+  ];
+
+  for (const entry of index.first_property_pattern_properties_states) {
+    lines.push(`[${entry.input_schema_first_property_pattern_properties}]`);
+    lines.push(`  aggregation_key: ${entry.aggregation_key}`);
+    lines.push(`  capabilities (${entry.capability_count}): ${entry.capabilities.join(', ') || '(none)'}`);
+    lines.push(`  approved: ${entry.approved_count}  gated: ${entry.gated_count}`);
+    lines.push(`  has_destructive_side_effect: ${entry.has_destructive_side_effect}`);
+    lines.push(`  has_restricted_or_confidential_sensitivity: ${entry.has_restricted_or_confidential_sensitivity}`);
+    lines.push('');
+  }
+
+  lines.push("Bucket rule: typed (firstKey.patternProperties is a plain-object map with >= 1 own enumerable key where every value is boolean or a plain-object subschema — PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: Draft-7 valid regex-keyed subschema map; note: regex strings NOT validated as compilable — Draft-7 leaves regex compilation to the validator) | untyped (firstKey.patternProperties absent/undefined — ABSENT-AS-UNTYPED: Draft-7 default no regex map; OR null — NULL-AS-ABSENT: null defers to Draft-7 default no regex map; OR explicit empty plain-object {} — EMPTY-MAP-AS-UNTYPED: empty map declares no regex-keyed sub-schemas; mirrors M55–M79) | not_applicable (input_schema.type !== 'object' or zero-property object or firstVal.type is a non-empty string other than 'object' — TYPE-APPLICABILITY-OBJECT: patternProperties only meaningful for object-typed properties; JSON-Schema-Draft-7 defines patternProperties ONLY for type==='object'; mirrors M77/M78/M79 TYPE-APPLICABILITY-OBJECT) | unknown (malformed input_schema, firstKey not a plain object, patternProperties present non-null non-plain-object, or plain-object map with any value not boolean and not plain-object: string 'x', number 1, array [], null — DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: 6th warning code input_schema_properties_first_property_pattern_properties_invalid_when_present; NO-COERCION via typeof/Array.isArray — strict Object.prototype.toString.call(v)==='[object Object]' checks).");
+  lines.push('Bucket order: typed → untyped → not_applicable → unknown');
+
+  return lines.join('\n') + '\n';
+}
+
+// M80: tusq partition — top-level noun dispatcher
+function cmdPartition(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    printCommandHelp('partition');
+    return;
+  }
+
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'index') {
+    cmdPartitionIndex(rest);
+    return;
+  }
+
+  throw new CliError(`Unknown subcommand: ${sub}`, 1);
+}
+
+// M80: tusq partition index — handler
+function cmdPartitionIndex(args) {
+  const { opts, positionals } = parsePartitionIndexArgs(args);
+
+  if (opts.help) {
+    printCommandHelp('partition index');
+    return;
+  }
+  if (positionals.length > 0) {
+    throw new CliError(`Unknown subcommand: ${positionals[0]}`, 1);
+  }
+
+  const root = process.cwd();
+  const manifestPath = opts.manifest
+    ? path.resolve(root, opts.manifest)
+    : path.join(root, 'tusq.manifest.json');
+
+  // Validate --out path before reading the manifest (detection-before-output)
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    if (outPath.split(path.sep).includes('.tusq')) {
+      throw new CliError('--out path must not be inside .tusq/', 1);
+    }
+    try {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+  }
+
+  let raw;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (_e) {
+    throw new CliError(`Manifest not found: ${manifestPath}`, 1);
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (_e) {
+    throw new CliError(`Manifest is not valid JSON: ${manifestPath}`, 1);
+  }
+
+  if (!Array.isArray(manifest.capabilities)) {
+    throw new CliError(`Manifest missing capabilities array: ${manifestPath}`, 1);
+  }
+
+  const fullIndex = buildInputSchemaFirstPropertyPatternPropertiesIndex(manifest, manifestPath);
+  let outputIndex;
+
+  const partitionFilter = opts['partition'] || null;
+
+  if (partitionFilter !== null) {
+    // Case-sensitive: lowercase canonical patternProperties bucket values; anything else exits 1
+    if (!INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_ENUM.has(partitionFilter)) {
+      throw new CliError(`Unknown input schema first property patternProperties state: ${partitionFilter}`, 1);
+    }
+    const matchedEntry = fullIndex.first_property_pattern_properties_states.find(
+      (e) => e.input_schema_first_property_pattern_properties === partitionFilter
+    );
+    if (!matchedEntry) {
+      throw new CliError(`No capabilities found for input schema first property patternProperties state: ${partitionFilter}`, 1);
+    }
+    outputIndex = {
+      ...fullIndex,
+      first_property_pattern_properties_states: [matchedEntry]
+    };
+  } else {
+    outputIndex = fullIndex;
+  }
+
+  if (opts.out) {
+    const outPath = path.resolve(root, opts.out);
+    // Emit warnings to stderr before writing file
+    for (const w of fullIndex.warnings) {
+      process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+    }
+    try {
+      fs.writeFileSync(outPath, `${JSON.stringify(outputIndex, null, 2)}\n`, 'utf8');
+    } catch (_e) {
+      throw new CliError(`Cannot write to --out path: ${outPath}`, 1);
+    }
+    return;
+  }
+
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(outputIndex, null, 2)}\n`);
+    return;
+  }
+
+  // Human mode: emit warnings to stderr, then write text to stdout
+  for (const w of fullIndex.warnings) {
+    process.stderr.write(`Warning: capability '${w.capability}' has malformed input schema (${w.reason})\n`);
+  }
+  process.stdout.write(formatInputSchemaFirstPropertyPatternPropertiesIndex(outputIndex));
+}
+
+function parsePartitionIndexArgs(args) {
+  const opts = {};
+  const positionals = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--help' || token === '-h') {
+      opts.help = true;
+      continue;
+    }
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    let value = eq === -1 ? undefined : raw.slice(eq + 1);
+
+    const knownFlags = new Set(['partition', 'manifest', 'out', 'json']);
     if (!knownFlags.has(key)) {
       throw new CliError(`Unknown flag: --${key}`, 1);
     }
@@ -22212,6 +22690,7 @@ function printHelp() {
   process.stdout.write('  open               Index capabilities by input schema first property additionalProperties object-extension-control annotation presence for governance-and-rollout review\n');
   process.stdout.write('  output             Index capabilities by output schema property count tier for planning review\n');
   process.stdout.write('  parameter          Index capabilities by input schema property count tier for planning review\n');
+  process.stdout.write('  partition          Index capabilities by input schema first property patternProperties object-property-name-pattern-map annotation presence for developer-artifacts review\n');
   process.stdout.write('  path               Index capabilities by path segment count tier for planning review\n');
   process.stdout.write('  pii                Index capabilities by PII field count tier for planning review\n');
   process.stdout.write('  policy             Manage execution policy artifacts\n');
@@ -23361,6 +23840,51 @@ function printCommandHelp(command) {
       '  1  Missing/invalid manifest, unknown flag, unknown tier, --out path error, or unknown subcommand',
       '',
       'This is a planning aid, not a runtime request validator, parameter-count-driven tool-listing budget generator, LLM-context-length policy engine, or MCP parameter-footprint certifier; tiers are deterministic stable-output ordering only (NOT parameter-sprawl-precedence-ranked, NOT complexity-blast-radius-ranked).'
+    ].join('\n'),
+    partition: 'Usage: tusq partition <subcommand>\n  Subcommands: index',
+    'partition index': [
+      'Usage: tusq partition index [--partition <value>] [--manifest <path>] [--out <path>] [--json]',
+      '',
+      'Flags:',
+      '  --partition <value>   Filter to a single input schema first property patternProperties bucket (default: all buckets; case-sensitive lowercase)',
+      '  --manifest <path>     Manifest file to read (default: tusq.manifest.json)',
+      '  --out <path>          Write index to file (no stdout on success)',
+      '  --json                Emit machine-readable JSON (includes warnings[] for malformed input_schema or invalid first-property descriptor)',
+      '',
+      'Classifier rule (applied to input_schema.properties[Object.keys[0]].patternProperties when input_schema.type === "object" and firstVal.type === "object"):',
+      '  typed        if patternProperties is a plain-object map with >= 1 own enumerable key AND every value is boolean OR a plain-object subschema',
+      '               (PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED: Draft-7 valid regex-keyed subschema map; mixed boolean+object map permitted; note: regex strings NOT validated as compilable)',
+      '  untyped      if patternProperties absent/undefined (ABSENT-AS-UNTYPED: Draft-7 default no regex map)',
+      '               OR null (NULL-AS-ABSENT: null defers to Draft-7 default no regex map; mirrors M55–M79)',
+      '               OR explicit empty plain-object {} (EMPTY-MAP-AS-UNTYPED: empty map declares no regex-keyed sub-schemas)',
+      '  not_applicable  if input_schema.type is a string but not "object" (non-object input has no first property — no warning)',
+      '               OR if input_schema.type === "object" and Object.keys(properties).length === 0 (zero-property object — no warning)',
+      '               OR if firstKey.type is a string but not "object" (TYPE-APPLICABILITY-OBJECT: patternProperties only meaningful for object-typed properties; JSON-Schema-Draft-7 defines patternProperties ONLY for type==="object")',
+      '  unknown      if input_schema is missing/null/not-a-plain-object;',
+      '               or input_schema.type is missing or non-string;',
+      '               or input_schema.type === "object" but properties is missing/null/not-a-plain-object;',
+      '               or the first property descriptor is not a plain object.',
+      '               or patternProperties present non-null non-plain-object (string, number, boolean true/false, array []);',
+      '               or patternProperties is a plain-object map where any value is not boolean and not plain-object (string "x", number 1, array [], null)',
+      '               (DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES: 6th warning code input_schema_properties_first_property_pattern_properties_invalid_when_present;',
+      '               NO-COERCION via typeof/Array.isArray — strict Object.prototype.toString.call(v)==="[object Object]" checks).',
+      '               Object.keys insertion-order is used; key sequence is NOT sorted or reordered.',
+      '               Per-property patternProperties beyond the FIRST are NOT walked (reserved for M-PatternProperties-All-Properties).',
+      '               Nested-object property patternProperties NOT walked (reserved for M-PatternProperties-Nested).',
+      '               output_schema first-property patternProperties NOT classified here.',
+      '               Distinct from M77 tusq open index (additionalProperties — object-extension-control: boolean/schema fallback for keys NOT matched by patternProperties; different field semantic),',
+      '               M78 tusq sparse index (minProperties — object-property-count-floor: numeric floor, not regex-key-pattern-map),',
+      '               M79 tusq crowded index (maxProperties — object-property-count-ceiling: numeric ceiling, not regex-key-pattern-map),',
+      '               M59 tusq regex index (pattern — string-VALUE regex on type:"string" firstVals; M80 patternProperties is object-KEY-NAME-AND-VALUE-SHAPE regex map on type:"object" firstVals).',
+      '',
+      'Bucket iteration order: typed → untyped → not_applicable → unknown',
+      '  (regex-map-present → no-regex-map → exits — NOT developer-artifacts-priority-ranked, NOT SDK-type-definition-readiness-ranked, NOT API-tool-schema-precision-ranked)',
+      '',
+      'Exit codes:',
+      '  0  Index produced (or empty-capabilities manifest)',
+      '  1  Missing/invalid manifest, unknown flag, unknown patternProperties state, --out path error, or unknown subcommand',
+      '',
+      'This is a planning aid, not a runtime regex-key-matcher, runtime pattern-property validator, DTO pattern-property deserializer, regex-string compiler, regex-syntax validator, or developer-artifacts emitter; patternProperties states are deterministic stable-output ordering only (NOT developer-artifacts-priority-ranked, NOT SDK-type-definition-readiness-ranked, NOT drift-report-strictness-ranked).'
     ].join('\n'),
     path: 'Usage: tusq path <subcommand>\n  Subcommands: index',
     'path index': [

@@ -218,6 +218,50 @@ tusq binding index --source request_body --json
 tusq binding index --out binding-index.json
 ```
 
+## `tusq partition index`
+
+Emit a deterministic, per-`patternProperties`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-property-name-pattern-map annotation on `input_schema.properties[firstKey].patternProperties` (the first input property descriptor), in closed-enum order (`typed → untyped → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `patternProperties` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime regex-key-matcher, runtime pattern-property validator, DTO pattern-property deserializer, regex-string compiler, regex-syntax validator, or developer-artifacts emitter**.
+
+**Distinct from `tusq open index` (M77):** `tusq open index` reads `firstKey.additionalProperties` (object-extension-control — boolean/schema fallback for keys NOT matched by `patternProperties`). `tusq partition index` reads `firstKey.patternProperties` (regex-keyed sub-schema map applied to matching keys). Orthogonal field semantics on the same object-axis — layered together at validation time, orthogonal at static-annotation time.
+
+**Distinct from `tusq sparse index` (M78):** `tusq sparse index` reads `firstKey.minProperties` (object-property-count-floor — numeric floor). `tusq partition index` reads `firstKey.patternProperties` (regex-keyed sub-schema map on key names). Different field semantic: count-floor vs regex-key-pattern-map.
+
+**Distinct from `tusq crowded index` (M79):** `tusq crowded index` reads `firstKey.maxProperties` (object-property-count-ceiling — numeric ceiling). `tusq partition index` reads `firstKey.patternProperties` (regex-keyed sub-schema map on key names). Different field semantic: count-ceiling vs regex-key-pattern-map.
+
+**Distinct from `tusq regex index` (M59):** `tusq regex index` reads `firstKey.pattern` (regex constraining the VALUE shape of a string-typed first property — type:'string'). `tusq partition index` reads `firstKey.patternProperties` (regex-keyed MAP constraining object KEY-NAMES-AND-VALUE-SHAPES — type:'object'). Different field semantic AND different type-applicability.
+
+```bash
+tusq partition index [--partition <value>] [--manifest <path>] [--out <path>] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--partition <typed\|untyped\|not_applicable\|unknown>` | all buckets | Filter to a single patternProperties annotation bucket (case-sensitive lowercase) |
+| `--manifest <path>` | `tusq.manifest.json` | Manifest file to read |
+| `--out <path>` | stdout | Write index to file; no stdout on success |
+| `--json` | human text | Emit machine-readable JSON (includes `warnings[]` for malformed `input_schema`) |
+
+**PatternProperties classification rule** (applied to `input_schema.properties[firstKey].patternProperties` when `input_schema.type === "object"` and `firstVal.type === "object"`):
+
+- `typed` — `patternProperties` is a plain-object map with ≥ 1 own enumerable key AND every value is `boolean` OR a plain-object subschema (**PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED**; note: regex strings NOT validated as compilable — Draft-7 leaves regex compilation to the validator; no warning)
+- `untyped` — `patternProperties` is absent/undefined (**ABSENT-AS-UNTYPED**: Draft-7 default no regex map; no warning), OR `=== null` (**NULL-AS-ABSENT**: mirrors M55–M79 null-as-absent precedent; no warning), OR explicit empty plain-object `{}` (**EMPTY-MAP-AS-UNTYPED**: empty map declares no regex-keyed sub-schemas; no warning)
+- `not_applicable` — `input_schema.type` is a string but not `'object'`, OR zero-property object, OR `firstVal.type` is a non-empty string other than `'object'` (**TYPE-APPLICABILITY-OBJECT**: `patternProperties` only meaningful for object-typed properties; JSON-Schema-Draft-7 defines `patternProperties` ONLY for `type === 'object'`; mirrors M77/M78/M79 TYPE-APPLICABILITY-OBJECT; no warning)
+- `unknown` — `input_schema` or `properties` are malformed, `firstKey` not a plain object, OR `patternProperties` is present non-null non-plain-object (string, number, boolean, array), OR `patternProperties` is a plain-object map where any value is not `boolean` and not a plain-object (string `'x'`, number `1`, array `[]`, `null`) (**DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES**: triggers 6th warning code `input_schema_properties_first_property_pattern_properties_invalid_when_present`; **NO-COERCION** — strict `Object.prototype.toString.call(v) === '[object Object]'` checks for outer map AND each value)
+
+**Bucket iteration order:** `typed → untyped → not_applicable → unknown` (closed-enum order, deterministic stable-output convention only — NOT developer-artifacts-priority-ranked, NOT SDK-type-definition-readiness-ranked, NOT API-tool-schema-precision-ranked).
+
+**Exit codes:**
+- `0` — Index produced (or empty-capabilities manifest)
+- `1` — Missing/invalid manifest, unknown flag, unknown patternProperties state, `--out` path error, or unknown subcommand
+
+```bash
+tusq partition index
+tusq partition index --json
+tusq partition index --partition typed
+tusq partition index --partition not_applicable --json
+tusq partition index --out partition-index.json
+```
+
 ## `tusq crowded index`
 
 Emit a deterministic, per-`maxProperties`-annotation capability index from manifest evidence. Groups capabilities by the JSON-Schema-Draft-7 object-property-count-ceiling annotation on `input_schema.properties[firstKey].maxProperties` (the first input property descriptor), in closed-enum order (`bounded → unbounded → not_applicable → unknown`). Capabilities whose first input property is not object-typed bucket as `not_applicable` (TYPE-APPLICABILITY-OBJECT). Malformed `maxProperties` or missing `input_schema` buckets as `unknown` with a warning. This is a **planning aid, not a runtime object-property-count-ceiling validator, runtime object-key-count enforcer, DTO property-count-ceiling validator, evals-and-regression strictness aggregator, or MCP-server-max-properties validator**.

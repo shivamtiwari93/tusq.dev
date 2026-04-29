@@ -2,6 +2,63 @@
 
 ---
 
+## M80 (run_9bd8558c73fb239e, turn_64938221e4a6227d, dev)
+
+**Axis:** `input_schema.properties[firstKey].patternProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-NAME-PATTERN-MAP annotation. CLI noun: `partition` (between `parameter` and `path`). CLI surface 63→64.
+
+**Constants added** (`src/cli.js`, after M79 maxProperties constants):
+- `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_ENUM` = frozen Set `['typed', 'untyped', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_AGGREGATION_KEY_ENUM` = frozen Set `['object_property_pattern_map_constraint', 'not_applicable', 'unknown']`
+- `INPUT_SCHEMA_FIRST_PROPERTY_PATTERN_PROPERTIES_BUCKET_ORDER` = frozen array `['typed', 'untyped', 'not_applicable']`
+
+**Guard functions** (after M79 guards):
+- `_guardInputSchemaFirstPropertyPatternPropertiesBucketKey(key)` — throws if not in closed four-value enum
+- `_guardInputSchemaFirstPropertyPatternPropertiesAggregationKey(key)` — throws if not in closed three-value enum
+
+**Classifier:** `classifyInputSchemaFirstPropertyPatternProperties(inputSchema)` (after `classifyInputSchemaFirstPropertyMaxProperties`):
+1. `inputSchema` null/undefined → `unknown` (reason: `input_schema_field_missing`)
+2. `inputSchema` not plain object / is Array → `unknown` (reason: `input_schema_field_not_object`)
+3. `inputSchema.type` missing or non-string → `unknown` (reason: `input_schema_type_missing_or_invalid`)
+4. `inputSchema.type` is a string but not `'object'` → `not_applicable` (non-object input has no first property; no warning)
+5. `properties` missing/null/not-plain-object → `unknown` (reason: `input_schema_properties_field_missing_when_type_is_object`)
+6. `Object.keys(properties).length === 0` → `not_applicable` (zero-property object; no warning)
+7. `firstVal` not a plain non-null object → `unknown` (reason: `input_schema_properties_first_property_descriptor_invalid` — FIFTH FROZEN CODE)
+8. **TYPE-APPLICABILITY-OBJECT**: `typeof firstVal.type === 'string' && firstVal.type !== 'object'` → `not_applicable` (mirrors M77/M78/M79)
+9. **ABSENT-AS-UNTYPED**: `patternProperties` absent/undefined → `untyped` (Draft-7 default no regex map)
+10. **NULL-AS-ABSENT**: `patternProperties === null` → `untyped` (mirrors M55–M79)
+11. **EMPTY-MAP-AS-UNTYPED**: `patternProperties` is plain object AND `Object.keys.length === 0` → `untyped` (explicit empty map declares no regex-keyed sub-schemas)
+12. **PLAIN-OBJECT-WITH-OWN-KEYS-AS-TYPED**: plain-object with >= 1 key AND every value is `typeof v === 'boolean'` OR `Object.prototype.toString.call(v) === '[object Object]'` → `typed`
+13. **DRAFT-7-PLAIN-OBJECT-MAP-IS-VALID-PATTERN-PROPERTIES**: any other value → `unknown` WITH 6th code; **NO-COERCION** via `Object.prototype.toString.call()` strict checks
+
+**Index builder:** `buildInputSchemaFirstPropertyPatternPropertiesIndex(manifest, manifestPath)` (after `parsePartitionIndexArgs`):
+- Six frozen warning reason codes (codes 1–5 carried from M55–M79; 6th: `input_schema_properties_first_property_pattern_properties_invalid_when_present`)
+- Result array field: `first_property_pattern_properties_states`
+- Per-bucket field: `input_schema_first_property_pattern_properties`
+- Aggregation key: `object_property_pattern_map_constraint` (typed/untyped), `not_applicable`, `unknown`
+- Bucket iteration order: `typed → untyped → not_applicable → unknown`
+- Non-persistence: `input_schema_first_property_pattern_properties` MUST NOT be written into `tusq.manifest.json`
+
+**Formatter:** `formatInputSchemaFirstPropertyPatternPropertiesIndex(index)` — human-readable text output.
+
+**Command wiring:**
+- `cmdPartition(args)` — top-level noun dispatcher for `tusq partition`
+- `cmdPartitionIndex(args)` — `tusq partition index` handler with full flag parsing, manifest reading, filter enforcement, `--out`/`--json` modes
+- `parsePartitionIndexArgs(args)` — known flags: `['partition', 'manifest', 'out', 'json']`
+- Dispatch switch: `case 'partition': cmdPartition(args)` inserted between `'parameter'` and `'path'`
+- `printHelp()`: `'  partition ...'` line inserted between `'parameter'` and `'path'`
+- `printCommandHelp()`: `partition` and `'partition index'` entries inserted before `path` entry
+
+**Tests updated:**
+- `tests/smoke.mjs`: all 45 `!== 63` assertions updated to `!== 64`; M80 smoke matrix added (M80(a)–M80(r))
+- `tests/eval-regression.mjs`: `runInputSchemaFirstPropertyPatternPropertiesIndexDeterminismScenario` handler added; dispatch case `'input_schema_first_property_pattern_properties_index_determinism'` wired
+- `tests/evals/governed-cli-scenarios.json`: scenario `input-schema-first-property-pattern-properties-index-determinism` appended (70 → 71 scenarios)
+
+**Website:** `website/docs/cli-reference.md`: `## tusq partition index` section inserted before `## tusq confidence index`.
+
+**npm test result:** `Smoke tests passed` + `Eval regression harness passed (71 scenarios)` — exit 0.
+
+---
+
 ## M79 (run_73dd78f172735547, turn_f703b2d7af03a903, dev)
 
 **Axis:** `input_schema.properties[firstKey].maxProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-CEILING annotation. CLI noun: `crowded` (between `confidence` and `description`). CLI surface 62→63.
