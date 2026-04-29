@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_c214b7b9d29106bb (role=qa, run_23513ac80f87e34e, M77 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_57319dfd22963098, role=dev, HEAD 1113485) for run_23513ac80f87e34e independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M77 does not modify manifest format — `input_schema_first_property_additional_properties` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_75173aa324cb0486 upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions carried forward correctly: (1) `open` inserted between `obligation` and `output` (obligation(o=111,b=98) < open(o=111,p=112) at pos 1 (b(98)<p(112)); open(o=111,p=112) < output(o=111,u=117) at pos 1 (p(112)<u(117))); (2) four-value bucket-key enum closed|open|not_applicable|unknown; (3) aggregation_key enum object_property_extension_constraint|not_applicable|unknown three-value; (4) bucket order closed→open→not_applicable→unknown; (5) SIX frozen warning codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_additional_properties_invalid_when_present`); TYPE-APPLICABILITY-OBJECT, ABSENT-AS-OPEN, NULL-AS-ABSENT, BOOLEAN-FALSE-AS-CLOSED, BOOLEAN-TRUE-AS-OPEN, PLAIN-OBJECT-SCHEMA-AS-OPEN, DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES, NO-COERCION all correctly carried forward. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_ENUM` (frozen Set: closed/open/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_AGGREGATION_KEY_ENUM` (frozen Set: object_property_extension_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_ADDITIONAL_PROPERTIES_BUCKET_ORDER` (frozen array: closed/open/not_applicable) confirmed in `src/cli.js` after M76 items constants. Guards `_guardInputSchemaFirstPropertyAdditionalPropertiesBucketKey` and `_guardInputSchemaFirstPropertyAdditionalPropertiesAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyAdditionalProperties` confirmed at src/cli.js:16690. Implements: null/undefined/non-object inputSchema → unknown; type not-string → unknown; type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object → unknown; zero-property properties → not_applicable (no warning); firstVal not a plain object → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55–M76); TYPE-APPLICABILITY-OBJECT: typeof firstVal.type === 'string' && firstVal.type !== 'object' → not_applicable (mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY but for object axis); ABSENT-AS-OPEN: absent/undefined → open (Draft-7 default); NULL-AS-ABSENT: null → open (mirrors M55–M76); BOOLEAN-FALSE-AS-CLOSED: false → closed; BOOLEAN-TRUE-AS-OPEN: true → open; PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==='[object Object]' → open (Draft-7 schema-form: extra keys permitted, value shape restricted, semantically OPEN); DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION via Boolean()/!!/v?true:false/Object() — strict ===true/===false and Object.prototype.toString checks only. Boundary verification via synthetic manifest CLI runs (8 cases): false,type:object → closed (BOOLEAN-FALSE-AS-CLOSED PASS); true,type:object → open (BOOLEAN-TRUE-AS-OPEN PASS); absent,type:object → open (ABSENT-AS-OPEN PASS); null,type:object → open (NULL-AS-ABSENT PASS); {type:'string'},type:object → open (PLAIN-OBJECT-SCHEMA-AS-OPEN PASS); type:'string' first property → not_applicable (TYPE-APPLICABILITY-OBJECT PASS); 'yes',type:object → unknown+6th (DRAFT-7+NO-COERCION PASS); [{type:'string'}],type:object → unknown+6th (DRAFT-7+array PASS). ALL 8 BOUNDARY CASES PASS. PASS.
+
+**5. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 61 (60→61 growth confirmed). `open` confirmed between `obligation` and `output` in help output: obligation(o=111,b=98) < open(o=111,p=112) at pos 1 (b(98)<p(112)); open(o=111,p=112) < output(o=111,u=117) at pos 1 (p(112)<u(117)). `tusq open index --json` on express-sample → exit 0. PASS.
+
+**6. Express fixture test:** `first_property_additional_properties_states[]` contains `open` bucket (post_users_users, aggregation_key `object_property_extension_constraint`, capability_count 1) and `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, aggregation_key `not_applicable`, capability_count 2). `closed` and `unknown` buckets absent — TYPE-APPLICABILITY-OBJECT rule applies to GET endpoints (first properties not object-typed) and empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. PASS.
+
+**7. Case-sensitive enforcement + absent-bucket exit 1:** `--open OPEN` → exit 1 (uppercase rejected — case-sensitive enforcement). `--open closed` on express-sample → exit 1 (absent bucket). `--open open` → exit 0 (present bucket on express-sample). PASS.
+
+**8. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (68 scenarios)`. 42 help-count assertions updated from !==60 to !==61 in tests/smoke.mjs. 18-case M77 smoke matrix confirmed present. PASS.
+
+**9. Package + fixture integrity:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). Non-persistence confirmed. PASS.
+
+**10. Eval scenarios:** 68 total scenarios (67→68 growth). `input-schema-first-property-additional-properties-index-determinism` scenario added to `tests/evals/governed-cli-scenarios.json`; `runInputSchemaFirstPropertyAdditionalPropertiesIndexDeterminismScenario` handler added to `tests/eval-regression.mjs`. Byte-identity across consecutive runs confirmed by eval harness. PASS.
+
+**11. ROADMAP completeness:** All 18 M77 ROADMAP checkboxes [x] confirmed in `.planning/ROADMAP.md` (0 unchecked non-comment items). PASS.
+
+**12. Objection audit:** OBJ-001 (R6 dead code, medium, non-blocking), OBJ-002 (surface-plan-determinism eval uses synthetic_capabilities, low, non-blocking), OBJ-003 (M31 per-domain flag assertions, low, non-blocking) carried forward unchanged. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. No new blocking objections raised for M77. PASS.
+
+**13. Acceptance criteria count:** 25 new REQs added (REQ-1290–REQ-1314). Total: 1289 → 1314. All pass. Ship verdict: SHIP.
+
+---
+
 ## QA Challenge — turn_a5a2f476cd0c7e7c (role=qa, run_7614b689bb195a71, M76 verification, 2026-04-28)
 
 This QA turn challenges the prior accepted dev turn (turn_81676e2d9987b70c, role=dev, HEAD 42e7733) for run_7614b689bb195a71 independently rather than rubber-stamping it.

@@ -1,5 +1,27 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M77 (turn_c214b7b9d29106bb, run_23513ac80f87e34e, 2026-04-29, HEAD 1113485)
+
+**Milestone:** M77 — Input Schema First Property AdditionalProperties Object-Extension-Control Annotation Presence Index (`tusq open index`)
+
+**CLI surface:** 60 → 61 commands. New command `tusq open index` inserted alphabetically between `tusq obligation index` and `tusq output index`.
+
+**New classification axis:** `input_schema.properties[firstKey].additionalProperties` — JSON-Schema Draft 7 OBJECT-EXTENSION-CONTROL annotation. Bucket-key enum: `closed | open | not_applicable | unknown`. Aggregation-key enum: `object_property_extension_constraint | not_applicable | unknown`. Bucket iteration order: `closed → open → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- BOOLEAN-FALSE-AS-CLOSED: `additionalProperties === false` → `closed` (explicit-false closes the object to extra keys)
+- BOOLEAN-TRUE-AS-OPEN: `additionalProperties === true` → `open` (explicit-true is Draft-7 default expressed explicitly)
+- ABSENT-AS-OPEN: `additionalProperties` absent or `undefined` → `open` (Draft-7 default is open/true)
+- NULL-AS-ABSENT: `additionalProperties === null` → `open` (mirrors M55–M76 null-as-absent precedent; Draft-7 default is OPEN)
+- PLAIN-OBJECT-SCHEMA-AS-OPEN: Object.prototype.toString.call(v)==='[object Object]' → `open` (Draft-7 schema-form: extra keys permitted with value-shape restriction, semantically OPEN)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M73/M74/M75/M76 TYPE-APPLICABILITY-ARRAY but for object axis; `additionalProperties` is only meaningful when the property is object-typed)
+- DRAFT-7-BOOLEAN-OR-OBJECT-IS-VALID-ADDITIONAL-PROPERTIES: any other `additionalProperties` value (string / number / Array / NaN / non-plain-object reference) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_additional_properties_invalid_when_present`
+- NO-COERCION: strict `=== true` / `=== false` for boolean-form and Object.prototype.toString.call(v)==='[object Object]' for plain-object-schema-form; no Boolean()/!!/v?true:false/Object()
+
+**Verification results:** `npm test` → exit 0 (68 eval scenarios, smoke tests pass). CLI surface = 61. Express-sample fixture: `open` bucket (post_users_users, aggregation_key object_property_extension_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); closed/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 8 boundary cases verified (BOOLEAN-FALSE-AS-CLOSED, BOOLEAN-TRUE-AS-OPEN, ABSENT-AS-OPEN, NULL-AS-ABSENT, PLAIN-OBJECT-SCHEMA-AS-OPEN, TYPE-APPLICABILITY-OBJECT, string-additionalProperties NO-COERCION, array-additionalProperties DRAFT-7). Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1290–REQ-1314). Total: 1314 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M76 (turn_a5a2f476cd0c7e7c, run_7614b689bb195a71, 2026-04-28, HEAD 42e7733)
 
 **Milestone:** M76 — Input Schema First Property Items Annotation Presence Index (`tusq element index`)
