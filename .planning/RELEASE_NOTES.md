@@ -1,5 +1,39 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M87 (turn_58d1e441ae241e1b, run_1073dd9a1aacf17f, 2026-04-29, HEAD 1d3aa9a)
+
+**Milestone:** M87 — Input Schema First Property AdditionalItems Array-Tail-Items-Schema Annotation Presence Index (`tusq extra index`)
+
+**CLI surface:** 70 → 71 commands. New command `tusq extra index` inserted alphabetically between `tusq examples index` and `tusq fixed index`.
+
+**New classification axis:** `input_schema.properties[firstKey].additionalItems` — JSON-Schema Draft 7 §6.4.2 ARRAY-TAIL-ITEMS-SCHEMA annotation. Bucket-key enum: `typed | untyped | not_applicable | unknown`. Aggregation-key enum: `array_tail_items_schema | not_applicable | unknown`. Bucket iteration order: `typed → untyped → not_applicable → unknown`.
+
+**Classification rules (frozen) — TWO M87-SPECIFIC type-applicability invariants distinct from all prior cluster milestones:**
+
+**(1) TYPE-APPLICABILITY-ARRAY-RESTRICTION (M87-SPECIFIC):** `firstVal.type !== 'array'` → `not_applicable`. Distinct from M77–M83 TYPE-APPLICABILITY-OBJECT (which gate on firstVal.type='object') and from M84/M85/M86 NO-TYPE-APPLICABILITY-OBJECT-RESTRICTION (which do not inspect firstVal.type at all). Draft-7 §6.4.2 defines `additionalItems` as meaningful ONLY on array-typed schemas. M87 is the FIRST milestone in the M77+ first-property cluster whose gate is firstVal.type='array' (not 'object').
+
+**(2) TUPLE-ITEMS-PREREQUISITE (M87-SPECIFIC):** `firstVal.items` absent OR `!Array.isArray(firstVal.items)` → `not_applicable`. Draft-7 §6.4.2 explicitly states `additionalItems` is ignored when `items` is a single schema or absent. Without an array-tuple `items` declaration there is no tail-validation slot to inspect.
+
+**(3) NULL-AS-UNKNOWN (M87-SPECIFIC):** `firstVal.additionalItems === null` → `unknown` WITH 6th code. Distinct from M86 NULL-AS-TYPED for `default` (where `default: null` pins pre-fill to JSON null VALUE). Draft-7 schemas are boolean-or-object; `null` is neither.
+
+**(4) BOOLEAN-SCHEMA-AS-TYPED:** `typeof firstVal.additionalItems === 'boolean'` → `typed` for BOTH `true` AND `false`. Draft-7 §4.4 explicitly defines boolean schemas: `true` permits all tail-extras, `false` forbids them. Mirrors M77 BOOLEAN-AS-TYPED for `additionalProperties`.
+
+**(5) EMPTY-OBJECT-SCHEMA-AS-UNTYPED (M87-INHERITED-FROM-M81):** `additionalItems: {}` → `untyped`. Empty `{}` declares no constraint and is operationally equivalent to the absent default. Distinct from M84/M86 EMPTY-PLAIN-OBJECT-AS-TYPED-INCLUDING-EMPTY for value-axes (`const`/`default`) where `{}` is the empty-object literal VALUE, not a schema.
+
+**(6) ARRAY-AS-UNKNOWN (M87-SPECIFIC):** `Array.isArray(firstVal.additionalItems)` → `unknown` WITH 6th code. Draft-7 §6.4.2: `additionalItems` MUST be a boolean OR a single object subschema, NOT an array. Distinct from `items` which CAN be a tuple-array.
+
+**ABSENT-AS-UNTYPED ownership detection:** `Object.prototype.hasOwnProperty.call(firstVal, 'additionalItems')` MUST be used — NOT the `in` operator (which walks the prototype chain).
+
+**All other classification rules:** NON-EMPTY-OBJECT-SUBSCHEMA-AS-TYPED (subschema shape NOT recursively walked); UNDEFINED-EXPLICIT-AS-UNKNOWN (own-property present, value is JavaScript `undefined` → unknown+6th); NO-COERCION (MUST NOT use Array.from/Object/JSON.parse(JSON.stringify(...))/String/Number/Boolean/!!/+v/nullish-coalesce).
+
+**Axis relationships:** M87 (additionalItems) is the ELEVENTH first-property axis annotation in the M77+ first-property cluster (M77: additionalProperties → M78: minProperties → M79: maxProperties → M80: patternProperties → M81: propertyNames → M82: required → M83: dependencies → M84: const → M85: enum → M86: default → M87: additionalItems). M87 is the FIRST in the cluster whose Draft-7 keyword is restricted to firstVal.type === 'array' schemas, and the FIRST whose applicability gate inspects firstVal.type='array' (rather than 'object' or not at all). M87 has a compound two-gate prerequisite structure (TYPE-APPLICABILITY-ARRAY-RESTRICTION AND TUPLE-ITEMS-PREREQUISITE) not seen in any prior cluster milestone. VISION primary citation: lines 342–356 (§ Developer Artifacts, in ## What We Output).
+
+**Attempt-1 context:** Attempt 1 (sub-process SIGTERM exit code 143) successfully implemented all M87 source code (constants, guards, classifier, smoke matrix, eval scenario, cli-reference.md, IMPLEMENTATION_NOTES.md, ROADMAP.md all 18 items [x]) but was killed before inserting SYSTEM_SPEC.md and command-surface.md Materialized blockquotes and writing the staging turn result. Attempt 2 inserted those two remaining blockquotes (sole remaining gap) without re-implementing the already-working source.
+
+**Verification results:** `npm test` → exit 0 (78 eval scenarios, smoke tests pass). CLI surface = 71. Express-sample fixture: only `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, post_users_users; aggregation_key `not_applicable`, capability_count 3); typed/untyped/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 11 boundary cases verified (3 typed: bool-true/bool-false/nonempty-obj; 2 untyped: empty-obj/absent; 4 not_applicable: not-array-type/items-absent/items-single-schema/outer-not-object; 2 unknown: null+6th/array+6th). `--extra TYPED` → exit 1 (case-sensitive). `--extra typed` on express-sample → exit 1 (absent bucket). `--extra not_applicable` → exit 0. Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1540–REQ-1564). Total: 1564 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M86 (turn_f3e829f2485a7cee, run_083e290f5ee318f4, 2026-04-29, HEAD ce2518e)
 
 **Milestone:** M86 — Input Schema First Property Default Sample-Instance-Value Annotation Presence Index (`tusq prefill index`)
