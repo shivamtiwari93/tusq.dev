@@ -1,5 +1,33 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M75 (turn_d9bc69ea3ea17df2, run_ed87531287b641c8, 2026-04-28, HEAD e3b28ae)
+
+**Milestone:** M75 — Static Capability Input Schema First Property UniqueItems Array-Element-Uniqueness Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.56
+
+**New command:** `tusq unique index` — indexes capabilities by `input_schema.properties[firstKey].uniqueItems` JSON-Schema-Draft-7 array-element-uniqueness BOOLEAN annotation classification.
+
+**CLI surface:** 58 → 59 commands. `unique` inserted alphabetically between `surface` and `upper` (surface(s=115,u=117) < unique(u=117) at pos 0; unique(u=117,n=110) < upper(u=117,p=112) at pos 1).
+
+**Bucket-key enum (four-value, closed):** `unique` | `not_unique` | `not_applicable` | `unknown`. Iteration order: unique → not_unique → not_applicable → unknown (deterministic stable-output convention only — NOT a tool-and-skill-compiler-priority / DTO-distinctness-priority ranking).
+
+**Aggregation-key enum (three-value, closed):** `array_element_uniqueness_constraint` | `not_applicable` | `unknown`.
+
+**Classification rules (all PM-frozen invariants implemented and verified):**
+- BOOLEAN-TRUE-AS-UNIQUE: `uniqueItems === true` → `unique` (strict equality, NO-COERCION via Boolean()/!!/v?true:false)
+- BOOLEAN-FALSE-AS-NOT-UNIQUE: `uniqueItems === false` → `not_unique` (explicit-false agrees with absence-default; mirrors M72 BOOLEAN-FALSE-AS-NOT-NULLABLE)
+- ABSENT-AS-NOT-UNIQUE: `uniqueItems` absent/undefined → `not_unique` (Draft 7 default for uniqueItems is false)
+- NULL-AS-ABSENT: `uniqueItems === null` → `not_unique` (mirrors M55–M74 null-as-absent precedent)
+- TYPE-APPLICABILITY-ARRAY: `firstVal.type` is a non-empty string other than `'array'` → `not_applicable` (mirrors M73/M74 TYPE-APPLICABILITY-ARRAY for minItems/maxItems)
+- DRAFT-7-BOOLEAN-IS-VALID-UNIQUE-ITEMS: non-boolean non-null present uniqueItems (integer/string/array/object/etc.) → `unknown` WITH 6th warning code `input_schema_properties_first_property_unique_items_invalid_when_present`
+
+**Warning codes (six frozen, PM-frozen):** `input_schema_missing`, `input_schema_type_missing`, `input_schema_type_invalid`, `input_schema_properties_missing_or_invalid`, `input_schema_properties_first_property_descriptor_invalid`, `input_schema_properties_first_property_unique_items_invalid_when_present`. Only `unknown` bucket emits warnings.
+
+**Test coverage:** 66 total eval scenarios (65→66). 18-case M75 smoke matrix. `input-schema-first-property-unique-items-index-determinism` determinism scenario added. All 40 help-count assertions updated from !==58 to !==59. npm test → exit 0.
+
+**Acceptance criteria:** 1264 total (REQ-001–REQ-1264). 25 new M75 REQs (REQ-1240–REQ-1264).
+
+**QA verification summary:** `npm test` → exit 0 (66 scenarios). `node bin/tusq.js help | grep -cE '^  [a-z]'` → 59. `unique index --json` express-sample → not_applicable-only bucket (TYPE-APPLICABILITY-ARRAY rule; empty-bucket-MUST-NOT-appear invariant confirmed). All 8 boundary cases independently verified via synthetic CLI runs. All 18 M75 ROADMAP checkboxes [x] (0 unchecked). OBJ-001/002/003 non-blocking carried forward. OBJ-004/005/006 RETIRED. Ship verdict: SHIP.
+
 ## QA Verification — M74 (turn_7818b2588fcbc51a, run_87db4ac59785126d, 2026-04-28, HEAD ced83ed)
 
 **Milestone:** M74 — Static Capability Input Schema First Property MaxItems Array-Cardinality-Ceiling Annotation Presence Index Export from Manifest Evidence (~0.5 day) — V1.55
