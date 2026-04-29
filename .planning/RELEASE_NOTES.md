@@ -1,5 +1,26 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M78 (turn_0723a9f222c6b76a, run_b2c5d5143ed0e344, 2026-04-29, HEAD 95cdb09)
+
+**Milestone:** M78 — Input Schema First Property MinProperties Object-Property-Count-Floor Annotation Presence Index (`tusq sparse index`)
+
+**CLI surface:** 61 → 62 commands. New command `tusq sparse index` inserted alphabetically between `tusq signature index` and `tusq strictness index`.
+
+**New classification axis:** `input_schema.properties[firstKey].minProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-FLOOR annotation. Bucket-key enum: `bounded | unbounded | not_applicable | unknown`. Aggregation-key enum: `object_property_count_floor_constraint | not_applicable | unknown`. Bucket iteration order: `bounded → unbounded → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: Number.isInteger(v) && v >= 0 → `bounded` (JSON-Schema Draft 7 requires a non-negative integer)
+- PRESENT-AS-PRESENT-ZERO: `minProperties: 0` → `bounded` (NOT unbounded — explicit floor declared at zero is semantically distinct from absent; mirrors M73 minItems:0)
+- ABSENT-AS-UNBOUNDED: `minProperties` absent or `undefined` → `unbounded` (Draft-7 default is no floor)
+- NULL-AS-ABSENT: `minProperties === null` → `unbounded` (mirrors M55–M77 null-as-absent precedent; Draft-7 default no floor)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77 TYPE-APPLICABILITY-OBJECT; minProperties is only meaningful for object-typed properties; JSON-Schema-Draft-7 defines minProperties ONLY for type==='object')
+- DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: any other `minProperties` value (negative integer, non-integer float, NaN, Infinity, string, boolean, array, plain object, non-plain-object reference) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_min_properties_invalid_when_present`
+- NO-COERCION: strict `Number.isInteger(v) && v >= 0` only; no Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false
+
+**Verification results:** `npm test` → exit 0 (69 eval scenarios, smoke tests pass). CLI surface = 62. Express-sample fixture: `unbounded` bucket (post_users_users, aggregation_key object_property_count_floor_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); bounded/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 9 boundary cases verified (PRESENT-AS-PRESENT-ZERO, NON-NEGATIVE-INTEGER, ABSENT-AS-UNBOUNDED, NULL-AS-ABSENT, TYPE-APPLICABILITY-OBJECT, NO-COERCION×4 for negative/-1, float/0.5, string/'1', boolean/true). Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1315–REQ-1339). Total: 1339 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M77 (turn_c214b7b9d29106bb, run_23513ac80f87e34e, 2026-04-29, HEAD 1113485)
 
 **Milestone:** M77 — Input Schema First Property AdditionalProperties Object-Extension-Control Annotation Presence Index (`tusq open index`)

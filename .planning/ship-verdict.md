@@ -2,6 +2,38 @@
 
 ## Verdict: SHIP
 
+## QA Challenge — turn_0723a9f222c6b76a (role=qa, run_b2c5d5143ed0e344, M78 verification, 2026-04-29)
+
+This QA turn challenges the prior accepted dev turn (turn_5f19567fcdd8fb6c, role=dev, HEAD 95cdb09) for run_b2c5d5143ed0e344 independently rather than rubber-stamping it.
+
+**1. Dev turn file-scope challenge:** `git diff HEAD~1..HEAD --name-only` → exactly 9 dev-owned files changed: `src/cli.js`, `tests/smoke.mjs`, `tests/evals/governed-cli-scenarios.json`, `tests/eval-regression.mjs`, `website/docs/cli-reference.md`, `.planning/IMPLEMENTATION_NOTES.md`, `.planning/ROADMAP.md`, `.planning/SYSTEM_SPEC.md`, `.planning/command-surface.md`. Zero reserved orchestrator state files (`state.json`, `history.jsonl`, `decision-ledger.jsonl`, `lock.json`) modified. Zero QA-owned or launch-owned files modified by dev. No `website/docs/manifest-format.md` change (M78 does not modify manifest format — `input_schema_first_property_min_properties` is non-persistent by design). PASS.
+
+**2. PM challenge validation:** PM DEC-001 through DEC-005 from turn_d8b72d32481cce2f upheld by dev DEC-001. PM modified exactly 4 PM-owned files (ROADMAP.md, PM_SIGNOFF.md, SYSTEM_SPEC.md, command-surface.md); zero source drift in src/bin/tests/website/package.json. All five PM decisions carried forward correctly: (1) `sparse` inserted between `signature` and `strictness` (signature(s=115,i=105) < sparse(s=115,p=112) at pos 1 (i(105)<p(112)); sparse(s=115,p=112) < strictness(s=115,t=116) at pos 1 (p(112)<t(116))); (2) four-value bucket-key enum bounded|unbounded|not_applicable|unknown; (3) aggregation_key enum object_property_count_floor_constraint|not_applicable|unknown three-value; (4) bucket order bounded→unbounded→not_applicable→unknown; (5) SIX frozen warning codes (5 baseline + axis-specific 6th `input_schema_properties_first_property_min_properties_invalid_when_present`); TYPE-APPLICABILITY-OBJECT, ABSENT-AS-UNBOUNDED, NULL-AS-ABSENT, NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES, PRESENT-AS-PRESENT-ZERO, DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES, NO-COERCION all correctly carried forward. PASS.
+
+**3. Constants and guards:** `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_ENUM` (frozen Set: bounded/unbounded/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_AGGREGATION_KEY_ENUM` (frozen Set: object_property_count_floor_constraint/not_applicable/unknown), `INPUT_SCHEMA_FIRST_PROPERTY_MIN_PROPERTIES_BUCKET_ORDER` (frozen array: bounded/unbounded/not_applicable) confirmed in `src/cli.js` after M77 additionalProperties constants. Guards `_guardInputSchemaFirstPropertyMinPropertiesBucketKey` and `_guardInputSchemaFirstPropertyMinPropertiesAggregationKey` confirmed present. `node -e "require('./src/cli.js')"` → exit 0 (guards pass synchronously). PASS.
+
+**4. Classifier verification:** `classifyInputSchemaFirstPropertyMinProperties` confirmed in src/cli.js. Implements: null/undefined/non-object inputSchema → unknown; type not-string → unknown; type string but not 'object' → not_applicable (no warning); type === 'object' + properties null/undefined/non-object → unknown; zero-property properties → not_applicable (no warning); firstVal not a plain object → unknown with warning `input_schema_properties_first_property_descriptor_invalid` (FIFTH FROZEN CODE — carried from M55–M77); TYPE-APPLICABILITY-OBJECT: typeof firstVal.type === 'string' && firstVal.type !== 'object' → not_applicable (mirrors M77 TYPE-APPLICABILITY-OBJECT; minProperties is only meaningful for object-typed properties); ABSENT-AS-UNBOUNDED: absent/undefined → unbounded (Draft-7 default no floor); NULL-AS-ABSENT: null → unbounded (mirrors M55–M77); NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES + PRESENT-AS-PRESENT-ZERO: Number.isInteger(v) && v >= 0 → bounded (integer 0 → bounded — explicit floor declared, NOT unbounded; mirrors M73 minItems:0); DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MIN-PROPERTIES: any other value → unknown WITH 6th code; NO-COERCION via Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false — strict Number.isInteger(v) && v >= 0 only. Boundary verification via synthetic 9-capability manifest CLI run (all four buckets present in iteration order bounded→unbounded→not_applicable→unknown): minProperties:0 → bounded (PRESENT-AS-PRESENT-ZERO PASS), minProperties:1 → bounded (NON-NEGATIVE-INTEGER PASS), absent → unbounded (ABSENT-AS-UNBOUNDED PASS), null → unbounded (NULL-AS-ABSENT PASS), firstVal.type:string → not_applicable (TYPE-APPLICABILITY-OBJECT PASS), minProperties:-1 → unknown+6th code (NO-COERCION PASS), minProperties:0.5 → unknown+6th (NO-COERCION PASS), minProperties:'1' → unknown+6th (NO-COERCION PASS), minProperties:true → unknown+6th (NO-COERCION PASS). ALL 9 BOUNDARY CASES PASS. PASS.
+
+**5. CLI wiring:** `node bin/tusq.js help | grep -cE '^  [a-z]'` → 62 (61→62 growth confirmed). `sparse` confirmed between `signature` and `strictness` in help output: signature(s=115,i=105) < sparse(s=115,p=112) at pos 1 (i(105)<p(112)); sparse(s=115,p=112) < strictness(s=115,t=116) at pos 1 (p(112)<t(116)). `tusq sparse index --json` on express-sample → exit 0. PASS.
+
+**6. Express fixture test:** `first_property_min_properties_states[]` contains `unbounded` bucket (post_users_users, aggregation_key `object_property_count_floor_constraint`, capability_count 1) and `not_applicable` bucket (get_users_users, get_users_api_v1_users_id, aggregation_key `not_applicable`, capability_count 2). `bounded` and `unknown` buckets absent — TYPE-APPLICABILITY-OBJECT rule applies to GET endpoints (first properties not object-typed) and empty-bucket-MUST-NOT-appear invariant confirmed. `warnings: []`. PASS.
+
+**7. Case-sensitive enforcement + absent-bucket exit 1:** `--sparse BOUNDED` → exit 1 (uppercase rejected — case-sensitive enforcement). `--sparse bounded` on express-sample → exit 1 (absent bucket). `--sparse unbounded` → exit 0 (present bucket on express-sample). PASS.
+
+**8. npm test:** `npm test` → exit 0 with `Smoke tests passed` and `Eval regression harness passed (69 scenarios)`. 43 help-count assertions updated from !==61 to !==62 in tests/smoke.mjs. 18-case M78 smoke matrix confirmed present. PASS.
+
+**9. Package + fixture integrity:** `git diff --quiet -- package.json package-lock.json` → exit 0 (zero package drift). `git diff --quiet -- tests/fixtures/` → exit 0 (zero fixture mutation). Non-persistence confirmed. PASS.
+
+**10. Eval scenarios:** 69 total scenarios (68→69 growth). `input-schema-first-property-min-properties-index-determinism` scenario added to `tests/evals/governed-cli-scenarios.json`; `runInputSchemaFirstPropertyMinPropertiesIndexDeterminismScenario` handler added to `tests/eval-regression.mjs`. Byte-identity across consecutive runs confirmed by eval harness. PASS.
+
+**11. ROADMAP completeness:** All 18 M78 ROADMAP checkboxes [x] confirmed in `.planning/ROADMAP.md` (0 unchecked non-comment items). PASS.
+
+**12. Objection audit:** OBJ-001 (R6 dead code, medium, non-blocking), OBJ-002 (surface-plan-determinism eval uses synthetic_capabilities, low, non-blocking), OBJ-003 (M31 per-domain flag assertions, low, non-blocking) carried forward unchanged. OBJ-004/OBJ-005/OBJ-006 remain RETIRED. No new blocking objections raised for M78. PASS.
+
+**13. Acceptance criteria count:** 25 new REQs added (REQ-1315–REQ-1339). Total: 1314 → 1339. All pass. Ship verdict: SHIP.
+
+---
+
 ## QA Challenge — turn_c214b7b9d29106bb (role=qa, run_23513ac80f87e34e, M77 verification, 2026-04-29)
 
 This QA turn challenges the prior accepted dev turn (turn_57319dfd22963098, role=dev, HEAD 1113485) for run_23513ac80f87e34e independently rather than rubber-stamping it.
