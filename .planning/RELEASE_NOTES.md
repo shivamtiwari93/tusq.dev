@@ -1,5 +1,28 @@
 # Release Notes — tusq v0.1.0
 
+## QA Verification — M79 (turn_a44f405a4bae76ab, run_73dd78f172735547, 2026-04-29, HEAD 1df35e3)
+
+**Milestone:** M79 — Input Schema First Property MaxProperties Object-Property-Count-Ceiling Annotation Presence Index (`tusq crowded index`)
+
+**CLI surface:** 62 → 63 commands. New command `tusq crowded index` inserted alphabetically between `tusq confidence index` and `tusq description index`.
+
+**New classification axis:** `input_schema.properties[firstKey].maxProperties` — JSON-Schema Draft 7 OBJECT-PROPERTY-COUNT-CEILING annotation. Bucket-key enum: `bounded | unbounded | not_applicable | unknown`. Aggregation-key enum: `object_property_count_ceiling_constraint | not_applicable | unknown`. Bucket iteration order: `bounded → unbounded → not_applicable → unknown`.
+
+**Classification rules (frozen):**
+- NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES: Number.isInteger(v) && v >= 0 → `bounded` (JSON-Schema Draft 7 requires a non-negative integer)
+- PRESENT-AS-PRESENT-ZERO: `maxProperties: 0` → `bounded` (NOT unbounded — explicit ceiling declared at zero is semantically distinct from absent; mirrors M74 maxItems:0 and M78 minProperties:0)
+- ABSENT-AS-UNBOUNDED: `maxProperties` absent or `undefined` → `unbounded` (Draft-7 default is no ceiling)
+- NULL-AS-ABSENT: `maxProperties === null` → `unbounded` (mirrors M55–M78 null-as-absent precedent; Draft-7 default no ceiling)
+- TYPE-APPLICABILITY-OBJECT: `firstVal.type` is a string but not `'object'` → `not_applicable` (mirrors M77/M78 TYPE-APPLICABILITY-OBJECT; maxProperties is only meaningful for object-typed properties; JSON-Schema-Draft-7 defines maxProperties ONLY for type==='object')
+- DRAFT-7-NON-NEGATIVE-INTEGER-IS-VALID-MAX-PROPERTIES: any other `maxProperties` value (negative integer, non-integer float, NaN, Infinity, string, boolean, array, plain object, non-plain-object reference) → `unknown` WITH 6th frozen code `input_schema_properties_first_property_max_properties_invalid_when_present`
+- NO-COERCION: strict `Number.isInteger(v) && v >= 0` only; no Number()/parseInt()/parseFloat()/Boolean()/!!/v?true:false
+
+**Axis relationship:** M79 (maxProperties ceiling) is the direct numeric mirror of M78 (minProperties floor) on the same firstVal slot. Parallels M74 (maxItems array-cardinality-ceiling — same non-negative-integer-ceiling mathematical shape but different type domain). Third object-axis annotation in the M77+ object-axis cluster (M77: additionalProperties extension-control → M78: minProperties floor → M79: maxProperties ceiling).
+
+**Verification results:** `npm test` → exit 0 (70 eval scenarios, smoke tests pass). CLI surface = 63. Express-sample fixture: `unbounded` bucket (post_users_users, aggregation_key object_property_count_ceiling_constraint) + `not_applicable` bucket (get_users_users, get_users_api_v1_users_id; TYPE-APPLICABILITY-OBJECT for GET endpoints); bounded/unknown absent; empty-bucket-MUST-NOT-appear confirmed. 9 boundary cases verified (PRESENT-AS-PRESENT-ZERO, NON-NEGATIVE-INTEGER, ABSENT-AS-UNBOUNDED, NULL-AS-ABSENT, TYPE-APPLICABILITY-OBJECT, NO-COERCION×4 for negative/-1, float/0.5, string/'1', boolean/true). Zero package drift. Zero fixture mutation. 25 new acceptance criteria (REQ-1340–REQ-1364). Total: 1364 REQs. Ship verdict: SHIP.
+
+---
+
 ## QA Verification — M78 (turn_0723a9f222c6b76a, run_b2c5d5143ed0e344, 2026-04-29, HEAD 95cdb09)
 
 **Milestone:** M78 — Input Schema First Property MinProperties Object-Property-Count-Floor Annotation Presence Index (`tusq sparse index`)
